@@ -1,0 +1,644 @@
+{
+	"info": {
+		"name": "DfiruBack API",
+		"_postman_id": "b7e6e2e2-1c2d-4b7a-9e2e-2e2e2e2e2e2e",
+		"description": "Colección CRUD para todas las entidades del backend NestJS",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Clientes",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/clientes",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["clientes"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/clientes/{{telefono}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["clientes", "{{telefono}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/clientes",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["clientes"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"telefono\": 1234567890,\n  \"clienteNombre\": \"Juan\",\n  \"direccion\": \"Calle 1\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/clientes/{{telefono}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["clientes", "{{telefono}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"clienteNombre\": \"Juan Actualizado\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/clientes/{{telefono}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["clientes", "{{telefono}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Domiciliarios",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/domiciliarios",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domiciliarios"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/domiciliarios/{{telefono}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domiciliarios", "{{telefono}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/domiciliarios",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domiciliarios"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"telefono\": 987654321,\n  \"domiciliarioNombre\": \"Pedro\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/domiciliarios/{{telefono}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domiciliarios", "{{telefono}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"domiciliarioNombre\": \"Pedro Actualizado\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/domiciliarios/{{telefono}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domiciliarios", "{{telefono}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Domicilios",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/domicilios",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domicilios"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/domicilios/{{domicilioId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domicilios", "{{domicilioId}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/domicilios",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domicilios"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"facturaId\": 1,\n  \"ordenId\": 1,\n  \"telefono\": 1234567890\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/domicilios/{{domicilioId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domicilios", "{{domicilioId}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estadoDomicilio\": \"entregado\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/domicilios/{{domicilioId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["domicilios", "{{domicilioId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Facturas Ventas",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/facturas-ventas",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-ventas"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/facturas-ventas/{{facturaId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-ventas", "{{facturaId}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/facturas-ventas",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-ventas"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"clienteNombre\": \"Juan\",\n  \"descripcion\": \"Venta de productos\",\n  \"total\": 1000\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/facturas-ventas/{{facturaId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-ventas", "{{facturaId}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estado\": \"pagada\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/facturas-ventas/{{facturaId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-ventas", "{{facturaId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Ordenes",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/ordenes",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/ordenes/{{ordenId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes", "{{ordenId}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear Mesa",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/ordenes",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tipoPedido\": \"mesa\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "POST Crear Domicilio (OK)",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/ordenes",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tipoPedido\": \"domicilio\",\n  \"telefonoCliente\": 3001112222,\n  \"nombreCliente\": \"Ana Perez\",\n  \"direccionCliente\": \"Calle 10 #5-20\",\n  \"telefonoDomiciliario\": 3109998888\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "POST Crear Domicilio (Faltan campos)",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/ordenes",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"tipoPedido\": \"domicilio\",\n  \"telefonoDomiciliario\": 3109998888\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/ordenes/{{ordenId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes", "{{ordenId}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estadoOrden\": \"entregada\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/ordenes/{{ordenId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes", "{{ordenId}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Ordenes Productos",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/ordenes-productos",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes-productos"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/ordenes-productos/{{id}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes-productos", "{{id}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/ordenes-productos",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes-productos"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"ordenId\": 1,\n  \"producto\": \"Coca-Cola\",\n  \"cantidad\": 2\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/ordenes-productos/{{id}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes-productos", "{{id}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cantidad\": 3\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/ordenes-productos/{{id}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["ordenes-productos", "{{id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Productos",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/productos",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["productos"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/productos/{{productoNombre}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["productos", "{{productoNombre}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/productos",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["productos"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productoNombre\": \"Coca-Cola\",\n  \"precio\": 2500\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/productos/{{productoNombre}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["productos", "{{productoNombre}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"precio\": 2600\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/productos/{{productoNombre}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["productos", "{{productoNombre}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Facturas Pagos",
+			"item": [
+				{
+					"name": "GET Todos",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/facturas-pagos",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-pagos"]
+						}
+					}
+				},
+				{
+					"name": "GET Uno",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:3000/facturas-pagos/{{pagosId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-pagos", "{{pagosId}}"]
+						}
+					}
+				},
+				{
+					"name": "POST Crear",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:3000/facturas-pagos",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-pagos"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"total\": 5000,\n  \"nombreGasto\": \"Luz\",\n  \"descripcion\": \"Pago de luz\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "PUT Actualizar",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:3000/facturas-pagos/{{pagosId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-pagos", "{{pagosId}}"]
+						},
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"estado\": \"pagado\"\n}",
+							"options": {"raw": {"language": "json"}}
+						}
+					}
+				},
+				{
+					"name": "DELETE Eliminar",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:3000/facturas-pagos/{{pagosId}}",
+							"host": ["localhost"],
+							"port": "3000",
+							"path": ["facturas-pagos", "{{pagosId}}"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

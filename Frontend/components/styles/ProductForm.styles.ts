@@ -1,0 +1,78 @@
+import { StyleSheet } from 'react-native';
+import { colors } from '../theme';
+
+export const productFormStyles = StyleSheet.create({
+  productContainer: {
+    marginBottom: 24,
+    backgroundColor: colors.bg,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: colors.subText,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  input: {
+    backgroundColor: colors.bg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text,
+    marginBottom: 16,
+  },
+  pickerContainer: {
+    backgroundColor: colors.bg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+    color: colors.text,
+    backgroundColor: colors.bg,
+  },
+  removeBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: 'rgba(239, 83, 80, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 83, 80, 0.3)',
+  },
+  removeBtnText: {
+    color: colors.danger,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  addFlavorBtn: {
+    marginVertical: 8,
+    alignSelf: 'flex-start',
+    padding: 8,
+    backgroundColor: 'rgba(0, 188, 212, 0.1)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 188, 212, 0.3)',
+  },
+  addFlavorBtnText: {
+    color: colors.accent,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+});

@@ -1,0 +1,137 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  loader: {
+    marginTop: 50,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    textAlign: 'center',
+    margin: 20,
+  },
+  header: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  backButton: {
+    backgroundColor: '#2196f3',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  section: {
+    backgroundColor: '#fff',
+    margin: 16,
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    borderBottomWidth: 2,
+    borderBottomColor: '#2196f3',
+    paddingBottom: 6,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+  },
+  label: {
+    fontWeight: '600',
+    color: '#555',
+    marginRight: 8,
+    minWidth: 120,
+  },
+  value: {
+    color: '#333',
+    flex: 1,
+  },
+  estadoValue: {
+    fontWeight: 'bold',
+    color: '#4caf50',
+  },
+  productCard: {
+    backgroundColor: '#fafafa',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  productHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  productTipo: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  productCantidad: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2196f3',
+  },
+  productDetail: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  productPrecio: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#4caf50',
+    marginTop: 4,
+  },
+  totalSection: {
+    backgroundColor: '#fff',
+    margin: 16,
+    marginTop: 0,
+    padding: 16,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#4caf50',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  totalLabel: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  totalValue: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4caf50',
+  },
+});

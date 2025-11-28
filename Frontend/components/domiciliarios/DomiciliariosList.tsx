@@ -1,0 +1,178 @@
+import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { API_BASE_URL } from '../../constants/api';
+import { colors } from '../theme';
+import CreateDomiciliarioForm from './CreateDomiciliarioForm';
+import { domiciliariosListStyles as styles } from './DomiciliariosList.styles';
+
+type Domiciliario = { telefono: number; domiciliarioNombre?: string };
+
+export default function DomiciliariosList() {
+  const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingTelefono, setEditingTelefono] = useState<number | null>(null);
+  const [editingField, setEditingField] = useState<'nombre' | 'telefono' | null>(null);
+  const [editNombre, setEditNombre] = useState('');
+  const [editTelefono, setEditTelefono] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const fetchDomiciliarios = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.get(`${API_BASE_URL}/domiciliarios`);
+      setDomiciliarios(res.data);
+    } catch {
+      setError('No se pudo cargar domiciliarios');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchDomiciliarios(); }, []);
+
+  const handleDelete = async (telefono: number) => {
+    setLoading(true);
+    setError('');
+    try {
+      await axios.delete(`${API_BASE_URL}/domiciliarios/${telefono}`);
+      setSuccess('Domiciliario eliminado');
+      fetchDomiciliarios();
+    } catch {
+      setError('No se pudo eliminar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditNombre = (d: Domiciliario) => {
+    setEditingTelefono(d.telefono);
+    setEditingField('nombre');
+    setEditNombre(d.domiciliarioNombre || '');
+  };
+
+  const handleEditTelefono = (d: Domiciliario) => {
+    setEditingTelefono(d.telefono);
+    setEditingField('telefono');
+    setEditTelefono(d.telefono.toString());
+  };
+
+  const handleSave = async (telefono: number) => {
+    setLoading(true);
+    setError('');
+    try {
+      let data: any = {};
+      if (editingField === 'nombre') {
+        data.domiciliarioNombre = editNombre;
+      } else if (editingField === 'telefono') {
+        data.telefono = editTelefono ? Number(editTelefono) : undefined;
+      }
+      await axios.patch(`${API_BASE_URL}/domiciliarios/${telefono}`, data);
+      setEditingTelefono(null);
+      setEditingField(null);
+      setSuccess('Domiciliario actualizado');
+      fetchDomiciliarios();
+    } catch {
+      setError('No se pudo actualizar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.contentContainer}>
+        {!showForm ? (
+          <TouchableOpacity onPress={() => setShowForm(true)} style={styles.toggleFormButton}>
+            <Text style={styles.buttonText}>Crear nuevo domiciliario</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <CreateDomiciliarioForm />
+            <TouchableOpacity onPress={() => setShowForm(false)} style={styles.closeFormButton}>
+              <Text style={styles.buttonText}>Cerrar formulario</Text>
+            </TouchableOpacity>
+          </>
+        )}
+        <Text style={styles.title}>Domiciliarios</Text>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {success ? <Text style={styles.success}>{success}</Text> : null}
+        <FlatList
+          data={domiciliarios}
+          scrollEnabled={false}
+          keyExtractor={item => item.telefono?.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.itemBox}>
+              <View style={styles.rowMain}>
+                <View style={{ flex: 1 }}>
+                  {/* Nombre */}
+                  {editingTelefono === item.telefono && editingField === 'nombre' ? (
+                    <>
+                      <TextInput
+                        style={styles.input}
+                        value={editNombre}
+                        onChangeText={setEditNombre}
+                        placeholder="Nombre"
+                        placeholderTextColor={colors.subText}
+                      />
+                      <View style={styles.rowBtns}>
+                        <TouchableOpacity onPress={() => handleSave(item.telefono)} style={styles.editBtn}>
+                          <Text style={styles.buttonText}>✔</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { setEditingTelefono(null); setEditingField(null); }} style={styles.deleteBtn}>
+                          <Text style={styles.buttonText}>Cancelar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.rowField}>
+                      <Text style={styles.label}>{item.domiciliarioNombre || '(Sin nombre)'}</Text>
+                      <TouchableOpacity onPress={() => handleEditNombre(item)} style={styles.editBtnSmall}>
+                        <Text style={styles.buttonText}>✎</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                  {/* Teléfono */}
+                  {editingTelefono === item.telefono && editingField === 'telefono' ? (
+                    <>
+                      <TextInput
+                        style={styles.input}
+                        value={editTelefono}
+                        onChangeText={setEditTelefono}
+                        placeholder="Teléfono"
+                        placeholderTextColor={colors.subText}
+                        keyboardType="numeric"
+                      />
+                      <View style={styles.rowBtns}>
+                        <TouchableOpacity onPress={() => handleSave(item.telefono)} style={styles.editBtn}>
+                          <Text style={styles.buttonText}>✔</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => { setEditingTelefono(null); setEditingField(null); }} style={styles.deleteBtn}>
+                          <Text style={styles.buttonText}>Cancelar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={styles.rowField}>
+                      <Text style={styles.label}>{item.telefono}</Text>
+                      <TouchableOpacity onPress={() => handleEditTelefono(item)} style={styles.editBtnSmall}>
+                        <Text style={styles.buttonText}>✎</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity onPress={() => handleDelete(item.telefono)} style={styles.deleteBtn}>
+                  <Text style={styles.buttonText}>Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+          ListEmptyComponent={<Text style={styles.emptyText}>No hay domiciliarios registrados.</Text>}
+        />
+      </ScrollView>
+    </View>
+  );
+}

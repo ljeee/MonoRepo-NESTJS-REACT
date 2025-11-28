@@ -1,0 +1,117 @@
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/common";
+import {ApiTags, ApiOperation, ApiResponse, ApiBody, ApiOkResponse} from '@nestjs/swagger';
+import {OrdenesService} from "./ordenes.service";
+import {CreateOrdenesDto} from "./esquemas/ordenes.dto";
+
+@ApiTags('Ordenes')
+@Controller("ordenes")
+export class OrdenesController {
+    constructor(private readonly service: OrdenesService) {}
+
+	@Get()
+	@ApiOperation({ summary: 'Obtener todas las ordenes' })
+	@ApiResponse({ status: 200, description: 'Lista de ordenes.' })
+	findAll() {
+		return this.service.findAll();
+	}
+
+	@Get('dia')
+	@ApiOperation({ summary: 'Obtener todas las ordenes del día actual' })
+	@ApiResponse({ status: 200, description: 'Lista de todas las ordenes del día.' })
+	findByDay() {
+		return this.service.findByDay();
+	}
+
+	@Get('dia/pendientes')
+	@ApiOperation({ summary: 'Obtener ordenes pendientes del día actual' })
+	@ApiResponse({ status: 200, description: 'Lista de ordenes pendientes del día.' })
+	findPendingByDay() {
+		return this.service.findPendingByDay();
+	}
+
+	@Get(":id")
+	@ApiOperation({ summary: 'Obtener una orden por ID' })
+	@ApiResponse({ status: 200, description: 'Orden encontrada.' })
+	findOne(@Param("id") id: number) {
+		return this.service.findOne(id);
+	}
+
+		@Post()
+		@ApiOperation({ summary: 'Crear una orden' })
+		@ApiOkResponse({
+			description: 'Orden creada con productos asociados',
+			schema: {
+				example: {
+					ordenId: 8,
+					facturaId: 13,
+					tipoPedido: 'domicilio',
+					estadoOrden: 'pendiente',
+					fechaOrden: '2025-11-11T18:31:53.997Z',
+					factura: {
+						facturaId: 13,
+						clienteNombre: 'Juan Pérez',
+						descripcion: '1 pizza grande paisa, 1 pizza mediana mexicana y vegetales, 2 pizza grande paisa y carnes',
+						fechaFactura: '2025-11-11T18:31:53.986Z',
+						estado: 'pendiente',
+						metodo: 'efectivo',
+						total: 148000
+					},
+					productos: [
+						{producto: 'pizza grande paisa', cantidad: 1},
+						{producto: 'pizza mediana mexicana y vegetales', cantidad: 1},
+						{producto: 'pizza grande paisa y carnes', cantidad: 2}
+					]
+				}
+			}
+		})
+		@ApiBody({
+			description: 'Ejemplo de body para crear una orden (domicilio o mesa) con productos de uno o dos sabores',
+			type: CreateOrdenesDto,
+			examples: {
+				domicilio: {
+					summary: 'Orden tipo domicilio con pizzas de uno y dos sabores',
+					value: {
+						tipoPedido: 'domicilio',
+						telefonoCliente: '3244897130',
+						nombreCliente: 'Juan Pérez',
+						direccionCliente: 'Calle 10 #5-20',
+						telefonoDomiciliario: '3112223344',
+						metodo: 'efectivo',
+						productos: [
+							{ tamano: 'grande', sabor1: 'paisa', cantidad: 1 },
+							{ tamano: 'mediana', sabor1: 'mexicana', sabor2: 'vegetales', cantidad: 1 },
+							{ tamano: 'grande', sabor1: 'paisa', sabor2: 'carnes', cantidad: 2 }
+						]
+					}
+				},
+				mesa: {
+					summary: 'Orden tipo mesa con pizzas de un sabor',
+					value: {
+						tipoPedido: 'mesa',
+						nombreCliente: '12',
+						metodo: 'tarjeta',
+						productos: [
+							{ tamano: 'pequena', sabor1: 'vegetales', cantidad: 2 }
+						]
+					}
+				}
+			}
+		})
+		create(@Body() dto: CreateOrdenesDto) {
+			return this.service.create(dto);
+		}
+
+	@Patch(":id")
+	@ApiOperation({ summary: 'Actualizar una orden' })
+	@ApiResponse({ status: 200, description: 'Orden actualizada.' })
+update(@Param("id") id: string, @Body() dto: Partial<CreateOrdenesDto>) {
+        return this.service.update(Number(id), dto);
+	}
+
+	@Delete(":id")
+	@ApiOperation({ summary: 'Eliminar una orden' })
+	@ApiResponse({ status: 200, description: 'Orden eliminada.' })
+	remove(@Param("id") id: number) {
+		return this.service.remove(id);
+	}
+}
