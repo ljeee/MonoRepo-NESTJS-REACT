@@ -15,7 +15,15 @@ interface ProductoObj {
 interface OrdenProducto {
   ordenProductoId?: number;
   cantidad: number;
+  producto?: string;
   productoObj?: ProductoObj;
+  // Campos dinámicos para productos personalizados
+  tipo?: string;
+  tamano?: string;
+  sabor1?: string;
+  sabor2?: string;
+  sabor3?: string;
+  sabor4?: string;
 }
 
 interface Factura {
@@ -64,24 +72,13 @@ export default function OrdenDetalleScreen() {
     const fetchOrden = async () => {
       try {
         const response = await axios.get(`${API_BASE_URL}/ordenes/${ordenId}`);
-        console.log('Orden response completa:', response.data);
-        console.log('Productos:', response.data?.productos);
-        console.log('Domicilios:', response.data?.domicilios);
-        
-        // Asegurar que productos sea un array
+        // console.log('Orden response:', response.data);
+
         const ordenData = response.data;
         if (ordenData && !Array.isArray(ordenData.productos)) {
           ordenData.productos = [];
         }
-        
-        // Log cada producto
-        if (ordenData.productos) {
-          ordenData.productos.forEach((p: any, i: number) => {
-            console.log(`Producto ${i}:`, p);
-            console.log(`  - productoObj:`, p.productoObj);
-          });
-        }
-        
+
         setOrden(ordenData);
       } catch (e: any) {
         console.error('Error fetching orden:', e);
@@ -93,6 +90,25 @@ export default function OrdenDetalleScreen() {
 
     fetchOrden();
   }, [ordenId]);
+
+  const getProductName = (p: OrdenProducto) => {
+    // Si viene el nombre compuesto directo de la DB (campo 'producto')
+    if (p.producto) return p.producto;
+
+    if (p.productoObj?.productoNombre) return p.productoObj.productoNombre;
+
+    // Construir nombre dinámico si es necesario
+    const parts = [];
+    if (p.tipo) parts.push(p.tipo);
+    if (p.tamano) parts.push(p.tamano);
+
+    return parts.length > 0 ? parts.join(' ') : 'Producto sin nombre';
+  };
+
+  const getProductDetails = (p: OrdenProducto) => {
+    const flavors = [p.sabor1, p.sabor2, p.sabor3, p.sabor4].filter(Boolean);
+    return flavors.length > 0 ? flavors.join(' / ') : null;
+  };
 
   if (loading) {
     return (
@@ -118,8 +134,8 @@ export default function OrdenDetalleScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Detalle de Orden #{orden.ordenId}</Text>
         <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <TouchableOpacity 
-            style={[styles.backButton, { backgroundColor: '#4caf50' }]} 
+          <TouchableOpacity
+            style={[styles.backButton, { backgroundColor: '#10b981' }]}
             onPress={async () => {
               const textoACopiar = [
                 `Cliente: ${orden.factura?.clienteNombre || 'Sin nombre'}`,
@@ -128,7 +144,7 @@ export default function OrdenDetalleScreen() {
                 orden.factura?.descripcion ? `Productos: ${orden.factura.descripcion}` : '',
                 `Método de pago: ${orden.factura?.metodo || 'No especificado'}`
               ].filter(Boolean).join('\n');
-              
+
               try {
                 await Clipboard.setStringAsync(textoACopiar);
                 Alert.alert('Éxito', 'Datos copiados al portapapeles');
@@ -202,10 +218,17 @@ export default function OrdenDetalleScreen() {
             <View key={index} style={styles.productCard}>
               <View style={styles.productHeader}>
                 <Text style={styles.productTipo}>
-                  {ordenProducto.productoObj?.productoNombre || 'Producto sin nombre'}
+                  {getProductName(ordenProducto)}
                 </Text>
                 <Text style={styles.productCantidad}>x{ordenProducto.cantidad || 1}</Text>
               </View>
+
+              {getProductDetails(ordenProducto) && (
+                <Text style={styles.productDetail}>
+                  {getProductDetails(ordenProducto)}
+                </Text>
+              )}
+
               {ordenProducto.productoObj?.precio != null && (
                 <Text style={styles.productPrecio}>
                   Precio unitario: ${Number(ordenProducto.productoObj.precio).toLocaleString('es-CO')}

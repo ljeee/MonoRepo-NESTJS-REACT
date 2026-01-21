@@ -1,23 +1,90 @@
-version: '3.9'
-
 services:
+  # ============================================
+  # BASE DE DATOS
+  # ============================================
   db:
     image: postgres:16-alpine
-    container_name: monorepo-postgres
+    container_name: pizzeria-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: appdb
       POSTGRES_USER: appuser
       POSTGRES_PASSWORD: apppass
-      POSTGRES_HOST_AUTH_METHOD: trust
     ports:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./Backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      pizzeria-network:
+        ipv4_address: 172.28.0.10
 
+  # ============================================
+  # BACKEND (NestJS)
+  # ============================================
+  backend:
+    build:
+      context: ./Backend
+      dockerfile: Dockerfile
+    container_name: pizzeria-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_HOST: 172.28.0.10
+      DATABASE_PORT: 5432
+      DATABASE_USER: appuser
+      DATABASE_PASSWORD: apppass
+      DATABASE_NAME: appdb
+      NODE_ENV: production
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      pizzeria-network:
+        ipv4_address: 172.28.0.20
+
+  # ============================================
+  # FRONTEND (Expo Web)
+  # ============================================
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: pizzeria-frontend
+    restart: unless-stopped
+    environment:
+      # El frontend detectará la URL automáticamente desde el navegador
+      NODE_ENV: production
+    ports:
+      - "8081:8081"
+    depends_on:
+      - backend
+    networks:
+      pizzeria-network:
+        ipv4_address: 172.28.0.30
+
+# ============================================
+# REDES
+# ============================================
+networks:
+  pizzeria-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+          gateway: 172.28.0.1
+
+# ============================================
+# VOLÚMENES
+# ============================================
 volumes:
   pgdata:
+    name: pizzeria-pgdata

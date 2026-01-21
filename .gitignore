@@ -1,5 +1,7 @@
 # Ignorar archivos de entorno del frontend
-frontend/.env
+Frontend/.env
 
 # Ignorar archivos de entorno del backend
-backend/.env
+Backend/.env
+
+node_modules/

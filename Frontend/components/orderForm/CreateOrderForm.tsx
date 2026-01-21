@@ -7,9 +7,9 @@ import { API_BASE_URL } from '../../constants/api';
 
 import { useClientByPhone } from '../../hooks/use-client-by-phone';
 import { useDomiciliariosList } from '../../hooks/use-domiciliarios-list';
-import { useBreakpoint } from '../styles/responsive';
+import { useBreakpoint } from '../../styles/responsive';
 import { colors } from '../theme';
-import { orderFormStyles as styles } from '../styles/CreateOrderForm.styles';
+import { orderFormStyles as styles } from '../../styles/CreateOrderForm.styles';
 import ProductForm from './ProductForm';
 
 const calzoneSabores = ['D\u2019Firu Pollo', 'D\u2019Firu Carne', 'Hawaiano', 'Ranchero', 'Pollo y champi\u00f1ones', 'Arequipe y queso', 'Paisa', 'Mexicano', 'Carnes'];
@@ -137,138 +137,160 @@ export default function CreateOrderForm() {
       >
         <View style={[
           styles.formCard,
-          isMobile && { width: '100%', borderRadius: 0, borderWidth: 0, shadowOpacity: 0, padding: 16 }
+          isMobile && { padding: 20, borderRadius: 16 }
         ]}>
           <Text style={[styles.title, isMobile && styles.titleMobile]}>Crear Orden</Text>
 
           <Text style={styles.sectionTitle}>Detalles del Pedido</Text>
 
-          <Text style={styles.label}>Tipo de pedido</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={tipoPedido}
-              onValueChange={setTipoPedido}
-              style={styles.picker}
-              itemStyle={{ color: colors.text, fontSize: 20 }}
-              dropdownIconColor={colors.text}
-            >
-              <Picker.Item label="Domicilio" value="domicilio" />
-              <Picker.Item label="Llevar" value="llevar" />
-              <Picker.Item label="Mesa" value="mesa" />
-            </Picker>
-          </View>
-          {tipoPedido === 'domicilio' && (
-            <>
-              <Text style={styles.label}>Teléfono Cliente</Text>
-              <TextInput
-                style={styles.input}
-                value={telefonoCliente}
-                onChangeText={setTelefonoCliente}
-                placeholder="Teléfono"
-                placeholderTextColor={colors.subText}
-                keyboardType="numeric"
-              />
-            </>
-          )}
-          <Text style={styles.label}>Nombre Cliente</Text>
-          {tipoPedido === 'mesa' ? (
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={numeroMesa}
-                onValueChange={val => { setNumeroMesa(val); setNombreCliente(val); }}
-                style={styles.picker}
-                itemStyle={{ color: colors.text, fontSize: 20 }}
-                dropdownIconColor={colors.text}
-              >
-                <Picker.Item label="Seleccione mesa" value="" color={colors.subText} />
-                {[...Array(10)].map((_, i) => <Picker.Item key={i + 1} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
-              </Picker>
+          <View style={styles.row}>
+            {/* TIPO DE PEDIDO */}
+            <View style={styles.col4}>
+              <Text style={styles.label}>Tipo de pedido</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={tipoPedido}
+                  onValueChange={setTipoPedido}
+                  style={styles.picker}
+                  itemStyle={{ color: colors.text, fontSize: 16 }}
+                  dropdownIconColor={colors.text}
+                >
+                  <Picker.Item label="Domicilio" value="domicilio" />
+                  <Picker.Item label="Llevar" value="llevar" />
+                  <Picker.Item label="Mesa" value="mesa" />
+                </Picker>
+              </View>
             </View>
-          ) : tipoPedido === 'domicilio' ? (
-            <TextInput
-              style={styles.input}
-              value={nombreCliente}
-              onChangeText={setNombreCliente}
-              placeholder={client === null ? 'Nuevo cliente' : 'Nombre'}
-              placeholderTextColor={colors.subText}
-              editable={!client || !client.clienteNombre}
-            />
-          ) : tipoPedido === 'llevar' ? (
-            <TextInput
-              style={styles.input}
-              value={nombreCliente}
-              onChangeText={setNombreCliente}
-              placeholder="Nombre"
-              placeholderTextColor={colors.subText}
-            />
-          ) : null}
-          {tipoPedido === 'domicilio' && (
-            <>
-              <Text style={styles.label}>Dirección Cliente</Text>
-              {hasClienteDirecciones ? (
-                <>
-                  <View style={styles.pickerContainer}>
-                    <Picker
-                      selectedValue={selectedAddress}
-                      onValueChange={val => setSelectedAddress(val)}
-                      style={styles.picker}
-                      itemStyle={{ color: colors.text, fontSize: 20 }}
-                      dropdownIconColor={colors.text}
-                    >
-                      <Picker.Item label="Seleccione dirección" value="" color={colors.subText} />
-                      {[client!.direccion, client!.direccionDos, client!.direccionTres]
-                        .filter(Boolean)
-                        .map((dir, idx) => <Picker.Item key={idx} label={dir!} value={dir!} />)}
-                      <Picker.Item label="Nueva dirección..." value="__nueva__" />
-                    </Picker>
-                  </View>
-                  {selectedAddress === '__nueva__' && (
-                    <TextInput
-                      style={styles.input}
-                      value={newAddress}
-                      onChangeText={setNewAddress}
-                      placeholder="Ingrese nueva dirección"
-                      placeholderTextColor={colors.subText}
-                    />
-                  )}
-                </>
+
+            {/* METODO DE PAGO */}
+            <View style={styles.col4}>
+              <Text style={styles.label}>Método de pago</Text>
+              <View style={styles.pickerContainer}>
+                <Picker
+                  selectedValue={metodo}
+                  onValueChange={setMetodo}
+                  style={styles.picker}
+                  itemStyle={{ color: colors.text, fontSize: 16 }}
+                  dropdownIconColor={colors.text}
+                >
+                  <Picker.Item label="Efectivo" value="efectivo" />
+                  <Picker.Item label="QR" value="qr" />
+                </Picker>
+              </View>
+            </View>
+
+            {/* TELEFONO (Solo Domicilio) */}
+            {tipoPedido === 'domicilio' && (
+              <View style={styles.col4}>
+                <Text style={styles.label}>Teléfono Cliente</Text>
+                <TextInput
+                  style={styles.input}
+                  value={telefonoCliente}
+                  onChangeText={setTelefonoCliente}
+                  placeholder="Teléfono (10 dígitos)"
+                  placeholderTextColor={colors.subText}
+                  keyboardType="numeric"
+                />
+              </View>
+            )}
+
+            {/* NOMBRE / MESA */}
+            <View style={styles.col4}>
+              <Text style={styles.label}>Nombre / Mesa</Text>
+              {tipoPedido === 'mesa' ? (
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={numeroMesa}
+                    onValueChange={val => { setNumeroMesa(val); setNombreCliente(val); }}
+                    style={styles.picker}
+                    itemStyle={{ color: colors.text, fontSize: 16 }}
+                    dropdownIconColor={colors.text}
+                  >
+                    <Picker.Item label="Seleccione mesa" value="" color={colors.subText} />
+                    {[...Array(10)].map((_, i) => <Picker.Item key={i + 1} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
+                  </Picker>
+                </View>
+              ) : tipoPedido === 'domicilio' ? (
+                <TextInput
+                  style={styles.input}
+                  value={nombreCliente}
+                  onChangeText={setNombreCliente}
+                  placeholder={client === null ? 'Nuevo cliente' : 'Nombre'}
+                  placeholderTextColor={colors.subText}
+                  editable={!client || !client.clienteNombre}
+                />
               ) : (
                 <TextInput
                   style={styles.input}
-                  value={newAddress}
-                  onChangeText={setNewAddress}
-                  placeholder="Dirección"
+                  value={nombreCliente}
+                  onChangeText={setNombreCliente}
+                  placeholder="Nombre Cliente"
                   placeholderTextColor={colors.subText}
                 />
               )}
-              <Text style={styles.label}>Domiciliario</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={telefonoDomiciliario}
-                  onValueChange={setTelefonoDomiciliario}
-                  style={styles.picker}
-                  itemStyle={{ color: colors.text, fontSize: 20 }}
-                  dropdownIconColor={colors.text}
-                >
-                  <Picker.Item label="Seleccione domiciliario" value="" color={colors.subText} />
-                  {domiciliarios.map(d => <Picker.Item key={d.telefono} label={d.domiciliarioNombre ? d.domiciliarioNombre : `Sin nombre (${d.telefono})`} value={d.telefono.toString()} />)}
-                </Picker>
-              </View>
-            </>
-          )}
-          <Text style={styles.label}>Método de pago</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={metodo}
-              onValueChange={setMetodo}
-              style={styles.picker}
-              itemStyle={{ color: colors.text, fontSize: 20 }}
-              dropdownIconColor={colors.text}
-            >
-              <Picker.Item label="Efectivo" value="efectivo" />
-              <Picker.Item label="QR" value="qr" />
-            </Picker>
+            </View>
           </View>
+
+          {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
+          {tipoPedido === 'domicilio' && (
+            <View style={styles.row}>
+              <View style={styles.col6}>
+                <Text style={styles.label}>Dirección Cliente</Text>
+                {hasClienteDirecciones ? (
+                  <>
+                    <View style={styles.pickerContainer}>
+                      <Picker
+                        selectedValue={selectedAddress}
+                        onValueChange={val => setSelectedAddress(val)}
+                        style={styles.picker}
+                        itemStyle={{ color: colors.text, fontSize: 16 }}
+                        dropdownIconColor={colors.text}
+                      >
+                        <Picker.Item label="Seleccione dirección" value="" color={colors.subText} />
+                        {[client!.direccion, client!.direccionDos, client!.direccionTres]
+                          .filter(Boolean)
+                          .map((dir, idx) => <Picker.Item key={idx} label={dir!} value={dir!} />)}
+                        <Picker.Item label="Nueva dirección..." value="__nueva__" />
+                      </Picker>
+                    </View>
+                    {selectedAddress === '__nueva__' && (
+                      <TextInput
+                        style={styles.input}
+                        value={newAddress}
+                        onChangeText={setNewAddress}
+                        placeholder="Ingrese nueva dirección"
+                        placeholderTextColor={colors.subText}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <TextInput
+                    style={styles.input}
+                    value={newAddress}
+                    onChangeText={setNewAddress}
+                    placeholder="Dirección completa"
+                    placeholderTextColor={colors.subText}
+                  />
+                )}
+              </View>
+
+              <View style={styles.col6}>
+                <Text style={styles.label}>Domiciliario</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={telefonoDomiciliario}
+                    onValueChange={setTelefonoDomiciliario}
+                    style={styles.picker}
+                    itemStyle={{ color: colors.text, fontSize: 16 }}
+                    dropdownIconColor={colors.text}
+                  >
+                    <Picker.Item label="Seleccione domiciliario" value="" color={colors.subText} />
+                    {domiciliarios.map(d => <Picker.Item key={d.telefono} label={d.domiciliarioNombre ? d.domiciliarioNombre : `Sin nombre (${d.telefono})`} value={d.telefono.toString()} />)}
+                  </Picker>
+                </View>
+              </View>
+            </View>
+          )}
 
           <Text style={styles.sectionTitle}>Productos</Text>
           {productos.map((p, idx) => (
@@ -289,7 +311,6 @@ export default function CreateOrderForm() {
             <Text style={styles.addProductBtnText}>+ AGREGAR PRODUCTO</Text>
           </TouchableOpacity>
 
-          <View style={{ marginVertical: 10 }} />
 
           <TouchableOpacity
             style={[styles.createOrderBtn, loading && { opacity: 0.6 }]}
@@ -299,6 +320,7 @@ export default function CreateOrderForm() {
           >
             <Text style={styles.createOrderBtnText}>{loading ? 'Creando...' : 'Crear Orden'}</Text>
           </TouchableOpacity>
+
 
           {success && <Text style={styles.success}>¡Orden creada con éxito!</Text>}
           {error ? <Text style={styles.error}>{error}</Text> : null}

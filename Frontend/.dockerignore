@@ -1,0 +1,15 @@
+node_modules
+.expo
+.expo-shared
+dist
+npm-debug.log
+.env
+.env.local
+.git
+.gitignore
+README.md
+*.md
+.vscode
+ios
+android
+.DS_Store

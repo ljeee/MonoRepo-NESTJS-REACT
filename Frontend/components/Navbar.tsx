@@ -2,13 +2,13 @@ import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StatusBar, Text, TouchableOpacity, View } from 'react-native';
 import { navbarStyles as styles } from './Navbar.styles';
-import { useBreakpoint } from './styles/responsive';
+import { useBreakpoint } from '../styles/responsive';
 
 export default function Navbar() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const sidebarWidth = 220;
+  const sidebarWidth = 260;
   const translateX = useRef(new Animated.Value(-sidebarWidth)).current;
 
   // Animate drawer open/close
@@ -38,8 +38,8 @@ export default function Navbar() {
 
           </>
         )}
-        <Animated.View style={[styles.sidebarMobile, { transform: [{ translateX }] }]}> 
-          <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/'); }}> 
+        <Animated.View style={[styles.sidebarMobile, { transform: [{ translateX }] }]}>
+          <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/'); }}>
             <Text style={styles.link}>Crear Orden</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/ordenes' as any); }}>
@@ -66,7 +66,7 @@ export default function Navbar() {
   }
   return (
     <View style={styles.navbar}>
-      <TouchableOpacity onPress={() => router.push('/')}> 
+      <TouchableOpacity onPress={() => router.push('/')}>
         <Text style={styles.link}>Crear Orden</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => router.push('/ordenes' as any)}>

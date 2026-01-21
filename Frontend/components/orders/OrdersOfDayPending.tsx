@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../../constants/api';
-import { useBreakpoint } from '../styles/responsive';
+import { useBreakpoint } from '../../styles/responsive';
 import { orderStyles as styles } from './orderStyles';
 
 type OrderProduct = {

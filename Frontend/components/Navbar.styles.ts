@@ -61,6 +61,7 @@ export const navbarStyles = StyleSheet.create({
     width: 260,
     backgroundColor: colors.card,
     zIndex: 100,
+    height: '100%',
     paddingTop: 60,
     paddingBottom: 20,
     justifyContent: 'flex-start',
