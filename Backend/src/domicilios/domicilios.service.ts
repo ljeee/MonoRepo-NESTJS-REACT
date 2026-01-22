@@ -11,8 +11,11 @@ export class DomiciliosService {
 		private readonly repo: Repository<Domicilios>,
 	) {}
 
-	findAll() {
-		return this.repo.find();
+	findAll(page = 1, limit = 500) {
+		return this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+		});
 	}
 
 	findByDay() {
@@ -21,6 +24,10 @@ export class DomiciliosService {
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
 		return this.repo.createQueryBuilder('d')
+			.leftJoinAndSelect('d.factura', 'factura')
+			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('d.cliente', 'cliente')
+			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
 			.where('d.fechaCreado BETWEEN :start AND :end', { start, end })
 			.getMany();
 	}
@@ -31,13 +38,20 @@ export class DomiciliosService {
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
 		return this.repo.createQueryBuilder('d')
+			.leftJoinAndSelect('d.factura', 'factura')
+			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('d.cliente', 'cliente')
+			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
 			.where('(d.estadoDomicilio = :pendiente OR d.estadoDomicilio IS NULL)')
 			.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end, pendiente: 'pendiente' })
 			.getMany();
 	}
 
 	findOne(id: number) {
-		return this.repo.findOneBy({domicilioId: id});
+		return this.repo.findOne({
+			where: { domicilioId: id },
+			relations: ['factura', 'orden', 'cliente', 'domiciliario']
+		});
 	}
 
 	create(data: CreateDomiciliosDto) {

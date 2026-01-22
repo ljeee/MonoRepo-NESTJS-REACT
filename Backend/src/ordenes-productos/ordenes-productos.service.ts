@@ -1,8 +1,8 @@
-import {Injectable} from "@nestjs/common";
-import {InjectRepository} from "@nestjs/typeorm";
-import {Repository} from "typeorm";
-import {OrdenesProductos} from "./esquemas/ordenes-productos.entity";
-import {CreateOrdenesProductosDto} from "./esquemas/ordenes-productos.dto";
+import {Injectable} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Repository} from 'typeorm';
+import {OrdenesProductos} from './esquemas/ordenes-productos.entity';
+import {CreateOrdenesProductosDto} from './esquemas/ordenes-productos.dto';
 
 @Injectable()
 export class OrdenesProductosService {
@@ -11,12 +11,19 @@ export class OrdenesProductosService {
 		private readonly repo: Repository<OrdenesProductos>,
 	) {}
 
-	findAll() {
-		return this.repo.find();
+	findAll(page = 1, limit = 500) {
+		return this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+			relations: ['orden', 'productoObj']
+		});
 	}
 
 	findOne(id: number) {
-		return this.repo.findOneBy({id});
+		return this.repo.findOne({
+			where: {id},
+			relations: ['orden', 'productoObj'],
+		});
 	}
 
 	create(data: CreateOrdenesProductosDto) {

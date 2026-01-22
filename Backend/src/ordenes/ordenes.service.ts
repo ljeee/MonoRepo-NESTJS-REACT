@@ -28,8 +28,12 @@ export class OrdenesService {
 		@InjectRepository(OrdenesProductos) private readonly ordenesProductosRepo: Repository<OrdenesProductos>,
 	) {}
 
-	findAll() {
-		return this.repo.find({relations: ['factura', 'productos', 'productos.productoObj']});
+	findAll(page = 1, limit = 500) {
+		return this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+			relations: ['factura', 'productos', 'productos.productoObj']
+		});
 	}
 
 	findByDay() {

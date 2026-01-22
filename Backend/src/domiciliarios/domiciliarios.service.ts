@@ -11,12 +11,19 @@ export class DomiciliariosService {
 		private readonly repo: Repository<Domiciliarios>,
 	) {}
 
-	findAll() {
-		return this.repo.find();
+	findAll(page = 1, limit = 500) {
+		return this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+			relations: ['domicilios']
+		});
 	}
 
 	findOne(telefono: string) {
-		return this.repo.findOneBy({telefono});
+		return this.repo.findOne({
+			where: { telefono },
+			relations: ['domicilios']
+		});
 	}
 
 	create(data: CreateDomiciliariosDto) {

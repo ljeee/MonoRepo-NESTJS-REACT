@@ -11,8 +11,11 @@ export class FacturasVentasService {
 		private readonly repo: Repository<FacturasVentas>,
 	) {}
 
-	findAll() {
-		return this.repo.find();
+	findAll(page = 1, limit = 500) {
+		return this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+		});
 	}
 
 	findByDay() {
@@ -21,6 +24,8 @@ export class FacturasVentasService {
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
 		return this.repo.createQueryBuilder('f')
+			.leftJoinAndSelect('f.ordenes', 'ordenes')
+			.leftJoinAndSelect('f.domicilios', 'domicilios')
 			.where('f.fechaFactura BETWEEN :start AND :end', { start, end })
 			.getMany();
 	}
@@ -31,13 +36,18 @@ export class FacturasVentasService {
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
 		return this.repo.createQueryBuilder('f')
+			.leftJoinAndSelect('f.ordenes', 'ordenes')
+			.leftJoinAndSelect('f.domicilios', 'domicilios')
 			.where('(f.estado = :pendiente OR f.estado IS NULL)')
 			.andWhere('f.fechaFactura BETWEEN :start AND :end', { start, end, pendiente: 'pendiente' })
 			.getMany();
 	}
 
 	findOne(id: number) {
-		return this.repo.findOneBy({facturaId: id});
+		return this.repo.findOne({
+			where: { facturaId: id },
+			relations: ['ordenes', 'domicilios']
+		});
 	}
 
 	create(data: CreateFacturasVentasDto) {

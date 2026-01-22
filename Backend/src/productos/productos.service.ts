@@ -12,8 +12,11 @@ export class ProductosService {
 		private readonly repo: Repository<Productos>,
 	) {}
 
-	findAll() {
-		return this.repo.find();
+	findAll(page = 1, limit = 500) {
+		return this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+		});
 	}
 
 	findOne(productoNombre: string) {

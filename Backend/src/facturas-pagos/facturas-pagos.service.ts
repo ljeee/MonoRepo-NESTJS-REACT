@@ -11,8 +11,11 @@ export class FacturasPagosService {
 		private readonly repo: Repository<FacturasPagos>,
 	) {}
 
-	findAll() {
-		return this.repo.find();
+	findAll(page = 1, limit = 500) {
+		return this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+		});
 	}
 
 	findByDay() {
