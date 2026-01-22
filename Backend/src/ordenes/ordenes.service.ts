@@ -2,7 +2,7 @@ import {BadRequestException, Injectable} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository, Between} from 'typeorm';
 import {Ordenes} from './esquemas/ordenes.entity';
-import {CreateOrdenesDto, CreateOrdenItemDto} from './esquemas/ordenes.dto';
+import {CreateOrdenesDto, CreateOrdenItemDto, FindOrdenesDto} from './esquemas/ordenes.dto';
 import {FacturasVentas} from '../facturas-ventas/esquemas/facturas-ventas.entity';
 import {Domicilios} from '../domicilios/esquemas/domicilios.entity';
 import {Clientes} from '../clientes/esquemas/clientes.entity';
@@ -32,25 +32,46 @@ export class OrdenesService {
 		private readonly telegramService: TelegramService,
 	) {}
 
-	findAll(page = 1, limit = 500) {
-		return this.repo.find({
-			take: limit,
-			skip: (page - 1) * limit,
-			relations: ['factura', 'productos', 'productos.productoObj']
-		});
+	findAll(query: FindOrdenesDto = {}) {
+		const { estado, from, to, page = 1, limit = 500 } = query;
+		const qb = this.repo.createQueryBuilder('o')
+			.leftJoinAndSelect('o.factura', 'factura')
+			.leftJoinAndSelect('o.productos', 'op')
+			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.orderBy('o.fechaOrden', 'DESC')
+			.take(limit)
+			.skip((page - 1) * limit);
+
+		if (estado) {
+			qb.andWhere('o.estadoOrden = :estado', { estado });
+		}
+		if (from && to) {
+			qb.andWhere('o.fechaOrden BETWEEN :from AND :to', { from: new Date(from + 'T00:00:00'), to: new Date(to + 'T23:59:59') });
+		} else if (from) {
+			qb.andWhere('o.fechaOrden >= :from', { from: new Date(from + 'T00:00:00') });
+		} else if (to) {
+			qb.andWhere('o.fechaOrden <= :to', { to: new Date(to + 'T23:59:59') });
+		}
+
+		return qb.getMany();
 	}
 
-	findByDay() {
+	findByDay(estado?: string) {
 		const start = new Date();
 		start.setHours(0, 0, 0, 0);
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
-		return this.repo.find({
-			where: {
-				fechaOrden: Between(start, end),
-			},
-			relations: ['factura', 'productos', 'productos.productoObj'],
-		});
+		const qb = this.repo.createQueryBuilder('o')
+			.leftJoinAndSelect('o.factura', 'factura')
+			.leftJoinAndSelect('o.productos', 'op')
+			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.where('o.fechaOrden BETWEEN :start AND :end', { start, end });
+
+		if (estado) {
+			qb.andWhere('o.estadoOrden = :estado', { estado });
+		}
+
+		return qb.getMany();
 	}
 
 	findByDaySinPendientes() {
@@ -266,7 +287,7 @@ export class OrdenesService {
 		}
 
 		// 4. Procesar domicilio si aplica
-		let domicilio: Domicilios | undefined;
+		let domicilio: Domicilios | null;
 		if (this.esDomicilio(data.tipoPedido)) {
 			await this.procesarDomicilio(data, factura.facturaId, orden.ordenId);
 			domicilio = await this.domiciliosRepo.findOne({ where: { ordenId: orden.ordenId } });

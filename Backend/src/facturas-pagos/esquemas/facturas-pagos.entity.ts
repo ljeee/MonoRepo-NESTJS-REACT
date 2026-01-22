@@ -1,4 +1,4 @@
-import {Entity, PrimaryGeneratedColumn, Column} from 'typeorm';
+import {Entity, PrimaryGeneratedColumn, Column, Index} from 'typeorm';
 
 @Entity('facturas_pagos')
 export class FacturasPagos {
@@ -18,6 +18,7 @@ export class FacturasPagos {
 	estado: string;
 
 	@Column({name: 'fecha_factura', type: 'date', nullable: true})
+	@Index()
 	fechaFactura: Date;
 
 	@Column({name: 'metodo', type: 'text', nullable: true})

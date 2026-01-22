@@ -1,7 +1,7 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/common";
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@nestjs/common";
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {FacturasPagosService} from "./facturas-pagos.service";
-import {CreateFacturasPagosDto} from "./esquemas/facturas-pagos.dto";
+import {CreateFacturasPagosDto, FindFacturasPagosDto} from "./esquemas/facturas-pagos.dto";
 
 @ApiTags('Facturas Pagos')
 @Controller("facturas-pagos")
@@ -9,10 +9,10 @@ export class FacturasPagosController {
 	constructor(private readonly service: FacturasPagosService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Obtener todos los pagos de facturas' })
+	@ApiOperation({ summary: 'Obtener todos los pagos de facturas con filtros opcionales' })
 	@ApiResponse({ status: 200, description: 'Lista de pagos de facturas.' })
-	findAll() {
-		return this.service.findAll();
+	findAll(@Query() query: FindFacturasPagosDto) {
+		return this.service.findAll(query);
 	}
 
 	@Get('dia')

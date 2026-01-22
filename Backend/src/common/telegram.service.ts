@@ -12,13 +12,13 @@ export interface DomicilioNotification {
 export class TelegramService {
 	private readonly logger = new Logger(TelegramService.name);
 	private bot: any = null;
-	private readonly enabled: boolean;
+	private enabled: boolean;
 
 	constructor() {
 		const token = process.env.TELEGRAM_BOT_TOKEN;
 		this.enabled = !!token;
 
-		if (this.enabled) {
+		if (this.enabled && token) {
 			this.initBot(token);
 		} else {
 			this.logger.warn('TELEGRAM_BOT_TOKEN no configurado. Notificaciones deshabilitadas.');

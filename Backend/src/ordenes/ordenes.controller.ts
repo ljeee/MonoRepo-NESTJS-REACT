@@ -1,7 +1,7 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/common";
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@nestjs/common";
 import {ApiTags, ApiOperation, ApiResponse, ApiBody, ApiOkResponse} from '@nestjs/swagger';
 import {OrdenesService} from "./ordenes.service";
-import {CreateOrdenesDto} from "./esquemas/ordenes.dto";
+import {CreateOrdenesDto, FindOrdenesDto} from "./esquemas/ordenes.dto";
 
 @ApiTags('Ordenes')
 @Controller("ordenes")
@@ -9,17 +9,17 @@ export class OrdenesController {
     constructor(private readonly service: OrdenesService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Obtener todas las ordenes' })
+	@ApiOperation({ summary: 'Obtener todas las ordenes con filtros opcionales' })
 	@ApiResponse({ status: 200, description: 'Lista de ordenes.' })
-	findAll() {
-		return this.service.findAll();
+	findAll(@Query() query: FindOrdenesDto) {
+		return this.service.findAll(query);
 	}
 
 	@Get('dia')
-	@ApiOperation({ summary: 'Obtener todas las ordenes del día actual' })
+	@ApiOperation({ summary: 'Obtener todas las ordenes del día actual con filtro opcional de estado' })
 	@ApiResponse({ status: 200, description: 'Lista de todas las ordenes del día.' })
-	findByDay() {
-		return this.service.findByDay();
+	findByDay(@Query('estado') estado?: string) {
+		return this.service.findByDay(estado);
 	}
 
 	@Get('dia/pendientes')

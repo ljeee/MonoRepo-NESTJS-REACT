@@ -2,7 +2,7 @@ import {Injectable} from "@nestjs/common";
 import {InjectRepository} from "@nestjs/typeorm";
 import {Repository} from "typeorm";
 import {FacturasPagos} from "./esquemas/facturas-pagos.entity";
-import {CreateFacturasPagosDto} from "./esquemas/facturas-pagos.dto";
+import {CreateFacturasPagosDto, FindFacturasPagosDto} from "./esquemas/facturas-pagos.dto";
 
 @Injectable()
 export class FacturasPagosService {
@@ -11,11 +11,22 @@ export class FacturasPagosService {
 		private readonly repo: Repository<FacturasPagos>,
 	) {}
 
-	findAll(page = 1, limit = 500) {
-		return this.repo.find({
-			take: limit,
-			skip: (page - 1) * limit,
-		});
+	findAll(query: FindFacturasPagosDto = {}) {
+		const { from, to, page = 1, limit = 500 } = query;
+		const qb = this.repo.createQueryBuilder('p')
+			.orderBy('p.fechaFactura', 'DESC')
+			.take(limit)
+			.skip((page - 1) * limit);
+
+		if (from && to) {
+			qb.where('p.fechaFactura BETWEEN :from AND :to', { from, to });
+		} else if (from) {
+			qb.where('p.fechaFactura >= :from', { from });
+		} else if (to) {
+			qb.where('p.fechaFactura <= :to', { to });
+		}
+
+		return qb.getMany();
 	}
 
 	findByDay() {

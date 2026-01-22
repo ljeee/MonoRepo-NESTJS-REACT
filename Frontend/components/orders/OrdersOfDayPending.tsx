@@ -42,10 +42,9 @@ export default function OrdersOfDayPending() {
     setLoading(true);
     setError('');
     try {
-      const url =
-        filter === 'pendientes'
-          ? `${API_BASE_URL}/ordenes/dia/pendientes`
-          : `${API_BASE_URL}/ordenes/dia`;
+      const url = filter === 'pendientes'
+        ? `${API_BASE_URL}/ordenes/dia?estado=pendiente`
+        : `${API_BASE_URL}/ordenes/dia`;
       const res = await axios.get(url);
       setOrders(res.data);
     } catch {

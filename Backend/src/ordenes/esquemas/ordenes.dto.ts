@@ -90,3 +90,30 @@ export class CreateOrdenItemDto {
 	@IsNumber()
 	cantidad: number;
 }
+
+export class FindOrdenesDto {
+	@ApiProperty({example: 'pendiente', required: false})
+	@IsOptional()
+	@IsString()
+	estado?: string;
+
+	@ApiProperty({example: '2025-11-01', required: false})
+	@IsOptional()
+	@IsDateString()
+	from?: string;
+
+	@ApiProperty({example: '2025-11-30', required: false})
+	@IsOptional()
+	@IsDateString()
+	to?: string;
+
+	@ApiProperty({example: 1, required: false})
+	@IsOptional()
+	@IsNumber()
+	page?: number;
+
+	@ApiProperty({example: 10, required: false})
+	@IsOptional()
+	@IsNumber()
+	limit?: number;
+}
