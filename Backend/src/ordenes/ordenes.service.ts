@@ -9,6 +9,8 @@ import {Clientes} from '../clientes/esquemas/clientes.entity';
 import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {Productos} from '../productos/esquemas/productos.entity';
 import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.entity';
+import {PrintingService} from '../common/printing.service';
+import {TelegramService} from '../common/telegram.service';
 
 @Injectable()
 export class OrdenesService {
@@ -26,6 +28,8 @@ export class OrdenesService {
 		@InjectRepository(Domiciliarios) private readonly domiciliariosRepo: Repository<Domiciliarios>,
 		@InjectRepository(Productos) private readonly productosRepo: Repository<Productos>,
 		@InjectRepository(OrdenesProductos) private readonly ordenesProductosRepo: Repository<OrdenesProductos>,
+		private readonly printingService: PrintingService,
+		private readonly telegramService: TelegramService,
 	) {}
 
 	findAll(page = 1, limit = 500) {
@@ -262,8 +266,19 @@ export class OrdenesService {
 		}
 
 		// 4. Procesar domicilio si aplica
+		let domicilio: Domicilios | undefined;
 		if (this.esDomicilio(data.tipoPedido)) {
 			await this.procesarDomicilio(data, factura.facturaId, orden.ordenId);
+			domicilio = await this.domiciliosRepo.findOne({ where: { ordenId: orden.ordenId } });
+		}
+
+		// 5. Callbacks opcionales
+		if (data['imprimirRecibo'] === true) {
+			await this.imprimirRecibo(data, productos, factura);
+		}
+
+		if (this.esDomicilio(data.tipoPedido) && data.telefonoDomiciliario && domicilio) {
+			await this.notificarDomiciliario(data, productos, domicilio);
 		}
 
 		return {...orden, factura};
@@ -277,5 +292,51 @@ export class OrdenesService {
 
 	remove(id: number) {
 		return this.repo.delete(id);
+	}
+
+	// ==================== CALLBACKS ====================
+
+	private async imprimirRecibo(
+		data: CreateOrdenesDto,
+		productos: CreateOrdenItemDto[],
+		factura: FacturasVentas,
+	): Promise<void> {
+		const productosFormateados = productos.map(p => ({
+			nombre: this.construirNombreProducto(p),
+			cantidad: Number(p.cantidad) || 1,
+			precio: this.calcularPrecioProducto(p),
+		}));
+
+		const total = productosFormateados.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+
+		await this.printingService.printReceipt({
+			clienteNombre: data.nombreCliente || 'Cliente',
+			productos: productosFormateados,
+			total,
+			telefono: data.telefonoCliente,
+			direccion: data.direccionCliente,
+			domiciliario: data.telefonoDomiciliario,
+		});
+	}
+
+	private async notificarDomiciliario(
+		data: CreateOrdenesDto,
+		productos: CreateOrdenItemDto[],
+		domicilio: Domicilios,
+	): Promise<void> {
+		const productosTexto = productos
+			.map(p => `${p.cantidad || 1}x ${this.construirNombreProducto(p)}`)
+			.join('\n');
+
+		const chatId = await this.telegramService.getChatIdFromPhone(data.telefonoDomiciliario);
+		
+		if (chatId) {
+			await this.telegramService.sendDomicilioNotification(chatId, {
+				clienteNombre: data.nombreCliente || 'Cliente',
+				telefono: data.telefonoCliente,
+				direccion: data.direccionCliente || domicilio.direccionEntrega || 'N/A',
+				productos: productosTexto,
+			});
+		}
 	}
 }
