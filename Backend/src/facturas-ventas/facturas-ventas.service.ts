@@ -11,18 +11,27 @@ export class FacturasVentasService {
 		private readonly repo: Repository<FacturasVentas>,
 	) {}
 
-	findAll() {
-		return this.repo.find();
+	async findAll(page = 1, limit = 500) {
+		const result = await this.repo.find({
+			take: limit,
+			skip: (page - 1) * limit,
+		});
+		console.log('findAll result count:', result.length);
+		return result;
 	}
 
-	findByDay() {
+	async findByDay() {
 		const start = new Date();
 		start.setHours(0, 0, 0, 0);
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
-		return this.repo.createQueryBuilder('f')
+		const result = await this.repo.createQueryBuilder('f')
+			.leftJoinAndSelect('f.ordenes', 'ordenes')
+			.leftJoinAndSelect('f.domicilios', 'domicilios')
 			.where('f.fechaFactura BETWEEN :start AND :end', { start, end })
 			.getMany();
+		console.log('findByDay result count:', result.length, 'start:', start, 'end:', end);
+		return result;
 	}
 
 	findPendingByDay() {
@@ -31,13 +40,18 @@ export class FacturasVentasService {
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
 		return this.repo.createQueryBuilder('f')
+			.leftJoinAndSelect('f.ordenes', 'ordenes')
+			.leftJoinAndSelect('f.domicilios', 'domicilios')
 			.where('(f.estado = :pendiente OR f.estado IS NULL)')
 			.andWhere('f.fechaFactura BETWEEN :start AND :end', { start, end, pendiente: 'pendiente' })
 			.getMany();
 	}
 
 	findOne(id: number) {
-		return this.repo.findOneBy({facturaId: id});
+		return this.repo.findOne({
+			where: { facturaId: id },
+			relations: ['ordenes', 'domicilios']
+		});
 	}
 
 	create(data: CreateFacturasVentasDto) {

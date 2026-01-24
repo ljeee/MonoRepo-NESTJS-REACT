@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors } from '../theme';
+import { colors } from './theme';
 
 export const createDomiciliarioFormStyles = StyleSheet.create({
   container: {

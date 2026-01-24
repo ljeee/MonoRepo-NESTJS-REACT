@@ -1,4 +1,4 @@
-import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn} from 'typeorm';
+import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, Index} from 'typeorm';
 import {FacturasVentas} from '../../facturas-ventas/esquemas/facturas-ventas.entity';
 import {OrdenesProductos} from '../../ordenes-productos/esquemas/ordenes-productos.entity';
 import {Domicilios} from '../../domicilios/esquemas/domicilios.entity';
@@ -18,6 +18,7 @@ export class Ordenes {
 	estadoOrden: string;
 
 	@Column({name: 'fecha_orden', type: 'timestamptz', default: () => 'now()'})
+	@Index()
 	fechaOrden: Date;
 
 	@ManyToOne(() => FacturasVentas, (factura) => factura.ordenes, {nullable: true})

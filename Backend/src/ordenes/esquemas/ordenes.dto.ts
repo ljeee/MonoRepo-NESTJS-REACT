@@ -1,11 +1,15 @@
-import {IsString, IsNumber, IsOptional, IsDateString, IsArray, ValidateNested} from 'class-validator';
-import {ApiProperty, ApiExtraModels} from '@nestjs/swagger';
+import {IsString, IsNumber, IsOptional, IsDateString, IsArray, ValidateNested, IsIn} from 'class-validator';
+import {Transform} from 'class-transformer';
+import {ApiProperty} from '@nestjs/swagger';
 import {Type} from 'class-transformer';
 
 export class CreateOrdenesDto {
-	@ApiExtraModels()
-	@ApiProperty({example: 'domicilio', description: 'Tipo de pedido: mesa o domicilio'})
-	@IsString()
+	@ApiProperty({example: 'domicilio', description: 'Tipo de pedido: mesa, domicilio o llevar'})
+	@Transform(({value}) => {
+		if (!value) return 'mesa';
+		return String(value).toLowerCase().trim();
+	})
+	@IsIn(['mesa', 'domicilio', 'llevar'], {message: 'tipoPedido debe ser "mesa", "domicilio" o "llevar"'})
 	tipoPedido: string;
 
 	@ApiProperty({example: 'pendiente', required: false})
@@ -47,11 +51,11 @@ export class CreateOrdenesDto {
 		description: 'Productos de la orden',
 		required: false,
 		type: 'array',
-			example: [
-				{tamano: 'grande', sabor1: 'paisa', cantidad: 1},
-				{tamano: 'mediana', sabor1: 'mexicana', sabor2: 'vegetales', cantidad: 1},
-				{tamano: 'grande', sabor1: 'paisa', sabor2: 'carnes', cantidad: 2},
-			],
+		example: [
+			{tamano: 'grande', sabor1: 'paisa', cantidad: 1},
+			{tamano: 'mediana', sabor1: 'mexicana', sabor2: 'vegetales', cantidad: 1},
+			{tamano: 'grande', sabor1: 'paisa', sabor2: 'carnes', cantidad: 2},
+		],
 		items: {$ref: '#/components/schemas/CreateOrdenItemDto'},
 	})
 	@IsOptional()
@@ -66,7 +70,17 @@ export class CreateOrdenItemDto {
 	@IsString()
 	tipo: string; // Pizza, Chuzo, Calzone, Hamburguesa, etc.
 
-	@ApiProperty({example: 'grande', required: false, description: 'Tamaño solo para pizzas'})
+	@ApiProperty({example: 1, required: false, description: 'ID del producto (nuevo sistema)'})
+	@IsOptional()
+	@IsNumber()
+	productoId?: number;
+
+	@ApiProperty({example: 1, required: false, description: 'ID de la variante del producto'})
+	@IsOptional()
+	@IsNumber()
+	varianteId?: number;
+
+	@ApiProperty({example: 'grande', required: false, description: 'Tamaño solo para pizzas (legacy)'})
 	@IsOptional()
 	@IsString()
 	tamano?: string;
@@ -89,4 +103,31 @@ export class CreateOrdenItemDto {
 	@ApiProperty({example: 1})
 	@IsNumber()
 	cantidad: number;
+}
+
+export class FindOrdenesDto {
+	@ApiProperty({example: 'pendiente', required: false})
+	@IsOptional()
+	@IsString()
+	estado?: string;
+
+	@ApiProperty({example: '2025-11-01', required: false})
+	@IsOptional()
+	@IsDateString()
+	from?: string;
+
+	@ApiProperty({example: '2025-11-30', required: false})
+	@IsOptional()
+	@IsDateString()
+	to?: string;
+
+	@ApiProperty({example: 1, required: false})
+	@IsOptional()
+	@IsNumber()
+	page?: number;
+
+	@ApiProperty({example: 10, required: false})
+	@IsOptional()
+	@IsNumber()
+	limit?: number;
 }

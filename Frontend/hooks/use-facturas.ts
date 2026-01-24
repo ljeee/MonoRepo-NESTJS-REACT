@@ -50,7 +50,12 @@ export function useFacturasDia() {
           }));
         setData(facturas);
       } catch (fallbackErr: any) {
-        setError(e?.message || fallbackErr?.message || 'Error al cargar facturas del día');
+        // If 404 on fallback, clearly no data
+        if (fallbackErr.response?.status === 404) {
+          setData([]);
+        } else {
+          setError(fallbackErr?.message || e?.message || 'Error al cargar facturas del día');
+        }
       }
     } finally { setLoading(false); }
   }, []);

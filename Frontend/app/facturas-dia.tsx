@@ -1,5 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { EmptyState } from '../components/states/EmptyState';
+import { ErrorState } from '../components/states/ErrorState';
+import { LoadingState } from '../components/states/LoadingState';
 import { useFacturasDia } from '../hooks/use-facturas';
 import { styles } from '../styles/facturas.styles';
 
@@ -13,8 +16,8 @@ function formatDate(date?: string) {
 export default function FacturasDiaScreen() {
   const { data, loading, error, refetch } = useFacturasDia();
 
-  if (loading) return <ActivityIndicator style={styles.loader} size="large" color="#00bcd4" />;
-  if (error) return <Text style={styles.errorText}>{error}</Text>;
+  if (loading) return <LoadingState message="Cargando facturas..." />;
+  if (error) return <ErrorState message={error} onRetry={refetch} />;
 
   return (
     <View style={styles.container}>
@@ -28,7 +31,13 @@ export default function FacturasDiaScreen() {
           data={data}
           keyExtractor={(item, idx) => (item.facturaId?.toString() || idx.toString())}
           contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={<Text style={styles.emptyText}>No hay facturas hoy.</Text>}
+          ListEmptyComponent={
+            <EmptyState
+              message="Sin facturas hoy"
+              subMessage="No se han generado facturas en el día de hoy."
+              icon="file-document-outline"
+            />
+          }
           renderItem={({ item }) => (
             <View style={styles.facturaCard}>
               <View style={styles.facturaHeader}>

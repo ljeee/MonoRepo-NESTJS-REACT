@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { EmptyState } from '../components/states/EmptyState';
+import { ErrorState } from '../components/states/ErrorState';
+import { LoadingState } from '../components/states/LoadingState';
 import { useClientByPhone } from '../hooks/use-client-by-phone';
 import { useClientesList } from '../hooks/use-clientes-list';
 import { styles } from '../styles/clientes.styles';
@@ -42,7 +45,7 @@ export default function ClientesScreen() {
           </TouchableOpacity>
         </View>
 
-        {searchError ? <Text style={styles.errorText}>{searchError}</Text> : null}
+        {searchError ? <ErrorState message={searchError} onRetry={() => telefono && fetchClient(telefono)} /> : null}
         {client && (
           <View style={styles.resultCard}>
             <Text style={styles.resultTitle}>Resultado búsqueda</Text>
@@ -53,14 +56,20 @@ export default function ClientesScreen() {
           </View>
         )}
 
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {loading && !data.length && <ActivityIndicator style={styles.loader} size="large" color="#00bcd4" />}
+        {error ? <ErrorState message={error} onRetry={refetch} /> : null}
+        {loading && !data.length && <LoadingState message="Cargando clientes..." />}
 
         <FlatList
           data={data}
           keyExtractor={(item, idx) => (item.telefono || idx.toString())}
           contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={!loading ? <Text style={styles.emptyText}>No hay clientes.</Text> : null}
+          ListEmptyComponent={!loading && !error ? (
+            <EmptyState
+              message="Sin clientes"
+              subMessage="No hay clientes registrados en el sistema."
+              icon="account-group-outline"
+            />
+          ) : null}
           renderItem={({ item }) => (
             <View style={styles.clientCard}>
               <Text style={styles.clientName}>{item.clienteNombre || 'Sin nombre'}</Text>

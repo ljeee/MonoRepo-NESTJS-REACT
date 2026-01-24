@@ -1,9 +1,12 @@
 import axios from 'axios';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../../constants/api';
 import { useBreakpoint } from '../../styles/responsive';
-import { orderStyles as styles } from './orderStyles';
+import { EmptyState } from '../states/EmptyState';
+import { ErrorState } from '../states/ErrorState';
+import { LoadingState } from '../states/LoadingState';
+import { orderStyles as styles } from '../../styles/order.styles';
 
 type OrderProduct = {
   id: number;
@@ -42,14 +45,19 @@ export default function OrdersOfDayPending() {
     setLoading(true);
     setError('');
     try {
-      const url =
-        filter === 'pendientes'
-          ? `${API_BASE_URL}/ordenes/dia/pendientes`
-          : `${API_BASE_URL}/ordenes/dia`;
+      const url = filter === 'pendientes'
+        ? `${API_BASE_URL}/ordenes/dia?estado=pendiente`
+        : `${API_BASE_URL}/ordenes/dia`;
       const res = await axios.get(url);
       setOrders(res.data);
-    } catch {
-      setError('Error al cargar las órdenes');
+    } catch (err: any) {
+      // If 404, it just means no orders found for today
+      if (err.response && err.response.status === 404) {
+        setOrders([]);
+      } else {
+        console.error('Error fetching orders:', err);
+        setError('No pudimos cargar las órdenes. Por favor, intenta de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
@@ -72,8 +80,8 @@ export default function OrdersOfDayPending() {
     }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} />;
-  if (error) return <Text style={styles.error}>{error}</Text>;
+  if (loading) return <LoadingState message="Cargando órdenes..." />;
+  if (error) return <ErrorState message={error} onRetry={fetchOrders} />;
 
   return (
     <View style={styles.container}>
@@ -104,45 +112,51 @@ export default function OrdersOfDayPending() {
         contentContainerStyle={{ paddingBottom: 16, paddingHorizontal: isMobile ? 12 : 0 }}
         columnWrapperStyle={isMobile ? undefined : { gap: 12 }}
         renderItem={({ item }) => (
-          <View style={[styles.gridItem, isMobile && { minWidth: '100%', maxWidth: '100%', marginHorizontal: 0 }] }>
-            <View style={[styles.orderBox, isMobile && { padding: 14 }] }>
-            <View style={styles.orderHeader}>
-              <Text style={styles.orderClient}>
-                {(() => {
-                  const nombre = item.factura?.clienteNombre || item.nombreCliente;
-                  if (!nombre) return 'Sin nombre';
-                  if (item.tipoPedido === 'mesa') {
-                    return /^\d+$/.test(nombre) ? `Mesa ${nombre}` : nombre.startsWith('Mesa') ? nombre : `Mesa ${nombre}`;
-                  }
-                  return nombre;
-                })()}
-              </Text>
-              <Text style={styles.orderInfo}>{formatDate(item.fechaOrden)}</Text>
-            </View>
-            <Text style={[styles.orderInfo, item.estadoOrden === 'completada' && { color: '#4caf50', fontWeight: 'bold' }]}>Tipo: {item.tipoPedido} • Estado: {item.estadoOrden}</Text>
-            {item.productos && item.productos.length > 0 && (
-              <View style={styles.productList}>
-                <Text style={[styles.text, { fontWeight: 'bold' }]}>Productos:</Text>
-                {item.productos.map(prod => (
-                  <Text key={prod.id} style={styles.productItem}>
-                    - {prod.producto} x{prod.cantidad}
-                  </Text>
-                ))}
+          <View style={[styles.gridItem, isMobile && { minWidth: '100%', maxWidth: '100%', marginHorizontal: 0 }]}>
+            <View style={[styles.orderBox, isMobile && { padding: 14 }]}>
+              <View style={styles.orderHeader}>
+                <Text style={styles.orderClient}>
+                  {(() => {
+                    const nombre = item.factura?.clienteNombre || item.nombreCliente;
+                    if (!nombre) return 'Sin nombre';
+                    if (item.tipoPedido === 'mesa') {
+                      return /^\d+$/.test(nombre) ? `Mesa ${nombre}` : nombre.startsWith('Mesa') ? nombre : `Mesa ${nombre}`;
+                    }
+                    return nombre;
+                  })()}
+                </Text>
+                <Text style={styles.orderInfo}>{formatDate(item.fechaOrden)}</Text>
               </View>
-            )}
-            {item.estadoOrden !== 'completada' && (
-              <TouchableOpacity
-                style={styles.completeBtn}
-                onPress={() => markAsCompleted(item.ordenId)}
-                disabled={patchLoading === item.ordenId}
-              >
-                <Text style={styles.completeBtnText}>{patchLoading === item.ordenId ? 'Actualizando...' : 'Marcar completada'}</Text>
-              </TouchableOpacity>
-            )}
+              <Text style={[styles.orderInfo, item.estadoOrden === 'completada' && { color: '#4caf50', fontWeight: 'bold' }]}>Tipo: {item.tipoPedido} • Estado: {item.estadoOrden}</Text>
+              {item.productos && item.productos.length > 0 && (
+                <View style={styles.productList}>
+                  <Text style={[styles.text, { fontWeight: 'bold' }]}>Productos:</Text>
+                  {item.productos.map(prod => (
+                    <Text key={prod.id} style={styles.productItem}>
+                      - {prod.producto} x{prod.cantidad}
+                    </Text>
+                  ))}
+                </View>
+              )}
+              {item.estadoOrden !== 'completada' && (
+                <TouchableOpacity
+                  style={styles.completeBtn}
+                  onPress={() => markAsCompleted(item.ordenId)}
+                  disabled={patchLoading === item.ordenId}
+                >
+                  <Text style={styles.completeBtnText}>{patchLoading === item.ordenId ? 'Actualizando...' : 'Marcar completada'}</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
-        ListEmptyComponent={<Text>No hay órdenes pendientes hoy.</Text>}
+        ListEmptyComponent={
+          <EmptyState
+            message="Sin órdenes hoy"
+            subMessage={filter === 'pendientes' ? "No tienes órdenes pendientes." : "Aún no se han registrado órdenes para el día de hoy."}
+            icon="clipboard-text-off-outline"
+          />
+        }
       />
     </View>
   );

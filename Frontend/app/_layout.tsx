@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 import { View } from "react-native";
 import Navbar from "../components/Navbar";
-import { colors } from "../components/theme";
+import { colors } from "../styles/theme";
 import { GlobalStyles } from "../components/GlobalStyles";
 
 export default function RootLayout() {

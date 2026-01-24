@@ -9,6 +9,7 @@ import {OrdenesProductosModule} from './ordenes-productos/ordenes-productos.modu
 import {ProductosModule} from './productos/productos.module';
 import {DomiciliariosModule} from './domiciliarios/domiciliarios.module';
 import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
+import {AuthModule} from './auth/auth.module';
 
 @Module({
 	imports: [
@@ -42,6 +43,7 @@ import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 		ProductosModule,
 		DomiciliariosModule,
 		FacturasPagosModule,
+		AuthModule,
 	],
 	controllers: [],
 	providers: [],

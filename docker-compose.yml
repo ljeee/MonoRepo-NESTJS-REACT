@@ -1,5 +1,27 @@
 services:
   # ============================================
+  # TRAEFIK (API GATEWAY)
+  # ============================================
+  traefik:
+    image: traefik:v2.11
+    container_name: pizzeria-traefik
+    restart: unless-stopped
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.traefik.address=:8080"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - //var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      pizzeria-network:
+        ipv4_address: 172.28.0.5
+
+  # ============================================
   # BASE DE DATOS
   # ============================================
   db:
@@ -41,6 +63,13 @@ services:
       DATABASE_NAME: appdb
       NODE_ENV: production
       PORT: 3000
+      HOST: 0.0.0.0
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      PRINTER_ENABLED: ${PRINTER_ENABLED:-false}
+      PRINTER_PATH: ${PRINTER_PATH:-/dev/usb/lp0}
     ports:
       - "3000:3000"
     depends_on:
@@ -49,6 +78,11 @@ services:
     networks:
       pizzeria-network:
         ipv4_address: 172.28.0.20
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=web"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
 
   # ============================================
   # FRONTEND (Expo Web)
@@ -69,6 +103,12 @@ services:
     networks:
       pizzeria-network:
         ipv4_address: 172.28.0.30
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.priority=1"
+      - "traefik.http.services.frontend.loadbalancer.server.port=8081"
 
 # ============================================
 # REDES

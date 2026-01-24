@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import { colors } from './theme';
 
-export const navbarStyles = StyleSheet.create({
+export const styles = StyleSheet.create({
   menuBtnContainer: {
     position: 'absolute',
     top: 0,

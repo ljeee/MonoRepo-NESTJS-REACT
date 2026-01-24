@@ -29,3 +29,21 @@ export class CreateFacturasPagosDto {
 	@IsString()
 	metodo?: string;
 }
+
+export class FindFacturasPagosDto {
+	@IsOptional()
+	@IsDateString()
+	from?: string;
+
+	@IsOptional()
+	@IsDateString()
+	to?: string;
+
+	@IsOptional()
+	@IsNumber()
+	page?: number;
+
+	@IsOptional()
+	@IsNumber()
+	limit?: number;
+}

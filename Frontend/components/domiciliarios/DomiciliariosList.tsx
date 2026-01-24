@@ -2,9 +2,12 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../../constants/api';
-import { colors } from '../theme';
+import { EmptyState } from '../states/EmptyState';
+import { ErrorState } from '../states/ErrorState';
+import { LoadingState } from '../states/LoadingState';
+import { colors } from '../../styles/theme';
 import CreateDomiciliarioForm from './CreateDomiciliarioForm';
-import { domiciliariosListStyles as styles } from './DomiciliariosList.styles';
+import { domiciliariosListStyles as styles } from '../../styles/domiciliarios-list.styles';
 
 type Domiciliario = { telefono: number; domiciliarioNombre?: string };
 
@@ -25,8 +28,13 @@ export default function DomiciliariosList() {
     try {
       const res = await axios.get(`${API_BASE_URL}/domiciliarios`);
       setDomiciliarios(res.data);
-    } catch {
-      setError('No se pudo cargar domiciliarios');
+    } catch (err: any) {
+      // If 404, just means no domiciliarios yet
+      if (err.response?.status === 404) {
+        setDomiciliarios([]);
+      } else {
+        setError('No se pudo cargar domiciliarios');
+      }
     } finally {
       setLoading(false);
     }
@@ -98,8 +106,9 @@ export default function DomiciliariosList() {
           </>
         )}
         <Text style={styles.title}>Domiciliarios</Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <ErrorState message={error} onRetry={fetchDomiciliarios} /> : null}
         {success ? <Text style={styles.success}>{success}</Text> : null}
+        {loading && domiciliarios.length === 0 ? <LoadingState message="Cargando domiciliarios..." /> : null}
         <FlatList
           data={domiciliarios}
           scrollEnabled={false}
@@ -170,7 +179,13 @@ export default function DomiciliariosList() {
               </View>
             </View>
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No hay domiciliarios registrados.</Text>}
+          ListEmptyComponent={!loading && !error ? (
+            <EmptyState
+              message="Sin domiciliarios"
+              subMessage="No hay domiciliarios registrados en el sistema."
+              icon="moped-outline"
+            />
+          ) : null}
         />
       </ScrollView>
     </View>

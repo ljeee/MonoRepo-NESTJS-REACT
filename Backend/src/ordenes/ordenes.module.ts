@@ -8,11 +8,14 @@ import {Domicilios} from '../domicilios/esquemas/domicilios.entity';
 import {Clientes} from '../clientes/esquemas/clientes.entity';
 import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {Productos} from '../productos/esquemas/productos.entity';
+import {ProductoVariantes} from '../productos/esquemas/producto-variantes.entity';
 import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.entity';
+import {PrintingService} from '../common/printing.service';
+import {TelegramService} from '../common/telegram.service';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([Ordenes, FacturasVentas, Domicilios, Clientes, Domiciliarios, Productos, OrdenesProductos])],
-	providers: [OrdenesService],
+	imports: [TypeOrmModule.forFeature([Ordenes, FacturasVentas, Domicilios, Clientes, Domiciliarios, Productos, ProductoVariantes, OrdenesProductos])],
+	providers: [OrdenesService, PrintingService, TelegramService],
 	controllers: [OrdenesController],
 })
 export class OrdenesModule {}

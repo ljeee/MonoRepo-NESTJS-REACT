@@ -66,7 +66,12 @@ export function useFacturasPagosDia() {
       const cleaned = arr.filter(p => p && Object.keys(p).length > 0).sort((a: any, b: any) => (b.pagosId || 0) - (a.pagosId || 0));
       setData(cleaned);
     } catch (e: any) {
-      setError(e.message || 'Error cargando pagos del día');
+      // If 404, just means no data for today
+      if (e.response?.status === 404) {
+        setData([]);
+      } else {
+        setError(e.message || 'Error cargando pagos del día');
+      }
     } finally { setLoading(false); }
   }, []);
 
@@ -82,25 +87,21 @@ export function useFacturasPagosRango() {
 
   const fetchData = useCallback(async () => {
     if (!from || !to) return;
-    const fromDate = new Date(from + 'T00:00:00');
-    const toDate = new Date(to + 'T23:59:59');
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+    if (isNaN(new Date(from).getTime()) || isNaN(new Date(to).getTime())) {
       setError('Fechas inválidas');
       return;
     }
     setLoading(true); setError(null);
     try {
-      const res = await axios.get(`${API_BASE_URL}/facturas-pagos`);
-      const all = Array.isArray(res.data) ? res.data : [];
-      const filtered = all.filter((p: any) => {
-        if (!p || Object.keys(p).length === 0) return false;
-        const d = new Date(p.fechaFactura);
-        if (isNaN(d.getTime())) return false;
-        return d >= fromDate && d <= toDate;
-      }).sort((a: any, b: any) => (b.pagosId || 0) - (a.pagosId || 0));
-      setData(filtered);
+      const res = await axios.get(`${API_BASE_URL}/facturas-pagos?from=${from}&to=${to}`);
+      setData(Array.isArray(res.data) ? res.data : []);
     } catch (e: any) {
-      setError(e.message || 'Error cargando pagos');
+      // If 404, just means no data in range
+      if (e.response?.status === 404) {
+        setData([]);
+      } else {
+        setError(e.message || 'Error cargando pagos');
+      }
     } finally { setLoading(false); }
   }, [from, to]);
 

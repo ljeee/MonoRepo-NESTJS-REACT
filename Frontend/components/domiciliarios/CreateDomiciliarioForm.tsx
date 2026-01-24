@@ -2,7 +2,7 @@ import axios from 'axios';
 import React, { useState } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { API_BASE_URL } from '../../constants/api';
-import { createDomiciliarioFormStyles as styles } from './CreateDomiciliarioForm.styles';
+import { createDomiciliarioFormStyles as styles } from '../../styles/create-domiciliario-form.styles';
 
 export default function CreateDomiciliarioForm() {
   const [telefono, setTelefono] = useState('');
