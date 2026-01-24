@@ -66,7 +66,12 @@ export function useFacturasPagosDia() {
       const cleaned = arr.filter(p => p && Object.keys(p).length > 0).sort((a: any, b: any) => (b.pagosId || 0) - (a.pagosId || 0));
       setData(cleaned);
     } catch (e: any) {
-      setError(e.message || 'Error cargando pagos del día');
+      // If 404, just means no data for today
+      if (e.response?.status === 404) {
+        setData([]);
+      } else {
+        setError(e.message || 'Error cargando pagos del día');
+      }
     } finally { setLoading(false); }
   }, []);
 
@@ -91,7 +96,12 @@ export function useFacturasPagosRango() {
       const res = await axios.get(`${API_BASE_URL}/facturas-pagos?from=${from}&to=${to}`);
       setData(Array.isArray(res.data) ? res.data : []);
     } catch (e: any) {
-      setError(e.message || 'Error cargando pagos');
+      // If 404, just means no data in range
+      if (e.response?.status === 404) {
+        setData([]);
+      } else {
+        setError(e.message || 'Error cargando pagos');
+      }
     } finally { setLoading(false); }
   }, [from, to]);
 

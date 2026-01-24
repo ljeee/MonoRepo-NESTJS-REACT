@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { Animated, Platform, Pressable, StatusBar, Text, TouchableOpacity, View } from 'react-native';
-import { navbarStyles as styles } from './Navbar.styles';
+import { styles } from '../styles/navbar.styles';
 import { useBreakpoint } from '../styles/responsive';
 
 export default function Navbar() {
@@ -39,7 +39,7 @@ export default function Navbar() {
           </>
         )}
         <Animated.View style={[styles.sidebarMobile, { transform: [{ translateX }] }]}>
-          <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/'); }}>
+          <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/crear-orden' as any); }}>
             <Text style={styles.link}>Crear Orden</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/ordenes' as any); }}>
@@ -60,13 +60,16 @@ export default function Navbar() {
           <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/facturas-pagos'); }}>
             <Text style={styles.link}>Pagos/Gastos</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.sidebarBtnMobile} onPress={() => { setDrawerOpen(false); router.push('/gestion-productos' as any); }}>
+            <Text style={styles.link}>Productos</Text>
+          </TouchableOpacity>
         </Animated.View>
       </>
     );
   }
   return (
     <View style={styles.navbar}>
-      <TouchableOpacity onPress={() => router.push('/')}>
+      <TouchableOpacity onPress={() => router.push('/crear-orden' as any)}>
         <Text style={styles.link}>Crear Orden</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={() => router.push('/ordenes' as any)}>
@@ -86,6 +89,9 @@ export default function Navbar() {
       </TouchableOpacity>
       <TouchableOpacity onPress={() => router.push('/facturas-pagos')}>
         <Text style={styles.link}>Pagos/Gastos</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.push('/gestion-productos' as any)}>
+        <Text style={styles.link}>Productos</Text>
       </TouchableOpacity>
     </View>
   );

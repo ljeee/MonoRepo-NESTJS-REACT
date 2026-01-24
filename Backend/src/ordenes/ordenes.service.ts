@@ -8,18 +8,13 @@ import {Domicilios} from '../domicilios/esquemas/domicilios.entity';
 import {Clientes} from '../clientes/esquemas/clientes.entity';
 import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {Productos} from '../productos/esquemas/productos.entity';
+import {ProductoVariantes} from '../productos/esquemas/producto-variantes.entity';
 import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.entity';
 import {PrintingService} from '../common/printing.service';
 import {TelegramService} from '../common/telegram.service';
 
 @Injectable()
 export class OrdenesService {
-	private readonly PRECIOS_PIZZA: Record<string, number> = {
-		pequena: 15000,
-		mediana: 28000,
-		grande: 40000,
-	};
-
 	constructor(
 		@InjectRepository(Ordenes) private readonly repo: Repository<Ordenes>,
 		@InjectRepository(FacturasVentas) private readonly facturasRepo: Repository<FacturasVentas>,
@@ -27,6 +22,7 @@ export class OrdenesService {
 		@InjectRepository(Clientes) private readonly clientesRepo: Repository<Clientes>,
 		@InjectRepository(Domiciliarios) private readonly domiciliariosRepo: Repository<Domiciliarios>,
 		@InjectRepository(Productos) private readonly productosRepo: Repository<Productos>,
+		@InjectRepository(ProductoVariantes) private readonly variantesRepo: Repository<ProductoVariantes>,
 		@InjectRepository(OrdenesProductos) private readonly ordenesProductosRepo: Repository<OrdenesProductos>,
 		private readonly printingService: PrintingService,
 		private readonly telegramService: TelegramService,
@@ -133,10 +129,22 @@ export class OrdenesService {
 	}
 
 	private calcularPrecioProducto(item: CreateOrdenItemDto): number {
-		if (item.tipo?.toLowerCase() === 'pizza') {
-			return this.PRECIOS_PIZZA[(item.tamano || '').toLowerCase()] ?? 0;
+		// Nuevo sistema: si hay varianteId, se calcula en procesarProductos
+		// Este método es legacy para compatibilidad
+		if (item.tipo?.toLowerCase() === 'pizza' && item.tamano) {
+			const precios: Record<string, number> = {
+				pequena: 15000,
+				mediana: 28000,
+				grande: 40000,
+			};
+			return precios[(item.tamano || '').toLowerCase()] ?? 0;
 		}
 		return 0;
+	}
+
+	private async obtenerPrecioVariante(varianteId: number): Promise<number> {
+		const variante = await this.variantesRepo.findOne({where: {varianteId}});
+		return variante?.precio ? Number(variante.precio) : 0;
 	}
 
 	private generarDescripcionFactura(productos: CreateOrdenItemDto[]): string {
@@ -165,14 +173,24 @@ export class OrdenesService {
 			.getOne();
 
 		if (!prod) {
-			prod = this.productosRepo.create({productoNombre: nombre, precio});
-			return this.productosRepo.save(prod);
+			prod = this.productosRepo.create({productoNombre: nombre, activo: true});
+			prod = await this.productosRepo.save(prod);
 		}
 
-		if (prod.productoNombre !== nombre || (precio > 0 && prod.precio !== precio)) {
-			prod.productoNombre = nombre;
-			if (precio > 0) prod.precio = precio;
-			return this.productosRepo.save(prod);
+		// Update or create default price variant
+		let variante = await this.variantesRepo.findOne({where: {productoId: prod.productoId}, order: {varianteId: 'ASC'}});
+		
+		if (!variante) {
+			variante = this.variantesRepo.create({
+				productoId: prod.productoId,
+				nombre: 'Standard',
+				precio: precio,
+				activo: true
+			});
+			await this.variantesRepo.save(variante);
+		} else if (precio > 0 && Number(variante.precio) !== precio) {
+			variante.precio = precio;
+			await this.variantesRepo.save(variante);
 		}
 
 		return prod;
@@ -184,8 +202,21 @@ export class OrdenesService {
 
 	private async procesarProductos(ordenId: number, productos: CreateOrdenItemDto[]): Promise<void> {
 		for (const item of productos) {
-			const nombre = this.construirNombreProducto(item);
-			const precio = this.calcularPrecioProducto(item);
+			let nombre = this.construirNombreProducto(item);
+			let precio = 0;
+
+			// Sistema nuevo: usar varianteId si existe
+			if (item.varianteId) {
+				precio = await this.obtenerPrecioVariante(item.varianteId);
+				const variante = await this.variantesRepo.findOne({where: {varianteId: item.varianteId}});
+				if (variante?.producto) {
+					nombre = `${variante.producto.productoNombre} - ${variante.nombre}`;
+				}
+			} else {
+				// Sistema legacy: calcular precio
+				precio = this.calcularPrecioProducto(item);
+			}
+
 			await this.upsertProducto(nombre, precio);
 			await this.vincularProductoAOrden(ordenId, nombre, Number(item.cantidad) || 1);
 		}
@@ -287,7 +318,7 @@ export class OrdenesService {
 		}
 
 		// 4. Procesar domicilio si aplica
-		let domicilio: Domicilios | null;
+		let domicilio: Domicilios | null = null;
 		if (this.esDomicilio(data.tipoPedido)) {
 			await this.procesarDomicilio(data, factura.facturaId, orden.ordenId);
 			domicilio = await this.domiciliosRepo.findOne({ where: { ordenId: orden.ordenId } });

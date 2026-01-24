@@ -8,7 +8,7 @@ import { API_BASE_URL } from '../../constants/api';
 import { useClientByPhone } from '../../hooks/use-client-by-phone';
 import { useDomiciliariosList } from '../../hooks/use-domiciliarios-list';
 import { useBreakpoint } from '../../styles/responsive';
-import { colors } from '../theme';
+import { colors } from '../../styles/theme';
 import { orderFormStyles as styles } from '../../styles/CreateOrderForm.styles';
 import ProductForm from './ProductForm';
 
@@ -19,7 +19,7 @@ const initialProduct = { tipo: '', tamano: '', sabor1: '', sabor2: '', sabor3: '
 export default function CreateOrderForm() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
-  const [tipoPedido, setTipoPedido] = useState('mesa');
+  const [tipoPedido, setTipoPedido] = useState<'mesa' | 'domicilio' | 'llevar'>('mesa');
   const [telefonoCliente, setTelefonoCliente] = useState('');
   const [nombreCliente, setNombreCliente] = useState('');
   const [numeroMesa, setNumeroMesa] = useState('');
@@ -61,6 +61,8 @@ export default function CreateOrderForm() {
     if (tipoPedido !== 'domicilio') {
       setSelectedAddress('');
       setNewAddress('');
+      setTelefonoCliente('');
+      setTelefonoDomiciliario('');
     }
     // Only depends on tipoPedido
   }, [tipoPedido]);
@@ -81,10 +83,58 @@ export default function CreateOrderForm() {
 
   const handleSubmit = async () => {
     setLoading(true); setError(''); setSuccess(false);
-    if (tipoPedido === 'mesa' && !numeroMesa) { setLoading(false); setError('Seleccione número de mesa'); return; }
+
+    // Validaciones
+    if (tipoPedido === 'mesa' && !numeroMesa) {
+      setLoading(false);
+      setError('Debe seleccionar un número de mesa');
+      return;
+    }
+
+    if (tipoPedido === 'domicilio') {
+      if (!nombreCliente || !nombreCliente.trim()) {
+        setLoading(false);
+        setError('Debe ingresar el nombre del cliente');
+        return;
+      }
+
+      const direccion = hasClienteDirecciones
+        ? (selectedAddress === '__nueva__' ? newAddress : selectedAddress)
+        : newAddress;
+
+      if (!direccion || !direccion.trim()) {
+        setLoading(false);
+        setError('Debe ingresar o seleccionar una dirección');
+        return;
+      }
+    }
+
+    if (tipoPedido === 'llevar') {
+      if (!nombreCliente || !nombreCliente.trim()) {
+        setLoading(false);
+        setError('Debe ingresar el nombre del cliente');
+        return;
+      }
+    }
+
+    // Validar que haya al menos un producto válido
+    const productosValidos = productos.filter(p => p.tipo && p.tipo.trim());
+    if (productosValidos.length === 0) {
+      setLoading(false);
+      setError('Debe agregar al menos un producto válido');
+      return;
+    }
+
+    // Validar tipoPedido
+    if (!tipoPedido || (tipoPedido !== 'mesa' && tipoPedido !== 'domicilio')) {
+      setError('Debes seleccionar un tipo de pedido');
+      setLoading(false);
+      return;
+    }
+
     try {
       const payload = {
-        tipoPedido,
+        tipoPedido: tipoPedido || 'mesa',
         telefonoCliente: telefonoCliente || undefined,
         nombreCliente: tipoPedido === 'mesa' ? numeroMesa : nombreCliente,
         direccionCliente: tipoPedido === 'domicilio'
@@ -94,15 +144,19 @@ export default function CreateOrderForm() {
           : undefined,
         telefonoDomiciliario: telefonoDomiciliario || undefined,
         metodo,
-        productos: productos.map(p => ({
-          tipo: p.tipo ? p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1).toLowerCase() : '',
-          tamano: p.tamano ? p.tamano.charAt(0).toUpperCase() + p.tamano.slice(1).toLowerCase() : undefined,
-          sabor1: p.sabor1 ? p.sabor1.charAt(0).toUpperCase() + p.sabor1.slice(1).toLowerCase() : undefined,
-          sabor2: p.sabor2 ? p.sabor2.charAt(0).toUpperCase() + p.sabor2.slice(1).toLowerCase() : undefined,
-          sabor3: p.sabor3 ? p.sabor3.charAt(0).toUpperCase() + p.sabor3.slice(1).toLowerCase() : undefined,
-          cantidad: Number(p.cantidad) || 1,
-        }))
+        productos: productosValidos.map(p => {
+          const item: any = {
+            tipo: p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1).toLowerCase(),
+            cantidad: Number(p.cantidad) || 1,
+          };
+          if (p.tamano) item.tamano = p.tamano.charAt(0).toUpperCase() + p.tamano.slice(1).toLowerCase();
+          if (p.sabor1) item.sabor1 = p.sabor1.charAt(0).toUpperCase() + p.sabor1.slice(1).toLowerCase();
+          if (p.sabor2) item.sabor2 = p.sabor2.charAt(0).toUpperCase() + p.sabor2.slice(1).toLowerCase();
+          if (p.sabor3) item.sabor3 = p.sabor3.charAt(0).toUpperCase() + p.sabor3.slice(1).toLowerCase();
+          return item;
+        })
       };
+
       const response = await axios.post(`${API_BASE_URL}/ordenes`, payload);
       const ordenId = response.data?.ordenId || response.data?.id;
 
@@ -114,6 +168,8 @@ export default function CreateOrderForm() {
       setNombreCliente('');
       setSelectedAddress('');
       setNewAddress('');
+      setTelefonoCliente('');
+      setTelefonoDomiciliario('');
 
       // Navegar al detalle de la orden creada después de un breve delay
       setTimeout(() => {
@@ -123,7 +179,50 @@ export default function CreateOrderForm() {
           router.push('/ordenes');
         }
       }, 800);
-    } catch { setError('Error al crear la orden'); } finally { setLoading(false); }
+    } catch (err: any) {
+      console.error('Error creating order:', err);
+
+      if (err?.response) {
+        const status = err.response.status;
+        const data = err.response.data || {};
+        console.error('Backend response data:', data);
+
+        // Normalizar mensajes de validación que vienen como array
+        let message: string | undefined;
+        if (Array.isArray(data.message)) {
+          try {
+            message = data.message.map((m: any) => {
+              if (typeof m === 'string') return m;
+              if (m.constraints) return Object.values(m.constraints).join(', ');
+              return JSON.stringify(m);
+            }).join(' | ');
+          } catch (e) {
+            message = JSON.stringify(data.message);
+          }
+        } else if (typeof data.message === 'string') {
+          message = data.message;
+        } else if (data.error) {
+          message = data.error;
+        }
+
+        if (status === 400) {
+          setError(`Datos inválidos: ${message || 'Verifique los datos ingresados'}`);
+        } else if (status === 404) {
+          setError('Servicio no encontrado. Verifique que el backend esté funcionando.');
+        } else if (status === 500) {
+          setError(`Error del servidor: ${message || 'Intente nuevamente'}`);
+        } else {
+          setError(`Error (${status}): ${message || 'No se pudo crear la orden'}`);
+        }
+      } else if (err.request) {
+        setError('No se recibió respuesta del servidor. Verifique la conexión.');
+        console.error('Request info:', err.request);
+      } else {
+        setError('Error inesperado al crear la orden.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const pickerTextStyle = isMobile ? { color: '#000', fontSize: 18 } : { color: '#000' };
@@ -145,7 +244,7 @@ export default function CreateOrderForm() {
 
           <View style={styles.row}>
             {/* TIPO DE PEDIDO */}
-            <View style={styles.col4}>
+            <View style={[styles.col4, isMobile && styles.col4Mobile]}>
               <Text style={styles.label}>Tipo de pedido</Text>
               <View style={styles.pickerContainer}>
                 <Picker
@@ -163,7 +262,7 @@ export default function CreateOrderForm() {
             </View>
 
             {/* METODO DE PAGO */}
-            <View style={styles.col4}>
+            <View style={[styles.col4, isMobile && styles.col4Mobile]}>
               <Text style={styles.label}>Método de pago</Text>
               <View style={styles.pickerContainer}>
                 <Picker
@@ -181,7 +280,7 @@ export default function CreateOrderForm() {
 
             {/* TELEFONO (Solo Domicilio) */}
             {tipoPedido === 'domicilio' && (
-              <View style={styles.col4}>
+              <View style={[styles.col4, isMobile && styles.col4Mobile]}>
                 <Text style={styles.label}>Teléfono Cliente</Text>
                 <TextInput
                   style={styles.input}
@@ -195,7 +294,7 @@ export default function CreateOrderForm() {
             )}
 
             {/* NOMBRE / MESA */}
-            <View style={styles.col4}>
+            <View style={[styles.col4, isMobile && styles.col4Mobile]}>
               <Text style={styles.label}>Nombre / Mesa</Text>
               {tipoPedido === 'mesa' ? (
                 <View style={styles.pickerContainer}>
@@ -234,7 +333,7 @@ export default function CreateOrderForm() {
           {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
           {tipoPedido === 'domicilio' && (
             <View style={styles.row}>
-              <View style={styles.col6}>
+              <View style={[styles.col6, isMobile && styles.col6Mobile]}>
                 <Text style={styles.label}>Dirección Cliente</Text>
                 {hasClienteDirecciones ? (
                   <>
@@ -274,7 +373,7 @@ export default function CreateOrderForm() {
                 )}
               </View>
 
-              <View style={styles.col6}>
+              <View style={[styles.col6, isMobile && styles.col6Mobile]}>
                 <Text style={styles.label}>Domiciliario</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
@@ -322,8 +421,16 @@ export default function CreateOrderForm() {
           </TouchableOpacity>
 
 
-          {success && <Text style={styles.success}>¡Orden creada con éxito!</Text>}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
+          {success && (
+            <View style={styles.successContainer}>
+              <Text style={styles.success}>✓ ¡Orden creada con éxito!</Text>
+            </View>
+          )}
+          {error ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.error}>{error}</Text>
+            </View>
+          ) : null}
 
         </View>
         {/* Extra bottom space for system nav bar on mobile */}

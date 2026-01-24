@@ -2,7 +2,9 @@ import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/co
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {ClientesService} from "./clientes.service";
 import {CreateClientesDto} from "./esquemas/clientes.dto";
+import {Public} from '../auth/decorators/public.decorator';
 
+@Public()
 @ApiTags('Clientes')
 @Controller("clientes")
 export class ClientesController {

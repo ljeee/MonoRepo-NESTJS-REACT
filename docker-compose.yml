@@ -63,6 +63,10 @@ services:
       DATABASE_NAME: appdb
       NODE_ENV: production
       PORT: 3000
+      HOST: 0.0.0.0
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       PRINTER_ENABLED: ${PRINTER_ENABLED:-false}
       PRINTER_PATH: ${PRINTER_PATH:-/dev/usb/lp0}

@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { colors } from '../components/theme';
+import { colors } from './theme';
 
 export const orderFormStyles = StyleSheet.create({
   container: {
@@ -41,15 +41,24 @@ export const orderFormStyles = StyleSheet.create({
     paddingHorizontal: 8,
     minWidth: 300, // Wrap on small screens
   },
+  col6Mobile: {
+    width: '100%',
+  },
   col4: { // Third width
     width: '33.33%',
     paddingHorizontal: 8,
     minWidth: 250,
   },
+  col4Mobile: {
+    width: '100%',
+  },
   col3: { // Quarter width
     width: '25%',
     paddingHorizontal: 8,
     minWidth: 200,
+  },
+  col3Mobile: {
+    width: '50%',
   },
   // ... existing styles adapted
   title: {
@@ -161,26 +170,33 @@ export const orderFormStyles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   success: {
+    color: colors.success,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  successContainer: {
     marginTop: 24,
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.success,
-    color: colors.success,
-    textAlign: 'center',
-    fontWeight: 'bold',
   },
   error: {
+    color: colors.danger,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  errorContainer: {
     marginTop: 24,
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.danger,
-    color: colors.danger,
-    textAlign: 'center',
-    fontWeight: 'bold',
   },
   fullWidth: {
     width: '100%',

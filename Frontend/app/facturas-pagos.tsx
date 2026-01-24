@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { EmptyState } from '../components/states/EmptyState';
+import { ErrorState } from '../components/states/ErrorState';
+import { LoadingState } from '../components/states/LoadingState';
 import { useCreateFacturaPago, useDeleteFacturaPago, useFacturasPagosDia, useFacturasPagosRango, useUpdateFacturaPago } from '../hooks/use-create-factura-pago';
 import { styles } from '../styles/facturas-pagos.styles';
 
@@ -290,8 +293,8 @@ export default function FacturasPagosScreen() {
         </View>
       )}
 
-      {displayError && <Text style={styles.errorText}>{displayError}</Text>}
-      {displayLoading && !displayData.length && <ActivityIndicator style={styles.loader} />}
+      {displayError && <ErrorState message={displayError} onRetry={showRangeFilter ? fetchRango : fetchDia} />}
+      {displayLoading && !displayData.length && <LoadingState message="Cargando gastos..." />}
 
       {displayData.map((item, idx) => (
         <View key={item.pagosId?.toString() || idx.toString()} style={styles.itemCard}>
@@ -324,7 +327,13 @@ export default function FacturasPagosScreen() {
         </View>
       ))}
 
-      {!displayLoading && displayData.length === 0 && <Text style={styles.emptyText}>No hay gastos para mostrar.</Text>}
+      {!displayLoading && displayData.length === 0 && !displayError && (
+        <EmptyState
+          message="Sin gastos registrados"
+          subMessage={showRangeFilter ? "No se encontraron gastos en el rango de fechas seleccionado." : "No hay gastos registrados para el día de hoy."}
+          icon="cash-remove"
+        />
+      )}
     </ScrollView>
   );
 }

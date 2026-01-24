@@ -5,6 +5,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Instalar Python y herramientas de compilación para dependencias nativas
+RUN apk add --no-cache python3 build-base linux-headers eudev-dev
+
 # Copiar archivos de dependencias
 COPY package*.json ./
 
@@ -27,6 +30,9 @@ WORKDIR /app
 # Crear usuario no-root para seguridad
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nestjs -u 1001
+
+# Instalar Python y herramientas de compilación para dependencias nativas
+RUN apk add --no-cache python3 build-base linux-headers eudev-dev
 
 # Copiar dependencias de producción
 COPY package*.json ./

@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { colors } from '../components/theme';
+import { colors } from './theme';
 
 export const productFormStyles = StyleSheet.create({
   productContainer: {
@@ -36,10 +36,16 @@ export const productFormStyles = StyleSheet.create({
     paddingHorizontal: 6,
     minWidth: 150,
   },
+  col4Mobile: {
+    width: '100%',
+  },
   col6: {
     width: '50%',
     paddingHorizontal: 6,
     minWidth: 180,
+  },
+  col6Mobile: {
+    width: '100%',
   },
   col12: {
     width: '100%',
@@ -73,10 +79,10 @@ export const productFormStyles = StyleSheet.create({
     marginBottom: 16,
     overflow: 'hidden',
     justifyContent: 'center',
-    height: 46,
+    height: Platform.OS === 'android' ? 50 : 46, // Taller on Android
   },
   picker: {
-    height: 46,
+    height: Platform.OS === 'android' ? 50 : 46,
     width: '100%',
     color: colors.text,
     backgroundColor: 'transparent',
@@ -85,7 +91,13 @@ export const productFormStyles = StyleSheet.create({
         outlineStyle: 'none',
         border: 'none',
         paddingLeft: '8px',
+        appearance: 'none',
+        backgroundColor: colors.bg, // Ensure contrast
       } as any,
+      android: {
+         color: colors.text,
+         backgroundColor: colors.bg,
+      }
     }),
   },
   removeBtn: {

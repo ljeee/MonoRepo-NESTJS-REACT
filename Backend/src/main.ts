@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import {NestFactory} from '@nestjs/core';
+import {ValidationPipe} from '@nestjs/common';
 import {AppModule} from './app.module';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {LoggingInterceptor} from './common/interceptors/logging.interceptor';
@@ -12,17 +13,34 @@ async function bootstrap() {
 	// Global request/response logging
 	app.useGlobalInterceptors(new LoggingInterceptor());
 
+	// Enforce DTO validation/transformation
+	app.useGlobalPipes(
+		new ValidationPipe({
+			whitelist: true,
+			transform: true,
+			transformOptions: {enableImplicitConversion: true},
+		}),
+	);
+
 	const config = new DocumentBuilder()
 		.setTitle('DfiruBack API')
 		.setDescription('Documentación Swagger de la API DfiruBack')
 		.setVersion('1.0')
+		.addBearerAuth()
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
-	SwaggerModule.setup('api', app, document);
+	SwaggerModule.setup('api', app, document, {
+		swaggerOptions: {persistAuthorization: true},
+	});
 
-	// Habilitar CORS para permitir acceso desde otras máquinas en la red
+	// Habilitar CORS con lista de orígenes permitidos (CORS_ORIGINS separado por comas)
+	const allowedOrigins = process.env.CORS_ORIGINS
+		?.split(',')
+		.map((origin) => origin.trim())
+		.filter(Boolean);
+
 	app.enableCors({
-		origin: true,
+		origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
 		credentials: true,
 	});
 

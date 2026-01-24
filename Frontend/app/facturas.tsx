@@ -1,5 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { EmptyState } from '../components/states/EmptyState';
+import { ErrorState } from '../components/states/ErrorState';
+import { LoadingState } from '../components/states/LoadingState';
 import { useFacturasRango } from '../hooks/use-facturas';
 import { styles } from '../styles/facturas.styles';
 
@@ -50,14 +53,20 @@ export default function FacturasRangoScreen() {
           </View>
         </View>
 
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        {loading && <ActivityIndicator style={styles.loader} size="large" color="#00bcd4" />}
+        {error && <ErrorState message={error} onRetry={fetchData} />}
+        {loading && <LoadingState message="Buscando facturas..." />}
 
         <FlatList
           data={data}
           keyExtractor={(item, idx) => (item.facturaId?.toString() || idx.toString())}
           contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={!loading ? <Text style={styles.emptyText}>No hay facturas para el rango.</Text> : null}
+          ListEmptyComponent={!loading && !error ? (
+            <EmptyState
+              message="Sin facturas"
+              subMessage={from && to ? "No se encontraron facturas en el rango de fechas seleccionado." : "Selecciona un rango de fechas para buscar facturas."}
+              icon="file-document-outline"
+            />
+          ) : null}
           renderItem={({ item }) => (
             <View style={styles.facturaCard}>
               <View style={styles.facturaHeader}>

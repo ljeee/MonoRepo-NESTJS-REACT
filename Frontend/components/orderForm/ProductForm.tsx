@@ -1,8 +1,9 @@
 import { Picker } from '@react-native-picker/picker';
 import React from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { colors } from '../theme';
+import { colors } from '../../styles/theme';
 import { productFormStyles as styles } from '../../styles/ProductForm.styles';
+import { useBreakpoint } from '../../styles/responsive';
 
 const pizzaTamanos = [
   { label: 'Pequeña', value: 'Pequena' },
@@ -42,6 +43,7 @@ export default function ProductForm({
   calzoneSabores,
   totalProducts,
 }: ProductFormProps) {
+  const { isMobile } = useBreakpoint();
   return (
     <View style={styles.productContainer}>
       <View style={styles.headerRow}>
@@ -55,7 +57,7 @@ export default function ProductForm({
 
       <View style={styles.row}>
         {/* TIPO */}
-        <View style={styles.col4}>
+        <View style={[styles.col4, isMobile && styles.col4Mobile]}>
           <Text style={styles.label}>Tipo de producto</Text>
           <View style={styles.pickerContainer}>
             <Picker
@@ -73,13 +75,14 @@ export default function ProductForm({
               <Picker.Item label="Pizza Burguer" value="Pizza Burguer" />
               <Picker.Item label="Torti Burger" value="Torti Burger" />
               <Picker.Item label="Kebab" value="Kebab" />
+              <Picker.Item label="Pudin" value="Pudin" />
               <Picker.Item label="Varios" value="Varios" />
             </Picker>
           </View>
         </View>
 
         {/* CANTIDAD (Siempre visible) */}
-        <View style={styles.col4}>
+        <View style={[styles.col4, isMobile && styles.col4Mobile]}>
           <Text style={styles.label}>Cantidad</Text>
           <TextInput
             style={styles.input}
@@ -93,7 +96,7 @@ export default function ProductForm({
 
         {/* LOGIC PER TYPE */}
         {product.tipo === 'Pizza' && (
-          <View style={styles.col4}>
+          <View style={[styles.col4, isMobile && styles.col4Mobile]}>
             <Text style={styles.label}>Tamaño</Text>
             <View style={styles.pickerContainer}>
               <Picker
@@ -112,7 +115,7 @@ export default function ProductForm({
 
         {/* HAMBURGUESA TYPE */}
         {product.tipo === 'Hamburguesa' && (
-          <View style={styles.col4}>
+          <View style={[styles.col4, isMobile && styles.col4Mobile]}>
             <Text style={styles.label}>Tipo Ham.</Text>
             <View style={styles.pickerContainer}>
               <Picker
@@ -137,7 +140,7 @@ export default function ProductForm({
         <View style={styles.row}>
           {product.tipo === 'Pizza' ? (
             <>
-              <View style={styles.col4}>
+              <View style={[styles.col4, isMobile && styles.col4Mobile]}>
                 <Text style={styles.label}>Sabor 1</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
@@ -154,7 +157,7 @@ export default function ProductForm({
               </View>
 
               {saboresVisibles[index] > 1 && (
-                <View style={styles.col4}>
+                <View style={[styles.col4, isMobile && styles.col4Mobile]}>
                   <Text style={styles.label}>Sabor 2</Text>
                   <View style={styles.pickerContainer}>
                     <Picker
@@ -171,7 +174,7 @@ export default function ProductForm({
                 </View>
               )}
               {saboresVisibles[index] > 2 && (
-                <View style={styles.col4}>
+                <View style={[styles.col4, isMobile && styles.col4Mobile]}>
                   <Text style={styles.label}>Sabor 3</Text>
                   <View style={styles.pickerContainer}>
                     <Picker
@@ -196,7 +199,7 @@ export default function ProductForm({
               )}
             </>
           ) : product.tipo === 'Chuzo' ? (
-            <View style={styles.col6}>
+            <View style={[styles.col6, isMobile && styles.col6Mobile]}>
               <Text style={styles.label}>Sabor</Text>
               <View style={styles.pickerContainer}>
                 <Picker
@@ -214,7 +217,7 @@ export default function ProductForm({
             </View>
           ) : product.tipo === 'Calzone' ? (
             <>
-              <View style={styles.col6}>
+              <View style={[styles.col6, isMobile && styles.col6Mobile]}>
                 <Text style={styles.label}>Sabor 1</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
@@ -230,7 +233,7 @@ export default function ProductForm({
                 </View>
               </View>
               {saboresVisibles[index] > 1 && (
-                <View style={styles.col6}>
+                <View style={[styles.col6, isMobile && styles.col6Mobile]}>
                   <Text style={styles.label}>Sabor 2</Text>
                   <View style={styles.pickerContainer}>
                     <Picker

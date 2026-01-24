@@ -11,7 +11,7 @@ export class FacturasVentasController {
 	@Get()
 	@ApiOperation({ summary: 'Obtener todas las facturas de ventas' })
 	@ApiResponse({ status: 200, description: 'Lista de facturas de ventas.' })
-	findAll() {
+	async findAll() {
 		return this.service.findAll();
 	}
 

@@ -21,9 +21,14 @@ export function useClientesList() {
     try {
       const res = await axios.get(`${API_BASE_URL}/clientes`);
       setData(Array.isArray(res.data) ? res.data : []);
-    } catch (e) {
-      setError('Error cargando clientes');
-      setData([]);
+    } catch (e: any) {
+      // If 404, just means no clients yet
+      if (e.response?.status === 404) {
+        setData([]);
+      } else {
+        setError('Error cargando clientes');
+        setData([]);
+      }
     } finally {
       setLoading(false);
     }
