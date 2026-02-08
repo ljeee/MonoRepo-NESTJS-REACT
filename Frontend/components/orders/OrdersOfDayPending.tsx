@@ -1,12 +1,13 @@
-import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { FlatList, Text, TouchableOpacity, View } from 'react-native';
-import { API_BASE_URL } from '../../constants/api';
+import { api } from '../../services/api';
 import { useBreakpoint } from '../../styles/responsive';
 import { EmptyState } from '../states/EmptyState';
 import { ErrorState } from '../states/ErrorState';
 import { LoadingState } from '../states/LoadingState';
 import { orderStyles as styles } from '../../styles/order.styles';
+
+import { formatDate } from '../../utils/formatNumber';
 
 type OrderProduct = {
   id: number;
@@ -26,13 +27,6 @@ type Order = {
   factura?: Factura;
 };
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  return d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
-}
-
 export default function OrdersOfDayPending() {
   const { isMobile, isTablet } = useBreakpoint();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -45,11 +39,9 @@ export default function OrdersOfDayPending() {
     setLoading(true);
     setError('');
     try {
-      const url = filter === 'pendientes'
-        ? `${API_BASE_URL}/ordenes/dia?estado=pendiente`
-        : `${API_BASE_URL}/ordenes/dia`;
-      const res = await axios.get(url);
-      setOrders(res.data);
+      const url_estado = filter === 'pendientes' ? 'pendiente' : undefined;
+      const data = await api.ordenes.getDay(url_estado);
+      setOrders(data as any);
     } catch (err: any) {
       // If 404, it just means no orders found for today
       if (err.response && err.response.status === 404) {
@@ -71,7 +63,7 @@ export default function OrdersOfDayPending() {
   const markAsCompleted = async (ordenId: number) => {
     setPatchLoading(ordenId);
     try {
-      await axios.patch(`${API_BASE_URL}/ordenes/${ordenId}`, { estadoOrden: 'completada' });
+      await api.ordenes.update(ordenId, { estadoOrden: 'completada' } as any);
       await fetchOrders();
     } catch {
       setError('No se pudo actualizar la orden');

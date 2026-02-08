@@ -1,17 +1,11 @@
-import axios from 'axios';
-import { useCallback, useEffect, useState } from 'react';
-import { API_BASE_URL } from '../constants/api';
+﻿import { useCallback, useEffect, useState } from 'react';
+import { api } from '../services/api';
+import type { Cliente } from '../types/models';
 
-export type ClienteItem = {
-  telefono?: string;
-  clienteNombre?: string;
-  direccion?: string;
-  direccionDos?: string;
-  direccionTres?: string;
-};
+export type ClienteItem = Cliente;
 
 export function useClientesList() {
-  const [data, setData] = useState<ClienteItem[]>([]);
+  const [data, setData] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,10 +13,8 @@ export function useClientesList() {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`${API_BASE_URL}/clientes`);
-      setData(Array.isArray(res.data) ? res.data : []);
+      setData(await api.clientes.getAll());
     } catch (e: any) {
-      // If 404, just means no clients yet
       if (e.response?.status === 404) {
         setData([]);
       } else {
@@ -34,9 +26,7 @@ export function useClientesList() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   return { data, loading, error, refetch: fetchAll };
 }

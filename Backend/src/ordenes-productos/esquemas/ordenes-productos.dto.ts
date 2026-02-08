@@ -16,4 +16,12 @@ export class CreateOrdenesProductosDto {
 	@IsOptional()
 	@IsNumber()
 	cantidad?: number;
+
+	@IsOptional()
+	@IsNumber()
+	precioUnitario?: number;
+
+	@IsOptional()
+	@IsNumber()
+	varianteId?: number;
 }

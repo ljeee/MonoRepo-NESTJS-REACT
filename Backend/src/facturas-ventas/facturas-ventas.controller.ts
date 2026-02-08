@@ -22,6 +22,13 @@ export class FacturasVentasController {
 		return this.service.findByDay();
 	}
 
+	@Get('dia/stats')
+	@ApiOperation({ summary: 'Obtener estadísticas de facturas del día' })
+	@ApiResponse({ status: 200, description: 'Estadísticas: total día, pagado, pendiente.' })
+	getDayStats() {
+		return this.service.getDayStats();
+	}
+
 	@Get('dia/pendientes')
 	@ApiOperation({ summary: 'Obtener facturas de ventas pendientes del día actual' })
 	@ApiResponse({ status: 200, description: 'Lista de facturas de ventas pendientes del día.' })

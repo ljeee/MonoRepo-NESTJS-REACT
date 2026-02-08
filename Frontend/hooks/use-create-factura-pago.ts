@@ -1,15 +1,6 @@
-import axios from 'axios';
 import { useCallback, useState } from 'react';
-import { API_BASE_URL } from '../constants/api';
-
-export interface CreateFacturaPagoDto {
-  total?: number;
-  nombreGasto?: string;
-  descripcion?: string;
-  estado?: string;
-  fechaFactura?: string; // YYYY-MM-DD
-  metodo?: string;
-}
+import { api } from '../services/api';
+import type { CreateFacturaPagoDto, FacturaPago } from '../types/models';
 
 export function useCreateFacturaPago() {
   const [loading, setLoading] = useState(false);
@@ -17,7 +8,6 @@ export function useCreateFacturaPago() {
   const [success, setSuccess] = useState(false);
 
   const createPago = async (data: CreateFacturaPagoDto) => {
-    // Validaciones mínimas antes de enviar
     if (data.total == null || isNaN(data.total) || data.total <= 0) {
       setError('Total inválido');
       return null;
@@ -28,7 +18,7 @@ export function useCreateFacturaPago() {
     }
     setLoading(true); setError(null); setSuccess(false);
     try {
-      await axios.post(`${API_BASE_URL}/facturas-pagos`, data);
+      await api.pagos.create(data);
       setSuccess(true);
       return true;
     } catch (e: any) {
@@ -42,48 +32,39 @@ export function useCreateFacturaPago() {
   return { createPago, loading, error, success };
 }
 
-export interface FacturaPagoItem {
-  pagosId?: number;
-  total?: number;
-  nombreGasto?: string;
-  descripcion?: string;
-  estado?: string;
-  fechaFactura?: string;
-  metodo?: string;
-}
-
 export function useFacturasPagosDia() {
-  const [data, setData] = useState<FacturaPagoItem[]>([]);
+  const [data, setData] = useState<FacturaPago[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      const res = await axios.get(`${API_BASE_URL}/facturas-pagos/dia`);
-      const arr = Array.isArray(res.data) ? res.data : [];
-      // Filtra elementos vacíos y ordena por pagosId desc
-      const cleaned = arr.filter(p => p && Object.keys(p).length > 0).sort((a: any, b: any) => (b.pagosId || 0) - (a.pagosId || 0));
+      const arr = await api.pagos.getDay();
+      const cleaned = arr
+        .filter((p) => p && Object.keys(p).length > 0)
+        .sort((a, b) => (b.pagosId || 0) - (a.pagosId || 0));
       setData(cleaned);
     } catch (e: any) {
-      // If 404, just means no data for today
       if (e.response?.status === 404) {
         setData([]);
       } else {
         setError(e.message || 'Error cargando pagos del día');
       }
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   return { data, loading, error, fetchData };
 }
 
 export function useFacturasPagosRango() {
-  const [data, setData] = useState<FacturaPagoItem[]>([]);
+  const [data, setData] = useState<FacturaPago[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [from, setFrom] = useState<string>('');
-  const [to, setTo] = useState<string>('');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
   const fetchData = useCallback(async () => {
     if (!from || !to) return;
@@ -93,16 +74,16 @@ export function useFacturasPagosRango() {
     }
     setLoading(true); setError(null);
     try {
-      const res = await axios.get(`${API_BASE_URL}/facturas-pagos?from=${from}&to=${to}`);
-      setData(Array.isArray(res.data) ? res.data : []);
+      setData(await api.pagos.getAll({ from, to }));
     } catch (e: any) {
-      // If 404, just means no data in range
       if (e.response?.status === 404) {
         setData([]);
       } else {
         setError(e.message || 'Error cargando pagos');
       }
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, [from, to]);
 
   return { data, loading, error, from, to, setFrom, setTo, fetchData };
@@ -116,7 +97,7 @@ export function useUpdateFacturaPago() {
   const updatePago = async (id: number, data: Partial<CreateFacturaPagoDto>) => {
     setLoading(true); setError(null); setSuccess(false);
     try {
-      await axios.patch(`${API_BASE_URL}/facturas-pagos/${id}`, data);
+      await api.pagos.update(id, data);
       setSuccess(true);
       return true;
     } catch (e: any) {
@@ -137,7 +118,7 @@ export function useDeleteFacturaPago() {
   const deletePago = async (id: number) => {
     setLoading(true); setError(null);
     try {
-      await axios.delete(`${API_BASE_URL}/facturas-pagos/${id}`);
+      await api.pagos.delete(id);
       return true;
     } catch (e: any) {
       setError(e.message || 'Error eliminando pago');

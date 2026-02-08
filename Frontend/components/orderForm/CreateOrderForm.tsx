@@ -1,106 +1,166 @@
 import { Picker } from '@react-native-picker/picker';
-import axios from 'axios';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { API_BASE_URL } from '../../constants/api';
+import { api } from '../../services/api';
+import { useOrder } from '../../contexts/OrderContext';
 
 import { useClientByPhone } from '../../hooks/use-client-by-phone';
-import { useDomiciliariosList } from '../../hooks/use-domiciliarios-list';
+import { Domiciliario } from '../../types/models';
+import { Producto, ProductoVariante } from '../../hooks/use-productos';
 import { useBreakpoint } from '../../styles/responsive';
 import { colors } from '../../styles/theme';
 import { orderFormStyles as styles } from '../../styles/CreateOrderForm.styles';
-import ProductForm from './ProductForm';
+import CartPanel, { CartItem } from './CartPanel';
+import MenuPicker from './MenuPicker';
+import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
 
-const calzoneSabores = ['D\u2019Firu Pollo', 'D\u2019Firu Carne', 'Hawaiano', 'Ranchero', 'Pollo y champi\u00f1ones', 'Arequipe y queso', 'Paisa', 'Mexicano', 'Carnes'];
-const pizzaSabores = ['Carnes', 'Rachera', 'Paisa', 'Hawaiana', 'De la casa', 'D\u2019Firu Pollo', 'D\u2019Firu Carne', 'Vegetales', 'Mexicana', 'Bolo\u00f1esa', 'Napolitana', 'Jamon & Queso', 'La Quesuda', 'Pollo Tocineta', 'Pollo Maicitos', 'Pollo Champi\u00f1ones'];
-const initialProduct = { tipo: '', tamano: '', sabor1: '', sabor2: '', sabor3: '', cantidad: '1' };
+let _cartIdCounter = 0;
+function nextCartId() {
+  return `cart-${++_cartIdCounter}-${Date.now()}`;
+}
+
+function extractErrorMessage(err: any): string {
+  if (!err?.response) {
+    return err?.request
+      ? 'No se recibió respuesta del servidor. Verifique la conexión.'
+      : 'Error inesperado al crear la orden.';
+  }
+  const { status, data = {} } = err.response;
+  let msg: string | undefined;
+  if (Array.isArray(data.message)) {
+    msg = data.message
+      .map((m: any) =>
+        typeof m === 'string' ? m : m.constraints ? Object.values(m.constraints).join(', ') : JSON.stringify(m),
+      )
+      .join(' | ');
+  } else {
+    msg = data.message ?? data.error;
+  }
+  if (status === 400) return `Datos inválidos: ${msg || 'Verifique los datos ingresados'}`;
+  if (status === 404) return 'Servicio no encontrado. Verifique que el backend esté funcionando.';
+  if (status === 500) return `Error del servidor: ${msg || 'Intente nuevamente'}`;
+  return `Error (${status}): ${msg || 'No se pudo crear la orden'}`;
+}
 
 export default function CreateOrderForm() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
-  const [tipoPedido, setTipoPedido] = useState<'mesa' | 'domicilio' | 'llevar'>('mesa');
-  const [telefonoCliente, setTelefonoCliente] = useState('');
-  const [nombreCliente, setNombreCliente] = useState('');
-  const [numeroMesa, setNumeroMesa] = useState('');
-  const [selectedAddress, setSelectedAddress] = useState('');
-  const [newAddress, setNewAddress] = useState('');
-  const [telefonoDomiciliario, setTelefonoDomiciliario] = useState('');
-  const { domiciliarios, fetchDomiciliarios } = useDomiciliariosList();
-  const [metodo, setMetodo] = useState('efectivo');
-  const [productos, setProductos] = useState([{ ...initialProduct }]);
-  const [saboresVisibles, setSaboresVisibles] = useState([1]);
+  const { formState, updateForm, clearCart, isHydrated } = useOrder();
+  
+  const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
+  const fetchDomiciliarios = useCallback(async () => {
+    try {
+      const data = await api.domiciliarios.getAll();
+      setDomiciliarios(data);
+    } catch { /* silent */ }
+  }, []);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const { client, fetchClient } = useClientByPhone();
 
-  // Computado de direcciones del cliente
+  // ==================== CARRITO ====================
+  const addToCart = useCallback((producto: Producto, variante: ProductoVariante, sabores?: string[]) => {
+    const newItem: CartItem = {
+      id: nextCartId(),
+      productoNombre: producto.productoNombre,
+      varianteNombre: variante.nombre,
+      varianteId: variante.varianteId,
+      precioUnitario: Number(variante.precio),
+      cantidad: 1,
+      sabores: sabores,
+    };
+    
+    // Pizzas with sabores always get their own line (different combos shouldn't merge)
+    const existing = sabores?.length
+      ? undefined
+      : formState.cart.find(i => i.varianteId === variante.varianteId);
+    
+    if (existing) {
+      // Merge with existing - update cart with updated item
+      const updatedCart = formState.cart.map(i =>
+        i.varianteId === variante.varianteId
+          ? { ...i, cantidad: i.cantidad + 1 }
+          : i,
+      );
+      updateForm({ cart: updatedCart });
+    } else {
+      // Add new
+      updateForm({ cart: [...formState.cart, newItem] });
+    }
+  }, [formState.cart, updateForm]);
+
+  const removeFromCart = useCallback((id: string) => {
+    updateForm({ cart: formState.cart.filter(i => i.id !== id) });
+  }, [formState.cart, updateForm]);
+
+  const updateCartCantidad = useCallback((id: string, cantidad: number) => {
+    updateForm({
+      cart: formState.cart.map(i =>
+        i.id === id ? { ...i, cantidad: Math.max(1, cantidad) } : i,
+      ),
+    });
+  }, [formState.cart, updateForm]);
+
+  // ==================== EFFECTS ====================
   const hasClienteDirecciones = !!(client && [client.direccion, client.direccionDos, client.direccionTres].filter(Boolean).length);
 
   // Buscar cliente solo cuando hay 10 dígitos y es domicilio
   useEffect(() => {
-    if (tipoPedido === 'domicilio' && telefonoCliente.length === 10) fetchClient(telefonoCliente);
-    // fetchClient is stable from hook, only depends on telefonoCliente and tipoPedido
-  }, [fetchClient, telefonoCliente, tipoPedido]);
+    if (formState.tipoPedido === 'domicilio' && formState.telefonoCliente.length === 10) {
+      fetchClient(formState.telefonoCliente);
+    }
+  }, [fetchClient, formState.telefonoCliente, formState.tipoPedido]);
 
   // Cargar domiciliarios si es domicilio
   useEffect(() => {
-    if (tipoPedido === 'domicilio') fetchDomiciliarios();
-    // fetchDomiciliarios is stable from hook, only depends on tipoPedido
-  }, [fetchDomiciliarios, tipoPedido]);
+    if (formState.tipoPedido === 'domicilio') fetchDomiciliarios();
+  }, [fetchDomiciliarios, formState.tipoPedido]);
 
   // Autocompletar nombre si el cliente existe
   useEffect(() => {
-    if (tipoPedido === 'domicilio' && client?.clienteNombre) setNombreCliente(client.clienteNombre);
-    // Only depends on client and tipoPedido
-  }, [client, tipoPedido]);
+    if (formState.tipoPedido === 'domicilio' && client?.clienteNombre) {
+      updateForm({ nombreCliente: client.clienteNombre });
+    }
+  }, [client, formState.tipoPedido, updateForm]);
 
   // Limpiar direcciones al salir de domicilio
   useEffect(() => {
-    if (tipoPedido !== 'domicilio') {
-      setSelectedAddress('');
-      setNewAddress('');
-      setTelefonoCliente('');
-      setTelefonoDomiciliario('');
+    if (formState.tipoPedido !== 'domicilio') {
+      updateForm({
+        selectedAddress: '',
+        newAddress: '',
+        telefonoCliente: '',
+        telefonoDomiciliario: '',
+        costoDomicilio: '',
+      });
     }
-    // Only depends on tipoPedido
-  }, [tipoPedido]);
+  }, [formState.tipoPedido, updateForm]);
 
-  const handleProductChange = useCallback((index: number, field: string, value: string) => {
-    setProductos(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
-  }, []);
-
-  const addProduct = useCallback(() => {
-    setProductos(prev => [...prev, { ...initialProduct }]);
-    setSaboresVisibles(prev => [...prev, 1]);
-  }, []);
-
-  const removeProduct = useCallback((index: number) => {
-    setProductos(prev => prev.filter((_, i) => i !== index));
-    setSaboresVisibles(prev => prev.filter((_, i) => i !== index));
-  }, []);
-
+  // ==================== SUBMIT ====================
   const handleSubmit = async () => {
-    setLoading(true); setError(''); setSuccess(false);
+    setLoading(true);
+    setError('');
+    setSuccess(false);
 
     // Validaciones
-    if (tipoPedido === 'mesa' && !numeroMesa) {
+    if (formState.tipoPedido === 'mesa' && !formState.numeroMesa) {
       setLoading(false);
       setError('Debe seleccionar un número de mesa');
       return;
     }
 
-    if (tipoPedido === 'domicilio') {
-      if (!nombreCliente || !nombreCliente.trim()) {
+    if (formState.tipoPedido === 'domicilio') {
+      if (!formState.nombreCliente || !formState.nombreCliente.trim()) {
         setLoading(false);
         setError('Debe ingresar el nombre del cliente');
         return;
       }
 
       const direccion = hasClienteDirecciones
-        ? (selectedAddress === '__nueva__' ? newAddress : selectedAddress)
-        : newAddress;
+        ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
+        : formState.newAddress;
 
       if (!direccion || !direccion.trim()) {
         setLoading(false);
@@ -109,67 +169,85 @@ export default function CreateOrderForm() {
       }
     }
 
-    if (tipoPedido === 'llevar') {
-      if (!nombreCliente || !nombreCliente.trim()) {
+    if (formState.tipoPedido === 'llevar') {
+      if (!formState.nombreCliente || !formState.nombreCliente.trim()) {
         setLoading(false);
         setError('Debe ingresar el nombre del cliente');
         return;
       }
     }
 
-    // Validar que haya al menos un producto válido
-    const productosValidos = productos.filter(p => p.tipo && p.tipo.trim());
-    if (productosValidos.length === 0) {
+    // Validar carrito
+    if (formState.cart.length === 0) {
       setLoading(false);
-      setError('Debe agregar al menos un producto válido');
-      return;
-    }
-
-    // Validar tipoPedido
-    if (!tipoPedido || (tipoPedido !== 'mesa' && tipoPedido !== 'domicilio')) {
-      setError('Debes seleccionar un tipo de pedido');
-      setLoading(false);
+      setError('Debe agregar al menos un producto al pedido');
       return;
     }
 
     try {
       const payload = {
-        tipoPedido: tipoPedido || 'mesa',
-        telefonoCliente: telefonoCliente || undefined,
-        nombreCliente: tipoPedido === 'mesa' ? numeroMesa : nombreCliente,
-        direccionCliente: tipoPedido === 'domicilio'
+        tipoPedido: formState.tipoPedido || 'mesa',
+        telefonoCliente: formState.telefonoCliente || undefined,
+        nombreCliente: formState.tipoPedido === 'mesa' ? formState.numeroMesa : formState.nombreCliente,
+        direccionCliente: formState.tipoPedido === 'domicilio'
           ? (hasClienteDirecciones
-            ? (selectedAddress === '__nueva__' ? newAddress : selectedAddress)
-            : newAddress)
+            ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
+            : formState.newAddress)
           : undefined,
-        telefonoDomiciliario: telefonoDomiciliario || undefined,
-        metodo,
-        productos: productosValidos.map(p => {
-          const item: any = {
-            tipo: p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1).toLowerCase(),
-            cantidad: Number(p.cantidad) || 1,
-          };
-          if (p.tamano) item.tamano = p.tamano.charAt(0).toUpperCase() + p.tamano.slice(1).toLowerCase();
-          if (p.sabor1) item.sabor1 = p.sabor1.charAt(0).toUpperCase() + p.sabor1.slice(1).toLowerCase();
-          if (p.sabor2) item.sabor2 = p.sabor2.charAt(0).toUpperCase() + p.sabor2.slice(1).toLowerCase();
-          if (p.sabor3) item.sabor3 = p.sabor3.charAt(0).toUpperCase() + p.sabor3.slice(1).toLowerCase();
-          return item;
-        })
+        telefonoDomiciliario: formState.telefonoDomiciliario || undefined,
+        costoDomicilio: formState.tipoPedido === 'domicilio' && formState.costoDomicilio
+          ? Number(formState.costoDomicilio)
+          : undefined,
+        metodo: formState.metodo,
+        productos: formState.cart.map(item => ({
+          tipo: item.productoNombre,
+          varianteId: item.varianteId,
+          cantidad: item.cantidad,
+          sabor1: item.sabores?.[0],
+          sabor2: item.sabores?.[1],
+          sabor3: item.sabores?.[2],
+        })),
       };
 
-      const response = await axios.post(`${API_BASE_URL}/ordenes`, payload);
-      const ordenId = response.data?.ordenId || response.data?.id;
+      const response = await api.ordenes.create(payload as any);
+      const ordenId = response?.ordenId || (response as any)?.id;
+
+      // WhatsApp al domiciliario (solo domicilio)
+      if (formState.tipoPedido === 'domicilio' && formState.telefonoDomiciliario) {
+        const costoDom = formState.costoDomicilio ? Number(formState.costoDomicilio) : 0;
+        const total = formState.cart.reduce((s, i) => s + i.precioUnitario * i.cantidad, 0) + costoDom;
+        const receiptProducts = formState.cart.map(i => ({
+          nombre: `${i.productoNombre}${i.varianteNombre ? ' - ' + i.varianteNombre : ''}${i.sabores?.length ? ' (' + i.sabores.join(', ') + ')' : ''}`,
+          cantidad: i.cantidad,
+          precioUnitario: i.precioUnitario,
+        }));
+        const direccion = hasClienteDirecciones
+          ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
+          : formState.newAddress;
+        sendWhatsAppDomicilio(formState.telefonoDomiciliario, {
+          clienteNombre: formState.nombreCliente,
+          direccion: direccion || '',
+          telefonoCliente: formState.telefonoCliente || undefined,
+          productos: receiptProducts,
+          total,
+          costoDomicilio: costoDom || undefined,
+          metodo: formState.metodo,
+        });
+      }
 
       setSuccess(true);
 
       // Limpiar formulario
-      setProductos([{ ...initialProduct }]);
-      setNumeroMesa('');
-      setNombreCliente('');
-      setSelectedAddress('');
-      setNewAddress('');
-      setTelefonoCliente('');
-      setTelefonoDomiciliario('');
+      clearCart();
+      updateForm({
+        numeroMesa: '',
+        nombreCliente: '',
+        selectedAddress: '',
+        newAddress: '',
+        telefonoCliente: '',
+        telefonoDomiciliario: '',
+        costoDomicilio: '',
+      });
 
       // Navegar al detalle de la orden creada después de un breve delay
       setTimeout(() => {
@@ -180,54 +258,24 @@ export default function CreateOrderForm() {
         }
       }, 800);
     } catch (err: any) {
-      console.error('Error creating order:', err);
-
-      if (err?.response) {
-        const status = err.response.status;
-        const data = err.response.data || {};
-        console.error('Backend response data:', data);
-
-        // Normalizar mensajes de validación que vienen como array
-        let message: string | undefined;
-        if (Array.isArray(data.message)) {
-          try {
-            message = data.message.map((m: any) => {
-              if (typeof m === 'string') return m;
-              if (m.constraints) return Object.values(m.constraints).join(', ');
-              return JSON.stringify(m);
-            }).join(' | ');
-          } catch (e) {
-            message = JSON.stringify(data.message);
-          }
-        } else if (typeof data.message === 'string') {
-          message = data.message;
-        } else if (data.error) {
-          message = data.error;
-        }
-
-        if (status === 400) {
-          setError(`Datos inválidos: ${message || 'Verifique los datos ingresados'}`);
-        } else if (status === 404) {
-          setError('Servicio no encontrado. Verifique que el backend esté funcionando.');
-        } else if (status === 500) {
-          setError(`Error del servidor: ${message || 'Intente nuevamente'}`);
-        } else {
-          setError(`Error (${status}): ${message || 'No se pudo crear la orden'}`);
-        }
-      } else if (err.request) {
-        setError('No se recibió respuesta del servidor. Verifique la conexión.');
-        console.error('Request info:', err.request);
-      } else {
-        setError('Error inesperado al crear la orden.');
-      }
+      setError(extractErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const pickerTextStyle = isMobile ? { color: '#000', fontSize: 18 } : { color: '#000' };
-  const inputTextStyle = isMobile ? { color: '#000', fontSize: 18 } : { color: '#000' };
-  const placeholderTextColor = isMobile ? '#666' : '#999';
+  // ==================== RENDER ====================
+  // Wait for AsyncStorage to hydrate before rendering
+  if (!isHydrated) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: colors.text, fontSize: 16 }}>Cargando...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
@@ -248,8 +296,8 @@ export default function CreateOrderForm() {
               <Text style={styles.label}>Tipo de pedido</Text>
               <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={tipoPedido}
-                  onValueChange={setTipoPedido}
+                  selectedValue={formState.tipoPedido}
+                  onValueChange={(val) => updateForm({ tipoPedido: val as any })}
                   style={styles.picker}
                   itemStyle={{ color: colors.text, fontSize: 16 }}
                   dropdownIconColor={colors.text}
@@ -266,8 +314,8 @@ export default function CreateOrderForm() {
               <Text style={styles.label}>Método de pago</Text>
               <View style={styles.pickerContainer}>
                 <Picker
-                  selectedValue={metodo}
-                  onValueChange={setMetodo}
+                  selectedValue={formState.metodo}
+                  onValueChange={(val) => updateForm({ metodo: val })}
                   style={styles.picker}
                   itemStyle={{ color: colors.text, fontSize: 16 }}
                   dropdownIconColor={colors.text}
@@ -279,13 +327,13 @@ export default function CreateOrderForm() {
             </View>
 
             {/* TELEFONO (Solo Domicilio) */}
-            {tipoPedido === 'domicilio' && (
+            {formState.tipoPedido === 'domicilio' && (
               <View style={[styles.col4, isMobile && styles.col4Mobile]}>
                 <Text style={styles.label}>Teléfono Cliente</Text>
                 <TextInput
                   style={styles.input}
-                  value={telefonoCliente}
-                  onChangeText={setTelefonoCliente}
+                  value={formState.telefonoCliente}
+                  onChangeText={(val) => updateForm({ telefonoCliente: val })}
                   placeholder="Teléfono (10 dígitos)"
                   placeholderTextColor={colors.subText}
                   keyboardType="numeric"
@@ -296,11 +344,13 @@ export default function CreateOrderForm() {
             {/* NOMBRE / MESA */}
             <View style={[styles.col4, isMobile && styles.col4Mobile]}>
               <Text style={styles.label}>Nombre / Mesa</Text>
-              {tipoPedido === 'mesa' ? (
+              {formState.tipoPedido === 'mesa' ? (
                 <View style={styles.pickerContainer}>
                   <Picker
-                    selectedValue={numeroMesa}
-                    onValueChange={val => { setNumeroMesa(val); setNombreCliente(val); }}
+                    selectedValue={formState.numeroMesa}
+                    onValueChange={(val) => {
+                      updateForm({ numeroMesa: val, nombreCliente: val });
+                    }}
                     style={styles.picker}
                     itemStyle={{ color: colors.text, fontSize: 16 }}
                     dropdownIconColor={colors.text}
@@ -309,11 +359,11 @@ export default function CreateOrderForm() {
                     {[...Array(10)].map((_, i) => <Picker.Item key={i + 1} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
                   </Picker>
                 </View>
-              ) : tipoPedido === 'domicilio' ? (
+              ) : formState.tipoPedido === 'domicilio' ? (
                 <TextInput
                   style={styles.input}
-                  value={nombreCliente}
-                  onChangeText={setNombreCliente}
+                  value={formState.nombreCliente}
+                  onChangeText={(val) => updateForm({ nombreCliente: val })}
                   placeholder={client === null ? 'Nuevo cliente' : 'Nombre'}
                   placeholderTextColor={colors.subText}
                   editable={!client || !client.clienteNombre}
@@ -321,8 +371,8 @@ export default function CreateOrderForm() {
               ) : (
                 <TextInput
                   style={styles.input}
-                  value={nombreCliente}
-                  onChangeText={setNombreCliente}
+                  value={formState.nombreCliente}
+                  onChangeText={(val) => updateForm({ nombreCliente: val })}
                   placeholder="Nombre Cliente"
                   placeholderTextColor={colors.subText}
                 />
@@ -331,7 +381,7 @@ export default function CreateOrderForm() {
           </View>
 
           {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
-          {tipoPedido === 'domicilio' && (
+          {formState.tipoPedido === 'domicilio' && (
             <View style={styles.row}>
               <View style={[styles.col6, isMobile && styles.col6Mobile]}>
                 <Text style={styles.label}>Dirección Cliente</Text>
@@ -339,8 +389,8 @@ export default function CreateOrderForm() {
                   <>
                     <View style={styles.pickerContainer}>
                       <Picker
-                        selectedValue={selectedAddress}
-                        onValueChange={val => setSelectedAddress(val)}
+                        selectedValue={formState.selectedAddress}
+                        onValueChange={(val) => updateForm({ selectedAddress: val })}
                         style={styles.picker}
                         itemStyle={{ color: colors.text, fontSize: 16 }}
                         dropdownIconColor={colors.text}
@@ -352,11 +402,11 @@ export default function CreateOrderForm() {
                         <Picker.Item label="Nueva dirección..." value="__nueva__" />
                       </Picker>
                     </View>
-                    {selectedAddress === '__nueva__' && (
+                    {formState.selectedAddress === '__nueva__' && (
                       <TextInput
                         style={styles.input}
-                        value={newAddress}
-                        onChangeText={setNewAddress}
+                        value={formState.newAddress}
+                        onChangeText={(val) => updateForm({ newAddress: val })}
                         placeholder="Ingrese nueva dirección"
                         placeholderTextColor={colors.subText}
                       />
@@ -365,20 +415,20 @@ export default function CreateOrderForm() {
                 ) : (
                   <TextInput
                     style={styles.input}
-                    value={newAddress}
-                    onChangeText={setNewAddress}
+                    value={formState.newAddress}
+                    onChangeText={(val) => updateForm({ newAddress: val })}
                     placeholder="Dirección completa"
                     placeholderTextColor={colors.subText}
                   />
                 )}
               </View>
 
-              <View style={[styles.col6, isMobile && styles.col6Mobile]}>
+              <View style={[styles.col4, isMobile && styles.col4Mobile]}>
                 <Text style={styles.label}>Domiciliario</Text>
                 <View style={styles.pickerContainer}>
                   <Picker
-                    selectedValue={telefonoDomiciliario}
-                    onValueChange={setTelefonoDomiciliario}
+                    selectedValue={formState.telefonoDomiciliario}
+                    onValueChange={(val) => updateForm({ telefonoDomiciliario: val })}
                     style={styles.picker}
                     itemStyle={{ color: colors.text, fontSize: 16 }}
                     dropdownIconColor={colors.text}
@@ -388,29 +438,34 @@ export default function CreateOrderForm() {
                   </Picker>
                 </View>
               </View>
+
+              <View style={[styles.col4, isMobile && styles.col4Mobile]}>
+                <Text style={styles.label}>Costo Domicilio</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formState.costoDomicilio}
+                  onChangeText={(val) => updateForm({ costoDomicilio: val.replace(/[^0-9]/g, '') })}
+                  placeholder="$0"
+                  placeholderTextColor={colors.subText}
+                  keyboardType="numeric"
+                />
+              </View>
             </View>
           )}
 
+          {/* =============== PRODUCTOS (MENÚ) =============== */}
           <Text style={styles.sectionTitle}>Productos</Text>
-          {productos.map((p, idx) => (
-            <ProductForm
-              key={idx}
-              product={p}
-              index={idx}
-              saboresVisibles={saboresVisibles}
-              handleProductChange={handleProductChange}
-              setSaboresVisibles={setSaboresVisibles}
-              removeProduct={removeProduct}
-              pizzaSabores={pizzaSabores}
-              calzoneSabores={calzoneSabores}
-              totalProducts={productos.length}
-            />
-          ))}
-          <TouchableOpacity style={styles.addProductBtn} onPress={addProduct} activeOpacity={0.8}>
-            <Text style={styles.addProductBtnText}>+ AGREGAR PRODUCTO</Text>
-          </TouchableOpacity>
+          <MenuPicker onAdd={addToCart} />
 
+          {/* =============== CARRITO / BALANCE =============== */}
+          <CartPanel
+            items={formState.cart}
+            onRemove={removeFromCart}
+            onUpdateCantidad={updateCartCantidad}
+            costoDomicilio={formState.tipoPedido === 'domicilio' && formState.costoDomicilio ? Number(formState.costoDomicilio) : 0}
+          />
 
+          {/* =============== ACCIONES =============== */}
           <TouchableOpacity
             style={[styles.createOrderBtn, loading && { opacity: 0.6 }]}
             onPress={handleSubmit}

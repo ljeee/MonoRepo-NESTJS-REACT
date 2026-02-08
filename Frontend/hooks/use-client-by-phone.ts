@@ -1,13 +1,7 @@
-import axios from 'axios';
-import { useCallback, useState } from 'react';
-import { API_BASE_URL } from '../constants/api';
+﻿import { useCallback, useState } from 'react';
+import { api } from '../services/api';
+import type { Cliente } from '../types/models';
 
-export type Cliente = {
-  clienteNombre?: string;
-  direccion?: string;
-  direccionDos?: string;
-  direccionTres?: string;
-};
 export function useClientByPhone() {
   const [client, setClient] = useState<Cliente | null>(null);
   const [loading, setLoading] = useState(false);
@@ -17,9 +11,7 @@ export function useClientByPhone() {
     setLoading(true);
     setError('');
     try {
-      const url = `${API_BASE_URL}/clientes/${telefono}`;
-      const res = await axios.get(url);
-      setClient(res.data);
+      setClient(await api.clientes.getByPhone(telefono));
     } catch {
       setClient(null);
       setError('No encontrado');

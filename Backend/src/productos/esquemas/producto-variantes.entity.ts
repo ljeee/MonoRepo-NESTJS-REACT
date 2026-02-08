@@ -3,7 +3,7 @@ import {Productos} from './productos.entity';
 
 @Entity('producto_variantes')
 export class ProductoVariantes {
-	@PrimaryGeneratedColumn()
+	@PrimaryGeneratedColumn({name: 'variante_id'})
 	varianteId: number;
 
 	@Column({name: 'producto_id', type: 'integer'})

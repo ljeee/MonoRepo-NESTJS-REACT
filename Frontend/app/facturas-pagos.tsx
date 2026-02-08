@@ -5,6 +5,7 @@ import { ErrorState } from '../components/states/ErrorState';
 import { LoadingState } from '../components/states/LoadingState';
 import { useCreateFacturaPago, useDeleteFacturaPago, useFacturasPagosDia, useFacturasPagosRango, useUpdateFacturaPago } from '../hooks/use-create-factura-pago';
 import { styles } from '../styles/facturas-pagos.styles';
+import { formatCurrency } from '../utils/formatNumber';
 
 function todayISO() {
   const d = new Date();
@@ -13,7 +14,7 @@ function todayISO() {
 
 function formatNumber(num: number | undefined | null): string {
   if (num === undefined || num === null) return '0';
-  return num.toLocaleString('es-CO');
+  return formatCurrency(num);
 }
 
 export default function FacturasPagosScreen() {

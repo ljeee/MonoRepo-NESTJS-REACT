@@ -3,14 +3,12 @@ import {InjectRepository} from "@nestjs/typeorm";
 import {Repository} from "typeorm";
 import {Domicilios} from "./esquemas/domicilios.entity";
 import {CreateDomiciliosDto} from "./esquemas/domicilios.dto";
-import {TelegramService} from "../common/telegram.service";
 
 @Injectable()
 export class DomiciliosService {
 	constructor(
 		@InjectRepository(Domicilios)
 		private readonly repo: Repository<Domicilios>,
-		private readonly telegramService: TelegramService,
 	) {}
 
 	findAll(page = 1, limit = 500) {
@@ -62,26 +60,6 @@ export class DomiciliosService {
 
 	update(id: number, data: Partial<CreateDomiciliosDto>) {
 		return this.repo.update(id, data);
-	}
-
-	async notificarEstadoCambio(id: number, nuevoEstado: string): Promise<void> {
-		const domicilio = await this.findOne(id);
-		
-		if (!domicilio || !domicilio.telefonoDomiciliarioAsignado) {
-			return;
-		}
-
-		const chatId = await this.telegramService.getChatIdFromPhone(domicilio.telefonoDomiciliarioAsignado);
-		
-		if (chatId) {
-			const mensaje = `🔔 Actualización de domicilio\n\nEstado: ${nuevoEstado}\nDirección: ${domicilio.direccionEntrega || 'N/A'}`;
-			await this.telegramService.sendDomicilioNotification(chatId, {
-				clienteNombre: domicilio.cliente?.clienteNombre || 'Cliente',
-				telefono: domicilio.telefono || 'N/A',
-				direccion: domicilio.direccionEntrega || 'N/A',
-				productos: `Estado actualizado a: ${nuevoEstado}`,
-			});
-		}
 	}
 
 	remove(id: number) {

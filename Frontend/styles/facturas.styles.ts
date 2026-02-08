@@ -1,180 +1,328 @@
 import { StyleSheet } from 'react-native';
 import { colors } from './theme';
 
+// ─── Page-level styles ────────────────────────────────────────────────────────
+
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg,
   },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 100,
-    width: '100%',
-    maxWidth: 900,
-    alignSelf: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: colors.accent,
-    marginTop: 24,
-    marginBottom: 16,
+  pageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    paddingBottom: 8,
   },
-  filterContainer: {
-    backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  refreshBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 6,
+  },
+  refreshBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
+  },
+  filterSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   filterRow: {
     flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
+    gap: 10,
     alignItems: 'flex-end',
   },
-  inputGroup: {
+  filterInputGroup: {
     flex: 1,
-    minWidth: 150,
+    minWidth: 130,
   },
-  label: {
-    fontSize: 14,
+  filterLabel: {
+    fontSize: 11,
+    color: colors.textMuted,
     fontWeight: '600',
-    color: colors.subText,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  input: {
-    backgroundColor: colors.bg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: colors.text,
-  },
-  searchButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.accent,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  refreshButton: {
-    backgroundColor: colors.accent,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    alignSelf: 'flex-start',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  errorText: {
-    color: colors.danger,
-    marginBottom: 16,
-    textAlign: 'center',
-    fontWeight: 'bold',
-    backgroundColor: 'rgba(239, 83, 80, 0.1)',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 83, 80, 0.3)',
-  },
-  listContainer: {
-    paddingBottom: 20,
-  },
-  facturaCard: {
-    backgroundColor: colors.card,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  facturaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  facturaId: {
-    fontWeight: 'bold',
-    fontSize: 18,
-    color: colors.text,
-  },
-  facturaDate: {
-    fontSize: 14,
-    color: colors.subText,
-  },
-  facturaTotal: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.text,
     marginBottom: 4,
+    textTransform: 'uppercase',
   },
-  facturaMetodo: {
-    fontSize: 14,
-    color: colors.subText,
-    marginBottom: 2,
+  filterInput: {
+    backgroundColor: colors.card,
+    color: colors.text,
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    fontSize: 13,
   },
-  facturaEstadoPendiente: {
-    fontSize: 14,
-    color: '#ff9800',
+  filterBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  filterBtnDisabled: {
+    backgroundColor: colors.card,
+  },
+  filterBtnEnabled: {
+    backgroundColor: colors.primary,
+  },
+  filterBtnText: {
+    color: '#fff',
     fontWeight: '600',
-    marginBottom: 2,
+    fontSize: 13,
   },
-  facturaEstadoCompletado: {
-    fontSize: 14,
-    color: colors.success,
+  csvBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: colors.info,
+  },
+  csvBtnDisabled: {
+    backgroundColor: colors.card,
+  },
+  errorBox: {
+    margin: 16,
+    padding: 12,
+    backgroundColor: colors.dangerLight,
+    borderRadius: 8,
+    borderLeftColor: colors.danger,
+    borderLeftWidth: 4,
+  },
+  errorBoxText: {
+    color: colors.danger,
     fontWeight: '600',
-    marginBottom: 2,
   },
-  facturaDesc: {
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: colors.textMuted,
+    marginTop: 8,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 10,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyTitle: {
     fontSize: 14,
-    color: colors.subText,
-    fontStyle: 'italic',
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: colors.textMuted,
     marginTop: 4,
   },
-  emptyText: {
-    textAlign: 'center',
-    color: colors.subText,
-    marginTop: 32,
-    fontSize: 16,
+});
+
+// ─── Shared factura component styles ──────────────────────────────────────────
+
+export const fStyles = StyleSheet.create({
+  // ── Stats ──
+  statsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 10,
   },
-  loader: {
-    marginTop: 40,
+  statCardMain: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: 10,
+    padding: 14,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: colors.textMuted,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statValueMain: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.primary,
+    marginTop: 4,
+  },
+  statSubtext: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  statRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statCardPagado: {
+    flex: 1,
+    backgroundColor: colors.successLight,
+    borderRadius: 10,
+    padding: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+  },
+  statValuePagado: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.success,
+    marginTop: 4,
+  },
+  statCardPendiente: {
+    flex: 1,
+    backgroundColor: colors.warningLight,
+    borderRadius: 10,
+    padding: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.warning,
+  },
+  statValuePendiente: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.warning,
+    marginTop: 4,
+  },
+
+  // ── Card ──
+  card: {
+    backgroundColor: colors.bgLight,
+    borderRadius: 10,
+    padding: 14,
+    borderLeftWidth: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  cardClientName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 2,
+  },
+  cardDate: {
+    fontSize: 11,
+    color: colors.textMuted,
+  },
+  cardTotal: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  cardMetodo: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+  notesBox: {
+    backgroundColor: colors.card,
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+  },
+  notesLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  notesText: {
+    fontSize: 11,
+    color: colors.text,
+    fontStyle: 'italic',
+    lineHeight: 16,
+  },
+
+  // ── Products ──
+  productsSection: {
+    marginBottom: 10,
+  },
+  productsSectionLabel: {
+    fontSize: 10,
+    color: colors.textMuted,
+    fontWeight: '600',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  productRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    backgroundColor: colors.card,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  productName: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  productQtyPrice: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  productSubtotal: {
+    fontSize: 10,
+    color: colors.textMuted,
+    marginTop: 2,
+  },
+
+  // ── Estado ──
+  estadoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  estadoIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  estadoDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  estadoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  estadoBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  estadoBtnDisabled: {
+    opacity: 0.6,
+  },
+  estadoBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 12,
   },
 });

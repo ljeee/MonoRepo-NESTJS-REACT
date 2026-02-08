@@ -1,14 +1,20 @@
-import axios from 'axios';
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
-import { API_BASE_URL } from '../constants/api';
+import { api } from '../services/api';
 import { styles } from '../styles/orden-detalle.styles';
+import { formatCurrency, formatDate } from '../utils/formatNumber';
 
 interface ProductoObj {
   productoId?: number;
   productoNombre?: string;
+  precio?: number;
+}
+
+interface VarianteObj {
+  varianteId?: number;
+  nombre?: string;
   precio?: number;
 }
 
@@ -17,6 +23,9 @@ interface OrdenProducto {
   cantidad: number;
   producto?: string;
   productoObj?: ProductoObj;
+  precioUnitario?: number;
+  varianteId?: number;
+  variante?: VarianteObj;
   // Campos dinámicos para productos personalizados
   tipo?: string;
   tamano?: string;
@@ -71,10 +80,7 @@ export default function OrdenDetalleScreen() {
 
     const fetchOrden = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/ordenes/${ordenId}`);
-        // console.log('Orden response:', response.data);
-
-        const ordenData = response.data;
+        const ordenData = await api.ordenes.getById(Number(ordenId));
         if (ordenData && !Array.isArray(ordenData.productos)) {
           ordenData.productos = [];
         }
@@ -95,14 +101,25 @@ export default function OrdenDetalleScreen() {
     // Si viene el nombre compuesto directo de la DB (campo 'producto')
     if (p.producto) return p.producto;
 
-    if (p.productoObj?.productoNombre) return p.productoObj.productoNombre;
+    // Nombre del producto + variante
+    const baseName = p.productoObj?.productoNombre;
+    const varianteName = p.variante?.nombre;
+    if (baseName && varianteName) return `${baseName} — ${varianteName}`;
+    if (baseName) return baseName;
 
-    // Construir nombre dinámico si es necesario
+    // Construir nombre dinámico si es necesario (legacy)
     const parts = [];
     if (p.tipo) parts.push(p.tipo);
     if (p.tamano) parts.push(p.tamano);
 
     return parts.length > 0 ? parts.join(' ') : 'Producto sin nombre';
+  };
+
+  const getUnitPrice = (p: OrdenProducto): number | null => {
+    if (p.precioUnitario != null) return Number(p.precioUnitario);
+    if (p.variante?.precio != null) return Number(p.variante.precio);
+    if (p.productoObj?.precio != null) return Number(p.productoObj.precio);
+    return null;
   };
 
   const getProductDetails = (p: OrdenProducto) => {
@@ -137,12 +154,25 @@ export default function OrdenDetalleScreen() {
           <TouchableOpacity
             style={[styles.backButton, { backgroundColor: '#10b981' }]}
             onPress={async () => {
+              // Build detailed product lines from productos array
+              const productLines = (orden.productos || []).map(p => {
+                const name = getProductName(p);
+                const qty = p.cantidad || 1;
+                const details = getProductDetails(p);
+                const price = getUnitPrice(p);
+                let line = `${qty} ${name}`;
+                if (details) line += `  ${details}`;
+                if (price != null) line += `  $${formatCurrency(price * qty)}`;
+                return line;
+              });
+
               const textoACopiar = [
                 `Cliente: ${orden.factura?.clienteNombre || 'Sin nombre'}`,
                 orden.domicilios?.[0]?.telefono ? `Teléfono: ${orden.domicilios[0].telefono}` : '',
                 orden.domicilios?.[0]?.direccionEntrega ? `Dirección: ${orden.domicilios[0].direccionEntrega}` : '',
-                orden.factura?.descripcion ? `Productos: ${orden.factura.descripcion}` : '',
-                `Método de pago: ${orden.factura?.metodo || 'No especificado'}`
+                productLines.length > 0 ? `Productos:\n${productLines.join('\n')}` : '',
+                `Método de pago: ${orden.factura?.metodo || 'No especificado'}`,
+                orden.factura?.total != null ? `Total: $${formatCurrency(Number(orden.factura.total))}` : '',
               ].filter(Boolean).join('\n');
 
               try {
@@ -200,7 +230,7 @@ export default function OrdenDetalleScreen() {
         {orden.fechaOrden && (
           <View style={styles.infoRow}>
             <Text style={styles.label}>Fecha:</Text>
-            <Text style={styles.value}>{new Date(orden.fechaOrden).toLocaleString('es-CO')}</Text>
+            <Text style={styles.value}>{formatDate(orden.fechaOrden)}</Text>
           </View>
         )}
         {orden.factura?.descripcion && (
@@ -229,14 +259,14 @@ export default function OrdenDetalleScreen() {
                 </Text>
               )}
 
-              {ordenProducto.productoObj?.precio != null && (
+              {getUnitPrice(ordenProducto) != null && (
                 <Text style={styles.productPrecio}>
-                  Precio unitario: ${Number(ordenProducto.productoObj.precio).toLocaleString('es-CO')}
+                  Precio unitario: ${formatCurrency(getUnitPrice(ordenProducto))}
                 </Text>
               )}
-              {ordenProducto.productoObj?.precio != null && ordenProducto.cantidad && (
+              {getUnitPrice(ordenProducto) != null && ordenProducto.cantidad && (
                 <Text style={styles.productPrecio}>
-                  Subtotal: ${(Number(ordenProducto.productoObj.precio) * Number(ordenProducto.cantidad)).toLocaleString('es-CO')}
+                  Subtotal: ${formatCurrency(getUnitPrice(ordenProducto)! * Number(ordenProducto.cantidad))}
                 </Text>
               )}
             </View>
@@ -249,7 +279,7 @@ export default function OrdenDetalleScreen() {
       {orden.factura?.total != null && (
         <View style={styles.totalSection}>
           <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalValue}>${Number(orden.factura.total).toLocaleString('es-CO')}</Text>
+          <Text style={styles.totalValue}>${formatCurrency(Number(orden.factura.total))}</Text>
         </View>
       )}
     </ScrollView>

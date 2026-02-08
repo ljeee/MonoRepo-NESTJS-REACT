@@ -58,3 +58,9 @@ CI/CD is not configured yet. Recommended next step: GitHub Actions workflow to b
 ## Notes
 - Keep secrets in your own .env files; do not commit credentials.
 - Use Docker for the fastest reproduction of the full stack.
+
+## Docker
+
+docker-compose down -v
+
+docker-compose up --build -d

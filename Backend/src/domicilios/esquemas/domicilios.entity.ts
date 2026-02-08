@@ -27,6 +27,9 @@ export class Domicilios {
 	@Column({name: 'direccion_entrega', type: 'text', nullable: true})
 	direccionEntrega: string;
 
+	@Column({name: 'costo_domicilio', type: 'numeric', nullable: true, default: 0})
+	costoDomicilio: number;
+
 	@Column({name: 'estado_domicilio', type: 'text', default: () => "'pendiente'"})
 	estadoDomicilio: string;
 

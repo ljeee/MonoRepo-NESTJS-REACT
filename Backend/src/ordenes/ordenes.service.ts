@@ -10,8 +10,6 @@ import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {Productos} from '../productos/esquemas/productos.entity';
 import {ProductoVariantes} from '../productos/esquemas/producto-variantes.entity';
 import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.entity';
-import {PrintingService} from '../common/printing.service';
-import {TelegramService} from '../common/telegram.service';
 
 @Injectable()
 export class OrdenesService {
@@ -24,11 +22,9 @@ export class OrdenesService {
 		@InjectRepository(Productos) private readonly productosRepo: Repository<Productos>,
 		@InjectRepository(ProductoVariantes) private readonly variantesRepo: Repository<ProductoVariantes>,
 		@InjectRepository(OrdenesProductos) private readonly ordenesProductosRepo: Repository<OrdenesProductos>,
-		private readonly printingService: PrintingService,
-		private readonly telegramService: TelegramService,
 	) {}
 
-	findAll(query: FindOrdenesDto = {}) {
+	async findAll(query: FindOrdenesDto = {}) {
 		const { estado, from, to, page = 1, limit = 500 } = query;
 		const qb = this.repo.createQueryBuilder('o')
 			.leftJoinAndSelect('o.factura', 'factura')
@@ -49,7 +45,8 @@ export class OrdenesService {
 			qb.andWhere('o.fechaOrden <= :to', { to: new Date(to + 'T23:59:59') });
 		}
 
-		return qb.getMany();
+		const [data, total] = await qb.getManyAndCount();
+		return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
 	}
 
 	findByDay(estado?: string) {
@@ -102,7 +99,7 @@ export class OrdenesService {
 	findOne(id: number) {
 		return this.repo.findOne({
 			where: {ordenId: id},
-			relations: ['factura', 'productos', 'productos.productoObj', 'domicilios'],
+			relations: ['factura', 'productos', 'productos.productoObj', 'productos.variante', 'domicilios'],
 		});
 	}
 
@@ -129,16 +126,26 @@ export class OrdenesService {
 	}
 
 	private calcularPrecioProducto(item: CreateOrdenItemDto): number {
-		// Nuevo sistema: si hay varianteId, se calcula en procesarProductos
-		// Este método es legacy para compatibilidad
+		// Legacy: precios hardcodeados para compatibilidad con formulario viejo
+		// Los precios reales se obtienen de producto_variantes via varianteId
 		if (item.tipo?.toLowerCase() === 'pizza' && item.tamano) {
 			const precios: Record<string, number> = {
-				pequena: 15000,
-				mediana: 28000,
-				grande: 40000,
+				pequena: 16000,
+				mediana: 30000,
+				grande: 43000,
 			};
 			return precios[(item.tamano || '').toLowerCase()] ?? 0;
 		}
+		if (item.tipo?.toLowerCase() === 'hamburguesa' && item.sabor1) {
+			const precios: Record<string, number> = {
+				sencilla: 17000,
+				picosita: 20000,
+				'doble carne': 22000,
+			};
+			return precios[(item.sabor1 || '').toLowerCase()] ?? 0;
+		}
+		if (item.tipo?.toLowerCase() === 'chuzo') return 27000;
+		if (item.tipo?.toLowerCase() === 'torti burger') return 18000;
 		return 0;
 	}
 
@@ -196,30 +203,65 @@ export class OrdenesService {
 		return prod;
 	}
 
-	private async vincularProductoAOrden(ordenId: number, nombre: string, cantidad: number): Promise<void> {
-		await this.ordenesProductosRepo.save(this.ordenesProductosRepo.create({ordenId, producto: nombre, cantidad}));
+	private async vincularProductoAOrden(
+		ordenId: number,
+		nombre: string,
+		cantidad: number,
+		precioUnitario?: number,
+		varianteId?: number,
+	): Promise<void> {
+		const item = new OrdenesProductos();
+		item.ordenId = ordenId;
+		item.producto = nombre;
+		item.cantidad = cantidad;
+		item.precioUnitario = precioUnitario ?? null;
+		item.varianteId = varianteId ?? null;
+		await this.ordenesProductosRepo.save(item);
 	}
 
-	private async procesarProductos(ordenId: number, productos: CreateOrdenItemDto[]): Promise<void> {
+	private async procesarProductos(
+		ordenId: number,
+		productos: CreateOrdenItemDto[],
+	): Promise<{total: number; items: {nombre: string; cantidad: number; precioUnitario: number}[]}> {
+		let total = 0;
+		const items: {nombre: string; cantidad: number; precioUnitario: number}[] = [];
+
 		for (const item of productos) {
 			let nombre = this.construirNombreProducto(item);
 			let precio = 0;
+			let varianteId: number | undefined;
 
 			// Sistema nuevo: usar varianteId si existe
 			if (item.varianteId) {
-				precio = await this.obtenerPrecioVariante(item.varianteId);
-				const variante = await this.variantesRepo.findOne({where: {varianteId: item.varianteId}});
-				if (variante?.producto) {
-					nombre = `${variante.producto.productoNombre} - ${variante.nombre}`;
+				const variante = await this.variantesRepo.findOne({
+					where: {varianteId: item.varianteId},
+					relations: ['producto'],
+				});
+				if (variante) {
+					precio = Number(variante.precio);
+					varianteId = item.varianteId;
+					if (variante.producto) {
+						nombre = `${variante.producto.productoNombre} - ${variante.nombre}`;
+						const sabores = [item.sabor1, item.sabor2, item.sabor3].filter(Boolean);
+						if (sabores.length > 0) {
+							nombre += ` (${sabores.join(' + ')})`;
+						}
+					}
 				}
 			} else {
-				// Sistema legacy: calcular precio
+				// Sistema legacy: calcular precio por tipo/tamaño
 				precio = this.calcularPrecioProducto(item);
+				await this.upsertProducto(nombre, precio);
 			}
 
-			await this.upsertProducto(nombre, precio);
-			await this.vincularProductoAOrden(ordenId, nombre, Number(item.cantidad) || 1);
+			const cantidad = Number(item.cantidad) || 1;
+			total += precio * cantidad;
+
+			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precio, varianteId);
+			items.push({nombre, cantidad, precioUnitario: precio});
 		}
+
+		return {total, items};
 	}
 
 	private async upsertCliente(telefono: string, nombre?: string, direccion?: string): Promise<Clientes> {
@@ -264,6 +306,7 @@ export class OrdenesService {
 		telefonoCliente: string,
 		telefonoDomiciliario: string,
 		direccion?: string,
+		costoDomicilio?: number,
 	): Promise<Domicilios> {
 		return this.domiciliosRepo.save(
 			this.domiciliosRepo.create({
@@ -273,6 +316,7 @@ export class OrdenesService {
 				telefono: telefonoCliente,
 				telefonoDomiciliarioAsignado: telefonoDomiciliario,
 				direccionEntrega: direccion,
+				costoDomicilio: costoDomicilio || 0,
 			}),
 		);
 	}
@@ -297,6 +341,7 @@ export class OrdenesService {
 			data.telefonoCliente,
 			data.telefonoDomiciliario,
 			data.direccionCliente,
+			data.costoDomicilio,
 		);
 	}
 
@@ -312,25 +357,27 @@ export class OrdenesService {
 		// 2. Crear orden
 		const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden);
 
-		// 3. Procesar productos
+		// 3. Procesar productos y calcular total
+		let total = 0;
 		if (productos.length > 0) {
-			await this.procesarProductos(orden.ordenId, productos);
+			const result = await this.procesarProductos(orden.ordenId, productos);
+			total = result.total;
+		}
+
+		// 3.5 Sumar costo domicilio al total
+		if (this.esDomicilio(data.tipoPedido) && data.costoDomicilio) {
+			total += Number(data.costoDomicilio);
+		}
+
+		// 3.6 Persistir total en factura
+		if (total > 0) {
+			await this.facturasRepo.update(factura.facturaId, {total});
+			factura.total = total;
 		}
 
 		// 4. Procesar domicilio si aplica
-		let domicilio: Domicilios | null = null;
 		if (this.esDomicilio(data.tipoPedido)) {
 			await this.procesarDomicilio(data, factura.facturaId, orden.ordenId);
-			domicilio = await this.domiciliosRepo.findOne({ where: { ordenId: orden.ordenId } });
-		}
-
-		// 5. Callbacks opcionales
-		if (data['imprimirRecibo'] === true) {
-			await this.imprimirRecibo(data, productos, factura);
-		}
-
-		if (this.esDomicilio(data.tipoPedido) && data.telefonoDomiciliario && domicilio) {
-			await this.notificarDomiciliario(data, productos, domicilio);
 		}
 
 		return {...orden, factura};
@@ -346,49 +393,4 @@ export class OrdenesService {
 		return this.repo.delete(id);
 	}
 
-	// ==================== CALLBACKS ====================
-
-	private async imprimirRecibo(
-		data: CreateOrdenesDto,
-		productos: CreateOrdenItemDto[],
-		factura: FacturasVentas,
-	): Promise<void> {
-		const productosFormateados = productos.map(p => ({
-			nombre: this.construirNombreProducto(p),
-			cantidad: Number(p.cantidad) || 1,
-			precio: this.calcularPrecioProducto(p),
-		}));
-
-		const total = productosFormateados.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
-
-		await this.printingService.printReceipt({
-			clienteNombre: data.nombreCliente || 'Cliente',
-			productos: productosFormateados,
-			total,
-			telefono: data.telefonoCliente,
-			direccion: data.direccionCliente,
-			domiciliario: data.telefonoDomiciliario,
-		});
-	}
-
-	private async notificarDomiciliario(
-		data: CreateOrdenesDto,
-		productos: CreateOrdenItemDto[],
-		domicilio: Domicilios,
-	): Promise<void> {
-		const productosTexto = productos
-			.map(p => `${p.cantidad || 1}x ${this.construirNombreProducto(p)}`)
-			.join('\n');
-
-		const chatId = await this.telegramService.getChatIdFromPhone(data.telefonoDomiciliario);
-		
-		if (chatId) {
-			await this.telegramService.sendDomicilioNotification(chatId, {
-				clienteNombre: data.nombreCliente || 'Cliente',
-				telefono: data.telefonoCliente,
-				direccion: data.direccionCliente || domicilio.direccionEntrega || 'N/A',
-				productos: productosTexto,
-			});
-		}
-	}
 }

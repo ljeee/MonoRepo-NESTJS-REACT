@@ -1,43 +1,22 @@
-
-
-import axios from 'axios';
 import { useState } from 'react';
-import { API_BASE_URL } from '../constants/api';
+import { api } from '../services/api';
+import type { CreateOrdenDto } from '../types/models';
 
-export interface CreateOrdenItemDto {
-  tamano: string;
-  sabor1: string;
-  sabor2?: string;
-  cantidad: number;
-}
-
-export interface OrderData {
-  tipoPedido: string;
-  estadoOrden?: string;
-  fechaOrden?: string;
-  telefonoCliente?: number;
-  nombreCliente?: string;
-  direccionCliente?: string;
-  telefonoDomiciliario?: number;
-  metodo?: string;
-  productos?: CreateOrdenItemDto[];
-}
+// Re-export for backward compat
+export type OrderData = CreateOrdenDto;
+export type CreateOrdenItemDto = CreateOrdenDto['productos'] extends (infer T)[] | undefined ? T : never;
 
 export function useCreateOrder() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  /**
-   * Envía una orden al backend para crearla.
-   * @param order Datos de la orden a crear
-   */
-  const createOrder = async (order: OrderData) => {
+  const createOrder = async (order: CreateOrdenDto) => {
     setLoading(true);
     setError(null);
     setSuccess(false);
     try {
-      await axios.post(`${API_BASE_URL}/orden`, order);
+      await api.ordenes.create(order);
       setSuccess(true);
       return true;
     } catch (err: any) {

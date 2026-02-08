@@ -1,7 +1,6 @@
-import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import { FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { API_BASE_URL } from '../../constants/api';
+import { api } from '../../services/api';
 import { EmptyState } from '../states/EmptyState';
 import { ErrorState } from '../states/ErrorState';
 import { LoadingState } from '../states/LoadingState';
@@ -26,8 +25,8 @@ export default function DomiciliariosList() {
     setLoading(true);
     setError('');
     try {
-      const res = await axios.get(`${API_BASE_URL}/domiciliarios`);
-      setDomiciliarios(res.data);
+      const res = await api.domiciliarios.getAll();
+      setDomiciliarios(res as any);
     } catch (err: any) {
       // If 404, just means no domiciliarios yet
       if (err.response?.status === 404) {
@@ -46,7 +45,7 @@ export default function DomiciliariosList() {
     setLoading(true);
     setError('');
     try {
-      await axios.delete(`${API_BASE_URL}/domiciliarios/${telefono}`);
+      await api.domiciliarios.delete(String(telefono));
       setSuccess('Domiciliario eliminado');
       fetchDomiciliarios();
     } catch {
@@ -78,7 +77,7 @@ export default function DomiciliariosList() {
       } else if (editingField === 'telefono') {
         data.telefono = editTelefono ? Number(editTelefono) : undefined;
       }
-      await axios.patch(`${API_BASE_URL}/domiciliarios/${telefono}`, data);
+      await api.domiciliarios.update(String(telefono), data);
       setEditingTelefono(null);
       setEditingField(null);
       setSuccess('Domiciliario actualizado');

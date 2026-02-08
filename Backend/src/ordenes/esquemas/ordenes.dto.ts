@@ -47,6 +47,11 @@ export class CreateOrdenesDto {
 	@IsString()
 	metodo: string;
 
+	@ApiProperty({example: 5000, required: false, description: 'Costo del domicilio'})
+	@IsOptional()
+	@IsNumber()
+	costoDomicilio?: number;
+
 	@ApiProperty({
 		description: 'Productos de la orden',
 		required: false,

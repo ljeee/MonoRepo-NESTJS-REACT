@@ -1,7 +1,6 @@
-import axios from 'axios';
 import React, { useState } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { API_BASE_URL } from '../../constants/api';
+import { api } from '../../services/api';
 import { createDomiciliarioFormStyles as styles } from '../../styles/create-domiciliario-form.styles';
 
 export default function CreateDomiciliarioForm() {
@@ -16,8 +15,8 @@ export default function CreateDomiciliarioForm() {
     setError('');
     setSuccess(false);
     try {
-      await axios.post(`${API_BASE_URL}/domiciliarios`, {
-        telefono: telefono ? Number(telefono) : undefined,
+      await api.domiciliarios.create({
+        telefono: telefono || '',
         domiciliarioNombre: nombre,
       });
       setSuccess(true);

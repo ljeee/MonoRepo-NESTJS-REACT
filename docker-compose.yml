@@ -18,8 +18,7 @@ services:
     volumes:
       - //var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      pizzeria-network:
-        ipv4_address: 172.28.0.5
+      - pizzeria-network
 
   # ============================================
   # BASE DE DATOS
@@ -36,15 +35,15 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./Backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./Backend/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./Backend/seed-menu.sql:/docker-entrypoint-initdb.d/02-seed-menu.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      pizzeria-network:
-        ipv4_address: 172.28.0.10
+      - pizzeria-network
 
   # ============================================
   # BACKEND (NestJS)
@@ -56,7 +55,7 @@ services:
     container_name: pizzeria-backend
     restart: unless-stopped
     environment:
-      DATABASE_HOST: 172.28.0.10
+      DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: appuser
       DATABASE_PASSWORD: apppass
@@ -67,17 +66,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
-      PRINTER_ENABLED: ${PRINTER_ENABLED:-false}
-      PRINTER_PATH: ${PRINTER_PATH:-/dev/usb/lp0}
     ports:
       - "3000:3000"
     depends_on:
       db:
         condition: service_healthy
     networks:
-      pizzeria-network:
-        ipv4_address: 172.28.0.20
+      - pizzeria-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
@@ -101,8 +96,7 @@ services:
     depends_on:
       - backend
     networks:
-      pizzeria-network:
-        ipv4_address: 172.28.0.30
+      - pizzeria-network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
@@ -116,11 +110,6 @@ services:
 networks:
   pizzeria-network:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.28.0.0/16
-          gateway: 172.28.0.1
 
 # ============================================
 # VOLÚMENES

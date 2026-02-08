@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { styles } from '../styles/gestion-productos.styles';
 import { useProductos, useProductOperations, Producto, ProductoVariante } from '../hooks/use-productos';
 import { colors } from '../styles/theme';
+import { formatCurrency } from '../utils/formatNumber';
 
 export default function GestionProductosScreen() {
     const router = useRouter();
@@ -243,7 +244,7 @@ export default function GestionProductosScreen() {
                                         <Text style={styles.variantName}>{v.nombre}</Text>
                                         {v.descripcion ? <Text style={{ fontSize: 12, color: colors.textSecondary }}>{v.descripcion}</Text> : null}
                                     </View>
-                                    <Text style={styles.variantPrice}>${v.precio.toLocaleString('es-CO')}</Text>
+                                    <Text style={styles.variantPrice}>${formatCurrency(v.precio)}</Text>
                                     <View style={styles.variantActions}>
                                         <TouchableOpacity onPress={() => handleOpenVariantModal(p.productoId, v)}>
                                             <Text>✏️</Text>

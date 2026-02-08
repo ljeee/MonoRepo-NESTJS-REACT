@@ -1,57 +1,73 @@
-import React from 'react';
-import { FlatList, Text, TouchableOpacity, View } from 'react-native';
-import { EmptyState } from '../components/states/EmptyState';
-import { ErrorState } from '../components/states/ErrorState';
-import { LoadingState } from '../components/states/LoadingState';
+import React, { useState } from 'react';
+import { FlatList, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { useFacturasDia } from '../hooks/use-facturas';
+import { colors } from '../styles/theme';
 import { styles } from '../styles/facturas.styles';
-
-function formatDate(date?: string) {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return date;
-  return d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
-}
+import { FacturaCard, StatsHeader } from '../components/facturas/FacturaShared';
 
 export default function FacturasDiaScreen() {
-  const { data, loading, error, refetch } = useFacturasDia();
+  const { data, loading, error, refetch, stats, updateEstado } = useFacturasDia();
+  const [updating, setUpdating] = useState<number | null>(null);
 
-  if (loading) return <LoadingState message="Cargando facturas..." />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
+  const handleChangeEstado = async (facturaId: number, currentEstado?: string) => {
+    const nuevoEstado = currentEstado === 'pagado' ? 'pendiente' : 'pagado';
+    setUpdating(facturaId);
+    try {
+      await updateEstado(facturaId, nuevoEstado);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Cargando facturas...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.contentContainer}>
-        <Text style={styles.title}>Facturas del día</Text>
-        <TouchableOpacity onPress={refetch} style={styles.refreshButton}>
-          <Text style={styles.buttonText}>Refrescar</Text>
+      {/* Header */}
+      <View style={styles.pageHeader}>
+        <Text style={styles.pageTitle}>📊 Resumen del Día</Text>
+        <TouchableOpacity onPress={refetch} style={styles.refreshBtn}>
+          <Text style={styles.refreshBtnText}>Refrescar</Text>
         </TouchableOpacity>
-
-        <FlatList
-          data={data}
-          keyExtractor={(item, idx) => (item.facturaId?.toString() || idx.toString())}
-          contentContainerStyle={styles.listContainer}
-          ListEmptyComponent={
-            <EmptyState
-              message="Sin facturas hoy"
-              subMessage="No se han generado facturas en el día de hoy."
-              icon="file-document-outline"
-            />
-          }
-          renderItem={({ item }) => (
-            <View style={styles.facturaCard}>
-              <View style={styles.facturaHeader}>
-                <Text style={styles.facturaId}>{item.clienteNombre || 'Sin cliente'}</Text>
-                <Text style={styles.facturaDate}>{formatDate(item.fechaFactura)}</Text>
-              </View>
-              {item.total != null && <Text style={styles.facturaTotal}>Total: $ {item.total.toLocaleString('es-CO')}</Text>}
-              {item.metodo && <Text style={styles.facturaMetodo}>Método: {item.metodo}</Text>}
-              {item.estado && <Text style={item.estado === 'pendiente' ? styles.facturaEstadoPendiente : styles.facturaEstadoCompletado}>Estado: {item.estado}</Text>}
-              {item.descripcion && <Text style={styles.facturaDesc}>Descripción: {item.descripcion}</Text>}
-            </View>
-          )}
-        />
       </View>
+
+      {/* Stats */}
+      <StatsHeader stats={stats} periodLabel="Total del Día" />
+
+      {/* Error */}
+      {error && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorBoxText}>⚠️ {error}</Text>
+        </View>
+      )}
+
+      {/* Lista */}
+      <FlatList
+        data={data}
+        keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>📭 Sin facturas hoy</Text>
+            <Text style={styles.emptySubtitle}>No se han registrado facturas en el día de hoy</Text>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <FacturaCard
+            item={item}
+            isUpdating={updating === item.facturaId}
+            onToggleEstado={handleChangeEstado}
+            showPrint
+          />
+        )}
+      />
     </View>
   );
 }
