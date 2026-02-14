@@ -21,6 +21,9 @@ export class Ordenes {
 	@Index()
 	fechaOrden: Date;
 
+	@Column({name: 'observaciones', type: 'text', nullable: true})
+	observaciones: string;
+
 	@ManyToOne(() => FacturasVentas, (factura) => factura.ordenes, {nullable: true})
     @JoinColumn({name: 'factura_id'})
 	factura: FacturasVentas;

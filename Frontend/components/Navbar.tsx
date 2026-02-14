@@ -103,7 +103,12 @@ export default function Navbar() {
     setExpanded(prev => ({ ...prev, [idx]: !prev[idx] }));
 
   const navigate = (route: string) => {
-    setDrawerOpen(false);
+    // Close drawer on mobile
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+    // Collapse all sections after navigation
+    setExpanded({});
     router.push(route as any);
   };
 

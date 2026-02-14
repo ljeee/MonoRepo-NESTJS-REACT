@@ -17,14 +17,19 @@ type OrderProduct = {
 type Factura = {
   clienteNombre?: string;
 };
+type Domicilio = {
+  direccionEntrega?: string;
+};
 type Order = {
   ordenId: number;
   tipoPedido: string;
   estadoOrden: string;
   fechaOrden: string;
   nombreCliente?: string;
+  observaciones?: string;
   productos?: OrderProduct[];
   factura?: Factura;
+  domicilios?: Domicilio[];
 };
 
 export default function OrdersOfDayPending() {
@@ -120,6 +125,14 @@ export default function OrdersOfDayPending() {
                 <Text style={styles.orderInfo}>{formatDate(item.fechaOrden)}</Text>
               </View>
               <Text style={[styles.orderInfo, item.estadoOrden === 'completada' && { color: '#4caf50', fontWeight: 'bold' }]}>Tipo: {item.tipoPedido} • Estado: {item.estadoOrden}</Text>
+              {item.tipoPedido === 'domicilio' && item.domicilios && item.domicilios.length > 0 && item.domicilios[0].direccionEntrega && (
+                <Text style={[styles.orderInfo, { marginTop: 4 }]}>📍 {item.domicilios[0].direccionEntrega}</Text>
+              )}
+              {item.observaciones && (
+                <View style={{ marginTop: 6, padding: 8, backgroundColor: 'rgba(255, 193, 7, 0.1)', borderRadius: 6, borderLeftWidth: 3, borderLeftColor: '#ffc107' }}>
+                  <Text style={[styles.text, { fontStyle: 'italic', color: '#ffc107' }]}>📝 {item.observaciones}</Text>
+                </View>
+              )}
               {item.productos && item.productos.length > 0 && (
                 <View style={styles.productList}>
                   <Text style={[styles.text, { fontWeight: 'bold' }]}>Productos:</Text>

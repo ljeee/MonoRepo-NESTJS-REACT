@@ -47,7 +47,7 @@ export default function CreateOrderForm() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
   const { formState, updateForm, clearCart, isHydrated } = useOrder();
-  
+
   const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
   const fetchDomiciliarios = useCallback(async () => {
     try {
@@ -71,12 +71,12 @@ export default function CreateOrderForm() {
       cantidad: 1,
       sabores: sabores,
     };
-    
+
     // Pizzas with sabores always get their own line (different combos shouldn't merge)
     const existing = sabores?.length
       ? undefined
       : formState.cart.find(i => i.varianteId === variante.varianteId);
-    
+
     if (existing) {
       // Merge with existing - update cart with updated item
       const updatedCart = formState.cart.map(i =>
@@ -199,6 +199,7 @@ export default function CreateOrderForm() {
           ? Number(formState.costoDomicilio)
           : undefined,
         metodo: formState.metodo,
+        observaciones: formState.observaciones || undefined,
         productos: formState.cart.map(item => ({
           tipo: item.productoNombre,
           varianteId: item.varianteId,
@@ -247,6 +248,7 @@ export default function CreateOrderForm() {
         telefonoCliente: '',
         telefonoDomiciliario: '',
         costoDomicilio: '',
+        observaciones: '',
       });
 
       // Navegar al detalle de la orden creada después de un breve delay
@@ -334,7 +336,7 @@ export default function CreateOrderForm() {
                   style={styles.input}
                   value={formState.telefonoCliente}
                   onChangeText={(val) => updateForm({ telefonoCliente: val })}
-                  placeholder="Teléfono (10 dígitos)"
+                  placeholder=""
                   placeholderTextColor={colors.subText}
                   keyboardType="numeric"
                 />
@@ -364,7 +366,7 @@ export default function CreateOrderForm() {
                   style={styles.input}
                   value={formState.nombreCliente}
                   onChangeText={(val) => updateForm({ nombreCliente: val })}
-                  placeholder={client === null ? 'Nuevo cliente' : 'Nombre'}
+                  placeholder=""
                   placeholderTextColor={colors.subText}
                   editable={!client || !client.clienteNombre}
                 />
@@ -373,7 +375,7 @@ export default function CreateOrderForm() {
                   style={styles.input}
                   value={formState.nombreCliente}
                   onChangeText={(val) => updateForm({ nombreCliente: val })}
-                  placeholder="Nombre Cliente"
+                  placeholder=""
                   placeholderTextColor={colors.subText}
                 />
               )}
@@ -407,7 +409,7 @@ export default function CreateOrderForm() {
                         style={styles.input}
                         value={formState.newAddress}
                         onChangeText={(val) => updateForm({ newAddress: val })}
-                        placeholder="Ingrese nueva dirección"
+                        placeholder=""
                         placeholderTextColor={colors.subText}
                       />
                     )}
@@ -417,7 +419,7 @@ export default function CreateOrderForm() {
                     style={styles.input}
                     value={formState.newAddress}
                     onChangeText={(val) => updateForm({ newAddress: val })}
-                    placeholder="Dirección completa"
+                    placeholder=""
                     placeholderTextColor={colors.subText}
                   />
                 )}
@@ -443,9 +445,13 @@ export default function CreateOrderForm() {
                 <Text style={styles.label}>Costo Domicilio</Text>
                 <TextInput
                   style={styles.input}
-                  value={formState.costoDomicilio}
-                  onChangeText={(val) => updateForm({ costoDomicilio: val.replace(/[^0-9]/g, '') })}
-                  placeholder="$0"
+                  value={formState.costoDomicilio ? Number(formState.costoDomicilio).toLocaleString('es-CO') : ''}
+                  onChangeText={(val) => {
+                    // Remove all non-numeric characters
+                    const numericValue = val.replace(/\D/g, '');
+                    updateForm({ costoDomicilio: numericValue });
+                  }}
+                  placeholder=""
                   placeholderTextColor={colors.subText}
                   keyboardType="numeric"
                 />
@@ -464,6 +470,22 @@ export default function CreateOrderForm() {
             onUpdateCantidad={updateCartCantidad}
             costoDomicilio={formState.tipoPedido === 'domicilio' && formState.costoDomicilio ? Number(formState.costoDomicilio) : 0}
           />
+
+          {/* =============== OBSERVACIONES =============== */}
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Observaciones</Text>
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <TextInput
+                style={[styles.input, { height: 100, textAlignVertical: 'top', paddingTop: 12 }]}
+                value={formState.observaciones}
+                onChangeText={(val) => updateForm({ observaciones: val })}
+                placeholder=""
+                placeholderTextColor={colors.subText}
+                multiline
+                numberOfLines={5}
+              />
+            </View>
+          </View>
 
           {/* =============== ACCIONES =============== */}
           <TouchableOpacity

@@ -12,6 +12,7 @@ interface OrderFormState {
   telefonoDomiciliario: string;
   costoDomicilio: string;
   metodo: string;
+  observaciones: string;
   cart: CartItem[];
 }
 
@@ -37,6 +38,7 @@ const defaultFormState: OrderFormState = {
   telefonoDomiciliario: '',
   costoDomicilio: '',
   metodo: 'efectivo',
+  observaciones: '',
   cart: [],
 };
 
@@ -94,7 +96,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     // Debounce saves (500ms) for form fields only
     const timer = setTimeout(saveFormState, 500);
     return () => clearTimeout(timer);
-  }, [formState.tipoPedido, formState.telefonoCliente, formState.nombreCliente, formState.numeroMesa, formState.selectedAddress, formState.newAddress, formState.telefonoDomiciliario, formState.costoDomicilio, formState.metodo, isHydrated, formState]);
+  }, [formState.tipoPedido, formState.telefonoCliente, formState.nombreCliente, formState.numeroMesa, formState.selectedAddress, formState.newAddress, formState.telefonoDomiciliario, formState.costoDomicilio, formState.metodo, formState.observaciones, isHydrated, formState]);
 
   const updateForm = useCallback((updates: Partial<OrderFormState>) => {
     setFormState(prev => ({ ...prev, ...updates }));

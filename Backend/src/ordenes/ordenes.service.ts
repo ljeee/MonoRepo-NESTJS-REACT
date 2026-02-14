@@ -58,6 +58,7 @@ export class OrdenesService {
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.leftJoinAndSelect('o.domicilios', 'domicilios')
 			.where('o.fechaOrden BETWEEN :start AND :end', { start, end });
 
 		if (estado) {
