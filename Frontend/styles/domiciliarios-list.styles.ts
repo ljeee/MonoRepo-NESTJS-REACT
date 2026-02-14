@@ -2,9 +2,9 @@ import { StyleSheet } from 'react-native';
 import { colors } from './theme';
 
 export const domiciliariosListStyles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: colors.bg 
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
   },
   contentContainer: {
     padding: 16,
@@ -13,127 +13,208 @@ export const domiciliariosListStyles = StyleSheet.create({
     maxWidth: 900,
     alignSelf: 'center',
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: 'bold', 
-    marginVertical: 24, 
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: colors.text,
-    textAlign: 'center',
   },
-  itemBox: { 
-    backgroundColor: colors.card, 
-    padding: 16, 
-    borderRadius: 12, 
-    marginBottom: 12, 
-    borderWidth: 1, 
+  // Search bar
+  searchContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+    alignItems: 'flex-end',
+    backgroundColor: colors.card,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
     borderColor: colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  input: { 
-    borderWidth: 1, 
-    borderColor: colors.border, 
-    backgroundColor: colors.bg, 
-    color: colors.text, 
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8, 
-    marginTop: 4, 
-    marginBottom: 4,
-    fontSize: 16,
+  inputGroup: {
+    flexGrow: 1,
+    minWidth: 180,
   },
-  label: { 
-    fontWeight: 'bold', 
-    fontSize: 16, 
-    color: colors.text 
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 6,
+    textTransform: 'uppercase',
   },
-  rowField: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 8 
+  input: {
+    backgroundColor: colors.bg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
   },
-  editBtnSmall: { 
-    backgroundColor: colors.accent, 
-    padding: 8, 
-    borderRadius: 6, 
-    marginLeft: 8 
-  },
-  rowMain: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 8 
-  },
-  rowBtns: { 
-    flexDirection: 'row', 
-    gap: 8, 
-    marginTop: 8 
-  },
-  editBtn: { 
-    backgroundColor: colors.accent, 
-    paddingVertical: 12,
+  searchButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
-  deleteBtn: { 
-    backgroundColor: colors.danger, 
-    paddingVertical: 12,
+  refreshButton: {
+    backgroundColor: colors.info,
+    paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
   buttonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  // Create / Edit form
+  createBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  createBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  formCard: {
+    backgroundColor: colors.card,
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  formTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+    marginBottom: 12,
+  },
+  formRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 10,
+    flexWrap: 'wrap',
+  },
+  formInput: {
+    flex: 1,
+    minWidth: 140,
+    backgroundColor: colors.bg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+  },
+  formBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  formSaveBtn: {
+    flex: 1,
+    backgroundColor: colors.primary,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  formCancelBtn: {
+    flex: 1,
+    backgroundColor: colors.card,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  formSaveBtnText: {
+    color: '#fff',
+    fontWeight: '600',
     fontSize: 14,
   },
-  toggleFormButton: {
-    backgroundColor: colors.success,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 24,
-    alignSelf: 'center',
+  formCancelBtnText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 14,
   },
-  closeFormButton: {
+  // Card
+  clientCard: {
+    backgroundColor: colors.card,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 10,
+  },
+  clientHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  clientName: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: colors.text,
+  },
+  clientActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  editBtn: {
+    backgroundColor: colors.info,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  deleteBtn: {
     backgroundColor: colors.danger,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginBottom: 24,
-    alignSelf: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
   },
-  success: { 
-    color: colors.success, 
-    marginTop: 16,
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
-    backgroundColor: 'rgba(76, 175, 80, 0.1)',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(76, 175, 80, 0.3)',
+  actionBtnText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 11,
   },
-  error: { 
-    color: colors.danger, 
-    marginTop: 16,
+  clientPhone: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  // States
+  errorText: {
+    color: colors.danger,
+    marginBottom: 12,
     textAlign: 'center',
-    fontSize: 16,
-    fontWeight: 'bold',
-    backgroundColor: 'rgba(239, 83, 80, 0.1)',
-    padding: 12,
+    fontWeight: '600',
+    backgroundColor: colors.dangerLight,
+    padding: 10,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 83, 80, 0.3)',
   },
   emptyText: {
     textAlign: 'center',
-    color: colors.subText,
+    color: colors.textMuted,
     marginTop: 32,
-    fontSize: 16,
+    fontSize: 15,
+  },
+  loader: {
+    marginTop: 40,
   },
 });
