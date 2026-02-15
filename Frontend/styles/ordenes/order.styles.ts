@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors } from './theme';
+import { colors } from '../theme';
 
 export const orderStyles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: colors.bg },

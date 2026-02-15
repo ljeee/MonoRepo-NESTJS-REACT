@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors } from './theme';
+import { colors } from '../theme';
 
 export const menuPickerStyles = StyleSheet.create({
   container: {
@@ -35,6 +35,66 @@ export const menuPickerStyles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
+  // Search bar (mobile only)
+  searchContainer: {
+    marginBottom: 12,
+  },
+  searchInput: {
+    backgroundColor: colors.bgLight,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: colors.border,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.text,
+  },
+  // Wrapped tabs for mobile
+  tabsWrapped: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 16,
+  },
+  tabChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: colors.bgLight,
+    borderWidth: 2,
+    borderColor: colors.border,
+    gap: 6,
+  },
+  tabChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  tabChipText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textSecondary,
+  },
+  tabChipTextActive: {
+    color: '#fff',
+  },
+  tabChipCount: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    backgroundColor: colors.card,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    minWidth: 22,
+    textAlign: 'center',
+  },
+  tabChipCountActive: {
+    color: colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  // Scrollable tabs for desktop
   tabsScroll: {
     marginBottom: 12,
   },
@@ -82,6 +142,17 @@ export const menuPickerStyles = StyleSheet.create({
     color: colors.primary,
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
+  // Empty state
+  emptyState: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    color: colors.textMuted,
+    fontSize: 15,
+    textAlign: 'center',
+  },
+  // Products
   productsContainer: {
     gap: 6,
   },

@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
-import { Alert, FlatList, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { api } from '../services/api';
 import { Cliente, CreateClienteDto } from '../types/models';
 import { useClientByPhone } from '../hooks/use-client-by-phone';
 import { useClientesList } from '../hooks/use-clientes-list';
-import { styles } from '../styles/clientes.styles';
 import { colors } from '../styles/theme';
+import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
+import {
+  PageContainer,
+  PageHeader,
+  Button,
+  Card,
+  Input,
+  Icon,
+  ConfirmModal,
+  ListSkeleton,
+} from '../components/ui';
 
 type FormMode = 'closed' | 'create' | 'edit';
 
@@ -13,6 +23,7 @@ export default function ClientesScreen() {
   const { data, loading, error, refetch } = useClientesList();
   const { client, loading: searching, error: searchError, fetchClient } = useClientByPhone();
   const [telefono, setTelefono] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // ── Form state ──
   const [formMode, setFormMode] = useState<FormMode>('closed');
@@ -25,7 +36,11 @@ export default function ClientesScreen() {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
-  const [editingPhone, setEditingPhone] = useState(''); // original phone when editing
+  const [editingPhone, setEditingPhone] = useState('');
+
+  // ── Delete modal state ──
+  const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const resetForm = () => {
     setFormMode('closed');
@@ -75,163 +90,382 @@ export default function ClientesScreen() {
     }
   };
 
-  const handleDelete = (c: Cliente) => {
-    Alert.alert(
-      'Eliminar cliente',
-      `¿Eliminar a ${c.clienteNombre || c.telefono}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.clientes.delete(c.telefono);
-              refetch();
-            } catch {
-              Alert.alert('Error', 'No se pudo eliminar el cliente');
-            }
-          },
-        },
-      ],
-    );
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleteLoading(true);
+    try {
+      await api.clientes.delete(deleteTarget.telefono);
+      refetch();
+      setDeleteTarget(null);
+    } catch {
+      // Show inline error
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Header */}
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>👥 Clientes</Text>
-        <TouchableOpacity style={styles.createBtn} onPress={openCreate}>
-          <Text style={styles.createBtnText}>+ Nuevo</Text>
-        </TouchableOpacity>
-      </View>
+    <PageContainer
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
+      }
+    >
+      <PageHeader
+        title="Clientes"
+        icon="account-group-outline"
+        rightContent={
+          <Button
+            title="Nuevo"
+            icon="plus"
+            variant="primary"
+            size="sm"
+            onPress={openCreate}
+          />
+        }
+      />
 
-      {/* Create / Edit form */}
+      {/* ── Create / Edit form ── */}
       {formMode !== 'closed' && (
-        <View style={styles.formCard}>
-          <Text style={styles.formTitle}>
-            {formMode === 'create' ? '➕ Nuevo Cliente' : '✏️ Editar Cliente'}
-          </Text>
-          <View style={styles.formRow}>
-            <TextInput
-              style={styles.formInput}
-              placeholder="Teléfono *"
-              placeholderTextColor={colors.placeholder}
+        <Card variant="elevated" padding="lg" style={{ marginBottom: spacing.xl }}>
+          <View style={styles.formHeader}>
+            <Icon
+              name={formMode === 'create' ? 'account-plus-outline' : 'account-edit-outline'}
+              size={22}
+              color={colors.primary}
+            />
+            <Text style={styles.formTitle}>
+              {formMode === 'create' ? 'Nuevo Cliente' : 'Editar Cliente'}
+            </Text>
+          </View>
+
+          <View style={styles.formGrid}>
+            <Input
+              label="Teléfono *"
               value={formData.telefono}
-              onChangeText={v => setFormData(p => ({ ...p, telefono: v }))}
+              onChangeText={(v) => setFormData((p) => ({ ...p, telefono: v }))}
               keyboardType="number-pad"
-              editable={formMode === 'create'} // can't change phone on edit
+              containerStyle={{ flex: 1, minWidth: 200 }}
+              editable={formMode === 'create'}
+              leftIcon={<Icon name="phone-outline" size={16} color={colors.textMuted} />}
             />
-            <TextInput
-              style={styles.formInput}
-              placeholder="Nombre"
-              placeholderTextColor={colors.placeholder}
+            <Input
+              label="Nombre"
               value={formData.clienteNombre}
-              onChangeText={v => setFormData(p => ({ ...p, clienteNombre: v }))}
+              onChangeText={(v) => setFormData((p) => ({ ...p, clienteNombre: v }))}
+              containerStyle={{ flex: 1, minWidth: 200 }}
+              leftIcon={<Icon name="account-outline" size={16} color={colors.textMuted} />}
             />
           </View>
-          <View style={styles.formRow}>
-            <TextInput
-              style={styles.formInput}
-              placeholder="Dirección 1"
-              placeholderTextColor={colors.placeholder}
-              value={formData.direccion}
-              onChangeText={v => setFormData(p => ({ ...p, direccion: v }))}
-            />
-          </View>
-          <View style={styles.formRow}>
-            <TextInput
-              style={styles.formInput}
-              placeholder="Dirección 2 (opcional)"
-              placeholderTextColor={colors.placeholder}
+
+          <Input
+            label="Dirección 1"
+            value={formData.direccion}
+            onChangeText={(v) => setFormData((p) => ({ ...p, direccion: v }))}
+            leftIcon={<Icon name="map-marker-outline" size={16} color={colors.textMuted} />}
+          />
+
+          <View style={styles.formGrid}>
+            <Input
+              label="Dirección 2 (opcional)"
               value={formData.direccionDos}
-              onChangeText={v => setFormData(p => ({ ...p, direccionDos: v }))}
+              onChangeText={(v) => setFormData((p) => ({ ...p, direccionDos: v }))}
+              containerStyle={{ flex: 1, minWidth: 200 }}
             />
-            <TextInput
-              style={styles.formInput}
-              placeholder="Dirección 3 (opcional)"
-              placeholderTextColor={colors.placeholder}
+            <Input
+              label="Dirección 3 (opcional)"
               value={formData.direccionTres}
-              onChangeText={v => setFormData(p => ({ ...p, direccionTres: v }))}
+              onChangeText={(v) => setFormData((p) => ({ ...p, direccionTres: v }))}
+              containerStyle={{ flex: 1, minWidth: 200 }}
             />
           </View>
-          {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
-          <View style={styles.formBtnRow}>
-            <TouchableOpacity style={styles.formCancelBtn} onPress={resetForm}>
-              <Text style={styles.formCancelBtnText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.formSaveBtn} onPress={handleSave} disabled={formLoading}>
-              <Text style={styles.formSaveBtnText}>{formLoading ? 'Guardando...' : 'Guardar'}</Text>
-            </TouchableOpacity>
+
+          {formError ? (
+            <View style={styles.inlineError}>
+              <Icon name="alert-circle-outline" size={14} color={colors.danger} />
+              <Text style={styles.inlineErrorText}>{formError}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.formActions}>
+            <Button title="Cancelar" onPress={resetForm} variant="ghost" />
+            <Button
+              title={formLoading ? 'Guardando...' : 'Guardar'}
+              onPress={handleSave}
+              variant="primary"
+              icon="content-save-outline"
+              loading={formLoading}
+            />
           </View>
-        </View>
+        </Card>
       )}
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Buscar por teléfono</Text>
-          <TextInput
-            value={telefono}
-            onChangeText={setTelefono}
-            placeholder="3001234567"
-            placeholderTextColor={colors.placeholder}
-            style={styles.input}
-            keyboardType="number-pad"
+      {/* ── Search ── */}
+      <View style={styles.searchRow}>
+        <Input
+          label="Buscar por teléfono"
+          value={telefono}
+          onChangeText={setTelefono}
+          placeholder="3001234567"
+          keyboardType="number-pad"
+          containerStyle={{ flex: 1, minWidth: 200, marginBottom: 0 }}
+          leftIcon={<Icon name="magnify" size={16} color={colors.textMuted} />}
+        />
+        <View style={styles.searchActions}>
+          <Button
+            title={searching ? '...' : 'Buscar'}
+            onPress={() => telefono && fetchClient(telefono)}
+            variant="primary"
+            size="sm"
+            disabled={!telefono || searching}
+            icon="magnify"
+          />
+          <Button
+            title="Refrescar"
+            icon="refresh"
+            onPress={refetch}
+            variant="ghost"
+            size="sm"
+            loading={loading}
           />
         </View>
-        <TouchableOpacity
-          onPress={() => telefono && fetchClient(telefono)}
-          style={styles.searchButton}
-          disabled={!telefono || searching}
-        >
-          <Text style={styles.buttonText}>{searching ? '...' : 'Buscar'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={refetch} style={styles.refreshButton} disabled={loading}>
-          <Text style={styles.buttonText}>{loading ? '...' : 'Refrescar'}</Text>
-        </TouchableOpacity>
       </View>
 
-      {searchError ? <Text style={styles.errorText}>⚠️ {searchError}</Text> : null}
+      {searchError ? (
+        <View style={styles.inlineError}>
+          <Icon name="alert-circle-outline" size={14} color={colors.danger} />
+          <Text style={styles.inlineErrorText}>{searchError}</Text>
+        </View>
+      ) : null}
+
       {client && (
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>Resultado</Text>
-          <Text style={styles.resultText}>Nombre: {client.clienteNombre || '—'}</Text>
-          <Text style={styles.resultText}>Dirección: {client.direccion || '—'}</Text>
-          {client.direccionDos ? <Text style={styles.resultText}>Dir 2: {client.direccionDos}</Text> : null}
-          {client.direccionTres ? <Text style={styles.resultText}>Dir 3: {client.direccionTres}</Text> : null}
+        <Card padding="md" style={{ marginBottom: spacing.xl, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+          <Text style={styles.resultTitle}>Resultado de búsqueda</Text>
+          <View style={styles.resultRow}>
+            <Icon name="account-outline" size={16} color={colors.textMuted} />
+            <Text style={styles.resultText}>{client.clienteNombre || '—'}</Text>
+          </View>
+          <View style={styles.resultRow}>
+            <Icon name="map-marker-outline" size={16} color={colors.textMuted} />
+            <Text style={styles.resultText}>{client.direccion || '—'}</Text>
+          </View>
+          {client.direccionDos && (
+            <View style={styles.resultRow}>
+              <Icon name="map-marker-outline" size={16} color={colors.textMuted} />
+              <Text style={styles.resultText}>{client.direccionDos}</Text>
+            </View>
+          )}
+        </Card>
+      )}
+
+      {/* ── Error / Loading ── */}
+      {error && (
+        <View style={styles.inlineError}>
+          <Icon name="alert-circle-outline" size={14} color={colors.danger} />
+          <Text style={styles.inlineErrorText}>{error}</Text>
+        </View>
+      )}
+      {loading && <ListSkeleton count={4} />}
+
+      {/* ── Client list ── */}
+      {!loading && data.length === 0 && !error && (
+        <View style={styles.emptyBox}>
+          <Icon name="account-off-outline" size={48} color={colors.textMuted} />
+          <Text style={styles.emptyText}>Sin clientes registrados</Text>
         </View>
       )}
 
-      {/* Error / Loading */}
-      {error ? <Text style={styles.errorText}>⚠️ {error}</Text> : null}
-      {loading && <Text style={styles.emptyText}>Cargando clientes...</Text>}
-
-      {/* Client list */}
-      {data.length === 0 && !loading && !error ? (
-        <Text style={styles.emptyText}>Sin clientes registrados</Text>
-      ) : null}
-
-      {data.map((item) => (
-        <View key={item.telefono} style={styles.clientCard}>
+      {!loading && data.map((item) => (
+        <Card key={item.telefono} padding="md" style={{ marginBottom: spacing.md }}>
           <View style={styles.clientHeader}>
-            <Text style={styles.clientName}>{item.clienteNombre || 'Sin nombre'}</Text>
+            <View style={styles.clientInfo}>
+              <Text style={styles.clientName}>{item.clienteNombre || 'Sin nombre'}</Text>
+              <View style={styles.clientPhoneRow}>
+                <Icon name="phone-outline" size={14} color={colors.primary} />
+                <Text style={styles.clientPhone}>{item.telefono}</Text>
+              </View>
+            </View>
             <View style={styles.clientActions}>
-              <TouchableOpacity style={styles.editBtn} onPress={() => openEdit(item)}>
-                <Text style={styles.actionBtnText}>Editar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
-                <Text style={styles.actionBtnText}>Eliminar</Text>
-              </TouchableOpacity>
+              <Button
+                title="Editar"
+                icon="pencil-outline"
+                variant="ghost"
+                size="sm"
+                onPress={() => openEdit(item)}
+              />
+              <Button
+                title="Eliminar"
+                icon="trash-can-outline"
+                variant="ghost"
+                size="sm"
+                onPress={() => setDeleteTarget(item)}
+                style={{ opacity: 0.7 }}
+              />
             </View>
           </View>
-          <Text style={styles.clientPhone}>📞 {item.telefono}</Text>
-          {item.direccion ? <Text style={styles.clientAddress}>📍 {item.direccion}</Text> : null}
-          {item.direccionDos ? <Text style={styles.clientAddress}>📍 {item.direccionDos}</Text> : null}
-          {item.direccionTres ? <Text style={styles.clientAddress}>📍 {item.direccionTres}</Text> : null}
-        </View>
+          {item.direccion && (
+            <View style={styles.addressRow}>
+              <Icon name="map-marker-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.addressText}>{item.direccion}</Text>
+            </View>
+          )}
+          {item.direccionDos && (
+            <View style={styles.addressRow}>
+              <Icon name="map-marker-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.addressText}>{item.direccionDos}</Text>
+            </View>
+          )}
+          {item.direccionTres && (
+            <View style={styles.addressRow}>
+              <Icon name="map-marker-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.addressText}>{item.direccionTres}</Text>
+            </View>
+          )}
+        </Card>
       ))}
-    </ScrollView>
+
+      {/* ── Delete Confirmation Modal ── */}
+      <ConfirmModal
+        visible={!!deleteTarget}
+        title="Eliminar cliente"
+        message={`¿Estás seguro de eliminar a ${deleteTarget?.clienteNombre || deleteTarget?.telefono}? Esta acción no se puede deshacer.`}
+        icon="trash-can-outline"
+        variant="danger"
+        confirmText="Eliminar"
+        loading={deleteLoading}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
+    </PageContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  formHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  formTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+  },
+  formGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  formActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  inlineError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    padding: spacing.sm,
+    backgroundColor: colors.dangerLight,
+    borderRadius: radius.sm,
+  },
+  inlineErrorText: {
+    color: colors.danger,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+  },
+  searchActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  resultTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.md,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  resultText: {
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
+  },
+  emptyBox: {
+    alignItems: 'center',
+    padding: spacing['5xl'],
+    gap: spacing.md,
+  },
+  emptyText: {
+    fontSize: fontSize.lg,
+    color: colors.textMuted,
+  },
+  clientHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  clientInfo: {
+    flex: 1,
+    minWidth: 150,
+  },
+  clientName: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  clientPhoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  clientPhone: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.semibold,
+  },
+  clientActions: {
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  addressText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+});

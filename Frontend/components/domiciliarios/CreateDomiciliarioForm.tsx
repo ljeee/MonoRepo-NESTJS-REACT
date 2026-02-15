@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { api } from '../../services/api';
-import { createDomiciliarioFormStyles as styles } from '../../styles/create-domiciliario-form.styles';
+import { createDomiciliarioFormStyles as styles } from '../../styles/domiciliarios/create-domiciliario-form.styles';
 
 export default function CreateDomiciliarioForm() {
   const [telefono, setTelefono] = useState('');

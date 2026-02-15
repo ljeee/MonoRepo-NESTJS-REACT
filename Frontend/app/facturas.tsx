@@ -1,10 +1,18 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, Platform, Text, TextInput, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { FlatList, Platform, StyleSheet, Text, View } from 'react-native';
 import { useFacturasRango } from '../hooks/use-facturas';
 import { colors } from '../styles/theme';
-import { styles } from '../styles/facturas.styles';
+import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
 import { FacturaCard, StatsHeader, FacturaItem } from '../components/facturas/FacturaShared';
 import { formatCurrency } from '../utils/formatNumber';
+import {
+  PageContainer,
+  PageHeader,
+  Button,
+  Input,
+  Icon,
+  ListSkeleton,
+} from '../components/ui';
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -84,87 +92,94 @@ export default function FacturasRangoScreen() {
   }, [data, from, to]);
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.pageHeader}>
-        <Text style={styles.pageTitle}>📅 Facturas por Fechas</Text>
-      </View>
-
-      {/* Date filter */}
-      <View style={styles.filterSection}>
-        <View style={styles.filterRow}>
-          <View style={styles.filterInputGroup}>
-            <Text style={styles.filterLabel}>Desde:</Text>
-            <TextInput
-              style={styles.filterInput}
-              value={from}
-              onChangeText={setFrom}
-              placeholder="2025-01-01"
-              placeholderTextColor={colors.placeholder}
-            />
-          </View>
-          <View style={styles.filterInputGroup}>
-            <Text style={styles.filterLabel}>Hasta:</Text>
-            <TextInput
-              style={styles.filterInput}
-              value={to}
-              onChangeText={setTo}
-              placeholder="2026-12-31"
-              placeholderTextColor={colors.placeholder}
-            />
-          </View>
-          <TouchableOpacity
-            onPress={fetchData}
-            disabled={!from || !to || loading}
-            style={[styles.filterBtn, (!from || !to || loading) ? styles.filterBtnDisabled : styles.filterBtnEnabled]}
-          >
-            <Text style={styles.filterBtnText}>{loading ? '...' : 'Buscar'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+    <PageContainer scrollable={false}>
+      <PageHeader
+        title="Facturas por Fechas"
+        subtitle="Facturación"
+        icon="calendar-range"
+        rightContent={
+          <Button
+            title="Exportar CSV"
+            icon="download"
+            variant="outline"
+            size="sm"
             onPress={handleExportCsv}
             disabled={data.length === 0}
-            style={[styles.csvBtn, data.length === 0 && styles.csvBtnDisabled]}
-          >
-            <Text style={styles.filterBtnText}>📥 CSV</Text>
-          </TouchableOpacity>
+          />
+        }
+      />
+
+      {/* Date filter */}
+      <View style={styles.filterRow}>
+        <Input
+          label="Desde"
+          value={from}
+          onChangeText={setFrom}
+          placeholder="2025-01-01"
+          containerStyle={{ flex: 1, minWidth: 140 }}
+          size="sm"
+          leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
+        />
+        <Input
+          label="Hasta"
+          value={to}
+          onChangeText={setTo}
+          placeholder="2026-12-31"
+          containerStyle={{ flex: 1, minWidth: 140 }}
+          size="sm"
+          leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
+        />
+        <View style={styles.filterActions}>
+          <Button
+            title={loading ? '...' : 'Buscar'}
+            icon="magnify"
+            variant="primary"
+            size="sm"
+            onPress={fetchData}
+            disabled={!from || !to || loading}
+            loading={loading}
+          />
         </View>
       </View>
 
-      {/* Stats (only when data) */}
-      {data.length > 0 && (
-        <StatsHeader stats={stats} periodLabel="Total del Período" />
-      )}
+      {/* Stats */}
+      {data.length > 0 && <StatsHeader stats={stats} periodLabel="Total del Período" />}
 
       {/* Error */}
       {error && (
         <View style={styles.errorBox}>
-          <Text style={styles.errorBoxText}>⚠️ {error}</Text>
+          <Icon name="alert-circle-outline" size={18} color={colors.danger} />
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
 
       {/* Loading */}
-      {loading && (
-        <View style={[styles.loadingContainer, { paddingVertical: 20 }]}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Buscando facturas...</Text>
-        </View>
-      )}
+      {loading && <ListSkeleton count={4} />}
 
       {/* List */}
       <FlatList
         data={data}
         keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={!loading && !error ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>
-              {from && to ? '📭 Sin facturas en este rango' : '🔍 Selecciona fechas para buscar'}
-            </Text>
-            <Text style={styles.emptySubtitle}>
-              {from && to ? 'No se encontraron facturas en el período.' : 'Ingresa las fechas y presiona Buscar.'}
-            </Text>
-          </View>
-        ) : null}
+        contentContainerStyle={{ paddingBottom: spacing.lg }}
+        ListEmptyComponent={
+          !loading && !error ? (
+            <View style={styles.emptyContainer}>
+              <Icon
+                name={from && to ? 'email-off-outline' : 'calendar-search'}
+                size={48}
+                color={colors.textMuted}
+              />
+              <Text style={styles.emptyTitle}>
+                {from && to ? 'Sin facturas en este rango' : 'Selecciona fechas para buscar'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {from && to
+                  ? 'No se encontraron facturas en el período.'
+                  : 'Ingresa las fechas y presiona Buscar.'}
+              </Text>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <FacturaCard
             item={item}
@@ -173,6 +188,53 @@ export default function FacturasRangoScreen() {
           />
         )}
       />
-    </View>
+    </PageContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  filterRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+    alignItems: 'flex-end',
+  },
+  filterActions: {
+    marginBottom: spacing.lg,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.dangerLight,
+    padding: spacing.lg,
+    borderRadius: radius.md,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+    flex: 1,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing['5xl'],
+    gap: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: fontSize.md,
+    color: colors.textMuted,
+    textAlign: 'center',
+  },
+});

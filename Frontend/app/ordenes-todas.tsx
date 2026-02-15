@@ -1,36 +1,32 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, TouchableOpacity, View, TextInput } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '../services/api';
 import { Orden, PaginatedResponse } from '../types/models';
 import { formatCurrency, formatDate } from '../utils/formatNumber';
-import { styles } from '../styles/ordenes-todas.styles';
 import { colors } from '../styles/theme';
+import { fontSize, fontWeight, spacing, radius, shadows } from '../styles/tokens';
+import { ESTADO_LABELS, getEstadoColor } from '../constants/estados';
+import {
+  PageContainer,
+  PageHeader,
+  Button,
+  Card,
+  Badge,
+  Icon,
+  Input,
+  ListSkeleton,
+} from '../components/ui';
+import { useBreakpoint } from '../styles/responsive';
 
 const LIMIT = 20;
-const ESTADOS = ['', 'pendiente', 'en preparación', 'enviado', 'entregado', 'cancelado'];
-const ESTADO_LABELS: Record<string, string> = {
-  '': 'Todos',
-  pendiente: 'Pendiente',
-  'en preparación': 'En preparación',
-  enviado: 'Enviado',
-  entregado: 'Entregado',
-  cancelado: 'Cancelado',
-};
 
-function estadoColor(e?: string) {
-  switch (e) {
-    case 'pendiente': return { bg: colors.warningLight, text: colors.warning };
-    case 'en preparación': return { bg: colors.infoLight, text: colors.info };
-    case 'enviado': return { bg: colors.primaryLight, text: colors.primary };
-    case 'entregado': return { bg: colors.successLight, text: colors.success };
-    case 'cancelado': return { bg: colors.dangerLight, text: colors.danger };
-    default: return { bg: colors.card, text: colors.textMuted };
-  }
-}
+// Simplified filter states - only show most commonly used
+const FILTER_ESTADOS = ['', 'pendiente', 'completada', 'cancelado'] as const;
 
 export default function OrdenesTodasScreen() {
   const router = useRouter();
+  const { isMobile } = useBreakpoint();
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
   const [from, setFrom] = useState('');
@@ -39,23 +35,26 @@ export default function OrdenesTodasScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchData = useCallback(async (p: number) => {
-    setLoading(true);
-    setError('');
-    try {
-      const params: Record<string, any> = { page: p, limit: LIMIT };
-      if (estado) params.estado = estado;
-      if (from) params.from = from;
-      if (to) params.to = to;
-      const data = await api.ordenes.getAll(params);
-      setResult(data);
-      setPage(p);
-    } catch {
-      setError('Error al cargar órdenes');
-    } finally {
-      setLoading(false);
-    }
-  }, [estado, from, to]);
+  const fetchData = useCallback(
+    async (p: number) => {
+      setLoading(true);
+      setError('');
+      try {
+        const params: Record<string, any> = { page: p, limit: LIMIT };
+        if (estado) params.estado = estado;
+        if (from) params.from = from;
+        if (to) params.to = to;
+        const data = await api.ordenes.getAll(params);
+        setResult(data);
+        setPage(p);
+      } catch {
+        setError('Error al cargar órdenes');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [estado, from, to],
+  );
 
   useEffect(() => {
     fetchData(1);
@@ -64,52 +63,83 @@ export default function OrdenesTodasScreen() {
   const ordenes = result?.data ?? [];
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Todas las Órdenes</Text>
+    <PageContainer>
+      <PageHeader
+        title="Todas las Órdenes"
+        icon="format-list-bulleted"
+        rightContent={
+          <Button
+            title="Buscar"
+            icon="magnify"
+            variant="primary"
+            size="sm"
+            onPress={() => fetchData(1)}
+          />
+        }
+      />
 
-        {/* Estado chips */}
-        <View style={styles.filtersRow}>
-          {ESTADOS.map(e => (
+      {/* Estado chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsScroll}
+        contentContainerStyle={styles.chipsContent}
+      >
+        {FILTER_ESTADOS.map((e) => {
+          const ec = getEstadoColor(e || undefined);
+          const active = estado === e;
+          return (
             <TouchableOpacity
               key={e}
-              style={[styles.estadoChip, estado === e && styles.estadoChipActive]}
+              style={[
+                styles.chip,
+                active && { backgroundColor: ec.bg, borderColor: ec.text },
+              ]}
               onPress={() => setEstado(e)}
             >
-              <Text style={[styles.estadoChipText, estado === e && styles.estadoChipTextActive]}>
+              {e !== '' && (
+                <Icon name={ec.icon} size={14} color={active ? ec.text : colors.textMuted} />
+              )}
+              <Text
+                style={[
+                  styles.chipText,
+                  active && { color: ec.text, fontWeight: fontWeight.bold },
+                ]}
+              >
                 {ESTADO_LABELS[e]}
               </Text>
             </TouchableOpacity>
-          ))}
-        </View>
+          );
+        })}
+      </ScrollView>
 
-        {/* Date filters */}
-        <View style={styles.filtersRow}>
-          <TextInput
-            style={styles.dateInput}
-            placeholder="Desde (YYYY-MM-DD)"
-            placeholderTextColor={colors.placeholder}
-            value={from}
-            onChangeText={setFrom}
-          />
-          <TextInput
-            style={styles.dateInput}
-            placeholder="Hasta (YYYY-MM-DD)"
-            placeholderTextColor={colors.placeholder}
-            value={to}
-            onChangeText={setTo}
-          />
-          <TouchableOpacity style={styles.filterBtn} onPress={() => fetchData(1)}>
-            <Text style={styles.filterBtnText}>Buscar</Text>
-          </TouchableOpacity>
-        </View>
+      {/* Date filters */}
+      <View style={[styles.dateRow, isMobile && styles.dateRowMobile]}>
+        <Input
+          label="Desde"
+          value={from}
+          onChangeText={setFrom}
+          placeholder="YYYY-MM-DD"
+          containerStyle={{ flex: 1, minWidth: 140 }}
+          size="sm"
+          leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
+        />
+        <Input
+          label="Hasta"
+          value={to}
+          onChangeText={setTo}
+          placeholder="YYYY-MM-DD"
+          containerStyle={{ flex: 1, minWidth: 140 }}
+          size="sm"
+          leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
+        />
       </View>
 
       {/* Pagination info */}
       {result && (
-        <>
-          <Text style={styles.totalInfo}>
-            {result.total} órdenes encontradas — Página {result.page} de {result.totalPages}
+        <View style={styles.paginationInfo}>
+          <Text style={styles.totalText}>
+            {result.total} órdenes encontradas
           </Text>
           <View style={styles.paginationRow}>
             <TouchableOpacity
@@ -117,94 +147,301 @@ export default function OrdenesTodasScreen() {
               onPress={() => page > 1 && fetchData(page - 1)}
               disabled={page <= 1}
             >
-              <Text style={styles.pageBtnText}>← Anterior</Text>
+              <Icon name="chevron-left" size={18} color={page <= 1 ? colors.textMuted : colors.text} />
             </TouchableOpacity>
-            <Text style={styles.pageInfo}>Pág {page}</Text>
+            <Text style={styles.pageText}>
+              {result.page} / {result.totalPages}
+            </Text>
             <TouchableOpacity
-              style={[styles.pageBtn, page >= (result?.totalPages ?? 1) && styles.pageBtnDisabled]}
-              onPress={() => page < (result?.totalPages ?? 1) && fetchData(page + 1)}
+              style={[
+                styles.pageBtn,
+                page >= (result?.totalPages ?? 1) && styles.pageBtnDisabled,
+              ]}
+              onPress={() =>
+                page < (result?.totalPages ?? 1) && fetchData(page + 1)
+              }
               disabled={page >= (result?.totalPages ?? 1)}
             >
-              <Text style={styles.pageBtnText}>Siguiente →</Text>
+              <Icon name="chevron-right" size={18} color={page >= (result?.totalPages ?? 1) ? colors.textMuted : colors.text} />
             </TouchableOpacity>
           </View>
-        </>
+        </View>
       )}
 
-      {/* States */}
-      {loading && <Text style={styles.loadingText}>Cargando...</Text>}
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {/* Loading / Error / Empty */}
+      {loading && <ListSkeleton count={5} />}
+      {error ? (
+        <View style={styles.errorBox}>
+          <Icon name="alert-circle-outline" size={18} color={colors.danger} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      ) : null}
       {!loading && !error && ordenes.length === 0 && (
-        <Text style={styles.emptyText}>No se encontraron órdenes</Text>
+        <View style={styles.emptyBox}>
+          <Icon name="clipboard-text-off-outline" size={48} color={colors.textMuted} />
+          <Text style={styles.emptyText}>No se encontraron órdenes</Text>
+        </View>
       )}
 
       {/* Order cards */}
-      {ordenes.map(orden => {
-        const ec = estadoColor(orden.estadoOrden);
-        const total = orden.factura?.totalFactura ?? orden.productos?.reduce(
-          (s, p) => s + (p.precioUnitario ?? 0) * (p.cantidad ?? 1), 0,
-        ) ?? 0;
+      {!loading &&
+        ordenes.map((orden) => {
+          const ec = getEstadoColor(orden.estadoOrden);
+          const total =
+            (orden.factura as any)?.totalFactura ??
+            orden.productos?.reduce(
+              (s, p) => s + (p.precioUnitario ?? 0) * (p.cantidad ?? 1),
+              0,
+            ) ??
+            0;
 
-        return (
-          <TouchableOpacity
-            key={orden.ordenId}
-            style={styles.card}
-            activeOpacity={0.7}
-            onPress={() => router.push(`/orden-detalle?id=${orden.ordenId}` as any)}
-          >
-            <View style={styles.cardHeader}>
-              <Text style={styles.orderId}>Orden #{orden.ordenId}</Text>
-              <View style={[styles.estadoBadge, { backgroundColor: ec.bg }]}>
-                <Text style={[styles.estadoText, { color: ec.text }]}>
-                  {orden.estadoOrden || 'N/A'}
-                </Text>
+          return (
+            <Card
+              key={orden.ordenId}
+              onPress={() =>
+                router.push(
+                  `/orden-detalle?ordenId=${orden.ordenId}` as any,
+                )
+              }
+              style={{ marginBottom: spacing.md }}
+              padding="md"
+            >
+              {/* Header */}
+              <View style={styles.cardHeader}>
+                <View style={styles.cardHeaderLeft}>
+                  <Text style={styles.orderId}>#{orden.ordenId}</Text>
+                  <Badge
+                    label={orden.estadoOrden || 'N/A'}
+                    variant={
+                      orden.estadoOrden === 'pendiente'
+                        ? 'warning'
+                        : orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado'
+                          ? 'success'
+                          : orden.estadoOrden === 'cancelado'
+                            ? 'danger'
+                            : 'info'
+                    }
+                    icon={ec.icon}
+                    size="sm"
+                  />
+                </View>
+                <Text style={styles.totalPrice}>${formatCurrency(total)}</Text>
               </View>
-            </View>
-            <View style={styles.cardRow}>
-              <Text style={styles.label}>Tipo</Text>
-              <Text style={styles.value}>{orden.tipoPedido}</Text>
-            </View>
-            <View style={styles.cardRow}>
-              <Text style={styles.label}>Fecha</Text>
-              <Text style={styles.value}>{formatDate(orden.fechaOrden)}</Text>
-            </View>
-            <View style={styles.cardRow}>
-              <Text style={styles.label}>Total</Text>
-              <Text style={styles.value}>${formatCurrency(total)}</Text>
-            </View>
-            {orden.productos && orden.productos.length > 0 && (
-              <View style={styles.productList}>
-                {orden.productos.map((p, i) => (
-                  <Text key={i} style={styles.productItem}>
-                    • {p.productoNombre || 'Producto'} x{p.cantidad} — ${formatCurrency(p.precioUnitario ?? 0)}
+
+              {/* Meta */}
+              <View style={styles.cardMeta}>
+                <View style={styles.metaItem}>
+                  <Icon name="tag-outline" size={14} color={colors.textMuted} />
+                  <Text style={styles.metaText}>{orden.tipoPedido}</Text>
+                </View>
+                <View style={styles.metaItem}>
+                  <Icon name="calendar-outline" size={14} color={colors.textMuted} />
+                  <Text style={styles.metaText}>
+                    {formatDate(orden.fechaOrden)}
                   </Text>
-                ))}
+                </View>
               </View>
-            )}
-          </TouchableOpacity>
-        );
-      })}
+
+              {/* Products preview */}
+              {orden.productos && orden.productos.length > 0 && (
+                <View style={styles.productsPreview}>
+                  {orden.productos.slice(0, 3).map((p, i) => (
+                    <Text key={i} style={styles.productPreviewText}>
+                      • {(p as any).productoNombre || (p as any).producto || 'Producto'} x{p.cantidad}
+                    </Text>
+                  ))}
+                  {orden.productos.length > 3 && (
+                    <Text style={styles.moreProducts}>
+                      +{orden.productos.length - 3} más...
+                    </Text>
+                  )}
+                </View>
+              )}
+            </Card>
+          );
+        })}
 
       {/* Bottom pagination */}
       {result && result.totalPages > 1 && (
-        <View style={styles.paginationRow}>
+        <View style={[styles.paginationRow, { justifyContent: 'center', paddingVertical: spacing.lg }]}>
           <TouchableOpacity
             style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
             onPress={() => page > 1 && fetchData(page - 1)}
             disabled={page <= 1}
           >
-            <Text style={styles.pageBtnText}>← Anterior</Text>
+            <Icon name="chevron-left" size={18} color={page <= 1 ? colors.textMuted : colors.text} />
+            <Text style={[styles.pageBtnText, page <= 1 && { color: colors.textMuted }]}>Anterior</Text>
           </TouchableOpacity>
-          <Text style={styles.pageInfo}>Pág {page} de {result.totalPages}</Text>
+          <Text style={styles.pageText}>
+            Pág {page} de {result.totalPages}
+          </Text>
           <TouchableOpacity
-            style={[styles.pageBtn, page >= result.totalPages && styles.pageBtnDisabled]}
+            style={[
+              styles.pageBtn,
+              page >= result.totalPages && styles.pageBtnDisabled,
+            ]}
             onPress={() => page < result.totalPages && fetchData(page + 1)}
             disabled={page >= result.totalPages}
           >
-            <Text style={styles.pageBtnText}>Siguiente →</Text>
+            <Text style={[styles.pageBtnText, page >= result.totalPages && { color: colors.textMuted }]}>Siguiente</Text>
+            <Icon name="chevron-right" size={18} color={page >= result.totalPages ? colors.textMuted : colors.text} />
           </TouchableOpacity>
         </View>
       )}
-    </ScrollView>
+    </PageContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  chipsScroll: {
+    marginBottom: spacing.lg,
+    flexGrow: 0,
+  },
+  chipsContent: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  chipText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    fontWeight: fontWeight.medium,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  dateRowMobile: {
+    flexDirection: 'column',
+  },
+  paginationInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  totalText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+  },
+  paginationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  pageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pageBtnDisabled: {
+    opacity: 0.4,
+  },
+  pageBtnText: {
+    fontSize: fontSize.sm,
+    color: colors.text,
+    fontWeight: fontWeight.medium,
+  },
+  pageText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    fontWeight: fontWeight.semibold,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.dangerLight,
+    padding: spacing.lg,
+    borderRadius: radius.md,
+    marginBottom: spacing.lg,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
+  },
+  emptyBox: {
+    alignItems: 'center',
+    padding: spacing['5xl'],
+    gap: spacing.md,
+  },
+  emptyText: {
+    fontSize: fontSize.lg,
+    color: colors.textMuted,
+    fontWeight: fontWeight.medium,
+  },
+  // Card internals
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  cardHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  orderId: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
+  },
+  totalPrice: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.extrabold,
+    color: colors.primary,
+  },
+  cardMeta: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginBottom: spacing.sm,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  metaText: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    textTransform: 'capitalize',
+  },
+  productsPreview: {
+    padding: spacing.sm,
+    backgroundColor: colors.bgLight,
+    borderRadius: radius.sm,
+    marginTop: spacing.xs,
+  },
+  productPreviewText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+    paddingVertical: 2,
+  },
+  moreProducts: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
+  },
+});

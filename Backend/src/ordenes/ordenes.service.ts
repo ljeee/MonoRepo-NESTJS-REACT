@@ -169,8 +169,8 @@ export class OrdenesService {
 		);
 	}
 
-	private async crearOrden(facturaId: number, tipoPedido?: string, estadoOrden?: string): Promise<Ordenes> {
-		const orden = this.repo.create({facturaId, tipoPedido, estadoOrden});
+	private async crearOrden(facturaId: number, tipoPedido?: string, estadoOrden?: string, observaciones?: string): Promise<Ordenes> {
+		const orden = this.repo.create({facturaId, tipoPedido, estadoOrden, observaciones});
 		return this.repo.save(orden);
 	}
 
@@ -356,7 +356,7 @@ export class OrdenesService {
 		const factura = await this.crearFactura(data.nombreCliente || '', data.metodo, descripcion);
 
 		// 2. Crear orden
-		const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden);
+		const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden, data.observaciones);
 
 		// 3. Procesar productos y calcular total
 		let total = 0;

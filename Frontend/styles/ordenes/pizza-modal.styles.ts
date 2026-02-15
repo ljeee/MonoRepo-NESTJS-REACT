@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
-import { colors } from './theme';
+import { colors } from '../theme';
+import { fontSize, fontWeight, spacing, radius } from '../tokens';
 
 export const pizzaModalStyles = StyleSheet.create({
   overlay: {

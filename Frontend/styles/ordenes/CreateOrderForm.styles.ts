@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import { colors } from './theme';
+import { colors } from '../theme';
 
 export const orderFormStyles = StyleSheet.create({
   container: {

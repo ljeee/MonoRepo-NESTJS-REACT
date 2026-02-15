@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../styles/theme';
 import { formatCurrency, formatDate } from '../../utils/formatNumber';
-import { fStyles as s } from '../../styles/facturas.styles';
+import { fStyles as s } from '../../styles/facturas/facturas.styles';
 import { printReceipt } from '../../utils/printReceipt';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

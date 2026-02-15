@@ -1,10 +1,27 @@
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { api } from '../services/api';
-import { styles } from '../styles/orden-detalle.styles';
+import { colors } from '../styles/theme';
+import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
 import { formatCurrency, formatDate } from '../utils/formatNumber';
+import { getEstadoColor } from '../constants/estados';
+import { useToast } from '../contexts/ToastContext';
+import {
+  PageContainer,
+  PageHeader,
+  Button,
+  Card,
+  Badge,
+  Icon,
+  ListSkeleton,
+  ConfirmModal,
+} from '../components/ui';
+import { ordenDetalleStyles as styles } from '../styles/ordenes/orden-detalle.styles';
+
+
+
 
 interface ProductoObj {
   productoId?: number;
@@ -26,7 +43,6 @@ interface OrdenProducto {
   precioUnitario?: number;
   varianteId?: number;
   variante?: VarianteObj;
-  // Campos dinámicos para productos personalizados
   tipo?: string;
   tamano?: string;
   sabor1?: string;
@@ -50,6 +66,7 @@ interface Domicilio {
   direccionEntrega?: string;
   telefono?: number;
   telefonoDomiciliarioAsignado?: number;
+  costoDomicilio?: number;
 }
 
 interface OrdenDetalle {
@@ -57,6 +74,7 @@ interface OrdenDetalle {
   tipoPedido?: string;
   estadoOrden?: string;
   fechaOrden?: string;
+  observaciones?: string;
   factura?: Factura;
   productos?: OrdenProducto[];
   domicilios?: Domicilio[];
@@ -66,10 +84,13 @@ export default function OrdenDetalleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const ordenId = params.ordenId as string;
+  const { showToast } = useToast();
 
   const [orden, setOrden] = useState<OrdenDetalle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [canceling, setCanceling] = useState(false);
 
   useEffect(() => {
     if (!ordenId) {
@@ -84,10 +105,8 @@ export default function OrdenDetalleScreen() {
         if (ordenData && !Array.isArray(ordenData.productos)) {
           ordenData.productos = [];
         }
-
-        setOrden(ordenData);
+        setOrden(ordenData as any);
       } catch (e: any) {
-        console.error('Error fetching orden:', e);
         setError(e.message || 'Error cargando orden');
       } finally {
         setLoading(false);
@@ -98,20 +117,14 @@ export default function OrdenDetalleScreen() {
   }, [ordenId]);
 
   const getProductName = (p: OrdenProducto) => {
-    // Si viene el nombre compuesto directo de la DB (campo 'producto')
     if (p.producto) return p.producto;
-
-    // Nombre del producto + variante
     const baseName = p.productoObj?.productoNombre;
     const varianteName = p.variante?.nombre;
     if (baseName && varianteName) return `${baseName} — ${varianteName}`;
     if (baseName) return baseName;
-
-    // Construir nombre dinámico si es necesario (legacy)
     const parts = [];
     if (p.tipo) parts.push(p.tipo);
     if (p.tamano) parts.push(p.tamano);
-
     return parts.length > 0 ? parts.join(' ') : 'Producto sin nombre';
   };
 
@@ -127,161 +140,299 @@ export default function OrdenDetalleScreen() {
     return flavors.length > 0 ? flavors.join(' / ') : null;
   };
 
+  const handleCopy = async () => {
+    if (!orden) return;
+    const productLines = (orden.productos || []).map((p) => {
+      const name = getProductName(p);
+      const qty = p.cantidad || 1;
+      const details = getProductDetails(p);
+      const price = getUnitPrice(p);
+      let line = `${qty} ${name}`;
+      if (details) line += `  ${details}`;
+      if (price != null) line += `  $${formatCurrency(price * qty)}`;
+      return line;
+    });
+
+    const textoACopiar = [
+      `Cliente: ${orden.factura?.clienteNombre || 'Sin nombre'}`,
+      orden.domicilios?.[0]?.telefono ? `Teléfono: ${orden.domicilios[0].telefono}` : '',
+      orden.domicilios?.[0]?.direccionEntrega ? `Dirección: ${orden.domicilios[0].direccionEntrega}` : '',
+      productLines.length > 0 ? `Productos:\n${productLines.join('\n')}` : '',
+      `Método de pago: ${orden.factura?.metodo || 'No especificado'}`,
+      orden.factura?.total != null ? `Total: $${formatCurrency(Number(orden.factura.total))}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    try {
+      await Clipboard.setStringAsync(textoACopiar);
+      showToast('Datos copiados al portapapeles', 'success', 2000);
+    } catch {
+      showToast('No se pudo copiar', 'error');
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!orden) return;
+
+    setCanceling(true);
+    try {
+      await api.ordenes.update(orden.ordenId, { estadoOrden: 'cancelado' } as any);
+      showToast('Orden cancelada exitosamente', 'success', 2000);
+      setShowCancelModal(false);
+
+      // Refresh order data
+      const ordenData = await api.ordenes.getById(Number(ordenId));
+      if (ordenData && !Array.isArray(ordenData.productos)) {
+        ordenData.productos = [];
+      }
+      setOrden(ordenData as any);
+    } catch (e: any) {
+      showToast(e.message || 'Error al cancelar la orden', 'error', 5000);
+    } finally {
+      setCanceling(false);
+    }
+  };
+
+  const canCancelOrder = () => {
+    if (!orden) return false;
+    const estado = orden.estadoOrden?.toLowerCase();
+    return estado === 'pendiente' || estado === 'en preparación' || estado === 'preparacion';
+  };
+
   if (loading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" style={styles.loader} />
-      </View>
+      <PageContainer>
+        <ListSkeleton count={3} />
+      </PageContainer>
     );
   }
 
   if (error || !orden) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>{error || 'Orden no encontrada'}</Text>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Volver</Text>
-        </TouchableOpacity>
-      </View>
+      <PageContainer>
+        <View style={styles.errorBox}>
+          <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+          <Text style={styles.errorText}>{error || 'Orden no encontrada'}</Text>
+          <Button title="Volver" icon="arrow-left" variant="ghost" onPress={() => router.back()} />
+        </View>
+      </PageContainer>
     );
   }
 
+  const ec = getEstadoColor(orden.estadoOrden);
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Detalle de Orden #{orden.ordenId}</Text>
-        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-          <TouchableOpacity
-            style={[styles.backButton, { backgroundColor: '#10b981' }]}
-            onPress={async () => {
-              // Build detailed product lines from productos array
-              const productLines = (orden.productos || []).map(p => {
-                const name = getProductName(p);
-                const qty = p.cantidad || 1;
-                const details = getProductDetails(p);
-                const price = getUnitPrice(p);
-                let line = `${qty} ${name}`;
-                if (details) line += `  ${details}`;
-                if (price != null) line += `  $${formatCurrency(price * qty)}`;
-                return line;
-              });
+    <PageContainer>
+      <PageHeader
+        title={`Orden #${orden.ordenId}`}
+        icon="clipboard-text-outline"
+        rightContent={
+          <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' }}>
+            {canCancelOrder() && (
+              <Button
+                title="Cancelar Orden"
+                icon="close-circle-outline"
+                variant="danger"
+                size="sm"
+                onPress={() => setShowCancelModal(true)}
+              />
+            )}
+            <Button
+              title="Copiar Datos"
+              icon="content-copy"
+              variant="primary"
+              size="sm"
+              onPress={handleCopy}
+            />
+            <Button
+              title=""
+              icon="calendar-today"
+              variant="ghost"
+              size="sm"
+              onPress={() => router.push('/ordenes')}
+              style={{ paddingHorizontal: spacing.sm, minWidth: 0 }}
+            />
+          </View>
+        }
+      />
 
-              const textoACopiar = [
-                `Cliente: ${orden.factura?.clienteNombre || 'Sin nombre'}`,
-                orden.domicilios?.[0]?.telefono ? `Teléfono: ${orden.domicilios[0].telefono}` : '',
-                orden.domicilios?.[0]?.direccionEntrega ? `Dirección: ${orden.domicilios[0].direccionEntrega}` : '',
-                productLines.length > 0 ? `Productos:\n${productLines.join('\n')}` : '',
-                `Método de pago: ${orden.factura?.metodo || 'No especificado'}`,
-                orden.factura?.total != null ? `Total: $${formatCurrency(Number(orden.factura.total))}` : '',
-              ].filter(Boolean).join('\n');
-
-              try {
-                await Clipboard.setStringAsync(textoACopiar);
-                Alert.alert('Éxito', 'Datos copiados al portapapeles');
-              } catch (error) {
-                Alert.alert('Error', 'No se pudo copiar: ' + textoACopiar);
-              }
-            }}
-          >
-            <Text style={styles.backButtonText}>📋 Copiar Datos</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.push('/ordenes')}>
-            <Text style={styles.backButtonText}>Ver Órdenes del Día</Text>
-          </TouchableOpacity>
+      {/* ── General Info ── */}
+      <Card padding="lg" style={{ marginBottom: spacing.lg }}>
+        <View style={styles.sectionHeader}>
+          <Icon name="information-outline" size={20} color={colors.primary} />
+          <Text style={styles.sectionTitle}>Información General</Text>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Información General</Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.label}>Tipo de Pedido:</Text>
-          <Text style={styles.value}>{orden.tipoPedido || 'No especificado'}</Text>
-        </View>
-        {orden.factura?.clienteNombre && (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Cliente:</Text>
-            <Text style={styles.value}>{orden.factura.clienteNombre}</Text>
-          </View>
-        )}
-        {orden.domicilios?.[0]?.telefono && (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Teléfono:</Text>
-            <Text style={styles.value}>{orden.domicilios[0].telefono}</Text>
-          </View>
-        )}
-        {orden.domicilios?.[0]?.direccionEntrega && (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Dirección:</Text>
-            <Text style={styles.value}>{orden.domicilios[0].direccionEntrega}</Text>
-          </View>
-        )}
-        {orden.factura?.metodo && (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Método de Pago:</Text>
-            <Text style={styles.value}>{orden.factura.metodo}</Text>
-          </View>
-        )}
-        {orden.estadoOrden && (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Estado:</Text>
-            <Text style={[styles.value, styles.estadoValue]}>{orden.estadoOrden}</Text>
-          </View>
-        )}
-        {orden.fechaOrden && (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Fecha:</Text>
-            <Text style={styles.value}>{formatDate(orden.fechaOrden)}</Text>
-          </View>
-        )}
-        {orden.factura?.descripcion && (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Descripción:</Text>
-            <Text style={styles.value}>{orden.factura.descripcion}</Text>
-          </View>
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Productos</Text>
-        {orden.productos && orden.productos.length > 0 ? (
-          orden.productos.map((ordenProducto, index) => (
-            <View key={index} style={styles.productCard}>
-              <View style={styles.productHeader}>
-                <Text style={styles.productTipo}>
-                  {getProductName(ordenProducto)}
-                </Text>
-                <Text style={styles.productCantidad}>x{ordenProducto.cantidad || 1}</Text>
-              </View>
-
-              {getProductDetails(ordenProducto) && (
-                <Text style={styles.productDetail}>
-                  {getProductDetails(ordenProducto)}
-                </Text>
-              )}
-
-              {getUnitPrice(ordenProducto) != null && (
-                <Text style={styles.productPrecio}>
-                  Precio unitario: ${formatCurrency(getUnitPrice(ordenProducto))}
-                </Text>
-              )}
-              {getUnitPrice(ordenProducto) != null && ordenProducto.cantidad && (
-                <Text style={styles.productPrecio}>
-                  Subtotal: ${formatCurrency(getUnitPrice(ordenProducto)! * Number(ordenProducto.cantidad))}
-                </Text>
-              )}
+        <View style={styles.infoGrid}>
+          <InfoRow icon="tag-outline" label="Tipo de Pedido" value={orden.tipoPedido || 'No especificado'} />
+          {orden.factura?.clienteNombre && (
+            <InfoRow icon="account-outline" label="Cliente" value={orden.factura.clienteNombre} />
+          )}
+          {orden.domicilios?.[0]?.telefono && (
+            <InfoRow icon="phone-outline" label="Teléfono" value={String(orden.domicilios[0].telefono)} />
+          )}
+          {orden.domicilios?.[0]?.direccionEntrega && (
+            <InfoRow icon="map-marker-outline" label="Dirección" value={orden.domicilios[0].direccionEntrega} />
+          )}
+          {orden.factura?.metodo && (
+            <InfoRow icon="credit-card-outline" label="Método de Pago" value={orden.factura.metodo} />
+          )}
+          {orden.estadoOrden && (
+            <View style={styles.infoRow}>
+              <Icon name="flag-outline" size={16} color={colors.textMuted} />
+              <Text style={styles.infoLabel}>Estado</Text>
+              <Badge
+                label={orden.estadoOrden}
+                variant={
+                  orden.estadoOrden === 'pendiente' ? 'warning'
+                    : orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado' ? 'success'
+                      : orden.estadoOrden === 'cancelado' ? 'danger'
+                        : 'info'
+                }
+                icon={ec.icon}
+                size="md"
+              />
             </View>
-          ))
-        ) : (
-          <Text style={styles.productDetail}>No hay productos en esta orden</Text>
-        )}
-      </View>
-
-      {orden.factura?.total != null && (
-        <View style={styles.totalSection}>
-          <Text style={styles.totalLabel}>Total:</Text>
-          <Text style={styles.totalValue}>${formatCurrency(Number(orden.factura.total))}</Text>
+          )}
+          {orden.fechaOrden && (
+            <InfoRow icon="calendar-outline" label="Fecha" value={formatDate(orden.fechaOrden)} />
+          )}
+          {orden.domicilios?.[0]?.costoDomicilio != null && (
+            <InfoRow
+              icon="truck-delivery-outline"
+              label="Costo Domicilio"
+              value={`$${formatCurrency(Number(orden.domicilios[0].costoDomicilio))}`}
+            />
+          )}
+          {orden.observaciones && (
+            <InfoRow icon="note-text-outline" label="Observaciones" value={orden.observaciones} />
+          )}
+          {orden.factura?.descripcion && (
+            <InfoRow icon="text-box-outline" label="Descripción" value={orden.factura.descripcion} />
+          )}
         </View>
+      </Card>
+
+      {/* ── Products ── */}
+      <Card padding="lg" style={{ marginBottom: spacing.lg }}>
+        <View style={styles.sectionHeader}>
+          <Icon name="food-variant" size={20} color={colors.primary} />
+          <Text style={styles.sectionTitle}>Productos</Text>
+        </View>
+
+        {orden.productos && orden.productos.length > 0 ? (
+          orden.productos.map((p, index) => {
+            const price = getUnitPrice(p);
+            const details = getProductDetails(p);
+            return (
+              <View key={index} style={styles.productCard}>
+                <View style={styles.productHeader}>
+                  <View style={styles.productNameRow}>
+                    <View style={styles.productIndex}>
+                      <Text style={styles.productIndexText}>{index + 1}</Text>
+                    </View>
+                    <Text style={styles.productName}>{getProductName(p)}</Text>
+                  </View>
+                  <View style={styles.qtyBadge}>
+                    <Text style={styles.qtyText}>x{p.cantidad || 1}</Text>
+                  </View>
+                </View>
+
+                {details && (
+                  <View style={styles.flavorsRow}>
+                    <Icon name="palette-outline" size={14} color={colors.secondary} />
+                    <Text style={styles.flavorsText}>{details}</Text>
+                  </View>
+                )}
+
+                {price != null && (
+                  <View style={styles.priceRow}>
+                    <Text style={styles.priceLabel}>
+                      ${formatCurrency(price)} c/u
+                    </Text>
+                    {p.cantidad && (
+                      <Text style={styles.priceTotal}>
+                        ${formatCurrency(price * Number(p.cantidad))}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </View>
+            );
+          })
+        ) : (
+          <View style={styles.emptyProducts}>
+            <Icon name="food-off" size={32} color={colors.textMuted} />
+            <Text style={styles.emptyProductsText}>No hay productos en esta orden</Text>
+          </View>
+        )}
+      </Card>
+
+      {/* ── Total ── */}
+      {orden.factura?.total != null && (
+        <Card variant="elevated" padding="lg" style={styles.totalCard}>
+          {/* Show breakdown if there's delivery cost */}
+          {orden.domicilios?.[0]?.costoDomicilio != null && orden.domicilios[0].costoDomicilio > 0 ? (
+            <>
+              <View style={styles.subtotalRow}>
+                <Text style={styles.subtotalLabel}>Subtotal Productos</Text>
+                <Text style={styles.subtotalValue}>
+                  ${formatCurrency(Number(orden.factura.total) - Number(orden.domicilios[0].costoDomicilio))}
+                </Text>
+              </View>
+              <View style={styles.subtotalRow}>
+                <Text style={styles.subtotalLabel}>Costo Domicilio</Text>
+                <Text style={styles.subtotalValue}>
+                  ${formatCurrency(Number(orden.domicilios[0].costoDomicilio))}
+                </Text>
+              </View>
+              <View style={styles.divider} />
+            </>
+          ) : null}
+
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalValue}>
+              ${formatCurrency(Number(orden.factura.total))}
+            </Text>
+          </View>
+        </Card>
       )}
-    </ScrollView>
+
+      {/* ── Cancel Confirmation Modal ── */}
+      <ConfirmModal
+        visible={showCancelModal}
+        title="Cancelar Orden"
+        message={`¿Estás seguro de cancelar la orden #${orden.ordenId}? Esta acción no se puede deshacer.`}
+        icon="close-circle-outline"
+        variant="danger"
+        confirmText="Cancelar Orden"
+        loading={canceling}
+        onConfirm={handleCancelOrder}
+        onCancel={() => setShowCancelModal(false)}
+      />
+    </PageContainer>
   );
 }
+
+// ── Helper component ──
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.infoRow}>
+      <Icon name={icon} size={16} color={colors.textMuted} />
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value}</Text>
+    </View>
+  );
+}
+
+

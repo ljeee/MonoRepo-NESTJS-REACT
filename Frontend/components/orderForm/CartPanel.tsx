@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-import { cartPanelStyles as s } from '../../styles/cart-panel.styles';
+import { cartPanelStyles as s } from '../../styles/ordenes/cart-panel.styles';
 import { formatCurrency } from '../../utils/formatNumber';
 
 export interface CartItem {

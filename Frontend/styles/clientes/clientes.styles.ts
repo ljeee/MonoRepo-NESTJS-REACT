@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
-import { colors } from './theme';
+import { colors } from '../shared/theme';
+import { fontSize, fontWeight, spacing, radius } from '../shared/tokens';
 
 export const styles = StyleSheet.create({
   container: {

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../styles/theme';
-import { pizzaModalStyles as s } from '../../styles/pizza-modal.styles';
+import { pizzaModalStyles as s } from '../../styles/ordenes/pizza-modal.styles';
 import { Producto, ProductoVariante } from '../../hooks/use-productos';
 import { formatCurrency } from '../../utils/formatNumber';
 

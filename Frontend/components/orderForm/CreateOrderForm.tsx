@@ -4,13 +4,14 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { api } from '../../services/api';
 import { useOrder } from '../../contexts/OrderContext';
+import { useToast } from '../../contexts/ToastContext';
 
 import { useClientByPhone } from '../../hooks/use-client-by-phone';
 import { Domiciliario } from '../../types/models';
 import { Producto, ProductoVariante } from '../../hooks/use-productos';
 import { useBreakpoint } from '../../styles/responsive';
 import { colors } from '../../styles/theme';
-import { orderFormStyles as styles } from '../../styles/CreateOrderForm.styles';
+import { orderFormStyles as styles } from '../../styles/ordenes/CreateOrderForm.styles';
 import CartPanel, { CartItem } from './CartPanel';
 import MenuPicker from './MenuPicker';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
@@ -47,6 +48,7 @@ export default function CreateOrderForm() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
   const { formState, updateForm, clearCart, isHydrated } = useOrder();
+  const { showToast } = useToast();
 
   const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
   const fetchDomiciliarios = useCallback(async () => {
@@ -56,8 +58,6 @@ export default function CreateOrderForm() {
     } catch { /* silent */ }
   }, []);
   const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState('');
   const { client, fetchClient } = useClientByPhone();
 
   // ==================== CARRITO ====================
@@ -141,20 +141,18 @@ export default function CreateOrderForm() {
   // ==================== SUBMIT ====================
   const handleSubmit = async () => {
     setLoading(true);
-    setError('');
-    setSuccess(false);
 
-    // Validaciones
-    if (formState.tipoPedido === 'mesa' && !formState.numeroMesa) {
+    // Validar tipo de pedido
+    if (formState.tipoPedido === 'mesa' && (!formState.numeroMesa || !formState.numeroMesa.trim())) {
       setLoading(false);
-      setError('Debe seleccionar un número de mesa');
+      showToast('Debe seleccionar un número de mesa', 'error');
       return;
     }
 
     if (formState.tipoPedido === 'domicilio') {
       if (!formState.nombreCliente || !formState.nombreCliente.trim()) {
         setLoading(false);
-        setError('Debe ingresar el nombre del cliente');
+        showToast('Debe ingresar el nombre del cliente', 'error');
         return;
       }
 
@@ -164,7 +162,7 @@ export default function CreateOrderForm() {
 
       if (!direccion || !direccion.trim()) {
         setLoading(false);
-        setError('Debe ingresar o seleccionar una dirección');
+        showToast('Debe ingresar o seleccionar una dirección', 'error');
         return;
       }
     }
@@ -172,7 +170,7 @@ export default function CreateOrderForm() {
     if (formState.tipoPedido === 'llevar') {
       if (!formState.nombreCliente || !formState.nombreCliente.trim()) {
         setLoading(false);
-        setError('Debe ingresar el nombre del cliente');
+        showToast('Debe ingresar el nombre del cliente', 'error');
         return;
       }
     }
@@ -180,7 +178,7 @@ export default function CreateOrderForm() {
     // Validar carrito
     if (formState.cart.length === 0) {
       setLoading(false);
-      setError('Debe agregar al menos un producto al pedido');
+      showToast('Debe agregar al menos un producto al pedido', 'error');
       return;
     }
 
@@ -236,8 +234,6 @@ export default function CreateOrderForm() {
         });
       }
 
-      setSuccess(true);
-
       // Limpiar formulario
       clearCart();
       updateForm({
@@ -251,16 +247,13 @@ export default function CreateOrderForm() {
         observaciones: '',
       });
 
-      // Navegar al detalle de la orden creada después de un breve delay
+      // Mostrar éxito y redirigir
+      showToast('¡Orden creada exitosamente!', 'success', 2000);
       setTimeout(() => {
-        if (ordenId) {
-          router.push(`/orden-detalle?ordenId=${ordenId}`);
-        } else {
-          router.push('/ordenes');
-        }
-      }, 800);
+        router.push('/ordenes');
+      }, 2000);
     } catch (err: any) {
-      setError(extractErrorMessage(err));
+      showToast(extractErrorMessage(err), 'error', 5000);
     } finally {
       setLoading(false);
     }
@@ -496,18 +489,6 @@ export default function CreateOrderForm() {
           >
             <Text style={styles.createOrderBtnText}>{loading ? 'Creando...' : 'Crear Orden'}</Text>
           </TouchableOpacity>
-
-
-          {success && (
-            <View style={styles.successContainer}>
-              <Text style={styles.success}>✓ ¡Orden creada con éxito!</Text>
-            </View>
-          )}
-          {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.error}>{error}</Text>
-            </View>
-          ) : null}
 
         </View>
         {/* Extra bottom space for system nav bar on mobile */}
