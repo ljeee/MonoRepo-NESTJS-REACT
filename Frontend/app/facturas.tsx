@@ -96,84 +96,87 @@ export default function FacturasRangoScreen() {
   }, [data, from, to]);
 
   return (
-    <PageContainer scrollable={false}>
-      <PageHeader
-        title="Facturas por Fechas"
-        subtitle="Facturación"
-        icon="calendar-range"
-      />
-
-      {/* Actions Bar */}
-      <View style={styles.actionsBar}>
-        <Button
-          title="Refrescar"
-          icon="refresh"
-          variant="ghost"
-          size="sm"
-          onPress={fetchData}
-        />
-        <Button
-          title="Exportar CSV"
-          icon="download"
-          variant="outline"
-          size="sm"
-          onPress={handleExportCsv}
-          disabled={data.length === 0}
-        />
-      </View>
-
-      {/* Date filter */}
-      <View style={styles.filterRow}>
-        <Input
-          label="Desde"
-          value={from}
-          onChangeText={setFrom}
-          placeholder="2025-01-01"
-          containerStyle={{ flex: 1, minWidth: 140 }}
-          size="sm"
-          leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
-        />
-        <Input
-          label="Hasta"
-          value={to}
-          onChangeText={setTo}
-          placeholder="2026-12-31"
-          containerStyle={{ flex: 1, minWidth: 140 }}
-          size="sm"
-          leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
-        />
-        <View style={styles.filterActions}>
-          <Button
-            title={loading ? '...' : 'Buscar'}
-            icon="magnify"
-            variant="primary"
-            size="sm"
-            onPress={fetchData}
-            disabled={!from || !to || loading}
-            loading={loading}
-          />
-        </View>
-      </View>
-
-      {/* Stats */}
-      {data.length > 0 && <StatsHeader stats={stats} periodLabel="Total del Período" />}
-
-      {/* Error */}
-      {error && (
-        <View style={styles.errorBox}>
-          <Icon name="alert-circle-outline" size={18} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* Loading */}
-      {loading && <ListSkeleton count={4} />}
-
-      {/* List */}
+    <PageContainer scrollable={false} contentContainerStyle={{ flex: 1 }}>
       <FlatList
         data={data}
+        style={{ flex: 1 }}
         keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
         contentContainerStyle={{ paddingBottom: spacing.lg }}
+        ListHeaderComponent={
+          <>
+            <PageHeader
+              title="Facturas por Fechas"
+              subtitle="Facturación"
+              icon="calendar-range"
+            />
+
+            {/* Actions Bar */}
+            <View style={styles.actionsBar}>
+              <Button
+                title="Refrescar"
+                icon="refresh"
+                variant="ghost"
+                size="sm"
+                onPress={fetchData}
+              />
+              <Button
+                title="Exportar CSV"
+                icon="download"
+                variant="outline"
+                size="sm"
+                onPress={handleExportCsv}
+                disabled={data.length === 0}
+              />
+            </View>
+
+            {/* Date filter */}
+            <View style={styles.filterRow}>
+              <Input
+                label="Desde"
+                value={from}
+                onChangeText={setFrom}
+                placeholder="2025-01-01"
+                containerStyle={{ flex: 1, minWidth: 140 }}
+                size="sm"
+                leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
+              />
+              <Input
+                label="Hasta"
+                value={to}
+                onChangeText={setTo}
+                placeholder="2026-12-31"
+                containerStyle={{ flex: 1, minWidth: 140 }}
+                size="sm"
+                leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
+              />
+              <View style={styles.filterActions}>
+                <Button
+                  title={loading ? '...' : 'Buscar'}
+                  icon="magnify"
+                  variant="primary"
+                  size="sm"
+                  onPress={fetchData}
+                  disabled={!from || !to || loading}
+                  loading={loading}
+                />
+              </View>
+            </View>
+
+            {/* Stats */}
+            {data.length > 0 && <StatsHeader stats={stats} periodLabel="Total del Período" />}
+
+            {/* Error */}
+            {error && (
+              <View style={styles.errorBox}>
+                <Icon name="alert-circle-outline" size={18} color={colors.danger} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {/* Loading */}
+            {loading && <ListSkeleton count={4} />}
+          </>
+        }
         ListEmptyComponent={
           !loading && !error ? (
             <View style={styles.emptyContainer}>
