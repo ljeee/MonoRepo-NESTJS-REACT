@@ -1,7 +1,7 @@
 import {Controller, Get, Post, Delete, Param, Body, Patch, Query, BadRequestException} from '@nestjs/common';
 import {ApiTags, ApiOperation, ApiResponse, ApiBody, ApiOkResponse} from '@nestjs/swagger';
 import {OrdenesService} from './ordenes.service';
-import {CreateOrdenesDto, FindOrdenesDto} from './esquemas/ordenes.dto';
+import {CreateOrdenesDto, FindOrdenesDto, UpdateOrdenesDto} from './esquemas/ordenes.dto';
 import {plainToInstance} from 'class-transformer';
 import {validate} from 'class-validator';
 import {Public} from '../auth/decorators/public.decorator';
@@ -132,7 +132,7 @@ export class OrdenesController {
 	@Patch(':id')
 	@ApiOperation({summary: 'Actualizar una orden'})
 	@ApiResponse({status: 200, description: 'Orden actualizada.'})
-	update(@Param('id') id: string, @Body() dto: Partial<CreateOrdenesDto>) {
+	update(@Param('id') id: string, @Body() dto: UpdateOrdenesDto) {
 		return this.service.update(Number(id), dto);
 	}
 

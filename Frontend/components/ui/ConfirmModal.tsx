@@ -56,20 +56,26 @@ export default function ConfirmModal({
 
                     {/* Actions */}
                     <View style={styles.actions}>
-                        <Button
-                            title={cancelText}
-                            onPress={onCancel}
-                            variant="ghost"
-                            style={{ flex: 1 }}
-                            disabled={loading}
-                        />
-                        <Button
-                            title={confirmText}
-                            onPress={onConfirm}
-                            variant={variant === 'danger' ? 'danger' : 'primary'}
-                            style={{ flex: 1 }}
-                            loading={loading}
-                        />
+                        <View style={{ flex: 1 }}>
+                            <Button
+                                title={cancelText}
+                                onPress={onCancel}
+                                variant="ghost"
+                                size="md"
+                                fullWidth
+                                disabled={loading}
+                            />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Button
+                                title={confirmText}
+                                onPress={onConfirm}
+                                variant={variant === 'danger' ? 'danger' : 'primary'}
+                                size="md"
+                                fullWidth
+                                loading={loading}
+                            />
+                        </View>
                     </View>
                 </Pressable>
             </Pressable>
@@ -83,12 +89,12 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.6)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: spacing['2xl'],
+        padding: spacing.md,
     },
     content: {
         backgroundColor: colors.card,
         borderRadius: radius.xl,
-        padding: spacing['3xl'],
+        padding: spacing.xl,
         width: '100%',
         maxWidth: 420,
         alignItems: 'center',
@@ -116,11 +122,12 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
         textAlign: 'center',
         lineHeight: 22,
-        marginBottom: spacing['2xl'],
+        marginBottom: spacing.lg,
     },
     actions: {
         flexDirection: 'row',
         gap: spacing.md,
         width: '100%',
+        marginTop: spacing.lg,
     },
 });

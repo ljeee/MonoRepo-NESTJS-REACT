@@ -107,43 +107,44 @@ export default function OrdersOfDayPending() {
       <PageHeader
         title={filter === 'pendientes' ? 'Órdenes Pendientes' : 'Órdenes del Día'}
         icon="clipboard-text-outline"
-        rightContent={
-          <Button
-            title="Refrescar"
-            icon="refresh"
-            variant="ghost"
-            size="sm"
-            onPress={() => fetchOrders()}
-          />
-        }
       />
 
-      {/* Filter tabs */}
+      {/* Actions & Filters */}
       <View style={styles.filterRow}>
-        {([
-          { key: 'dia' as const, label: 'Todas', icon: 'calendar-today' as const },
-          { key: 'pendientes' as const, label: 'Pendientes', icon: 'clock-outline' as const },
-        ]).map((f) => (
-          <TouchableOpacity
-            key={f.key}
-            onPress={() => setFilter(f.key)}
-            style={[styles.filterTab, filter === f.key && styles.filterTabActive]}
-          >
-            <Icon
-              name={f.icon}
-              size={16}
-              color={filter === f.key ? colors.primary : colors.textMuted}
-            />
-            <Text
-              style={[
-                styles.filterText,
-                filter === f.key && styles.filterTextActive,
-              ]}
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {([
+            { key: 'dia' as const, label: 'Todas', icon: 'calendar-today' as const },
+            { key: 'pendientes' as const, label: 'Pendientes', icon: 'clock-outline' as const },
+          ]).map((f) => (
+            <TouchableOpacity
+              key={f.key}
+              onPress={() => setFilter(f.key)}
+              style={[styles.filterTab, filter === f.key && styles.filterTabActive]}
             >
-              {f.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Icon
+                name={f.icon}
+                size={16}
+                color={filter === f.key ? colors.primary : colors.textMuted}
+              />
+              <Text
+                style={[
+                  styles.filterText,
+                  filter === f.key && styles.filterTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Button
+          title="Refrescar"
+          icon="refresh"
+          variant="ghost"
+          size="sm"
+          onPress={() => fetchOrders()}
+        />
       </View>
 
       {/* Content */}
@@ -314,9 +315,16 @@ export default function OrdersOfDayPending() {
 }
 
 const styles = StyleSheet.create({
+  actionsBar: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+  },
   filterRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.xl,
   },
   filterTab: {

@@ -1,7 +1,7 @@
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Platform, SafeAreaView, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { api } from '../../services/api';
 import { useOrder } from '../../contexts/OrderContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -263,16 +263,16 @@ export default function CreateOrderForm() {
   // Wait for AsyncStorage to hydrate before rendering
   if (!isHydrated) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <Text style={{ color: colors.text, fontSize: 16 }}>Cargando...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
@@ -494,6 +494,6 @@ export default function CreateOrderForm() {
         {/* Extra bottom space for system nav bar on mobile */}
         {isMobile && <View style={{ height: Platform.OS === 'android' ? 32 : 0 }} />}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

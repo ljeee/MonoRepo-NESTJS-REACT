@@ -20,6 +20,7 @@ export const colors = {
   textSecondary: '#E2E8F0', // slate-200
   textTertiary: '#CBD5E1', // slate-300
   textMuted: '#94A3B8', // slate-400
+  subText: '#94A3B8',
   
   // Status Colors
   success: '#10B981',

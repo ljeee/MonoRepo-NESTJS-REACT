@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFacturasDia } from '../hooks/use-facturas';
 import { colors } from '../styles/theme';
 import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
@@ -21,21 +21,32 @@ export default function FacturasDiaScreen() {
   };
 
   return (
-    <PageContainer scrollable={false}>
+    <PageContainer
+      refreshControl={
+        <RefreshControl
+          refreshing={loading}
+          onRefresh={refetch}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+        />
+      }
+    >
       <PageHeader
         title="Resumen del Día"
         subtitle="Facturas"
         icon="chart-bar"
-        rightContent={
-          <Button
-            title="Refrescar"
-            icon="refresh"
-            variant="ghost"
-            size="sm"
-            onPress={refetch}
-          />
-        }
       />
+
+      {/* Actions Bar */}
+      <View style={styles.actionsBar}>
+        <Button
+          title="Refrescar"
+          icon="refresh"
+          variant="ghost"
+          size="sm"
+          onPress={refetch}
+        />
+      </View>
 
       {/* Stats */}
       {stats && <StatsHeader stats={stats} periodLabel="Total del Día" />}
@@ -49,39 +60,40 @@ export default function FacturasDiaScreen() {
       )}
 
       {/* Content */}
-      {loading ? (
+      {loading && !data ? (
         <ListSkeleton count={4} />
+      ) : data?.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Icon name="receipt" size={48} color={colors.textMuted} />
+          <Text style={styles.emptyTitle}>Sin facturas hoy</Text>
+          <Text style={styles.emptySubtitle}>
+            No se han registrado facturas en el día de hoy
+          </Text>
+        </View>
       ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(item, idx) =>
-            item.facturaId?.toString() || idx.toString()
-          }
-          contentContainerStyle={{ paddingBottom: spacing.lg }}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Icon name="receipt" size={48} color={colors.textMuted} />
-              <Text style={styles.emptyTitle}>Sin facturas hoy</Text>
-              <Text style={styles.emptySubtitle}>
-                No se han registrado facturas en el día de hoy
-              </Text>
-            </View>
-          }
-          renderItem={({ item }) => (
+        <View style={{ gap: spacing.md, paddingBottom: spacing.lg }}>
+          {data?.map((item, idx) => (
             <FacturaCard
+              key={item.facturaId?.toString() || idx.toString()}
               item={item}
               isUpdating={updating === item.facturaId}
               onToggleEstado={handleChangeEstado}
               showPrint
             />
-          )}
-        />
+          ))}
+        </View>
       )}
     </PageContainer>
   );
 }
 
 const styles = StyleSheet.create({
+  actionsBar: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+    flexWrap: 'wrap',
+  },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',

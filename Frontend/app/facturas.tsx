@@ -97,17 +97,26 @@ export default function FacturasRangoScreen() {
         title="Facturas por Fechas"
         subtitle="Facturación"
         icon="calendar-range"
-        rightContent={
-          <Button
-            title="Exportar CSV"
-            icon="download"
-            variant="outline"
-            size="sm"
-            onPress={handleExportCsv}
-            disabled={data.length === 0}
-          />
-        }
       />
+
+      {/* Actions Bar */}
+      <View style={styles.actionsBar}>
+        <Button
+          title="Refrescar"
+          icon="refresh"
+          variant="ghost"
+          size="sm"
+          onPress={fetchData}
+        />
+        <Button
+          title="Exportar CSV"
+          icon="download"
+          variant="outline"
+          size="sm"
+          onPress={handleExportCsv}
+          disabled={data.length === 0}
+        />
+      </View>
 
       {/* Date filter */}
       <View style={styles.filterRow}>
@@ -193,6 +202,13 @@ export default function FacturasRangoScreen() {
 }
 
 const styles = StyleSheet.create({
+  actionsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    gap: spacing.md,
+  },
   filterRow: {
     flexDirection: 'row',
     gap: spacing.md,

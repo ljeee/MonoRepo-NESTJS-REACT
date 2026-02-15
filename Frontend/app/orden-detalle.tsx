@@ -8,6 +8,7 @@ import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
 import { formatCurrency, formatDate } from '../utils/formatNumber';
 import { getEstadoColor } from '../constants/estados';
 import { useToast } from '../contexts/ToastContext';
+import { useBreakpoint } from '../styles/responsive';
 import {
   PageContainer,
   PageHeader,
@@ -85,6 +86,7 @@ export default function OrdenDetalleScreen() {
   const params = useLocalSearchParams();
   const ordenId = params.ordenId as string;
   const { showToast } = useToast();
+  const { isMobile } = useBreakpoint();
 
   const [orden, setOrden] = useState<OrdenDetalle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -231,11 +233,12 @@ export default function OrdenDetalleScreen() {
           <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' }}>
             {canCancelOrder() && (
               <Button
-                title="Cancelar Orden"
+                title="Cancelar"
                 icon="close-circle-outline"
                 variant="danger"
                 size="sm"
                 onPress={() => setShowCancelModal(true)}
+                style={{ paddingHorizontal: 8, height: 32 }}
               />
             )}
             <Button
@@ -400,6 +403,8 @@ export default function OrdenDetalleScreen() {
         </Card>
       )}
 
+
+
       {/* ── Cancel Confirmation Modal ── */}
       <ConfirmModal
         visible={showCancelModal}
@@ -412,7 +417,7 @@ export default function OrdenDetalleScreen() {
         onConfirm={handleCancelOrder}
         onCancel={() => setShowCancelModal(false)}
       />
-    </PageContainer>
+    </PageContainer >
   );
 }
 

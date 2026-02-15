@@ -85,9 +85,13 @@ export const shadows = {
 // Layout constants
 export const layout = {
   maxWidth: 1200,
+  maxContentWidth: 1200,
+  maxContentWidthNarrow: 800,
+  maxContentWidthWide: 1400,
   containerPadding: spacing.lg,
   headerHeight: 60,
   sidebarWidth: 250,
+  bottomTabHeight: 80,
 } as const;
 
 // Animation durations (in ms)

@@ -1,6 +1,6 @@
 import {IsString, IsNumber, IsOptional, IsDateString, IsArray, ValidateNested, IsIn} from 'class-validator';
 import {Transform} from 'class-transformer';
-import {ApiProperty} from '@nestjs/swagger';
+import {ApiProperty, PartialType} from '@nestjs/swagger';
 import {Type} from 'class-transformer';
 
 export class CreateOrdenesDto {
@@ -141,3 +141,5 @@ export class FindOrdenesDto {
 	@IsNumber()
 	limit?: number;
 }
+
+export class UpdateOrdenesDto extends PartialType(CreateOrdenesDto) {}

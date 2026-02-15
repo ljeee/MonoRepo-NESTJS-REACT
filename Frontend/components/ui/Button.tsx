@@ -37,9 +37,9 @@ const variantStyles: Record<ButtonVariant, { bg: string; text: string; border: s
 };
 
 const sizeStyles: Record<ButtonSize, { h: number; px: number; fs: number; iconSize: number }> = {
-    sm: { h: 36, px: spacing.md, fs: fontSize.sm, iconSize: 16 },
-    md: { h: 44, px: spacing.lg, fs: fontSize.md, iconSize: 18 },
-    lg: { h: 54, px: spacing.xl, fs: fontSize.lg, iconSize: 22 },
+    sm: { h: 40, px: spacing.md, fs: fontSize.sm, iconSize: 18 },
+    md: { h: 50, px: spacing.lg, fs: fontSize.md, iconSize: 20 },
+    lg: { h: 60, px: spacing.xl, fs: fontSize.lg, iconSize: 24 },
 };
 
 export default function Button({

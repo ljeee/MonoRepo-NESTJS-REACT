@@ -50,7 +50,9 @@ export default function PageContainer({
             ? spacing.lg
             : spacing['2xl'];
 
-    const topPadding = isMobile ? spacing['4xl'] + spacing.lg : spacing['2xl'];
+    const topPadding = isMobile
+        ? 120
+        : spacing['2xl'];
 
     const content = (
         <View
@@ -60,7 +62,7 @@ export default function PageContainer({
                     maxWidth: effectiveMaxWidth,
                     paddingHorizontal: containerPadding,
                     paddingTop: topPadding,
-                    paddingBottom: isMobile ? layout.bottomTabHeight + spacing['3xl'] : spacing['3xl'],
+                    paddingBottom: isMobile ? 150 : spacing['3xl'],
                 },
                 contentContainerStyle,
             ]}

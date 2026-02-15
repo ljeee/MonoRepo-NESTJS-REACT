@@ -66,17 +66,21 @@ export default function OrdenesTodasScreen() {
     <PageContainer>
       <PageHeader
         title="Todas las Órdenes"
-        icon="format-list-bulleted"
-        rightContent={
-          <Button
-            title="Buscar"
-            icon="magnify"
-            variant="primary"
-            size="sm"
-            onPress={() => fetchData(1)}
-          />
-        }
       />
+
+      {/* Actions Bar */}
+      <View style={styles.actionsBar}>
+        <Button
+          title="Refrescar"
+          icon="refresh"
+          variant="ghost"
+          size="sm"
+          onPress={() => fetchData(1)}
+        />
+        <View style={{ backgroundColor: colors.card, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center', height: 40, width: 40 }}>
+          <Icon name="format-list-bulleted" size={24} color={colors.primary} />
+        </View>
+      </View>
 
       {/* Estado chips */}
       <ScrollView
@@ -293,6 +297,13 @@ export default function OrdenesTodasScreen() {
 }
 
 const styles = StyleSheet.create({
+  actionsBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between', // Push items to edges
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    gap: spacing.md,
+  },
   chipsScroll: {
     marginBottom: spacing.lg,
     flexGrow: 0,
