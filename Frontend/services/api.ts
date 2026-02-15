@@ -64,6 +64,9 @@ const ordenes = {
 
   delete: (id: number) =>
     http.delete(`/ordenes/${id}`).then((r) => r.data),
+
+  cancel: (id: number) =>
+    http.patch<Orden>(`/ordenes/${id}/cancel`).then((r) => r.data),
 };
 
 // ─── Facturas Ventas ──────────────────────────────────────────────────────────
@@ -80,6 +83,9 @@ const facturas = {
 
   updateEstado: (id: number, estado: string) =>
     http.patch<FacturaVenta>(`/facturas-ventas/${id}`, { estado }).then((r) => r.data),
+
+  update: (id: number, data: Partial<FacturaVenta>) =>
+    http.patch<FacturaVenta>(`/facturas-ventas/${id}`, data).then((r) => r.data),
 };
 
 // ─── Facturas Pagos (Gastos) ──────────────────────────────────────────────────

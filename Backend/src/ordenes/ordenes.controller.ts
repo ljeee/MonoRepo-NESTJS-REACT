@@ -142,4 +142,10 @@ export class OrdenesController {
 	remove(@Param('id') id: number) {
 		return this.service.remove(id);
 	}
+	@Patch(':id/cancel')
+	@ApiOperation({summary: 'Cancelar una orden y su factura asociada'})
+	@ApiResponse({status: 200, description: 'Orden cancelada.'})
+	cancel(@Param('id') id: number) {
+		return this.service.cancel(id);
+	}
 }

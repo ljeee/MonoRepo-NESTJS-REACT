@@ -64,6 +64,7 @@ export class FacturasVentasService {
 		const facturas = await this.repo
 			.createQueryBuilder('f')
 			.where('f.fechaFactura BETWEEN :start AND :end', {start, end})
+			.andWhere('f.estado != :cancelado', {cancelado: 'cancelado'})
 			.getMany();
 
 		const totalDia = facturas.reduce((sum, f) => sum + (Number(f.total) || 0), 0);

@@ -87,6 +87,8 @@ export default function OrdersOfDayPending() {
     }
   };
 
+
+
   const getClientName = (item: Order) => {
     const nombre = item.factura?.clienteNombre || item.nombreCliente;
     if (!nombre) return 'Sin nombre';
@@ -291,6 +293,8 @@ export default function OrdersOfDayPending() {
                     )}
 
 
+
+
                   </View>
                 </Card>
               </View>
@@ -309,6 +313,8 @@ export default function OrdersOfDayPending() {
           }
         />
       )}
+
+
 
     </PageContainer>
   );

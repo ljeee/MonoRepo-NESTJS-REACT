@@ -7,7 +7,7 @@ import { FacturaCard, StatsHeader } from '../components/facturas/FacturaShared';
 import { PageContainer, PageHeader, Button, ListSkeleton, Icon } from '../components/ui';
 
 export default function FacturasDiaScreen() {
-  const { data, loading, error, refetch, stats, updateEstado } = useFacturasDia();
+  const { data, loading, error, refetch, stats, updateEstado, updateFactura } = useFacturasDia();
   const [updating, setUpdating] = useState<number | null>(null);
 
   const handleChangeEstado = async (facturaId: number, currentEstado?: string) => {
@@ -18,6 +18,10 @@ export default function FacturasDiaScreen() {
     } finally {
       setUpdating(null);
     }
+  };
+
+  const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
+    await updateFactura(facturaId, { total: newTotal });
   };
 
   return (
@@ -78,6 +82,7 @@ export default function FacturasDiaScreen() {
               item={item}
               isUpdating={updating === item.facturaId}
               onToggleEstado={handleChangeEstado}
+              onUpdateTotal={handleUpdateTotal}
               showPrint
             />
           ))}

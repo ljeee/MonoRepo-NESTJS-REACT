@@ -179,7 +179,7 @@ export default function OrdenDetalleScreen() {
 
     setCanceling(true);
     try {
-      await api.ordenes.update(orden.ordenId, { estadoOrden: 'cancelado' } as any);
+      await api.ordenes.cancel(orden.ordenId);
       showToast('Orden cancelada exitosamente', 'success', 2000);
       setShowCancelModal(false);
 

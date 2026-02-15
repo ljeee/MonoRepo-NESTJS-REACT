@@ -71,7 +71,7 @@ function downloadCsv(csv: string, filename: string) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function FacturasRangoScreen() {
-  const { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado } = useFacturasRango();
+  const { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura } = useFacturasRango();
   const [updating, setUpdating] = useState<number | null>(null);
 
   const handleChangeEstado = async (facturaId: number, currentEstado?: string) => {
@@ -82,6 +82,10 @@ export default function FacturasRangoScreen() {
     } finally {
       setUpdating(null);
     }
+  };
+
+  const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
+    await updateFactura(facturaId, { total: newTotal });
   };
 
   const handleExportCsv = useCallback(() => {
@@ -194,6 +198,7 @@ export default function FacturasRangoScreen() {
             item={item}
             isUpdating={updating === item.facturaId}
             onToggleEstado={handleChangeEstado}
+            onUpdateTotal={handleUpdateTotal}
           />
         )}
       />

@@ -80,7 +80,16 @@ export function useFacturasDia() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData, stats, updateEstado };
+  const updateFactura = useCallback(async (facturaId: number, data: Partial<FacturaVenta>) => {
+    try {
+      await api.facturas.update(facturaId, data);
+      await fetchData();
+    } catch (e: any) {
+      setError(e.message || 'Error al actualizar factura');
+    }
+  }, [fetchData]);
+
+  return { data, loading, error, refetch: fetchData, stats, updateEstado, updateFactura };
 }
 
 // ─── Facturas por Rango ───────────────────────────────────────────────────────
@@ -118,5 +127,14 @@ export function useFacturasRango() {
     }
   }, [fetchData]);
 
-  return { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado };
+  const updateFactura = useCallback(async (facturaId: number, data: Partial<FacturaVenta>) => {
+    try {
+      await api.facturas.update(facturaId, data);
+      await fetchData();
+    } catch (e: any) {
+      setError(e.message || 'Error al actualizar factura');
+    }
+  }, [fetchData]);
+
+  return { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura };
 }

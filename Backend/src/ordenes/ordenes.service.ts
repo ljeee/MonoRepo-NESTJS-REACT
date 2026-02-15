@@ -394,4 +394,20 @@ export class OrdenesService {
 		return this.repo.delete(id);
 	}
 
+	async cancel(id: number) {
+		const orden = await this.findOne(id);
+		if (!orden) throw new BadRequestException('Orden no encontrada');
+
+		// 1. Cancelar orden
+		orden.estadoOrden = 'cancelado';
+		await this.repo.save(orden);
+
+		// 2. Cancelar factura asociada
+		if (orden.facturaId) {
+			await this.facturasRepo.update(orden.facturaId, {estado: 'cancelado'});
+		}
+
+		return orden;
+	}
+
 }

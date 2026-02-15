@@ -3,7 +3,10 @@ import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../styles/theme';
 import { formatCurrency, formatDate } from '../../utils/formatNumber';
 import { fStyles as s } from '../../styles/facturas/facturas.styles';
+
 import { printReceipt } from '../../utils/printReceipt';
+import UpdateTotalModal from './UpdateTotalModal';
+import Icon from '../ui/Icon';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,13 +85,20 @@ export function EstadoToggle({
   estado,
   isUpdating,
   onToggle,
+  onEdit,
 }: {
   estado?: string;
   isUpdating: boolean;
   onToggle: () => void;
+  onEdit?: () => void;
 }) {
   const isPagado = estado === 'pagado';
-  const indicadorColor = isPagado ? colors.success : colors.warning;
+  const isCancelado = estado === 'cancelado';
+  const indicadorColor = isCancelado
+    ? colors.danger
+    : isPagado
+      ? colors.success
+      : colors.warning;
 
   return (
     <View style={s.estadoRow}>
@@ -125,15 +135,36 @@ export function FacturaCard({
   item,
   isUpdating,
   onToggleEstado,
+  onUpdateTotal,
   showPrint = false,
 }: {
   item: FacturaItem;
   isUpdating: boolean;
   onToggleEstado: (facturaId: number, currentEstado?: string) => void;
+  onUpdateTotal?: (facturaId: number, newTotal: number) => Promise<void>;
   showPrint?: boolean;
 }) {
+  const [editing, setEditing] = React.useState(false);
+  const [updateLoading, setUpdateLoading] = React.useState(false);
+
+  const handleUpdateTotal = async (newTotal: number) => {
+    if (item.facturaId && onUpdateTotal) {
+      setUpdateLoading(true);
+      try {
+        await onUpdateTotal(item.facturaId, newTotal);
+        setEditing(false);
+      } finally {
+        setUpdateLoading(false);
+      }
+    }
+  };
   const isPagado = item.estado === 'pagado';
-  const indicadorColor = isPagado ? colors.success : colors.warning;
+  const isCancelado = item.estado === 'cancelado';
+  const indicadorColor = isCancelado
+    ? colors.danger
+    : isPagado
+      ? colors.success
+      : colors.warning;
   const esDomicilio = item.ordenes?.some(o => o.tipoPedido === 'domicilio');
   const costoDomicilio = item.domicilios?.[0]?.costoDomicilio
     ? Number(item.domicilios[0].costoDomicilio)
@@ -234,25 +265,50 @@ export function FacturaCard({
               <Text style={s.estadoBtnText}>🖨️ Recibo</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            onPress={() => item.facturaId && onToggleEstado(item.facturaId, item.estado)}
-            disabled={isUpdating}
-            style={[
-              s.estadoBtn,
-              { backgroundColor: isPagado ? colors.warning : colors.success },
-              isUpdating && s.estadoBtnDisabled,
-            ]}
-          >
-            {isUpdating ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Text style={s.estadoBtnText}>
-                {isPagado ? '↶ Pendiente' : '✓ Pagado'}
-              </Text>
-            )}
-          </TouchableOpacity>
+
+          {/* Toggle Button (Only if NOT cancelled, or just status text if cancelled) */}
+          {isCancelado ? (
+            <View style={[s.estadoBtn, { backgroundColor: colors.danger }]}>
+              <Text style={s.estadoBtnText}>🚫 Cancelado</Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => item.facturaId && onToggleEstado(item.facturaId, item.estado)}
+              disabled={isUpdating}
+              style={[
+                s.estadoBtn,
+                { backgroundColor: isPagado ? colors.warning : colors.success },
+                isUpdating && s.estadoBtnDisabled,
+              ]}
+            >
+              {isUpdating ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : isCancelado ? null : (
+                <Text style={s.estadoBtnText}>
+                  {isPagado ? '↶ Pendiente' : '✓ Pagado'}
+                </Text>
+              )}
+            </TouchableOpacity>
+          )}
+
+          {!isCancelado && (
+            <TouchableOpacity
+              onPress={() => setEditing(true)}
+              style={[s.estadoBtn, { backgroundColor: colors.primary, aspectRatio: 1, paddingHorizontal: 0, width: 36, justifyContent: 'center', alignItems: 'center' }]}
+            >
+              <Icon name="pencil" size={18} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
+
+      <UpdateTotalModal
+        visible={editing}
+        currentTotal={item.total ?? 0}
+        loading={updateLoading}
+        onConfirm={handleUpdateTotal}
+        onCancel={() => setEditing(false)}
+      />
     </View>
   );
 }
