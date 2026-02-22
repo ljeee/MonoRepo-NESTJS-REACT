@@ -5,9 +5,9 @@
 
 export const colors = {
   // Brand Colors
-  primary: '#10B981', // green-500
-  primaryLight: 'rgba(16, 185, 129, 0.1)',
-  secondary: '#6366F1', // indigo-500
+  primary: '#FF8C00',          // vivid orange
+  primaryLight: 'rgba(255, 140, 0, 0.12)',
+  secondary: '#6366F1',        // indigo-500
   secondaryLight: 'rgba(99, 102, 241, 0.15)',
   
   // Neutral Colors

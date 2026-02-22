@@ -31,7 +31,7 @@ function buildCsv(facturas: FacturaItem[]): string {
     const id = String(f.facturaId ?? '');
     const cliente = esc(f.clienteNombre || '');
     const fecha = f.fechaFactura ? new Date(f.fechaFactura).toLocaleDateString('es-CO') : '';
-    const total = formatCurrency(f.total ?? 0);
+    const total = String(f.total ?? 0);
     const estado = f.estado || 'pendiente';
     const metodo = f.metodo || '';
 
@@ -45,7 +45,7 @@ function buildCsv(facturas: FacturaItem[]): string {
         const cant = p.cantidad ?? 1;
         const precio = p.precioUnitario ?? 0;
         const sub = cant * precio;
-        rows.push(`${id},${cliente},${fecha},${total},${estado},${metodo},${nombre},${cant},${formatCurrency(precio)},${formatCurrency(sub)}`);
+        rows.push(`${id},${cliente},${fecha},${total},${estado},${metodo},${nombre},${cant},${precio},${sub}`);
       }
     }
   }

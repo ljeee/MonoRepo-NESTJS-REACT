@@ -6,6 +6,7 @@ import { useCreateFacturaPago, useDeleteFacturaPago, useFacturasPagosDia, useFac
 import { formatCurrency } from '../utils/formatNumber';
 import { colors } from '../styles/theme';
 import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
+import { useBreakpoint } from '../styles/responsive';
 import {
   PageContainer,
   PageHeader,
@@ -23,6 +24,8 @@ function todayISO() {
 }
 
 export default function FacturasPagosScreen() {
+  const { isMobile } = useBreakpoint();
+  const localStyles = makeLocalStyles(isMobile);
   const { createPago, loading: creating, error: createError, success } = useCreateFacturaPago();
   const { data: dataDia, loading: loadingDia, error: errorDia, fetchData: fetchDia } = useFacturasPagosDia();
   const { data: dataRango, loading: loadingRango, error: errorRango, from, to, setFrom, setTo, fetchData: fetchRango } = useFacturasPagosRango();
@@ -193,18 +196,17 @@ export default function FacturasPagosScreen() {
           <View style={localStyles.formGrid}>
             <Input
               label="Total *"
-              value={total}
-              onChangeText={setTotal}
+              value={total ? formatCurrency(Number(total)) : ''}
+              onChangeText={(v) => setTotal(v.replace(/\./g, ''))}
               keyboardType="numeric"
-              placeholder="45000"
+              placeholder="$"
               containerStyle={{ flex: 1, minWidth: 150 }}
-              leftIcon={<Icon name="currency-usd" size={16} color={colors.textMuted} />}
             />
             <Input
               label="Nombre del gasto *"
               value={nombreGasto}
               onChangeText={setNombreGasto}
-              placeholder="Ej: Caja fuerte"
+              placeholder=""
               containerStyle={{ flex: 2, minWidth: 200 }}
               leftIcon={<Icon name="tag-outline" size={16} color={colors.textMuted} />}
             />
@@ -464,155 +466,158 @@ export default function FacturasPagosScreen() {
   );
 }
 
-const localStyles = StyleSheet.create({
-  formHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  formTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-  },
-  formGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  formActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  actionsBar: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-    flexWrap: 'wrap',
-  },
-  toggleRow: {
-    marginBottom: spacing.md,
-  },
-  toggleLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.extrabold,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    backgroundColor: colors.bgLight,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  chipActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  chipText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    fontWeight: fontWeight.medium,
-    textTransform: 'capitalize',
-  },
-  chipTextActive: {
-    color: colors.primary,
-    fontWeight: fontWeight.bold,
-  },
-  inlineError: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
-    backgroundColor: colors.dangerLight,
-    borderRadius: radius.sm,
-  },
-  inlineErrorText: {
-    color: colors.danger,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-  },
-  inlineSuccess: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
-    backgroundColor: colors.successLight,
-    borderRadius: radius.sm,
-  },
-  inlineSuccessText: {
-    color: colors.success,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-  },
-  // List items
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  itemName: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  metaText: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-  },
-  itemRight: {
-    alignItems: 'flex-end',
-    gap: spacing.xs,
-  },
-  itemTotal: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.extrabold,
-    color: colors.primary,
-  },
-  itemDesc: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
-    marginBottom: spacing.sm,
-    paddingLeft: spacing.sm,
-    borderLeftWidth: 2,
-    borderLeftColor: colors.divider,
-  },
-  itemActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.xs,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-});
+function makeLocalStyles(isMobile: boolean) {
+  return StyleSheet.create({
+    formHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      marginBottom: spacing.xl,
+    },
+    formTitle: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+    },
+    // En móvil los campos del form se apilan en columna
+    formGrid: {
+      flexDirection: isMobile ? 'column' : 'row',
+      flexWrap: isMobile ? 'nowrap' : 'wrap',
+      gap: spacing.md,
+      marginBottom: spacing.sm,
+    },
+    formActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.md,
+      marginTop: spacing.md,
+    },
+    actionsBar: {
+      flexDirection: 'row',
+      gap: spacing.md,
+      marginBottom: spacing.xl,
+      flexWrap: 'wrap',
+    },
+    toggleRow: {
+      marginBottom: spacing.md,
+    },
+    toggleLabel: {
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.extrabold,
+      color: colors.textSecondary,
+      marginBottom: spacing.sm,
+      marginLeft: spacing.xs,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
+    chipRow: {
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      paddingVertical: spacing.sm,
+      paddingHorizontal: spacing.md,
+      borderRadius: radius.full,
+      backgroundColor: colors.bgLight,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    chipActive: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+    },
+    chipText: {
+      fontSize: fontSize.sm,
+      color: colors.textMuted,
+      fontWeight: fontWeight.medium,
+      textTransform: 'capitalize',
+    },
+    chipTextActive: {
+      color: colors.primary,
+      fontWeight: fontWeight.bold,
+    },
+    inlineError: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginBottom: spacing.md,
+      padding: spacing.sm,
+      backgroundColor: colors.dangerLight,
+      borderRadius: radius.sm,
+    },
+    inlineErrorText: {
+      color: colors.danger,
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.medium,
+    },
+    inlineSuccess: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+      marginBottom: spacing.md,
+      padding: spacing.sm,
+      backgroundColor: colors.successLight,
+      borderRadius: radius.sm,
+    },
+    inlineSuccessText: {
+      color: colors.success,
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.medium,
+    },
+    // List items
+    itemHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      marginBottom: spacing.sm,
+    },
+    itemName: {
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.bold,
+      color: colors.text,
+      marginBottom: spacing.xs,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      gap: spacing.lg,
+    },
+    metaItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.xs,
+    },
+    metaText: {
+      fontSize: fontSize.xs,
+      color: colors.textMuted,
+    },
+    itemRight: {
+      alignItems: 'flex-end',
+      gap: spacing.xs,
+    },
+    itemTotal: {
+      fontSize: fontSize.xl,
+      fontWeight: fontWeight.extrabold,
+      color: colors.primary,
+    },
+    itemDesc: {
+      fontSize: fontSize.sm,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
+      marginBottom: spacing.sm,
+      paddingLeft: spacing.sm,
+      borderLeftWidth: 2,
+      borderLeftColor: colors.divider,
+    },
+    itemActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: spacing.xs,
+      paddingTop: spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+    },
+  });
+}

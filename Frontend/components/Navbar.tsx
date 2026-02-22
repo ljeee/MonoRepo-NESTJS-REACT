@@ -34,6 +34,8 @@ const SECTIONS: NavSection[] = [
     title: 'Facturas',
     icon: 'cash-multiple',
     items: [
+      { label: 'Balance del Día', route: '/balance-dia', icon: 'scale-balance' },
+      { label: 'Balance por Fechas', route: '/balance-fechas', icon: 'chart-box-outline' },
       { label: 'Facturas Hoy', route: '/facturas-dia', icon: 'chart-bar' },
       { label: 'Facturas Fechas', route: '/facturas', icon: 'calendar-range' },
       { label: 'Gastos', route: '/facturas-pagos', icon: 'credit-card-minus-outline' },
