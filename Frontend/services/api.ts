@@ -179,6 +179,26 @@ const productos = {
     http.delete(`/productos/variantes/${varianteId}`).then((r) => r.data),
 };
 
+// ─── Pizza Sabores ────────────────────────────────────────────────────────────
+
+export interface PizzaSabor {
+  saborId: number;
+  nombre: string;
+  tipo: 'tradicional' | 'especial';
+  recargoPequena: number;
+  recargoMediana: number;
+  recargoGrande: number;
+  activo: boolean;
+}
+
+const pizzaSabores = {
+  getAll: () =>
+    http.get<PizzaSabor[]>('/pizza-sabores').then((r) => arr<PizzaSabor>(r.data)),
+
+  update: (id: number, data: Partial<Omit<PizzaSabor, 'saborId'>>) =>
+    http.patch<PizzaSabor>(`/pizza-sabores/${id}`, data).then((r) => r.data),
+};
+
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -188,5 +208,6 @@ export const api = {
   clientes,
   domiciliarios,
   productos,
+  pizzaSabores,
   http, // exposed for edge cases
 };

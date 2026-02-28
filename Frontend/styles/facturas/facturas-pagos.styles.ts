@@ -23,7 +23,7 @@ export const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.accent,
+    color: colors.primary,
     marginTop: 32,
     marginBottom: 16,
     borderBottomWidth: 1,
@@ -163,7 +163,7 @@ export const styles = StyleSheet.create({
     opacity: 0.5,
   },
   submitButtonEnabled: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
   },
   submitButtonText: {
     color: '#fff',
@@ -180,7 +180,7 @@ export const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   refreshButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -216,7 +216,7 @@ export const styles = StyleSheet.create({
     minWidth: 140,
   },
   searchButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
@@ -292,7 +292,7 @@ export const styles = StyleSheet.create({
     marginLeft: 16,
   },
   editButton: {
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 6,

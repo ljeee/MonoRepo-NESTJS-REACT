@@ -9,19 +9,22 @@
 ## 📊 Estado actual del proyecto (punto de partida)
 
 ```
-✅ YA EXISTE Y FUNCIONA          ❌ FALTA          ⚠️ EXISTE PERO NECESITA AJUSTE
-─────────────────────────────────────────────────────────────────
-✅ NestJS backend (Puerto 3000)   ❌ Redis           ⚠️ Traefik (eliminar)
-✅ PostgreSQL (Docker, 5433)      ❌ Socket.IO       ⚠️ Guards JWT (comentados)
-✅ Expo APK (funciona en LAN)     ❌ Ollama          ⚠️ CORS (ajustar para LAN)
-✅ Sistema de órdenes completo    ❌ Tauri Desktop
-✅ Pizza sabores + recargos DB    ❌ n8n workflow IA
-✅ Auth JWT (módulo listo)        ❌ Evolution QR
-✅ LoggingInterceptor             ❌ start-pos.bat
-✅ Swagger en /swagger            ❌ WhatsApp handoff
-✅ OrderContext (AsyncStorage)
-✅ ToastContext
-✅ Sistema de diseño (tokens)
+✅ YA EXISTE Y FUNCIONA              ❌ FALTA              ⚠️ EXISTE PERO NECESITA AJUSTE
+──────────────────────────────────────────────────────────────────────────
+✅ NestJS backend (Puerto 3000)      ❌ Redis              ⚠️ Traefik en docker-compose (eliminar)
+✅ PostgreSQL (Docker, 5433)         ❌ Socket.IO           ⚠️ Guards JWT comentados en auth.module.ts
+✅ Expo APK (funciona en LAN)        ❌ Ollama              ⚠️ CORS_ORIGINS vacío en docker-compose
+✅ Sistema de órdenes completo       ❌ Tauri Desktop       ⚠️ .env.example sin JWT_SECRET ni REDIS_*
+✅ Pizza sabores + recargos en DB    ❌ n8n workflow IA
+✅ Auth JWT módulo listo             ❌ Evolution QR
+✅ LoggingInterceptor                ❌ start-pos.bat
+✅ Swagger en /swagger               ❌ WhatsApp handoff
+✅ OrderContext (AsyncStorage)       ❌ AuthContext + login.tsx
+✅ ToastContext                      ❌ use-ordenes-socket.ts
+✅ Sistema de diseño (tokens)        ❌ OrdenesGateway (Socket.IO)
+✅ seed-users.ts (admin/cocina/mesero)
+✅ seed-productos.ts
+✅ seed-menu.sql montado en Docker
 ```
 
 ---
@@ -94,9 +97,11 @@
 
 | Archivo | Cambio |
 |---|---|
-| `docker-compose.yml` | Eliminar Traefik, agregar Redis, agregar Ollama |
-| `.env` / `.env.example` | Agregar variables Redis, JWT, n8n, Ollama |
+| `docker-compose.yml` | Eliminar Traefik, agregar Redis. Los servicios de WPP (n8n, Evolution, Ollama) se agregan recién en la Fase 7 |
+| `.env` / `.env.example` | Agregar variables Redis, JWT, CORS. Las vars de WPP van en Fase 7 |
 | `Backend/package.json` | Instalar socket.io, redis, bullmq, throttler |
+
+> ⚠️ **No agregar n8n / Evolution API / Ollama al compose todavía.** Esos servicios pesan varios GB en disco y RAM. Se añaden solo cuando vayas a la Fase 7. El compose de Fases 1–6 solo necesita: `db`, `redis`, `backend`, `frontend`.
 
 ### docker-compose.yml definitivo
 
@@ -112,16 +117,19 @@ services:
     environment:
       POSTGRES_DB: appdb
       POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?requerido}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5433:5432"          # Puerto externo diferente para no pisar Postgres local
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./Backend/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./Backend/seed-menu.sql:/docker-entrypoint-initdb.d/02-seed-menu.sql:ro  # Ya existe — no borrar
     networks: [pizzeria-network]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
-      interval: 10s; timeout: 5s; retries: 5
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # ── Redis ──────────────────────────────────────────────────────
   redis:
@@ -152,69 +160,66 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOST: 0.0.0.0
-      JWT_SECRET: ${JWT_SECRET:?requerido}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081,http://localhost:5173,tauri://localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS}
     depends_on:
-      db: { condition: service_healthy }
-      redis: { condition: service_healthy }
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks: [pizzeria-network]
 
-  # ── n8n (Automatización WhatsApp) ──────────────────────────────
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: pizzeria-n8n
+  # ── Frontend (Expo Web / Nginx) ────────────────────────────────
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    container_name: pizzeria-frontend
     restart: unless-stopped
     ports:
-      - "5678:5678"
-    environment:
-      WEBHOOK_URL: ${N8N_WEBHOOK_URL:?requerido}
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:?requerido}
-      GENERIC_TIMEZONE: America/Bogota
-      TZ: America/Bogota
-    volumes:
-      - n8n_data:/home/node/.n8n
-    networks: [pizzeria-network]
-
-  # ── Evolution API (Puente WhatsApp) ────────────────────────────
-  evolution-api:
-    image: atendai/evolution-api:v2.2.3
-    container_name: pizzeria-evolution
-    restart: unless-stopped
-    ports:
-      - "8080:8080"          # ngrok apunta a este puerto
-    environment:
-      SERVER_URL: ${EVOLUTION_SERVER_URL:?requerido}
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?requerido}
-      DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: postgresql://appuser:${DB_PASSWORD}@db:5432/evolution
+      - "8081:8081"
     depends_on:
-      db: { condition: service_healthy }
+      - backend
     networks: [pizzeria-network]
 
-  # ── Ollama (LLM local para parsear pedidos de WhatsApp) ────────
-  ollama:
-    image: ollama/ollama:latest
-    container_name: pizzeria-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama    # Los modelos quedan guardados
-    # GPU NVIDIA → descomentar:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    networks: [pizzeria-network]
+  # ── FASE 7 — Descomentar cuando vayas a implementar WhatsApp ──
+  # n8n:
+  #   image: n8nio/n8n:latest
+  #   container_name: pizzeria-n8n
+  #   ports: ["5678:5678"]
+  #   environment:
+  #     WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+  #     N8N_BASIC_AUTH_ACTIVE: "true"
+  #     N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
+  #     N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD}
+  #     GENERIC_TIMEZONE: America/Bogota
+  #   volumes: [n8n_data:/home/node/.n8n]
+  #   networks: [pizzeria-network]
+  #
+  # evolution-api:
+  #   image: atendai/evolution-api:v2.2.3
+  #   container_name: pizzeria-evolution
+  #   ports: ["8080:8080"]   # ngrok apunta a este puerto
+  #   environment:
+  #     SERVER_URL: ${EVOLUTION_SERVER_URL}
+  #     AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+  #     DATABASE_ENABLED: "true"
+  #     DATABASE_PROVIDER: postgresql
+  #     DATABASE_CONNECTION_URI: postgresql://appuser:${DB_PASSWORD}@db:5432/evolution
+  #   depends_on:
+  #     db: { condition: service_healthy }
+  #   networks: [pizzeria-network]
+  #
+  # ollama:
+  #   image: ollama/ollama:latest
+  #   container_name: pizzeria-ollama
+  #   ports: ["11434:11434"]
+  #   volumes: [ollama_data:/root/.ollama]
+  #   # GPU NVIDIA → agregar bloque deploy.resources.reservations.devices
+  #   networks: [pizzeria-network]
 
 networks:
   pizzeria-network:
@@ -224,67 +229,68 @@ volumes:
   pgdata:
     name: pizzeria-pgdata
   redis_data:
-  n8n_data:
-  ollama_data:
+  # n8n_data:      # Descomentar en Fase 7
+  # ollama_data:   # Descomentar en Fase 7
 ```
 
-### Variables de entorno `.env`
+### Variables de entorno `.env` (Fases 1–6)
+
+Agregar estas líneas al archivo `.env` en la raíz del proyecto (no al `Backend/.env`):
 
 ```env
 # ── Postgres ─────────────────────────────────────────────────
-DB_PASSWORD=contraseña-min-16-chars        # REQUERIDO
+DB_PASSWORD=apppass     # Cambiar en producción
 
 # ── JWT ──────────────────────────────────────────────────────
-JWT_SECRET=min-32-caracteres-aleatorios    # REQUERIDO
-JWT_EXPIRES_IN=28800                       # 8 horas (segundos)
+JWT_SECRET=cambia-esto-por-minimo-32-caracteres-aleatorios
+JWT_EXPIRES_IN=28800    # 8 horas en segundos
 
-# ── CORS ─────────────────────────────────────────────────────
-CORS_ORIGINS=http://localhost:8081,http://localhost:5173,http://localhost:19006,tauri://localhost
-
-# ── n8n ──────────────────────────────────────────────────────
-N8N_USER=admin
-N8N_PASSWORD=contraseña-n8n               # REQUERIDO
-N8N_WEBHOOK_URL=https://mi-pizzeria.ngrok-free.app
-
-# ── Evolution API (WhatsApp bridge) ──────────────────────────
-EVOLUTION_API_KEY=clave-larga-aleatoria-min-32-chars   # REQUERIDO
-EVOLUTION_SERVER_URL=https://mi-pizzeria.ngrok-free.app
-
-# ── Ollama ───────────────────────────────────────────────────
-OLLAMA_MODEL=llama3.2:3b                   # Cambiar según tu hardware
+# ── CORS (ajustar con la IP real del servidor en LAN) ────────
+CORS_ORIGINS=http://localhost:8081,http://localhost:19006,tauri://localhost
+# Ejemplo LAN: CORS_ORIGINS=http://192.168.1.10:8081,http://localhost:8081
 ```
+
+> Las variables de n8n, Evolution API y Ollama se agregan en la **Fase 7**.
 
 ### Instalar dependencias del Backend
 
 ```bash
 cd Backend
-npm install @nestjs/websockets @nestjs/platform-socket.io socket.io
-npm install @socket.io/redis-adapter ioredis
-npm install @nestjs/throttler
-npm install @nestjs/bullmq bullmq
-npm install -D @types/ioredis
 
-cd ../Frontend
-npm install socket.io-client
+# Socket.IO
+npm install @nestjs/websockets @nestjs/platform-socket.io socket.io
+
+# Redis (ioredis v5+ incluye sus propios @types — no instalar @types/ioredis por separado)
+npm install @socket.io/redis-adapter ioredis
+
+# Rate limiting
+npm install @nestjs/throttler
+
+# Queues (para tareas async: recibos, notificaciones)
+npm install @nestjs/bullmq bullmq
 ```
 
-### Descargar modelo Ollama (después de docker-compose up)
+### Instalar dependencias del Frontend
 
 ```bash
-# Solo la primera vez — descarga ~2 GB y queda en el volumen
-docker exec pizzeria-ollama ollama pull llama3.2:3b
+cd Frontend
 
-# Verificar
-docker exec pizzeria-ollama ollama list
+# socket.io-client — fijar versión 4.x para compatibilidad con Expo/React Native
+npm install socket.io-client@4
 ```
+
+> ⚠️ **Expo + socket.io-client:** siempre usar `transports: ['websocket']` al crear
+> el socket (no `polling`). El polling usa `XMLHttpRequest` que puede fallar en RN.
+
+### El modelo Ollama se descarga en la Fase 7, no aquí.
 
 ### Verificación Fase 1 ✅
 
 ```bash
-docker-compose ps          # Todos los servicios: Up (healthy)
+docker-compose ps                           # db, redis, backend, frontend: Up (healthy)
 docker exec pizzeria-redis redis-cli ping   # → PONG
-curl http://localhost:3000/ordenes/dia      # → JSON de órdenes
-curl http://localhost:11434/api/tags        # → modelos Ollama disponibles
+curl http://localhost:3000/ordenes/dia      # → JSON de órdenes (backend vivo)
+open http://localhost:8081                  # → App Expo carga (frontend vivo)
 ```
 
 ---
@@ -306,8 +312,6 @@ curl http://localhost:11434/api/tags        # → modelos Ollama disponibles
 | `Backend/src/ordenes/ordenes.service.ts` | Modificar (inyectar gateway) | 🟡 Media |
 | `Backend/src/app.module.ts` | Modificar (Redis, Throttler, BullMQ) | 🟡 Media |
 | `Backend/src/whatsapp/whatsapp.controller.ts` | Crear (handoff endpoint) | 🟢 Fácil |
-
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fases 2A al 2F
 
 ### Eventos WebSocket del sistema
 
@@ -353,8 +357,6 @@ curl -X POST http://localhost:3000/ordenes -H "Content-Type: application/json" \
 | `Frontend/hooks/use-ordenes-socket.ts` | Crear |
 | `Frontend/components/orders/OrdersOfDayPending.tsx` | Modificar (agregar hook) |
 
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fases 3A y 3B
-
 ### Comportamiento esperado después de esta fase
 
 - Cajero crea orden → **sin refrescar**, todos los dispositivos la ven
@@ -385,7 +387,8 @@ curl -X POST http://localhost:3000/ordenes -H "Content-Type: application/json" \
 - `Backend/src/ordenes/ordenes.module.ts` → importar `PizzaSaboresModule`
 - `Backend/src/ordenes/ordenes.service.ts` → inyectar servicio + método `calcularRecargoSabores()`
 
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fase 4
+> Los campos de recargo en la entidad se llaman `recargoPequena`, `recargoMediana`, `recargoGrande`
+> (revisar `Backend/src/pizza-sabores/esquemas/pizza-sabores.entity.ts` para los nombres exactos).
 
 ### Verificación Fase 4 ✅
 
@@ -411,25 +414,27 @@ curl -X POST http://localhost:3000/ordenes \
 ```
 1. Revisar TODOS los controllers y marcar con @Public() los que
    deben ser accesibles sin login:
+   - OrdenesController (ya tiene @Public() en clase — verificar)
    - ProductosController.findAll()
    - PizzaSaboresController.findAll()
-   - AppController.health()
    - WhatsappController.handoff() (n8n llama a este sin token)
 
-2. Descomentar guards en auth.module.ts:
+2. Descomentar guards en Backend/src/auth/auth.module.ts líneas 33-34:
    { provide: APP_GUARD, useClass: JwtAuthGuard }
    { provide: APP_GUARD, useClass: RolesGuard }
 
 3. Crear Frontend/contexts/AuthContext.tsx
-   Frontend/app/login.tsx
+   Crear Frontend/app/login.tsx
 
-4. Actualizar Frontend/app/_layout.tsx para envolver en AuthProvider
+4. Actualizar Frontend/app/_layout.tsx para envolver en <AuthProvider>
 
 5. PROBAR: intentar llamar a un endpoint sin token → 401
              con token válido → respuesta normal
 ```
 
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fase 5
+> 💡 **Usuarios de prueba ya existen** — `seed-users.ts` en `Backend/src/common/seeders/`
+> crea al iniciar: `admin / Admin123!`, `cocina / Cocina123!`, `mesero / Mesero123!`
+> Ejecutar `npm run seed:users` si la tabla `users` está vacía.
 
 ### Expectativa realista
 
@@ -1320,19 +1325,20 @@ curl -X POST http://localhost:8090/validar-orden \
 
 ---
 
-## 🔗 Referencias al código
+## 🔗 Referencias al código real del proyecto
 
-| Necesitas | Archivo |
+| Necesitas | Dónde está en el repo |
 |---|---|
-| docker-compose completo | `26-plan-refinado-final/REfinadoplan.md` — Fase 1A |
-| RedisModule + main.ts + Gateway | `26-plan-refinado-final/REfinadoplan.md` — Fases 2A-2F |
-| Hook useOrdenesSocket (Frontend) | `26-plan-refinado-final/REfinadoplan.md` — Fase 3A |
-| Auth JWT + AuthContext + Login | `26-plan-refinado-final/REfinadoplan.md` — Fase 5 |
-| Evolution API setup + QR | `26-plan-refinado-final/REfinadoplan.md` — Fases 7A-7C |
-| Workflow n8n completo (nodos) | `26-plan-refinado-final/REfinadoplan.md` — Fases 7D |
-| Prompt Ollama + Nodo Code IA | `26-plan-refinado-final/REfinadoplan.md` — Fases 7F-3 y 7F-4 |
-| Handoff endpoint NestJS + hook | `26-plan-refinado-final/REfinadoplan.md` — Fase 7F-5 |
-| **FastAPI ai-validator completo** | `27-Proyecto refinado fin/Refinadofinal.md` — Fase 7G |
-| **Cómo reemplazar FastAPI por Rust** | `27-Proyecto refinado fin/Refinadofinal.md` — Fase 7G (Rust) |
-| Tauri lib.rs + App.tsx | `26-plan-refinado-final/REfinadoplan.md` — Fases 8C y 8D |
-| Preguntas frecuentes (dominio, FastAPI, Evolution) | `26-plan-refinado-final/LEEME.md` |
+| Guards JWT (activar) | `Backend/src/auth/auth.module.ts` líneas 33-34 |
+| Estrategia JWT + guards | `Backend/src/auth/strategies/`, `Backend/src/auth/guards/` |
+| Entidad y seeder de usuarios | `Backend/src/auth/esquemas/user.entity.ts`, `Backend/src/common/seeders/seed-users.ts` |
+| Decorator `@Public()` | `Backend/src/auth/decorators/public.decorator.ts` |
+| Entidad pizza_sabores | `Backend/src/pizza-sabores/esquemas/pizza-sabores.entity.ts` |
+| Auto-seed de sabores | `Backend/src/pizza-sabores/pizza-sabores.service.ts` (OnModuleInit) |
+| Servicio de órdenes (donde agregar recargo) | `Backend/src/ordenes/ordenes.service.ts` |
+| Módulo de órdenes (donde agregar Gateway) | `Backend/src/ordenes/ordenes.module.ts` |
+| Vista de órdenes (donde agregar WebSocket) | `Frontend/components/orders/OrdersOfDayPending.tsx` |
+| Layout raíz del frontend | `Frontend/app/_layout.tsx` |
+| Contextos existentes (patrón a seguir) | `Frontend/contexts/OrderContext.tsx`, `Frontend/contexts/ToastContext.tsx` |
+| API service (axios, donde agregar auth) | `Frontend/services/api.ts` |
+| Endpoints disponibles (Swagger) | `http://localhost:3000/swagger` |

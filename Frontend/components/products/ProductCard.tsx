@@ -1,6 +1,7 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { Producto } from '../../hooks/use-productos';
+import { PizzaSabor } from '../../hooks/use-pizza-sabores';
 import { colors } from '../../styles/theme';
 import { spacing } from '../../styles/tokens';
 import { formatCurrency } from '../../utils/formatNumber';
@@ -14,6 +15,9 @@ interface ProductCardProps {
     onEditVariant: (variantId: number) => void;
     onDeleteVariant: (variantId: number, variantName: string) => void;
     onAddVariant: () => void;
+    /** Only relevant if product.categoria === 'Pizzas' */
+    sabores?: PizzaSabor[];
+    onEditSabor?: (sabor: PizzaSabor) => void;
 }
 
 export function ProductCard({
@@ -22,6 +26,8 @@ export function ProductCard({
     onEditVariant,
     onDeleteVariant,
     onAddVariant,
+    sabores,
+    onEditSabor,
 }: ProductCardProps) {
     return (
         <Card padding="lg" style={{ marginBottom: spacing.lg }}>
@@ -97,70 +103,76 @@ export function ProductCard({
             </View>
 
             {/* Pizza Flavors Section - Only for Pizzas */}
-            {product.categoria.toLowerCase() === 'pizzas' && (
-                <PizzaFlavorsSection />
+            {product.categoria.toLowerCase() === 'pizzas' && sabores && (
+                <PizzaFlavorsSection sabores={sabores} onEditSabor={onEditSabor} />
             )}
         </Card>
     );
 }
 
-function PizzaFlavorsSection() {
-    const SABORES_TRADICIONALES = [
-        'De Casa', 'Napolitana', 'Ranchera', 'Hawaiana', 'Vegetales',
-        'Mexicana', 'Carnes', 'Pollo Tocineta', 'Pollo Champiñones',
-        'Pollo Maicitos', 'Jamón y Queso',
-    ];
+interface PizzaFlavorsSectionProps {
+    sabores: PizzaSabor[];
+    onEditSabor?: (sabor: PizzaSabor) => void;
+}
 
-    const SABORES_ESPECIALES = [
-        'Quesuda', 'Boloñesa', 'Pollo BBQ', 'Aborrajada', 'Firu', 'Paisa',
-    ];
+function PizzaFlavorsSection({ sabores, onEditSabor }: PizzaFlavorsSectionProps) {
+    const tradicionales = sabores.filter(s => s.tipo === 'tradicional' && s.activo);
+    const especiales = sabores.filter(s => s.tipo === 'especial' && s.activo);
 
-    const PREMIUM_ESPECIAL: Record<string, number> = {
-        'Pequeña': 1000,
-        'Mediana': 2000,
-        'Grande': 2000,
+    const renderChip = (sabor: PizzaSabor) => {
+        const isEspecial = sabor.tipo === 'especial';
+        const hasRecargo = isEspecial && (sabor.recargoPequena > 0 || sabor.recargoMediana > 0);
+        return (
+            <TouchableOpacity
+                key={sabor.saborId}
+                style={[styles.flavorChip, isEspecial && styles.flavorChipSpecial]}
+                onPress={() => onEditSabor?.(sabor)}
+                activeOpacity={0.7}
+            >
+                <Text style={[styles.flavorChipText, isEspecial && { color: colors.secondary }]}>
+                    {isEspecial ? '★ ' : ''}{sabor.nombre}
+                </Text>
+                {hasRecargo && (
+                    <Text style={{ fontSize: 10, color: colors.secondary, marginTop: 1 }}>
+                        +${formatCurrency(sabor.recargoPequena)}/{formatCurrency(sabor.recargoMediana)}
+                    </Text>
+                )}
+                {onEditSabor && (
+                    <Icon name="pencil-outline" size={10} color={colors.textMuted} style={{ marginTop: 2 }} />
+                )}
+            </TouchableOpacity>
+        );
     };
 
     return (
         <View style={styles.flavorsSection}>
             <View style={styles.flavorsHeader}>
                 <Icon name="pizza" size={16} color={colors.secondary} />
-                <Text style={styles.flavorsTitle}>Sabores Disponibles</Text>
+                <Text style={styles.flavorsTitle}>Sabores y Recargos</Text>
+                {onEditSabor && (
+                    <Text style={{ fontSize: 11, color: colors.textMuted, marginLeft: 6 }}>
+                        (toca para editar)
+                    </Text>
+                )}
             </View>
 
-            {/* Traditional Flavors */}
-            <Text style={styles.flavorCategoryLabel}>Tradicionales</Text>
+            <Text style={styles.flavorCategoryLabel}>Tradicionales (sin recargo)</Text>
             <View style={styles.flavorsGrid}>
-                {SABORES_TRADICIONALES.map((sabor, idx) => (
-                    <View key={idx} style={styles.flavorChip}>
-                        <Text style={styles.flavorChipText}>{sabor}</Text>
-                    </View>
-                ))}
+                {tradicionales.map(s => renderChip(s))}
             </View>
 
-            {/* Special Flavors */}
-            <Text style={[styles.flavorCategoryLabel, { marginTop: spacing.md }]}>
-                Especiales ★
-            </Text>
+            <Text style={[styles.flavorCategoryLabel, { marginTop: spacing.md }]}>Especiales ★</Text>
             <View style={styles.flavorsGrid}>
-                {SABORES_ESPECIALES.map((sabor, idx) => (
-                    <View key={idx} style={[styles.flavorChip, styles.flavorChipSpecial]}>
-                        <Text style={[styles.flavorChipText, { color: colors.secondary }]}>
-                            ★ {sabor}
-                        </Text>
-                    </View>
-                ))}
+                {especiales.map(s => renderChip(s))}
             </View>
 
-            {/* Pricing Info */}
+            {/* Recargo de 3 sabores */}
             <View style={styles.flavorPricingInfo}>
                 <Icon name="information-outline" size={14} color={colors.textMuted} />
                 <Text style={styles.flavorPricingText}>
-                    Sabores especiales: +${formatCurrency(PREMIUM_ESPECIAL['Pequeña'])} (Pequeña),
-                    +${formatCurrency(PREMIUM_ESPECIAL['Mediana'])} (Mediana/Grande)
+                    3 sabores: +$3.000 adicional
                 </Text>
             </View>
         </View>
     );
 }
-

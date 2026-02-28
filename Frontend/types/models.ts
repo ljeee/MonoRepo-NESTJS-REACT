@@ -91,6 +91,11 @@ export interface FacturaOrden {
   productos?: FacturaOrdenProducto[];
 }
 
+export interface FacturaDomicilio {
+  costoDomicilio?: number;
+  direccionEntrega?: string;
+}
+
 export interface FacturaVenta {
   facturaId?: number;
   clienteNombre?: string;
@@ -100,6 +105,7 @@ export interface FacturaVenta {
   metodo?: string;
   total?: number;
   ordenes?: FacturaOrden[];
+  domicilios?: FacturaDomicilio[];
 }
 
 export interface FacturaStats {

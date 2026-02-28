@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RefreshControl, Text, View } from 'react-native';
 import { useProductos, useProductOperations, Producto, ProductoVariante } from '../hooks/use-productos';
+import { usePizzaSabores, useUpdatePizzaSabor, PizzaSabor } from '../hooks/use-pizza-sabores';
 import { colors } from '../styles/theme';
 import { spacing } from '../styles/tokens';
 import {
@@ -13,6 +14,7 @@ import {
     ListSkeleton,
 } from '../components/ui';
 import { ProductCard, ProductModal, VariantModal } from '../components/products';
+import { SaborModal } from '../components/products/SaborModal';
 import { gestionProductosStyles as styles } from '../styles/productos/gestion-productos.styles';
 
 
@@ -39,6 +41,11 @@ export default function GestionProductosScreen() {
     // Delete confirmation
     const [deleteTarget, setDeleteTarget] = useState<{ type: 'product' | 'variant'; id: number; name: string } | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+
+    // Pizza Sabores
+    const { sabores, fetchSabores } = usePizzaSabores();
+    const { updateSabor, loading: saborLoading } = useUpdatePizzaSabor();
+    const [editingSabor, setEditingSabor] = useState<PizzaSabor | null>(null);
 
     // Product form
     const [prodName, setProdName] = useState('');
@@ -185,6 +192,17 @@ export default function GestionProductosScreen() {
         }
     };
 
+    const handleSaveSabor = async (
+        saborId: number,
+        data: { recargoPequena: number; recargoMediana: number; recargoGrande: number },
+    ) => {
+        try {
+            await updateSabor(saborId, data);
+            setEditingSabor(null);
+            fetchSabores();
+        } catch { /* error shown inside modal */ }
+    };
+
     return (
         <PageContainer
             refreshControl={
@@ -250,6 +268,8 @@ export default function GestionProductosScreen() {
                             });
                         }}
                         onAddVariant={() => openVariantModal(p.productoId)}
+                        sabores={p.categoria.toLowerCase() === 'pizzas' ? sabores : undefined}
+                        onEditSabor={p.categoria.toLowerCase() === 'pizzas' ? setEditingSabor : undefined}
                     />
                 ))}
 
@@ -314,6 +334,15 @@ export default function GestionProductosScreen() {
                 loading={deleteLoading}
                 onConfirm={handleDelete}
                 onCancel={() => setDeleteTarget(null)}
+            />
+
+            {/* ── Sabor Modal ── */}
+            <SaborModal
+                visible={!!editingSabor}
+                sabor={editingSabor}
+                loading={saborLoading}
+                onSave={handleSaveSabor}
+                onClose={() => setEditingSabor(null)}
             />
         </PageContainer>
     );

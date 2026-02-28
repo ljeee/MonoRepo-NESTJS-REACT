@@ -10,6 +10,7 @@ import {ProductosModule} from './productos/productos.module';
 import {DomiciliariosModule} from './domiciliarios/domiciliarios.module';
 import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 import {AuthModule} from './auth/auth.module';
+import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
 
 @Module({
 	imports: [
@@ -44,6 +45,7 @@ import {AuthModule} from './auth/auth.module';
 		DomiciliariosModule,
 		FacturasPagosModule,
 		AuthModule,
+		PizzaSaboresModule,
 	],
 	controllers: [],
 	providers: [],

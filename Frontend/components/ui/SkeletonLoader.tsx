@@ -56,7 +56,7 @@ export function Skeleton({
                 style={{
                     width: '100%',
                     height: '100%',
-                    backgroundColor: colors.borderLight,
+                    backgroundColor: colors.border,
                     opacity: 0.5,
                     transform: [{ translateX }],
                 }}

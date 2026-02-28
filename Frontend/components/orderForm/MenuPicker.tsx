@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useProductos, Producto, ProductoVariante } from '../../hooks/use-productos';
+import { usePizzaSabores } from '../../hooks/use-pizza-sabores';
 import { colors } from '../../styles/theme';
 import { menuPickerStyles as s } from '../../styles/productos/menu-picker.styles';
 import { formatCurrency } from '../../utils/formatNumber';
@@ -13,6 +14,7 @@ interface MenuPickerProps {
 
 export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
+  const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
   const { isMobile } = useBreakpoint();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
@@ -221,6 +223,8 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
           visible={modalVisible}
           producto={selectedProducto}
           variante={selectedVariante}
+          saboresCatalogo={saboresCatalogo}
+          loadingSabores={loadingSabores}
           onAdd={(producto, variante, sabores) => {
             onAdd(producto, variante, sabores);
             setModalVisible(false);

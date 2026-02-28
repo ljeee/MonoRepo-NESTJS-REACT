@@ -1,107 +1,39 @@
 import 'reflect-metadata';
-import {DataSource} from 'typeorm';
-import {AppDataSource} from '../../data-source';
-// Assuming Producto and Variante entities exist
-import {Productos} from '../../productos/esquemas/productos.entity';
-import {ProductoVariantes} from '../../productos/esquemas/producto-variantes.entity';
+import { AppDataSource } from '../../data-source';
+import { Productos } from '../../productos/esquemas/productos.entity';
+import { ProductoVariantes } from '../../productos/esquemas/producto-variantes.entity';
+
+// Este seeder ya no es necesario en producción/Docker:
+// - TypeORM crea las tablas automáticamente (synchronize: true)
+// - Los datos del menú se cargan desde seed-menu.sql al iniciar Docker
+// - pizza_sabores se auto-siembra vía OnModuleInit en PizzaSaboresService
+//
+// Solo usar este archivo si se necesita poblar una BD de desarrollo sin Docker.
 
 type ProductoSeed = {
 	productoNombre: string;
 	categoria: string;
 	descripcion: string;
-	variantes: {
-		nombre: string;
-		precio: number;
-		descripcion?: string;
-	}[];
+	variantes: { nombre: string; precio: number; descripcion?: string }[];
 };
 
 export async function seedProductos() {
 	const dataSource = await AppDataSource.initialize();
-	const productoRepository = dataSource.getRepository(Productos);
-	const varianteRepository = dataSource.getRepository(ProductoVariantes);
+	const productoRepo = dataSource.getRepository(Productos);
+	const varianteRepo = dataSource.getRepository(ProductoVariantes);
 
 	try {
 		console.log('🚀 Seeding productos...');
 
 		const productos: ProductoSeed[] = [
 			{
-				productoNombre: 'Pizza Paisa',
+				productoNombre: 'Pizza',
 				categoria: 'Pizzas',
-				descripcion: 'Pizza con carnes y salsas colombianas',
+				descripcion: 'Elige 1-3 sabores. Tradicionales y Especiales disponibles.',
 				variantes: [
-					{nombre: 'Pequeña', precio: 15000, descripcion: 'Pizza pequeña'},
-					{nombre: 'Mediana', precio: 28000, descripcion: 'Pizza mediana'},
-					{nombre: 'Grande', precio: 40000, descripcion: 'Pizza grande'},
-				],
-			},
-			{
-				productoNombre: 'Pizza Hawaiana',
-				categoria: 'Pizzas',
-				descripcion: 'Pizza con piña y jamón',
-				variantes: [
-					{nombre: 'Pequeña', precio: 15000, descripcion: 'Pizza pequeña'},
-					{nombre: 'Mediana', precio: 28000, descripcion: 'Pizza mediana'},
-					{nombre: 'Grande', precio: 40000, descripcion: 'Pizza grande'},
-				],
-			},
-			{
-				productoNombre: 'Pizza Vegetariana',
-				categoria: 'Pizzas',
-				descripcion: 'Pizza con verduras frescas',
-				variantes: [
-					{nombre: 'Pequeña', precio: 14000, descripcion: 'Pizza pequeña'},
-					{nombre: 'Mediana', precio: 26000, descripcion: 'Pizza mediana'},
-					{nombre: 'Grande', precio: 38000, descripcion: 'Pizza grande'},
-				],
-			},
-			{
-				productoNombre: 'Coca-Cola',
-				categoria: 'Bebidas',
-				descripcion: 'Refresco Coca-Cola',
-				variantes: [
-					{nombre: 'Pequeña (250ml)', precio: 2500},
-					{nombre: 'Mediana (400ml)', precio: 3500},
-					{nombre: 'Grande (600ml)', precio: 5000},
-				],
-			},
-			{
-				productoNombre: 'Sprite',
-				categoria: 'Bebidas',
-				descripcion: 'Refresco Sprite',
-				variantes: [
-					{nombre: 'Pequeña (250ml)', precio: 2500},
-					{nombre: 'Mediana (400ml)', precio: 3500},
-					{nombre: 'Grande (600ml)', precio: 5000},
-				],
-			},
-			{
-				productoNombre: 'Jugo Natural',
-				categoria: 'Bebidas',
-				descripcion: 'Jugo de frutas frescas',
-				variantes: [
-					{nombre: 'Vaso (300ml)', precio: 4000},
-					{nombre: 'Jarra (1L)', precio: 10000},
-				],
-			},
-			{
-				productoNombre: 'Alitas de Pollo',
-				categoria: 'Extras',
-				descripcion: 'Alitas de pollo crujientes',
-				variantes: [
-					{nombre: '6 Alitas', precio: 12000},
-					{nombre: '12 Alitas', precio: 22000},
-					{nombre: '18 Alitas', precio: 30000},
-				],
-			},
-			{
-				productoNombre: 'Papas Fritas',
-				categoria: 'Extras',
-				descripcion: 'Papas fritas crujientes',
-				variantes: [
-					{nombre: 'Pequeña', precio: 4000},
-					{nombre: 'Mediana', precio: 6000},
-					{nombre: 'Grande', precio: 8000},
+					{ nombre: 'Pequeña', precio: 16000 },
+					{ nombre: 'Mediana', precio: 30000 },
+					{ nombre: 'Grande',  precio: 43000 },
 				],
 			},
 			{
@@ -109,50 +41,104 @@ export async function seedProductos() {
 				categoria: 'Hamburguesas',
 				descripcion: 'Hamburguesa clásica con carne de res',
 				variantes: [
-					{nombre: 'Sencilla', precio: 8000},
-					{nombre: 'Doble', precio: 13000},
-					{nombre: 'Triple', precio: 18000},
+					{ nombre: 'Sencilla',    precio: 17000 },
+					{ nombre: 'Picosita',    precio: 20000 },
+					{ nombre: 'Doble Carne', precio: 22000 },
 				],
+			},
+			{
+				productoNombre: 'Chuzo',
+				categoria: 'Chuzos',
+				descripcion: 'Incluye: Papitas a la francesa, Arepa con queso, Ensalada',
+				variantes: [
+					{ nombre: 'Mixto Jamon, Cerdo, Pollo', precio: 27000 },
+					{ nombre: 'Pollo Y tocineta',          precio: 27000 },
+				],
+			},
+			{
+				productoNombre: 'Pizza Burguer',
+				categoria: 'Pizza Burguer',
+				descripcion: 'Pizza en formato hamburguesa',
+				variantes: [
+					{ nombre: 'Original', precio: 20000 },
+					{ nombre: "D'Firu",   precio: 20000 },
+					{ nombre: 'Ranchera', precio: 20000 },
+					{ nombre: 'Mexicana', precio: 20000 },
+					{ nombre: 'Paisa',    precio: 20000 },
+				],
+			},
+			{
+				productoNombre: 'Torti Burger',
+				categoria: 'Tortiburger',
+				descripcion: 'Tortilla con hamburguesa',
+				variantes: [{ nombre: 'Unidad', precio: 18000 }],
+			},
+			{
+				productoNombre: 'Calzone',
+				categoria: 'Calzones',
+				descripcion: 'Pizza cerrada estilo calzone',
+				variantes: [
+					{ nombre: 'De Casa',           precio: 16000 },
+					{ nombre: 'Napolitana',         precio: 16000 },
+					{ nombre: 'Hawaiana',           precio: 16000 },
+					{ nombre: 'Mexicana',           precio: 16000 },
+					{ nombre: 'Carnes',             precio: 16000 },
+					{ nombre: 'Pollo Tocineta',     precio: 16000 },
+					{ nombre: 'Pollo Champiñones',  precio: 16000 },
+					{ nombre: 'Pollo Maicitos',     precio: 16000 },
+					{ nombre: 'Ranchera',           precio: 16000 },
+				],
+			},
+			{
+				productoNombre: 'Adición de Queso',
+				categoria: 'Adiciones',
+				descripcion: 'Queso extra para pizza',
+				variantes: [
+					{ nombre: 'Pequeña', precio:  5000 },
+					{ nombre: 'Mediana', precio:  8000 },
+					{ nombre: 'Grande',  precio: 12000 },
+				],
+			},
+			{
+				productoNombre: 'Combo Papas Hamburguesa',
+				categoria: 'Adiciones',
+				descripcion: 'Papas a la francesa para combo con hamburguesa',
+				variantes: [{ nombre: 'Unidad', precio: 5000 }],
 			},
 		];
 
 		for (const prodData of productos) {
-			const existing = await productoRepository.findOne({where: {productoNombre: prodData.productoNombre}});
+			const existing = await productoRepo.findOne({ where: { productoNombre: prodData.productoNombre } });
 			if (existing) {
-				console.log(`ℹ️  Producto ${prodData.productoNombre} already exists, skipping.`);
+				console.log(`ℹ️  "${prodData.productoNombre}" ya existe, omitiendo.`);
 				continue;
 			}
-
-			const producto = productoRepository.create({
+			const producto = await productoRepo.save(productoRepo.create({
 				productoNombre: prodData.productoNombre,
 				categoria: prodData.categoria,
 				descripcion: prodData.descripcion,
-			});
-			const savedProducto = await productoRepository.save(producto);
-
-			for (const varData of prodData.variantes) {
-				const variante = varianteRepository.create({
-					productoId: savedProducto.productoId,
-					nombre: varData.nombre,
-					precio: varData.precio,
-					descripcion: varData.descripcion,
-				});
-				await varianteRepository.save(variante);
+			}));
+			for (const v of prodData.variantes) {
+				await varianteRepo.save(varianteRepo.create({
+					productoId: producto.productoId,
+					nombre: v.nombre,
+					precio: v.precio,
+					descripcion: v.descripcion,
+				}));
 			}
-
-			console.log(`✅ Producto created: ${prodData.productoNombre}`);
+			console.log(`✅ ${prodData.productoNombre}`);
 		}
 
-		console.log('✅ Productos seeded successfully!');
+		// Nota: pizza_sabores se auto-siembra en PizzaSaboresService.onModuleInit()
+		console.log('✅ Seed de productos completado.');
 	} catch (error) {
-		console.error('❌ Error seeding productos:', error);
+		console.error('❌ Error:', error);
 		throw error;
 	} finally {
 		await dataSource.destroy();
 	}
 }
 
-// If run directly
 if (require.main === module) {
 	seedProductos().catch(() => process.exit(1));
 }

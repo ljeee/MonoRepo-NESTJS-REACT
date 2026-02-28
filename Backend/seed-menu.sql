@@ -126,3 +126,35 @@ BEGIN
     (SELECT COUNT(*) FROM productos);
 
 END $$;
+
+-- =============================================================================
+-- SEED: pizza_sabores
+-- Recargos por sabor y por tamaño (Pequeña / Mediana / Grande).
+-- Quesuda tiene recargo mayor al resto de especiales.
+-- Ajusta los valores de recargo_* según la carta actual.
+-- =============================================================================
+
+DELETE FROM pizza_sabores;
+
+INSERT INTO pizza_sabores (nombre, tipo, recargo_pequena, recargo_mediana, recargo_grande, activo) VALUES
+  -- Tradicionales (sin recargo)
+  ('De la Casa',           'tradicional', 0,    0,    0,    true),
+  ('Napolitana',        'tradicional', 0,    0,    0,    true),
+  ('Ranchera',          'tradicional', 0,    0,    0,    true),
+  ('Hawaiana',          'tradicional', 0,    0,    0,    true),
+  ('Vegetales',         'tradicional', 0,    0,    0,    true),
+  ('Mexicana',          'tradicional', 0,    0,    0,    true),
+  ('Carnes',            'tradicional', 0,    0,    0,    true),
+  ('Pollo Tocineta',    'tradicional', 0,    0,    0,    true),
+  ('Pollo Champiñones', 'tradicional', 0,    0,    0,    true),
+  ('Pollo Maicitos',    'tradicional', 0,    0,    0,    true),
+  ('Jamón y Queso',     'tradicional', 0,    0,    0,    true),
+  -- Especiales (Quesuda es más cara que el resto)
+  ('Quesuda',           'especial',    2000, 3000, 3000, true),
+  ('Boloñesa',          'especial',    1000, 2000, 2000, true),
+  ('Pollo BBQ',         'especial',    1000, 2000, 2000, true),
+  ('Aborrajada',        'especial',    1000, 2000, 2000, true),
+  ('Firu',              'especial',    1000, 2000, 2000, true),
+  ('Paisa',             'especial',    1000, 2000, 2000, true);
+
+SELECT COUNT(*) AS sabores_insertados FROM pizza_sabores;
