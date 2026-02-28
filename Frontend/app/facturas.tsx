@@ -13,6 +13,7 @@ import {
   Icon,
   ListSkeleton,
 } from '../components/ui';
+import { useBreakpoint } from '../styles/responsive';
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -71,8 +72,35 @@ function downloadCsv(csv: string, filename: string) {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function FacturasRangoScreen() {
+  const { isMobile } = useBreakpoint();
   const { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura } = useFacturasRango();
   const [updating, setUpdating] = useState<number | null>(null);
+  const [filterError, setFilterError] = useState('');
+
+  const handleSearch = useCallback(() => {
+    let fromParsed = from.trim();
+    let toParsed = to.trim();
+
+    if (/^\d{4}$/.test(fromParsed)) fromParsed = `${fromParsed}-01-01`;
+    if (/^\d{4}$/.test(toParsed)) toParsed = `${toParsed}-12-31`;
+
+    if (/^\d{4}-\d{2}$/.test(fromParsed)) fromParsed = `${fromParsed}-01`;
+    if (/^\d{4}-\d{2}$/.test(toParsed)) {
+      const [y, m] = toParsed.split('-');
+      const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+      toParsed = `${toParsed}-${lastDay}`;
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!fromParsed || !toParsed) { setFilterError('Ingresa ambas fechas'); return; }
+    if (!dateRegex.test(fromParsed) || !dateRegex.test(toParsed)) { setFilterError('Formato inválido. Use YYYY, YYYY-MM o YYYY-MM-DD'); return; }
+    if (new Date(fromParsed) > new Date(toParsed)) { setFilterError('"Desde" no puede ser posterior a "Hasta"'); return; }
+
+    setFilterError('');
+    setFrom(fromParsed);
+    setTo(toParsed);
+    fetchData(fromParsed, toParsed);
+  }, [from, to, setFrom, setTo, fetchData]);
 
   const handleChangeEstado = async (facturaId: number, currentEstado?: string) => {
     const nuevoEstado = currentEstado === 'pagado' ? 'pendiente' : 'pagado';
@@ -101,7 +129,10 @@ export default function FacturasRangoScreen() {
         data={data}
         style={{ flex: 1 }}
         keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
+        key={isMobile ? 'col_1' : 'col_2'}
+        numColumns={isMobile ? 1 : 2}
         contentContainerStyle={{ paddingBottom: spacing.lg }}
+        columnWrapperStyle={!isMobile ? { gap: spacing.md } : undefined}
         ListHeaderComponent={
           <>
             <PageHeader
@@ -155,12 +186,19 @@ export default function FacturasRangoScreen() {
                   icon="magnify"
                   variant="primary"
                   size="sm"
-                  onPress={fetchData}
+                  onPress={handleSearch}
                   disabled={!from || !to || loading}
                   loading={loading}
                 />
               </View>
             </View>
+
+            {filterError ? (
+              <View style={styles.errorBox}>
+                <Icon name="alert-circle-outline" size={14} color={colors.danger} />
+                <Text style={styles.errorText}>{filterError}</Text>
+              </View>
+            ) : null}
 
             {/* Stats */}
             {data.length > 0 && <StatsHeader stats={stats} periodLabel="Total del Período" />}
@@ -197,12 +235,14 @@ export default function FacturasRangoScreen() {
           ) : null
         }
         renderItem={({ item }) => (
-          <FacturaCard
-            item={item}
-            isUpdating={updating === item.facturaId}
-            onToggleEstado={handleChangeEstado}
-            onUpdateTotal={handleUpdateTotal}
-          />
+          <View style={{ flex: 1, paddingBottom: spacing.md }}>
+            <FacturaCard
+              item={item}
+              isUpdating={updating === item.facturaId}
+              onToggleEstado={handleChangeEstado}
+              onUpdateTotal={handleUpdateTotal}
+            />
+          </View>
         )}
       />
     </PageContainer>

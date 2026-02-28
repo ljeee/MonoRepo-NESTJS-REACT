@@ -108,7 +108,7 @@ export default function OrdersOfDayPending() {
   const numColumns = isMobile ? 1 : isTablet ? 2 : 3;
 
   return (
-    <PageContainer scrollable={false}>
+    <PageContainer scrollable={false} contentContainerStyle={{ flex: 1 }}>
       <PageHeader
         title={filter === 'pendientes' ? 'Órdenes Pendientes' : 'Órdenes del Día'}
         icon="clipboard-text-outline"
@@ -166,6 +166,7 @@ export default function OrdersOfDayPending() {
         <ErrorState message={error} onRetry={fetchOrders} />
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={orders}
           keyExtractor={(item) =>
             item.ordenId?.toString() || Math.random().toString()

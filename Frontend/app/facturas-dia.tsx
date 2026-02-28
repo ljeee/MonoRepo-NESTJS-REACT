@@ -5,8 +5,10 @@ import { colors } from '../styles/theme';
 import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
 import { FacturaCard, StatsHeader } from '../components/facturas/FacturaShared';
 import { PageContainer, PageHeader, Button, ListSkeleton, Icon } from '../components/ui';
+import { useBreakpoint } from '../styles/responsive';
 
 export default function FacturasDiaScreen() {
+  const { isMobile } = useBreakpoint();
   const { data, loading, error, refetch, stats, updateEstado, updateFactura } = useFacturasDia();
   const [updating, setUpdating] = useState<number | null>(null);
 
@@ -75,16 +77,17 @@ export default function FacturasDiaScreen() {
           </Text>
         </View>
       ) : (
-        <View style={{ gap: spacing.md, paddingBottom: spacing.lg }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md, paddingBottom: spacing.lg }}>
           {data?.map((item, idx) => (
-            <FacturaCard
-              key={item.facturaId?.toString() || idx.toString()}
-              item={item}
-              isUpdating={updating === item.facturaId}
-              onToggleEstado={handleChangeEstado}
-              onUpdateTotal={handleUpdateTotal}
-              showPrint
-            />
+            <View key={item.facturaId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+              <FacturaCard
+                item={item}
+                isUpdating={updating === item.facturaId}
+                onToggleEstado={handleChangeEstado}
+                onUpdateTotal={handleUpdateTotal}
+                showPrint
+              />
+            </View>
           ))}
         </View>
       )}

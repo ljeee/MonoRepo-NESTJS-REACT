@@ -282,16 +282,19 @@ export default function BalanceDiaScreen() {
                 </View>
             )}
 
-            {facturas.map((item, idx) => (
-                <FacturaCard
-                    key={item.facturaId?.toString() || idx.toString()}
-                    item={item}
-                    isUpdating={updatingId === item.facturaId}
-                    onToggleEstado={handleToggleEstado}
-                    onUpdateTotal={handleUpdateTotal}
-                    showPrint
-                />
-            ))}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md }}>
+                {facturas.map((item, idx) => (
+                    <View key={item.facturaId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+                        <FacturaCard
+                            item={item}
+                            isUpdating={updatingId === item.facturaId}
+                            onToggleEstado={handleToggleEstado}
+                            onUpdateTotal={handleUpdateTotal}
+                            showPrint
+                        />
+                    </View>
+                ))}
+            </View>
 
             {/* ── GASTOS ─────────────────────────────────────────────────────────── */}
             <View style={[s.sectionHeader, { marginTop: spacing['2xl'] }]}>
@@ -316,15 +319,18 @@ export default function BalanceDiaScreen() {
                 </View>
             )}
 
-            {gastos.map((item, idx) => (
-                <GastoRow
-                    key={item.pagosId?.toString() || idx.toString()}
-                    item={item}
-                    onDelete={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })}
-                    deleting={deleting}
-                    s={s}
-                />
-            ))}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md }}>
+                {gastos.map((item, idx) => (
+                    <View key={item.pagosId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+                        <GastoRow
+                            item={item}
+                            onDelete={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })}
+                            deleting={deleting}
+                            s={s}
+                        />
+                    </View>
+                ))}
+            </View>
 
             {/* Delete confirmation */}
             <ConfirmModal

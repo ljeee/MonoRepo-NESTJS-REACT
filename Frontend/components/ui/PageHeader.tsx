@@ -28,9 +28,9 @@ export default function PageHeader({
     return (
         <View style={[styles.container, isMobile && styles.containerMobile, style]}>
             <View style={styles.left}>
-                {icon && !isMobile && (
-                    <View style={styles.iconContainer}>
-                        <Icon name={icon} size={28} color={colors.primary} />
+                {icon && (
+                    <View style={[styles.iconContainer, isMobile && { width: 38, height: 38, marginTop: 40 }]}>
+                        <Icon name={icon} size={isMobile ? 22 : 28} color={colors.primary} />
                     </View>
                 )}
                 <View style={[styles.textContainer, isMobile && { marginLeft: 0 }]}>

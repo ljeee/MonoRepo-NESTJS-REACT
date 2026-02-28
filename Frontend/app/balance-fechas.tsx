@@ -145,14 +145,32 @@ export default function BalanceFechasScreen() {
     }, [searchTrigger]);
 
     const handleSearch = useCallback(() => {
+        let fromParsed = from.trim();
+        let toParsed = to.trim();
+
+        if (/^\d{4}$/.test(fromParsed)) fromParsed = `${fromParsed}-01-01`;
+        if (/^\d{4}$/.test(toParsed)) toParsed = `${toParsed}-12-31`;
+
+        if (/^\d{4}-\d{2}$/.test(fromParsed)) fromParsed = `${fromParsed}-01`;
+        if (/^\d{4}-\d{2}$/.test(toParsed)) {
+            const [y, m] = toParsed.split('-');
+            const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
+            toParsed = `${toParsed}-${lastDay}`;
+        }
+
         const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!from || !to) { setFilterError('Ingresa ambas fechas'); return; }
-        if (!dateRegex.test(from) || !dateRegex.test(to)) { setFilterError('Formato inválido. Use YYYY-MM-DD'); return; }
-        if (new Date(from) > new Date(to)) { setFilterError('"Desde" no puede ser posterior a "Hasta"'); return; }
+        if (!fromParsed || !toParsed) { setFilterError('Ingresa ambas fechas'); return; }
+        if (!dateRegex.test(fromParsed) || !dateRegex.test(toParsed)) { setFilterError('Formato inválido. Use YYYY, YYYY-MM o YYYY-MM-DD'); return; }
+        if (new Date(fromParsed) > new Date(toParsed)) { setFilterError('"Desde" no puede ser posterior a "Hasta"'); return; }
+
         setFilterError('');
+        // Update input state as well to reflect standard format
+        setFrom(fromParsed);
+        setTo(toParsed);
+
         // Push dates into both hooks, then increment trigger → useEffect fires fetch
-        setFromF(from); setToF(to);
-        setFromG(from); setToG(to);
+        setFromF(fromParsed); setToF(toParsed);
+        setFromG(fromParsed); setToG(toParsed);
         setSearchTrigger((n) => n + 1);
     }, [from, to, setFromF, setToF, setFromG, setToG]);
 
@@ -280,13 +298,18 @@ export default function BalanceFechasScreen() {
                         )}
                     </>
                 }
+                key={isMobile ? 'col_1' : 'col_2'}
+                numColumns={isMobile ? 1 : 2}
+                columnWrapperStyle={!isMobile ? { gap: spacing.md } : undefined}
                 renderItem={({ item }) => (
-                    <FacturaCard
-                        item={item}
-                        isUpdating={updatingId === item.facturaId}
-                        onToggleEstado={handleToggleEstado}
-                        onUpdateTotal={handleUpdateTotal}
-                    />
+                    <View style={{ flex: 1, paddingBottom: spacing.md }}>
+                        <FacturaCard
+                            item={item}
+                            isUpdating={updatingId === item.facturaId}
+                            onToggleEstado={handleToggleEstado}
+                            onUpdateTotal={handleUpdateTotal}
+                        />
+                    </View>
                 )}
                 ListFooterComponent={
                     !loading && gastos.length > 0 ? (
@@ -305,29 +328,33 @@ export default function BalanceFechasScreen() {
                                 </View>
                             )}
 
-                            {gastos.map((item, idx) => (
-                                <View key={item.pagosId?.toString() || idx.toString()} style={s.gastoCard}>
-                                    <View style={s.gastoIcon}>
-                                        <Icon
-                                            name={item.metodo === 'efectivo' ? 'cash' : 'qrcode'}
-                                            size={18}
-                                            color={colors.primary}
-                                        />
-                                    </View>
-                                    <View style={s.gastoInfo}>
-                                        <Text style={s.gastoName}>{item.nombreGasto || 'Sin nombre'}</Text>
-                                        <View style={s.gastoMeta}>
-                                            {item.fechaFactura && (
-                                                <Text style={s.gastoMetaText}>{item.fechaFactura}</Text>
-                                            )}
-                                            {item.metodo && (
-                                                <Badge label={item.metodo} variant="warning" size="sm" />
-                                            )}
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md }}>
+                                {gastos.map((item, idx) => (
+                                    <View key={item.pagosId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+                                        <View style={s.gastoCard}>
+                                            <View style={s.gastoIcon}>
+                                                <Icon
+                                                    name={item.metodo === 'efectivo' ? 'cash' : 'qrcode'}
+                                                    size={18}
+                                                    color={colors.primary}
+                                                />
+                                            </View>
+                                            <View style={s.gastoInfo}>
+                                                <Text style={s.gastoName}>{item.nombreGasto || 'Sin nombre'}</Text>
+                                                <View style={s.gastoMeta}>
+                                                    {item.fechaFactura && (
+                                                        <Text style={s.gastoMetaText}>{item.fechaFactura}</Text>
+                                                    )}
+                                                    {item.metodo && (
+                                                        <Badge label={item.metodo} variant="warning" size="sm" />
+                                                    )}
+                                                </View>
+                                            </View>
+                                            <Text style={s.gastoTotal}>−${formatCurrency(item.total ?? 0)}</Text>
                                         </View>
                                     </View>
-                                    <Text style={s.gastoTotal}>−${formatCurrency(item.total ?? 0)}</Text>
-                                </View>
-                            ))}
+                                ))}
+                            </View>
                         </>
                     ) : null
                 }

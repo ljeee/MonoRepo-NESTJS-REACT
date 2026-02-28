@@ -102,12 +102,15 @@ export function useFacturasRango() {
   const [to, setTo] = useState('');
   const [stats, setStats] = useState<FacturaStats>({ totalDia: 0, totalPagado: 0, totalPendiente: 0, count: 0 });
 
-  const fetchData = useCallback(async () => {
-    if (!from || !to) return;
+  const fetchData = useCallback(async (f?: string, t?: string) => {
+    const finalFrom = f || from;
+    const finalTo = t || to;
+    if (!finalFrom || !finalTo) return;
+    
     setLoading(true);
     setError(null);
     try {
-      const raw = await api.facturas.getAll({ from, to });
+      const raw = await api.facturas.getAll({ from: finalFrom, to: finalTo });
       const mapped = raw.map(mapFactura);
       setData(mapped);
       setStats(calcStats(mapped));

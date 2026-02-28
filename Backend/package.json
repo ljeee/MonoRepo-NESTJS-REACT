@@ -21,7 +21,9 @@
 		"seed:users": "ts-node src/common/seeders/seed-users.ts",
 		"seed:users:prod": "node dist/common/seeders/seed-users.js",
 		"seed:productos": "ts-node src/common/seeders/seed-productos.ts",
-		"seed": "npm run seed:users && npm run seed:productos"
+		"seed:orders": "ts-node src/common/seeders/seed-orders.ts",
+		"seed:orders:prod": "node dist/common/seeders/seed-orders.js",
+		"seed": "npm run seed:users && npm run seed:productos && npm run seed:orders"
 	},
 	"dependencies": {
 		"@nestjs/bullmq": "^11.0.4",
