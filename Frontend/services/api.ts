@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import type {
+  AuthResponse,
   Cliente, CreateClienteDto,
   CreateDomiciliarioDto, CreateFacturaPagoDto,
   CreateOrdenDto, Domiciliario,
@@ -43,6 +44,24 @@ http.interceptors.response.use(
 function arr<T>(data: unknown): T[] {
   return Array.isArray(data) ? data : [];
 }
+
+export function setAuthToken(token: string | null) {
+  if (token) {
+    http.defaults.headers.common.Authorization = `Bearer ${token}`;
+    return;
+  }
+  delete http.defaults.headers.common.Authorization;
+}
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+const auth = {
+  login: (username: string, password: string) =>
+    http.post<AuthResponse>('/auth/login', { username, password }).then((r) => r.data),
+
+  refresh: (refreshToken: string) =>
+    http.post<AuthResponse>('/auth/refresh', { refreshToken }).then((r) => r.data),
+};
 
 // ─── Ordenes ──────────────────────────────────────────────────────────────────
 
@@ -202,6 +221,7 @@ const pizzaSabores = {
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const api = {
+  auth,
   ordenes,
   facturas,
   pagos,

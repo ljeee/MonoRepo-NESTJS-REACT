@@ -1,6 +1,21 @@
 import { useCallback, useState } from 'react';
+import axios from 'axios';
 import { api } from '../services/api';
 import type { CreateFacturaPagoDto, FacturaPago } from '../types/models';
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError(error)) {
+    const apiMessage = error.response?.data?.message;
+    if (typeof apiMessage === 'string' && apiMessage.trim()) {
+      return apiMessage;
+    }
+    return error.message || fallback;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return fallback;
+}
 
 export function useCreateFacturaPago() {
   const [loading, setLoading] = useState(false);
@@ -21,8 +36,8 @@ export function useCreateFacturaPago() {
       await api.pagos.create(data);
       setSuccess(true);
       return true;
-    } catch (e: any) {
-      setError(e.message || 'Error creando pago');
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Error creando pago'));
       return null;
     } finally {
       setLoading(false);
@@ -45,11 +60,11 @@ export function useFacturasPagosDia() {
         .filter((p) => p && Object.keys(p).length > 0)
         .sort((a, b) => (b.pagosId || 0) - (a.pagosId || 0));
       setData(cleaned);
-    } catch (e: any) {
-      if (e.response?.status === 404) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
         setData([]);
       } else {
-        setError(e.message || 'Error cargando pagos del día');
+        setError(getErrorMessage(error, 'Error cargando pagos del día'));
       }
     } finally {
       setLoading(false);
@@ -75,11 +90,11 @@ export function useFacturasPagosRango() {
     setLoading(true); setError(null);
     try {
       setData(await api.pagos.getAll({ from, to }));
-    } catch (e: any) {
-      if (e.response?.status === 404) {
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
         setData([]);
       } else {
-        setError(e.message || 'Error cargando pagos');
+        setError(getErrorMessage(error, 'Error cargando pagos'));
       }
     } finally {
       setLoading(false);
@@ -100,8 +115,8 @@ export function useUpdateFacturaPago() {
       await api.pagos.update(id, data);
       setSuccess(true);
       return true;
-    } catch (e: any) {
-      setError(e.message || 'Error actualizando pago');
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Error actualizando pago'));
       return null;
     } finally {
       setLoading(false);
@@ -120,8 +135,8 @@ export function useDeleteFacturaPago() {
     try {
       await api.pagos.delete(id);
       return true;
-    } catch (e: any) {
-      setError(e.message || 'Error eliminando pago');
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Error eliminando pago'));
       return null;
     } finally {
       setLoading(false);

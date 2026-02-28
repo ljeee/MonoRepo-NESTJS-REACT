@@ -68,21 +68,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     loadFormState();
   }, []);
 
-  // Save cart changes immediately (no debounce)
-  useEffect(() => {
-    if (!isHydrated) return;
-    const saveCartImmediately = async () => {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(formState));
-      } catch (error) {
-        console.error('Failed to save cart:', error);
-      }
-    };
-    saveCartImmediately();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formState.cart, isHydrated]);
-
-  // Save other form fields with debounce to avoid too many writes
+  // Save form state with debounce to avoid too many writes
   useEffect(() => {
     if (!isHydrated) return;
     const saveFormState = async () => {
@@ -93,10 +79,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Debounce saves (500ms) for form fields only
-    const timer = setTimeout(saveFormState, 500);
+    // Debounce saves for both cart and form fields
+    const timer = setTimeout(saveFormState, 300);
     return () => clearTimeout(timer);
-  }, [formState.tipoPedido, formState.telefonoCliente, formState.nombreCliente, formState.numeroMesa, formState.selectedAddress, formState.newAddress, formState.telefonoDomiciliario, formState.costoDomicilio, formState.metodo, formState.observaciones, isHydrated, formState]);
+  }, [formState, isHydrated]);
 
   const updateForm = useCallback((updates: Partial<OrderFormState>) => {
     setFormState(prev => ({ ...prev, ...updates }));

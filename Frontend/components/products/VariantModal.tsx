@@ -1,7 +1,6 @@
 import React from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 import { colors } from '../../styles/theme';
-import { spacing } from '../../styles/tokens';
 import { Button, Input, Icon } from '../ui';
 import { modalStyles as styles } from '../../styles/components/Modal.styles';
 

@@ -1,5 +1,6 @@
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
+import { isAxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { api } from '../../services/api';
@@ -7,6 +8,7 @@ import { useOrder } from '../../contexts/OrderContext';
 import { useToast } from '../../contexts/ToastContext';
 
 import { useClientByPhone } from '../../hooks/use-client-by-phone';
+import type { CreateOrdenDto } from '../../types/models';
 import { Domiciliario } from '../../types/models';
 import { Producto, ProductoVariante } from '../../hooks/use-productos';
 import { useBreakpoint } from '../../styles/responsive';
@@ -21,23 +23,48 @@ function nextCartId() {
   return `cart-${++_cartIdCounter}-${Date.now()}`;
 }
 
-function extractErrorMessage(err: any): string {
-  if (!err?.response) {
-    return err?.request
+function extractErrorMessage(error: unknown): string {
+  if (!isAxiosError(error)) {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    return 'Error inesperado al crear la orden.';
+  }
+
+  if (!error.response) {
+    return error.request
       ? 'No se recibió respuesta del servidor. Verifique la conexión.'
       : 'Error inesperado al crear la orden.';
   }
-  const { status, data = {} } = err.response;
+
+  const { status, data } = error.response;
+  const responseData = data as { message?: unknown; error?: unknown } | undefined;
+
   let msg: string | undefined;
-  if (Array.isArray(data.message)) {
-    msg = data.message
-      .map((m: any) =>
-        typeof m === 'string' ? m : m.constraints ? Object.values(m.constraints).join(', ') : JSON.stringify(m),
-      )
+  if (Array.isArray(responseData?.message)) {
+    msg = responseData.message
+      .map((item: unknown) => {
+        if (typeof item === 'string') {
+          return item;
+        }
+        if (item && typeof item === 'object' && 'constraints' in item) {
+          const constraints = (item as { constraints?: Record<string, string> }).constraints;
+          if (constraints) {
+            return Object.values(constraints).join(', ');
+          }
+        }
+        return JSON.stringify(item);
+      })
+      .filter((value): value is string => typeof value === 'string' && value.length > 0)
       .join(' | ');
   } else {
-    msg = data.message ?? data.error;
+    if (typeof responseData?.message === 'string') {
+      msg = responseData.message;
+    } else if (typeof responseData?.error === 'string') {
+      msg = responseData.error;
+    }
   }
+
   if (status === 400) return `Datos inválidos: ${msg || 'Verifique los datos ingresados'}`;
   if (status === 404) return 'Servicio no encontrado. Verifique que el backend esté funcionando.';
   if (status === 500) return `Error del servidor: ${msg || 'Intente nuevamente'}`;
@@ -183,7 +210,7 @@ export default function CreateOrderForm() {
     }
 
     try {
-      const payload = {
+      const payload: CreateOrdenDto = {
         tipoPedido: formState.tipoPedido || 'mesa',
         telefonoCliente: formState.telefonoCliente || undefined,
         nombreCliente: formState.tipoPedido === 'mesa' ? formState.numeroMesa : formState.nombreCliente,
@@ -208,8 +235,7 @@ export default function CreateOrderForm() {
         })),
       };
 
-      const response = await api.ordenes.create(payload as any);
-      const ordenId = response?.ordenId || (response as any)?.id;
+      await api.ordenes.create(payload);
 
       // WhatsApp al domiciliario (solo domicilio)
       if (formState.tipoPedido === 'domicilio' && formState.telefonoDomiciliario) {
@@ -252,8 +278,8 @@ export default function CreateOrderForm() {
       setTimeout(() => {
         router.push('/ordenes');
       }, 2000);
-    } catch (err: any) {
-      showToast(extractErrorMessage(err), 'error', 5000);
+    } catch (error: unknown) {
+      showToast(extractErrorMessage(error), 'error', 5000);
     } finally {
       setLoading(false);
     }
@@ -292,7 +318,7 @@ export default function CreateOrderForm() {
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={formState.tipoPedido}
-                  onValueChange={(val) => updateForm({ tipoPedido: val as any })}
+                  onValueChange={(val) => updateForm({ tipoPedido: val as 'mesa' | 'domicilio' | 'llevar' })}
                   style={styles.picker}
                   itemStyle={{ color: colors.text, fontSize: 16 }}
                   dropdownIconColor={colors.text}

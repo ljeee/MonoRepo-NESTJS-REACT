@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFacturasDia } from '../hooks/use-facturas';
 import { colors } from '../styles/theme';
 import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';

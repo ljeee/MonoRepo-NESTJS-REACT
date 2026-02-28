@@ -1,13 +1,28 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getBaseUrl } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
-import { Orden } from '../types/models';
 
 export function useOrdenesSocket(dispositivo: string = 'cajero', onRefresh?: () => void) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const { showToast } = useToast();
+  const onRefreshRef = useRef(onRefresh);
+  const showToastRef = useRef(showToast);
+
+  const log = (...args: unknown[]) => {
+    if (__DEV__) {
+      console.log(...args);
+    }
+  };
+
+  useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
+
+  useEffect(() => {
+    showToastRef.current = showToast;
+  }, [showToast]);
 
   useEffect(() => {
     const url = getBaseUrl();
@@ -20,27 +35,27 @@ export function useOrdenesSocket(dispositivo: string = 'cajero', onRefresh?: () 
 
     socketInstance.on('connect', () => {
       setIsConnected(true);
-      console.log(`[Socket] Conectado a /ordenes. Dispositivo: ${dispositivo}`);
+      log(`[Socket] Conectado a /ordenes. Dispositivo: ${dispositivo}`);
     });
 
     socketInstance.on('disconnect', () => {
       setIsConnected(false);
-      console.log('[Socket] Desconectado');
+      log('[Socket] Desconectado');
     });
 
     socketInstance.on('orden:nueva', (data) => {
-      console.log('[Socket] Nueva orden:', data);
-      if (onRefresh) onRefresh();
+      log('[Socket] Nueva orden:', data);
+      onRefreshRef.current?.();
     });
 
     socketInstance.on('orden:actualizada', (data) => {
-      console.log('[Socket] Orden actualizada:', data);
-      if (onRefresh) onRefresh();
+      log('[Socket] Orden actualizada:', data);
+      onRefreshRef.current?.();
     });
 
     socketInstance.on('whatsapp:handoff', (data) => {
-      console.log('[Socket] WhatsApp Handoff:', data);
-      showToast('⚠️ WhatsApp: Atención de cliente requerida', 'error');
+      log('[Socket] WhatsApp Handoff:', data);
+      showToastRef.current('⚠️ WhatsApp: Atención de cliente requerida', 'error');
     });
 
     setSocket(socketInstance);
@@ -48,7 +63,7 @@ export function useOrdenesSocket(dispositivo: string = 'cajero', onRefresh?: () 
     return () => {
       socketInstance.disconnect();
     };
-  }, [dispositivo, showToast]);
+  }, [dispositivo]);
 
   return { socket, isConnected };
 }

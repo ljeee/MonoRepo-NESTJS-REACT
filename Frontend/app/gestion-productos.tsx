@@ -62,7 +62,7 @@ export default function GestionProductosScreen() {
 
 
 
-    useEffect(() => { fetchProductos(); }, []);
+    useEffect(() => { fetchProductos(); }, [fetchProductos]);
 
     useEffect(() => {
         if (search.trim() === '') {

@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
-import { api, getBaseUrl } from '../services/api';
-import axios from 'axios';
+import { api, setAuthToken } from '../services/api';
+import type { AuthUser } from '../types/models';
 
 interface AuthContextData {
     token: string | null;
-    user: any | null;
+    user: AuthUser | null;
     login: (usuario: string, contrasena: string) => Promise<void>;
     logout: () => Promise<void>;
     isLoading: boolean;
@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [token, setToken] = useState<string | null>(null);
-    const [user, setUser] = useState<any | null>(null);
+    const [user, setUser] = useState<AuthUser | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const segments = useSegments();
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (storedToken && storedUser) {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
-                api.http.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+                setAuthToken(storedToken);
             }
         } catch (e) {
             console.error(e);
@@ -58,19 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [token, segments, isLoading]);
 
     const login = async (usuario: string, contrasena: string) => {
-        // Calling the endpoint directly as it's not in api.ts wrappers yet
-        const response = await axios.post(`${getBaseUrl()}/auth/login`, {
-            username: usuario,
-            password: contrasena,
-        });
+        const response = await api.auth.login(usuario, contrasena);
 
         // The DTO from nestjs is accessToken and refreshToken
-        const { accessToken, refreshToken, ...userData } = response.data;
+        const { accessToken, refreshToken, ...userData } = response;
 
         setToken(accessToken);
         setUser(userData);
 
-        api.http.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+        setAuthToken(accessToken);
 
         await AsyncStorage.setItem('@Auth:token', accessToken);
         await AsyncStorage.setItem('@Auth:refreshToken', refreshToken);
@@ -80,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const logout = async () => {
         setToken(null);
         setUser(null);
-        delete api.http.defaults.headers.common['Authorization'];
+        setAuthToken(null);
         await AsyncStorage.removeItem('@Auth:token');
         await AsyncStorage.removeItem('@Auth:refreshToken');
         await AsyncStorage.removeItem('@Auth:user');
@@ -97,15 +93,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     try {
                         const storedRefreshToken = await AsyncStorage.getItem('@Auth:refreshToken');
                         if (storedRefreshToken) {
-                            const refreshResponse = await axios.post(`${getBaseUrl()}/auth/refresh`, {
-                                refreshToken: storedRefreshToken
-                            });
+                            const refreshResponse = await api.auth.refresh(storedRefreshToken);
 
-                            const { accessToken, refreshToken, ...userData } = refreshResponse.data;
+                            const { accessToken, refreshToken, ...userData } = refreshResponse;
 
                             setToken(accessToken);
                             setUser(userData);
-                            api.http.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+                            setAuthToken(accessToken);
 
                             await AsyncStorage.setItem('@Auth:token', accessToken);
                             await AsyncStorage.setItem('@Auth:refreshToken', refreshToken);

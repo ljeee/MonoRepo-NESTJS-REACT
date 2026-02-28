@@ -1,8 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { FlatList, Platform, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 
 import { useFacturasRango } from '../hooks/use-facturas';
 import { useFacturasPagosRango } from '../hooks/use-create-factura-pago';
+import { buildCombinedBalanceCsv, downloadCsv } from '../utils/csvExport';
+import { validateFlexibleDateRange } from '../utils/dateRange';
 import { formatCurrency } from '../utils/formatNumber';
 import { colors } from '../styles/theme';
 import { spacing } from '../styles/tokens';
@@ -19,38 +21,6 @@ import {
     ListSkeleton,
     Badge,
 } from '../components/ui';
-
-// ─── CSV helpers ──────────────────────────────────────────────────────────────
-
-function esc(v: string): string {
-    return v.includes(',') || v.includes('"') || v.includes('\n')
-        ? '"' + v.replace(/"/g, '""') + '"'
-        : v;
-}
-
-function buildCombinedCsv(facturas: any[], gastos: any[]): string {
-    const rows = ['Tipo,ID,Nombre/Cliente,Fecha,Total,Estado,Método'];
-    for (const f of facturas) {
-        const fecha = f.fechaFactura ? new Date(f.fechaFactura).toLocaleDateString('es-CO') : '';
-        rows.push(`Factura,${f.facturaId ?? ''},${esc(f.clienteNombre || '')},${fecha},${f.total ?? 0},${f.estado || ''},${f.metodo || ''}`);
-    }
-    for (const g of gastos) {
-        const fecha = g.fechaFactura ? new Date(g.fechaFactura).toLocaleDateString('es-CO') : '';
-        rows.push(`Gasto,${g.pagosId ?? ''},${esc(g.nombreGasto || '')},${fecha},${g.total ?? 0},${g.estado || ''},${g.metodo || ''}`);
-    }
-    return rows.join('\n');
-}
-
-function downloadCsv(csv: string, filename: string) {
-    if (Platform.OS !== 'web') return;
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-}
 
 // ─── Balance card ─────────────────────────────────────────────────────────────
 
@@ -145,23 +115,11 @@ export default function BalanceFechasScreen() {
     }, [searchTrigger]);
 
     const handleSearch = useCallback(() => {
-        let fromParsed = from.trim();
-        let toParsed = to.trim();
-
-        if (/^\d{4}$/.test(fromParsed)) fromParsed = `${fromParsed}-01-01`;
-        if (/^\d{4}$/.test(toParsed)) toParsed = `${toParsed}-12-31`;
-
-        if (/^\d{4}-\d{2}$/.test(fromParsed)) fromParsed = `${fromParsed}-01`;
-        if (/^\d{4}-\d{2}$/.test(toParsed)) {
-            const [y, m] = toParsed.split('-');
-            const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
-            toParsed = `${toParsed}-${lastDay}`;
+        const { from: fromParsed, to: toParsed, error } = validateFlexibleDateRange(from, to);
+        if (error) {
+            setFilterError(error);
+            return;
         }
-
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!fromParsed || !toParsed) { setFilterError('Ingresa ambas fechas'); return; }
-        if (!dateRegex.test(fromParsed) || !dateRegex.test(toParsed)) { setFilterError('Formato inválido. Use YYYY, YYYY-MM o YYYY-MM-DD'); return; }
-        if (new Date(fromParsed) > new Date(toParsed)) { setFilterError('"Desde" no puede ser posterior a "Hasta"'); return; }
 
         setFilterError('');
         // Update input state as well to reflect standard format
@@ -186,7 +144,7 @@ export default function BalanceFechasScreen() {
     };
 
     const handleExportCsv = useCallback(() => {
-        downloadCsv(buildCombinedCsv(facturas, gastos), `balance_${from}_${to}.csv`);
+        downloadCsv(buildCombinedBalanceCsv(facturas, gastos), `balance_${from}_${to}.csv`);
     }, [facturas, gastos, from, to]);
 
     const loading = loadingFacturas || loadingGastos;

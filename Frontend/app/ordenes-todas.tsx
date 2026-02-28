@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { Orden, PaginatedResponse } from '../types/models';
 import { formatCurrency, formatDate } from '../utils/formatNumber';
 import { colors } from '../styles/theme';
-import { fontSize, fontWeight, spacing, radius, shadows } from '../styles/tokens';
+import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
 import { ESTADO_LABELS, getEstadoColor } from '../constants/estados';
 import {
   PageContainer,
@@ -24,6 +24,41 @@ const LIMIT = 20;
 // Simplified filter states - only show most commonly used
 const FILTER_ESTADOS = ['', 'pendiente', 'completada', 'cancelado'] as const;
 
+type OrdenesQueryParams = {
+  page: number;
+  limit: number;
+  estado?: string;
+  from?: string;
+  to?: string;
+};
+
+function getOrdenTotal(orden: Orden): number {
+  if (typeof orden.factura?.totalFactura === 'number') {
+    return orden.factura.totalFactura;
+  }
+
+  if (typeof orden.factura?.total === 'number') {
+    return orden.factura.total;
+  }
+
+  return (
+    orden.productos?.reduce(
+      (sum, producto) => sum + (producto.precioUnitario ?? 0) * (producto.cantidad ?? 1),
+      0,
+    ) ?? 0
+  );
+}
+
+function getProductoPreviewName(producto: NonNullable<Orden['productos']>[number]): string {
+  if (typeof producto.productoNombre === 'string' && producto.productoNombre.trim()) {
+    return producto.productoNombre;
+  }
+  if (typeof producto.producto === 'string' && producto.producto.trim()) {
+    return producto.producto;
+  }
+  return 'Producto';
+}
+
 export default function OrdenesTodasScreen() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
@@ -40,7 +75,7 @@ export default function OrdenesTodasScreen() {
       setLoading(true);
       setError('');
       try {
-        const params: Record<string, any> = { page: p, limit: LIMIT };
+        const params: OrdenesQueryParams = { page: p, limit: LIMIT };
         if (estado) params.estado = estado;
         if (from) params.from = from;
         if (to) params.to = to;
@@ -191,21 +226,13 @@ export default function OrdenesTodasScreen() {
       {!loading &&
         ordenes.map((orden) => {
           const ec = getEstadoColor(orden.estadoOrden);
-          const total =
-            (orden.factura as any)?.totalFactura ??
-            orden.productos?.reduce(
-              (s, p) => s + (p.precioUnitario ?? 0) * (p.cantidad ?? 1),
-              0,
-            ) ??
-            0;
+          const total = getOrdenTotal(orden);
 
           return (
             <Card
               key={orden.ordenId}
               onPress={() =>
-                router.push(
-                  `/orden-detalle?ordenId=${orden.ordenId}` as any,
-                )
+                router.push(`/orden-detalle?ordenId=${orden.ordenId}`)
               }
               style={{ marginBottom: spacing.md }}
               padding="md"
@@ -251,7 +278,7 @@ export default function OrdenesTodasScreen() {
                 <View style={styles.productsPreview}>
                   {orden.productos.slice(0, 3).map((p, i) => (
                     <Text key={i} style={styles.productPreviewText}>
-                      • {(p as any).productoNombre || (p as any).producto || 'Producto'} x{p.cantidad}
+                      • {getProductoPreviewName(p)} x{p.cantidad}
                     </Text>
                   ))}
                   {orden.productos.length > 3 && (

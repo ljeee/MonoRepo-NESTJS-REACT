@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Platform, RefreshControl, Text, View } from 'react-native';
+import { RefreshControl, Text, View } from 'react-native';
 
 import { useFacturasDia } from '../hooks/use-facturas';
 import { useFacturasPagosDia, useDeleteFacturaPago } from '../hooks/use-create-factura-pago';
+import { buildCombinedBalanceCsv, downloadCsv } from '../utils/csvExport';
+import type { FacturaPago } from '../types/models';
 import { formatCurrency } from '../utils/formatNumber';
 import { colors } from '../styles/theme';
 import { spacing } from '../styles/tokens';
@@ -10,7 +12,7 @@ import { makeBStyles } from '../styles/facturas/balance-dia.styles';
 import { fStyles } from '../styles/facturas/facturas.styles';
 import { useBreakpoint } from '../styles/responsive';
 
-import { FacturaCard, FacturaItem } from '../components/facturas/FacturaShared';
+import { FacturaCard } from '../components/facturas/FacturaShared';
 import {
     PageContainer,
     PageHeader,
@@ -24,38 +26,6 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type BStyles = ReturnType<typeof makeBStyles>;
-
-// ─── CSV helpers ──────────────────────────────────────────────────────────────
-
-function esc(v: string): string {
-    return v.includes(',') || v.includes('"') || v.includes('\n')
-        ? '"' + v.replace(/"/g, '""') + '"'
-        : v;
-}
-
-function buildCombinedCsv(facturas: FacturaItem[], gastos: any[]): string {
-    const rows: string[] = ['Tipo,ID,Nombre/Cliente,Fecha,Total,Estado,Método'];
-    for (const f of facturas) {
-        const fecha = f.fechaFactura ? new Date(f.fechaFactura).toLocaleDateString('es-CO') : '';
-        rows.push(`Factura,${f.facturaId ?? ''},${esc(f.clienteNombre || '')},${fecha},${f.total ?? 0},${f.estado || ''},${f.metodo || ''}`);
-    }
-    for (const g of gastos) {
-        const fecha = g.fechaFactura ? new Date(g.fechaFactura).toLocaleDateString('es-CO') : '';
-        rows.push(`Gasto,${g.pagosId ?? ''},${esc(g.nombreGasto || '')},${fecha},${g.total ?? 0},${g.estado || ''},${g.metodo || ''}`);
-    }
-    return rows.join('\n');
-}
-
-function downloadCsv(csv: string, filename: string) {
-    if (Platform.OS !== 'web') return;
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
-}
 
 // ─── Balance card ─────────────────────────────────────────────────────────────
 
@@ -110,7 +80,7 @@ function BalanceCard({ ingresos, gastos, s }: { ingresos: number; gastos: number
 // ─── Gasto item row ───────────────────────────────────────────────────────────
 
 function GastoRow({ item, onDelete, deleting, s }: {
-    item: any;
+    item: FacturaPago;
     onDelete: () => void;
     deleting: boolean;
     s: BStyles;
@@ -210,7 +180,7 @@ export default function BalanceDiaScreen() {
     };
 
     const handleExportCsv = useCallback(() => {
-        const csv = buildCombinedCsv(facturas, gastos);
+        const csv = buildCombinedBalanceCsv(facturas, gastos);
         const today = new Date().toISOString().slice(0, 10);
         downloadCsv(csv, `balance_${today}.csv`);
     }, [facturas, gastos]);

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform } from 'react-native';
+import { colors } from '../styles/theme';
 
 export const GlobalStyles = () => {
     if (Platform.OS !== 'web') return null;
@@ -15,17 +16,17 @@ export const GlobalStyles = () => {
 
         /* Fix Select/Option Visibility in Dark Mode */
         select {
-          background-color: #252932 !important; /* colors.bgLight */
-          color: #e8eaed !important; /* colors.text */
-          border-color: #3d4451 !important; /* colors.border */
+          background-color: ${colors.bgLight} !important;
+          color: ${colors.text} !important;
+          border-color: ${colors.border} !important;
           padding: 10px;
           border-radius: 8px;
           outline: none;
         }
 
         option {
-          background-color: #252932 !important;
-          color: #e8eaed !important;
+          background-color: ${colors.bgLight} !important;
+          color: ${colors.text} !important;
         }
 
         /* Input autofill fix for dark mode */
@@ -33,8 +34,8 @@ export const GlobalStyles = () => {
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
         input:-webkit-autofill:active{
-            -webkit-box-shadow: 0 0 0 30px #252932 inset !important;
-            -webkit-text-fill-color: #e8eaed !important;
+          -webkit-box-shadow: 0 0 0 30px ${colors.bgLight} inset !important;
+          -webkit-text-fill-color: ${colors.text} !important;
         }
 
         /* Custom Scrollbar */
@@ -43,14 +44,14 @@ export const GlobalStyles = () => {
           height: 8px;
         }
         ::-webkit-scrollbar-track {
-          background: #1a1d23; 
+          background: ${colors.bg}; 
         }
         ::-webkit-scrollbar-thumb {
-          background: #3d4451; 
+          background: ${colors.border}; 
           border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-          background: #10b981; 
+          background: ${colors.success}; 
         }
       `}
         </style>

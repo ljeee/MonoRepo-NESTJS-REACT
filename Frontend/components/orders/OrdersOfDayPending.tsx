@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Text, TouchableOpacity, View, StyleSheet, RefreshControl, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { FlatList, Text, TouchableOpacity, View, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
+import { Href, useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { useBreakpoint } from '../../styles/responsive';
 import { EmptyState } from '../states/EmptyState';
@@ -9,37 +9,29 @@ import { ListSkeleton } from '../ui/SkeletonLoader';
 import { PageContainer, PageHeader, Button, Card, Badge, Icon } from '../ui';
 import { colors } from '../../styles/theme';
 import { fontSize, fontWeight, spacing, radius, shadows } from '../../styles/tokens';
-import { getEstadoColor } from '../../constants/estados';
 import { formatDate } from '../../utils/formatNumber';
 import { useOrdenesSocket } from '../../hooks/use-ordenes-socket';
+import type { Orden } from '../../types/models';
 
-type OrderProduct = {
-  id: number;
-  producto: string;
-  cantidad: number;
-};
-type Factura = {
-  clienteNombre?: string;
-};
-type Domicilio = {
-  direccionEntrega?: string;
-};
-type Order = {
-  ordenId: number;
-  tipoPedido: string;
-  estadoOrden: string;
-  fechaOrden: string;
-  nombreCliente?: string;
-  observaciones?: string;
-  productos?: OrderProduct[];
-  factura?: Factura;
-  domicilios?: Domicilio[];
-};
+function getErrorStatusCode(error: unknown): number | undefined {
+  if (
+    error &&
+    typeof error === 'object' &&
+    'response' in error &&
+    (error as { response?: unknown }).response &&
+    typeof (error as { response?: unknown }).response === 'object' &&
+    'status' in ((error as { response?: { status?: unknown } }).response as { status?: unknown })
+  ) {
+    const status = ((error as { response?: { status?: unknown } }).response as { status?: unknown }).status;
+    return typeof status === 'number' ? status : undefined;
+  }
+  return undefined;
+}
 
 export default function OrdersOfDayPending() {
   const router = useRouter();
   const { isMobile, isTablet } = useBreakpoint();
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<Orden[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
@@ -56,9 +48,9 @@ export default function OrdersOfDayPending() {
     try {
       const url_estado = filter === 'pendientes' ? 'pendiente' : undefined;
       const data = await api.ordenes.getDay(url_estado);
-      setOrders(data as any);
-    } catch (err: any) {
-      if (err.response && err.response.status === 404) {
+      setOrders(data);
+    } catch (error: unknown) {
+      if (getErrorStatusCode(error) === 404) {
         setOrders([]);
       } else {
         setError('No pudimos cargar las órdenes. Por favor, intenta de nuevo.');
@@ -81,7 +73,7 @@ export default function OrdersOfDayPending() {
   const markAsCompleted = async (ordenId: number) => {
     setPatchLoading(ordenId);
     try {
-      await api.ordenes.update(ordenId, { estadoOrden: 'completada' } as any);
+      await api.ordenes.update(ordenId, { estadoOrden: 'completada' });
       await fetchOrders();
     } catch {
       setError('No se pudo actualizar la orden');
@@ -90,9 +82,7 @@ export default function OrdersOfDayPending() {
     }
   };
 
-
-
-  const getClientName = (item: Order) => {
+  const getClientName = (item: Orden) => {
     const nombre = item.factura?.clienteNombre || item.nombreCliente;
     if (!nombre) return 'Sin nombre';
     if (item.tipoPedido === 'mesa') {
@@ -168,8 +158,8 @@ export default function OrdersOfDayPending() {
         <FlatList
           style={{ flex: 1 }}
           data={orders}
-          keyExtractor={(item) =>
-            item.ordenId?.toString() || Math.random().toString()
+          keyExtractor={(item, index) =>
+            item.ordenId?.toString() || `${item.fechaOrden || 'orden'}-${index}`
           }
           refreshControl={
             <RefreshControl
@@ -186,13 +176,12 @@ export default function OrdersOfDayPending() {
             numColumns > 1 ? { gap: spacing.md } : undefined
           }
           renderItem={({ item }) => {
-            const ec = getEstadoColor(item.estadoOrden);
             return (
               <View style={[styles.gridItem, isMobile && styles.gridItemMobile]}>
                 <Card
                   onPress={() =>
                     router.push(
-                      `/orden-detalle?ordenId=${item.ordenId}` as any,
+                      `/orden-detalle?ordenId=${item.ordenId}` as Href,
                     )
                   }
                   padding="md"

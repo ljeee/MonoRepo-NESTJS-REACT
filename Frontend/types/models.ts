@@ -39,6 +39,7 @@ export interface Domiciliario {
 export interface OrdenProducto {
   id?: number;
   producto: string;            // text field: "Pizza - Mediana (De Casa + Napolitana)"
+  productoNombre?: string;
   cantidad: number;
   precioUnitario?: number;
   subtotal?: number;
@@ -51,6 +52,8 @@ export interface Orden {
   tipoPedido: string;
   estadoOrden: string;
   fechaOrden: string;
+  nombreCliente?: string;
+  observaciones?: string;
   productos?: OrdenProducto[];
   factura?: FacturaVenta;
   domicilios?: Domicilio[];
@@ -104,6 +107,7 @@ export interface FacturaVenta {
   estado?: string;
   metodo?: string;
   total?: number;
+  totalFactura?: number;
   ordenes?: FacturaOrden[];
   domicilios?: FacturaDomicilio[];
 }
@@ -148,7 +152,9 @@ export interface CreateOrdenDto {
   nombreCliente?: string;
   direccionCliente?: string;
   telefonoDomiciliario?: string;
+  costoDomicilio?: number;
   metodo?: string;
+  observaciones?: string;
   productos?: CreateOrdenProductoDto[];
 }
 
@@ -181,3 +187,14 @@ export interface FindOrdenesParams {
   page?: number;
   limit?: number;
 }
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+export interface AuthTokens {
+  accessToken: string;
+  refreshToken: string;
+}
+
+export type AuthUser = Record<string, unknown>;
+
+export type AuthResponse = AuthTokens & AuthUser;

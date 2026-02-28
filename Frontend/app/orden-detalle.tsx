@@ -1,14 +1,14 @@
 import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { api } from '../services/api';
 import { colors } from '../styles/theme';
-import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
+import { spacing } from '../styles/tokens';
 import { formatCurrency, formatDate } from '../utils/formatNumber';
 import { getEstadoColor } from '../constants/estados';
 import { useToast } from '../contexts/ToastContext';
-import { useBreakpoint } from '../styles/responsive';
+import type { IconName } from '../components/ui';
 import {
   PageContainer,
   PageHeader,
@@ -81,12 +81,26 @@ interface OrdenDetalle {
   domicilios?: Domicilio[];
 }
 
+function normalizeOrdenDetalle(ordenData: unknown): OrdenDetalle {
+  const normalized = ordenData as OrdenDetalle;
+  if (!Array.isArray(normalized.productos)) {
+    normalized.productos = [];
+  }
+  return normalized;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+}
+
 export default function OrdenDetalleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const ordenId = params.ordenId as string;
   const { showToast } = useToast();
-  const { isMobile } = useBreakpoint();
 
   const [orden, setOrden] = useState<OrdenDetalle | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,12 +118,9 @@ export default function OrdenDetalleScreen() {
     const fetchOrden = async () => {
       try {
         const ordenData = await api.ordenes.getById(Number(ordenId));
-        if (ordenData && !Array.isArray(ordenData.productos)) {
-          ordenData.productos = [];
-        }
-        setOrden(ordenData as any);
-      } catch (e: any) {
-        setError(e.message || 'Error cargando orden');
+        setOrden(normalizeOrdenDetalle(ordenData));
+      } catch (error: unknown) {
+        setError(getErrorMessage(error, 'Error cargando orden'));
       } finally {
         setLoading(false);
       }
@@ -185,12 +196,9 @@ export default function OrdenDetalleScreen() {
 
       // Refresh order data
       const ordenData = await api.ordenes.getById(Number(ordenId));
-      if (ordenData && !Array.isArray(ordenData.productos)) {
-        ordenData.productos = [];
-      }
-      setOrden(ordenData as any);
-    } catch (e: any) {
-      showToast(e.message || 'Error al cancelar la orden', 'error', 5000);
+      setOrden(normalizeOrdenDetalle(ordenData));
+    } catch (error: unknown) {
+      showToast(getErrorMessage(error, 'Error al cancelar la orden'), 'error', 5000);
     } finally {
       setCanceling(false);
     }
@@ -427,7 +435,7 @@ function InfoRow({
   label,
   value,
 }: {
-  icon: any;
+  icon: IconName;
   label: string;
   value: string;
 }) {

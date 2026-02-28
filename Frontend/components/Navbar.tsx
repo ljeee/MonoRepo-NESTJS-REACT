@@ -158,7 +158,7 @@ export default function Navbar() {
       duration: duration.normal,
       useNativeDriver: Platform.OS !== 'web',
     }).start();
-  }, [drawerOpen, translateX]);
+  }, [drawerOpen, translateX, sidebarWidth]);
 
   // ── Shared section list ──
   const renderSections = (compact = false) =>

@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { Platform, RefreshControlProps, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
+import { RefreshControlProps, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
 import { colors } from '../../styles/theme';
 import { spacing, layout } from '../../styles/tokens';
 import { useBreakpoint } from '../../styles/responsive';
@@ -34,7 +34,8 @@ export default function PageContainer({
     contentContainerStyle,
     refreshControl,
 }: PageContainerProps) {
-    const { isMobile } = useBreakpoint();
+    const { isMobile, isTablet } = useBreakpoint();
+    const isCompact = isMobile || isTablet;
 
     // Determine max width based on variant
     const effectiveMaxWidth = maxWidth || (
@@ -46,11 +47,11 @@ export default function PageContainer({
 
     const containerPadding = noPadding
         ? 0
-        : isMobile
+        : isCompact
             ? spacing.lg
             : spacing['2xl'];
 
-    const topPadding = isMobile
+    const topPadding = isCompact
         ? 120
         : spacing['2xl'];
 
@@ -62,7 +63,7 @@ export default function PageContainer({
                     maxWidth: effectiveMaxWidth,
                     paddingHorizontal: containerPadding,
                     paddingTop: topPadding,
-                    paddingBottom: isMobile ? 150 : spacing['3xl'],
+                    paddingBottom: isCompact ? 150 : spacing['3xl'],
                 },
                 contentContainerStyle,
             ]}

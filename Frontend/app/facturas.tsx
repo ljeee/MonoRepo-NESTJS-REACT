@@ -1,10 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList, Platform, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useFacturasRango } from '../hooks/use-facturas';
+import { downloadCsv, escapeCsvValue } from '../utils/csvExport';
+import { validateFlexibleDateRange } from '../utils/dateRange';
 import { colors } from '../styles/theme';
 import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
 import { FacturaCard, StatsHeader, FacturaItem } from '../components/facturas/FacturaShared';
-import { formatCurrency } from '../utils/formatNumber';
 import {
   PageContainer,
   PageHeader,
@@ -15,22 +16,13 @@ import {
 } from '../components/ui';
 import { useBreakpoint } from '../styles/responsive';
 
-// ─── CSV helpers ──────────────────────────────────────────────────────────────
-
-function esc(value: string): string {
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return '"' + value.replace(/"/g, '""') + '"';
-  }
-  return value;
-}
-
 function buildCsv(facturas: FacturaItem[]): string {
   const header = 'ID,Cliente,Fecha,Total Factura,Estado,Método,Producto,Cantidad,Precio Unitario,Subtotal';
   const rows: string[] = [];
 
   for (const f of facturas) {
     const id = String(f.facturaId ?? '');
-    const cliente = esc(f.clienteNombre || '');
+    const cliente = escapeCsvValue(f.clienteNombre || '');
     const fecha = f.fechaFactura ? new Date(f.fechaFactura).toLocaleDateString('es-CO') : '';
     const total = String(f.total ?? 0);
     const estado = f.estado || 'pendiente';
@@ -42,7 +34,7 @@ function buildCsv(facturas: FacturaItem[]): string {
       rows.push(`${id},${cliente},${fecha},${total},${estado},${metodo},,,,`);
     } else {
       for (const p of productos) {
-        const nombre = esc(p.productoNombre || 'Producto');
+        const nombre = escapeCsvValue(p.productoNombre || 'Producto');
         const cant = p.cantidad ?? 1;
         const precio = p.precioUnitario ?? 0;
         const sub = cant * precio;
@@ -51,22 +43,6 @@ function buildCsv(facturas: FacturaItem[]): string {
     }
   }
   return [header, ...rows].join('\n');
-}
-
-function downloadCsv(csv: string, filename: string) {
-  if (Platform.OS !== 'web') return;
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 100);
 }
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
@@ -78,23 +54,11 @@ export default function FacturasRangoScreen() {
   const [filterError, setFilterError] = useState('');
 
   const handleSearch = useCallback(() => {
-    let fromParsed = from.trim();
-    let toParsed = to.trim();
-
-    if (/^\d{4}$/.test(fromParsed)) fromParsed = `${fromParsed}-01-01`;
-    if (/^\d{4}$/.test(toParsed)) toParsed = `${toParsed}-12-31`;
-
-    if (/^\d{4}-\d{2}$/.test(fromParsed)) fromParsed = `${fromParsed}-01`;
-    if (/^\d{4}-\d{2}$/.test(toParsed)) {
-      const [y, m] = toParsed.split('-');
-      const lastDay = new Date(parseInt(y), parseInt(m), 0).getDate();
-      toParsed = `${toParsed}-${lastDay}`;
+    const { from: fromParsed, to: toParsed, error } = validateFlexibleDateRange(from, to);
+    if (error) {
+      setFilterError(error);
+      return;
     }
-
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!fromParsed || !toParsed) { setFilterError('Ingresa ambas fechas'); return; }
-    if (!dateRegex.test(fromParsed) || !dateRegex.test(toParsed)) { setFilterError('Formato inválido. Use YYYY, YYYY-MM o YYYY-MM-DD'); return; }
-    if (new Date(fromParsed) > new Date(toParsed)) { setFilterError('"Desde" no puede ser posterior a "Hasta"'); return; }
 
     setFilterError('');
     setFrom(fromParsed);
