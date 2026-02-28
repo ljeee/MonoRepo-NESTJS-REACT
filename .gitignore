@@ -5,3 +5,7 @@ Frontend/.env
 Backend/.env
 
 node_modules/
+
+.env
+
+Docs/   

@@ -155,6 +155,8 @@ INSERT INTO pizza_sabores (nombre, tipo, recargo_pequena, recargo_mediana, recar
   ('Pollo BBQ',         'especial',    1000, 2000, 2000, true),
   ('Aborrajada',        'especial',    1000, 2000, 2000, true),
   ('Firu',              'especial',    1000, 2000, 2000, true),
-  ('Paisa',             'especial',    1000, 2000, 2000, true);
+  ('Paisa',             'especial',    1000, 2000, 2000, true),
+  -- Configuración Dfiru POS
+  ('RECARGO_3_SABORES', 'configuracion', 0, 0, 3000, true);
 
 SELECT COUNT(*) AS sabores_insertados FROM pizza_sabores;

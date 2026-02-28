@@ -26,6 +26,8 @@ const SABORES_INICIALES: Omit<PizzaSabor, 'saborId'>[] = [
 	{ nombre: 'Aborrajada', tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
 	{ nombre: 'Firu',       tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
 	{ nombre: 'Paisa',      tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
+	// ── Configuración (Dfiru POS) ───────────────────────────────────────
+	{ nombre: 'RECARGO_3_SABORES', tipo: 'configuracion', recargoPequena: 0, recargoMediana: 0, recargoGrande: 3000, activo: true },
 ];
 
 @Injectable()

@@ -6,6 +6,7 @@ import {ValidationPipe} from '@nestjs/common';
 import {AppModule} from './app.module';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {LoggingInterceptor} from './common/interceptors/logging.interceptor';
+import {RedisIoAdapter} from './common/redis/redis.adapter';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
@@ -29,7 +30,7 @@ async function bootstrap() {
 		.addBearerAuth()
 		.build();
 	const document = SwaggerModule.createDocument(app, config);
-	SwaggerModule.setup('api', app, document, {
+	SwaggerModule.setup('swagger', app, document, {
 		swaggerOptions: {persistAuthorization: true},
 	});
 
@@ -43,6 +44,11 @@ async function bootstrap() {
 		origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
 		credentials: true,
 	});
+
+	// Configurar Redis IO Adapter
+	const redisIoAdapter = new RedisIoAdapter(app);
+	await redisIoAdapter.connectToRedis();
+	app.useWebSocketAdapter(redisIoAdapter);
 
 	const port = Number(process.env.PORT) || 3000;
 	// HOST puede ser una IP específica (ej: 192.168.1.50) o 0.0.0.0 para todas las interfaces

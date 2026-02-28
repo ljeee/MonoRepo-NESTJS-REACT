@@ -55,6 +55,22 @@ export class AuthService {
 		return this.toAuthResponse(user);
 	}
 
+	async refreshToken(token: string): Promise<AuthResponseDto> {
+		try {
+			const payload = this.jwtService.verify(token);
+			const user = await this.usersRepository.findOne({
+				where: {id: payload.sub},
+				select: ['id', 'username', 'name', 'passwordHash', 'roles', 'createdAt', 'updatedAt'],
+			});
+			if (!user) {
+				throw new UnauthorizedException('Usuario no encontrado');
+			}
+			return this.toAuthResponse(user);
+		} catch (error) {
+			throw new UnauthorizedException('Refresh token inválido o expirado');
+		}
+	}
+
 	toAuthResponse(user: User): AuthResponseDto {
 		const payload: JwtPayload = {
 			sub: user.id,
@@ -62,12 +78,14 @@ export class AuthService {
 			roles: user.roles,
 		};
 		const accessToken = this.jwtService.sign(payload);
+		const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 		return {
 			id: user.id,
 			username: user.username,
 			name: user.name,
 			roles: user.roles,
 			accessToken,
+			refreshToken,
 		};
 	}
 }

@@ -6,9 +6,6 @@ import { Producto, ProductoVariante } from '../../hooks/use-productos';
 import { PizzaSabor } from '../../hooks/use-pizza-sabores';
 import { formatCurrency } from '../../utils/formatNumber';
 
-// Recargo adicional cuando se eligen 3 sabores (fijo)
-const EXTRA_3_SABORES = 3000;
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Obtiene el recargo de un sabor según el nombre del tamaño de la variante */
@@ -36,7 +33,9 @@ function calcularPrecio(
   precio += maxRecargo;
 
   if (saboresSeleccionados.length >= 3) {
-    precio += EXTRA_3_SABORES;
+    const config3Sabores = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
+    const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
+    precio += extra3SaboresAmount;
   }
 
   return precio;
@@ -69,6 +68,10 @@ export default function PizzaPersonalizadaModal({
   const especiales = saboresCatalogo.filter(s => s.tipo === 'especial' && s.activo);
 
   const precioFinal = calcularPrecio(variante, selectedSabores, saboresCatalogo);
+
+  // Extract config
+  const config3Sabores = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
+  const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
 
   // Recargo que aplica al precio actual dada la selección
   const recargoEspecial = saboresCatalogo
@@ -160,7 +163,7 @@ export default function PizzaPersonalizadaModal({
               )}
               {selectedSabores.length >= 3 && (
                 <Text style={s.breakdownTresSabores}>
-                  + ${formatCurrency(EXTRA_3_SABORES)} por 3 sabores
+                  + ${formatCurrency(extra3SaboresAmount)} por 3 sabores
                 </Text>
               )}
             </View>

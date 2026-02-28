@@ -2,6 +2,7 @@ import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@ne
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {ProductosService} from "./productos.service";
 import {CreateProductosDto, FindProductosDto} from "./esquemas/productos.dto";
+import {Public} from "../auth/decorators/public.decorator";
 
 @ApiTags('Productos')
 @Controller("productos")
@@ -9,6 +10,7 @@ export class ProductosController {
 	constructor(private readonly service: ProductosService) {}
 
 	@Get('categorias')
+	@Public()
 	@ApiOperation({ summary: 'Obtener todas las categorías de productos' })
 	@ApiResponse({ status: 200, description: 'Lista de categorías.' })
 	getCategories() {
@@ -16,6 +18,7 @@ export class ProductosController {
 	}
 
 	@Get()
+	@Public()
 	@ApiOperation({ summary: 'Obtener todos los productos con variantes' })
 	@ApiResponse({ status: 200, description: 'Lista de productos con variantes.' })
 	findAll(@Query() query: FindProductosDto) {
@@ -23,6 +26,7 @@ export class ProductosController {
 	}
 
 	@Get(":id")
+	@Public()
 	@ApiOperation({ summary: 'Obtener un producto por ID' })
 	@ApiResponse({ status: 200, description: 'Producto encontrado.' })
 	findOne(@Param("id") id: number) {
@@ -30,6 +34,7 @@ export class ProductosController {
 	}
 
 	@Get(':id/variantes')
+	@Public()
 	@ApiOperation({ summary: 'Obtener variantes de un producto' })
 	@ApiResponse({ status: 200, description: 'Variantes del producto.' })
 	getVariantes(@Param("id") id: number) {

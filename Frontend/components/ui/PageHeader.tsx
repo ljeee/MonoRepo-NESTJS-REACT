@@ -28,17 +28,17 @@ export default function PageHeader({
     return (
         <View style={[styles.container, isMobile && styles.containerMobile, style]}>
             <View style={styles.left}>
-                {icon && (
+                {icon && !isMobile && (
                     <View style={styles.iconContainer}>
-                        <Icon name={icon} size={isMobile ? 24 : 28} color={colors.primary} />
+                        <Icon name={icon} size={28} color={colors.primary} />
                     </View>
                 )}
-                <View style={styles.textContainer}>
+                <View style={[styles.textContainer, isMobile && { marginLeft: 0 }]}>
                     {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
                     <Text style={[styles.title, isMobile && styles.titleMobile]}>{title}</Text>
                 </View>
             </View>
-            {rightContent && <View style={styles.right}>{rightContent}</View>}
+            {rightContent && <View style={[styles.right, isMobile && { marginTop: spacing.md }]}>{rightContent}</View>}
         </View>
     );
 }

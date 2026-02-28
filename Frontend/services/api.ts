@@ -10,7 +10,7 @@ import type {
 
 // ─── Instancia base ───────────────────────────────────────────────────────────
 
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   if (process.env.EXPO_PUBLIC_API_BASE_URL) {
     return process.env.EXPO_PUBLIC_API_BASE_URL;
   }
@@ -184,8 +184,8 @@ const productos = {
 export interface PizzaSabor {
   saborId: number;
   nombre: string;
-  tipo: 'tradicional' | 'especial';
-  recargoPequena: number;
+  tipo: 'tradicional' | 'especial' | 'configuracion';
+  recargoPequena: number | string;
   recargoMediana: number;
   recargoGrande: number;
   activo: boolean;

@@ -121,28 +121,37 @@ function PizzaFlavorsSection({ sabores, onEditSabor }: PizzaFlavorsSectionProps)
 
     const renderChip = (sabor: PizzaSabor) => {
         const isEspecial = sabor.tipo === 'especial';
-        const hasRecargo = isEspecial && (sabor.recargoPequena > 0 || sabor.recargoMediana > 0);
+        const hasRecargo = isEspecial && (Number(sabor.recargoPequena) > 0 || Number(sabor.recargoMediana) > 0);
         return (
             <TouchableOpacity
                 key={sabor.saborId}
-                style={[styles.flavorChip, isEspecial && styles.flavorChipSpecial]}
+                style={[
+                    styles.flavorChip,
+                    isEspecial && styles.flavorChipSpecial,
+                    { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' }
+                ]}
                 onPress={() => onEditSabor?.(sabor)}
                 activeOpacity={0.7}
             >
-                <Text style={[styles.flavorChipText, isEspecial && { color: colors.secondary }]}>
-                    {isEspecial ? '★ ' : ''}{sabor.nombre}
-                </Text>
-                {hasRecargo && (
-                    <Text style={{ fontSize: 10, color: colors.secondary, marginTop: 1 }}>
-                        +${formatCurrency(sabor.recargoPequena)}/{formatCurrency(sabor.recargoMediana)}
+                <View style={{ flexShrink: 1, marginRight: onEditSabor ? 6 : 0 }}>
+                    <Text style={[styles.flavorChipText, isEspecial && { color: colors.secondary }]} numberOfLines={1}>
+                        {isEspecial ? '★ ' : ''}{sabor.nombre}
                     </Text>
-                )}
+                    {hasRecargo && (
+                        <Text style={{ fontSize: 10, color: colors.secondary, marginTop: 1 }}>
+                            +${formatCurrency(Number(sabor.recargoPequena))}/${formatCurrency(Number(sabor.recargoMediana))}
+                        </Text>
+                    )}
+                </View>
                 {onEditSabor && (
-                    <Icon name="pencil-outline" size={10} color={colors.textMuted} style={{ marginTop: 2 }} />
+                    <Icon name="pencil-outline" size={12} color={colors.textMuted} />
                 )}
             </TouchableOpacity>
         );
     };
+
+    const config3Sabores = sabores.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
+    const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
 
     return (
         <View style={styles.flavorsSection}>
@@ -166,13 +175,25 @@ function PizzaFlavorsSection({ sabores, onEditSabor }: PizzaFlavorsSectionProps)
                 {especiales.map(s => renderChip(s))}
             </View>
 
-            {/* Recargo de 3 sabores */}
-            <View style={styles.flavorPricingInfo}>
+            {/* Recargo de 3 sabores dinámico */}
+            <TouchableOpacity
+                style={styles.flavorPricingInfo}
+                onPress={() => {
+                    if (onEditSabor && config3Sabores) {
+                        onEditSabor(config3Sabores);
+                    }
+                }}
+                disabled={!onEditSabor || !config3Sabores}
+                activeOpacity={0.7}
+            >
                 <Icon name="information-outline" size={14} color={colors.textMuted} />
                 <Text style={styles.flavorPricingText}>
-                    3 sabores: +$3.000 adicional
+                    3 sabores: +${formatCurrency(extra3SaboresAmount)} adicional
                 </Text>
-            </View>
+                {onEditSabor && config3Sabores && (
+                    <Icon name="pencil-outline" size={12} color={colors.textMuted} style={{ marginLeft: 6 }} />
+                )}
+            </TouchableOpacity>
         </View>
     );
 }

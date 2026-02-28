@@ -64,3 +64,5 @@ CI/CD is not configured yet. Recommended next step: GitHub Actions workflow to b
 docker-compose down -v
 
 docker-compose up --build -d
+
+docker exec -it pizzeria-backend npm run seed:users:prod

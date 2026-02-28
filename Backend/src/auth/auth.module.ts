@@ -29,9 +29,8 @@ import {RolesGuard} from './guards/roles.guard';
 	providers: [
 		AuthService,
 		JwtStrategy,
-		// Temporarily disabled global auth guards until frontend implements authentication
-		// {provide: APP_GUARD, useClass: JwtAuthGuard},
-		// {provide: APP_GUARD, useClass: RolesGuard},
+		{provide: APP_GUARD, useClass: JwtAuthGuard},
+		{provide: APP_GUARD, useClass: RolesGuard},
 	],
 	exports: [AuthService],
 })

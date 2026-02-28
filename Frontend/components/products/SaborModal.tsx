@@ -50,7 +50,7 @@ export function SaborModal({ visible, sabor, loading, onSave, onClose }: SaborMo
                 onPress={onClose}
             >
                 <Pressable
-                    style={{ backgroundColor: colors.bgCard, borderRadius: radius.lg, padding: spacing.xl, width: '100%', maxWidth: 380 }}
+                    style={{ backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.xl, width: '100%', maxWidth: 380 }}
                     onPress={e => e.stopPropagation()}
                 >
                     {/* Header */}
@@ -58,25 +58,31 @@ export function SaborModal({ visible, sabor, loading, onSave, onClose }: SaborMo
                         {isEspecial ? '★ ' : ''}{sabor.nombre}
                     </Text>
                     <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: spacing.lg }}>
-                        {isEspecial ? 'Sabor especial — configura el recargo por tamaño' : 'Sabor tradicional — sin recargo aplicado'}
+                        {sabor.tipo === 'configuracion'
+                            ? 'Configura el valor de recargo global'
+                            : (isEspecial ? 'Sabor especial — configura el recargo por tamaño' : 'Sabor tradicional — sin recargo aplicado')}
                     </Text>
 
+                    {sabor.tipo !== 'configuracion' && (
+                        <>
+                            <Input
+                                label="Recargo Pequeña ($)"
+                                value={pequena}
+                                onChangeText={setPequena}
+                                keyboardType="numeric"
+                                placeholder="0"
+                            />
+                            <Input
+                                label="Recargo Mediana ($)"
+                                value={mediana}
+                                onChangeText={setMediana}
+                                keyboardType="numeric"
+                                placeholder="0"
+                            />
+                        </>
+                    )}
                     <Input
-                        label="Recargo Pequeña ($)"
-                        value={pequena}
-                        onChangeText={setPequena}
-                        keyboardType="numeric"
-                        placeholder="0"
-                    />
-                    <Input
-                        label="Recargo Mediana ($)"
-                        value={mediana}
-                        onChangeText={setMediana}
-                        keyboardType="numeric"
-                        placeholder="0"
-                    />
-                    <Input
-                        label="Recargo Grande ($)"
+                        label={sabor.tipo === 'configuracion' ? "Valor Adicional ($)" : "Recargo Grande ($)"}
                         value={grande}
                         onChangeText={setGrande}
                         keyboardType="numeric"
@@ -84,7 +90,7 @@ export function SaborModal({ visible, sabor, loading, onSave, onClose }: SaborMo
                     />
 
                     {error && (
-                        <Text style={{ color: colors.error, fontSize: 13, marginTop: 4, marginBottom: 8 }}>{error}</Text>
+                        <Text style={{ color: colors.danger, fontSize: 13, marginTop: 4, marginBottom: 8 }}>{error}</Text>
                     )}
 
                     <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>

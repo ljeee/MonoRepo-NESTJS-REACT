@@ -1,28 +1,7 @@
-services:
-  # ============================================
-  # TRAEFIK (API GATEWAY)
-  # ============================================
-  traefik:
-    image: traefik:v2.11
-    container_name: pizzeria-traefik
-    restart: unless-stopped
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.traefik.address=:8080"
-    ports:
-      - "80:80"
-      - "8080:8080"
-    volumes:
-      - //var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - pizzeria-network
+name: pos-pizzeria
 
-  # ============================================
-  # BASE DE DATOS
-  # ============================================
+services:
+  # ── Base de datos ──────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     container_name: pizzeria-db
@@ -30,90 +9,81 @@ services:
     environment:
       POSTGRES_DB: appdb
       POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: apppass
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5433:5432"
+      - "5433:5432" # Puerto externo diferente para no pisar Postgres local
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./Backend/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./Backend/seed-menu.sql:/docker-entrypoint-initdb.d/02-seed-menu.sql:ro
+    networks: [pizzeria-network]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
       interval: 10s
       timeout: 5s
       retries: 5
-    networks:
-      - pizzeria-network
 
-  # ============================================
-  # BACKEND (NestJS)
-  # ============================================
+  # ── Redis ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: pizzeria-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks: [pizzeria-network]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend NestJS ─────────────────────────────────────────────
   backend:
-    build:
-      context: ./Backend
-      dockerfile: Dockerfile
+    build: { context: ./Backend, dockerfile: Dockerfile }
     container_name: pizzeria-backend
     restart: unless-stopped
+    ports:
+      - "3000:3000" # Accesible en toda la LAN
     environment:
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: appuser
-      DATABASE_PASSWORD: apppass
+      DATABASE_PASSWORD: ${DB_PASSWORD}
       DATABASE_NAME: appdb
       NODE_ENV: production
       PORT: 3000
       HOST: 0.0.0.0
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
-    ports:
-      - "3000:3000"
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGINS: ${CORS_ORIGINS}
     depends_on:
       db:
         condition: service_healthy
-    networks:
-      - pizzeria-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=PathPrefix(`/api`)"
-      - "traefik.http.routers.backend.entrypoints=web"
-      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+      redis:
+        condition: service_healthy
+    networks: [pizzeria-network]
 
-  # ============================================
-  # FRONTEND (Expo Web)
-  # ============================================
+  # ── Frontend (Expo Web / Nginx) ────────────────────────────────
   frontend:
     build:
       context: ./Frontend
       dockerfile: Dockerfile
     container_name: pizzeria-frontend
     restart: unless-stopped
-    environment:
-      # El frontend detectará la URL automáticamente desde el navegador
-      NODE_ENV: production
     ports:
       - "8081:8081"
     depends_on:
       - backend
-    networks:
-      - pizzeria-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
-      - "traefik.http.routers.frontend.entrypoints=web"
-      - "traefik.http.routers.frontend.priority=1"
-      - "traefik.http.services.frontend.loadbalancer.server.port=8081"
+    networks: [pizzeria-network]
 
-# ============================================
-# REDES
-# ============================================
 networks:
   pizzeria-network:
     driver: bridge
 
-# ============================================
-# VOLÚMENES
-# ============================================
 volumes:
   pgdata:
     name: pizzeria-pgdata
+  redis_data:

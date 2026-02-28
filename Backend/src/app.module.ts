@@ -11,6 +11,9 @@ import {DomiciliariosModule} from './domiciliarios/domiciliarios.module';
 import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 import {AuthModule} from './auth/auth.module';
 import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
+import {ThrottlerModule} from '@nestjs/throttler';
+import {BullModule} from '@nestjs/bullmq';
+import {RedisModule} from './common/redis/redis.module';
 
 @Module({
 	imports: [
@@ -36,6 +39,21 @@ import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
 				return config;
 			},
 		}),
+		ThrottlerModule.forRoot([{
+			ttl: 60000,
+			limit: 100,
+		}]),
+		BullModule.forRootAsync({
+			imports: [ConfigModule],
+			inject: [ConfigService],
+			useFactory: (configService: ConfigService) => ({
+				connection: {
+					host: configService.get<string>('REDIS_HOST', 'localhost'),
+					port: Number(configService.get<string>('REDIS_PORT', '6379')),
+				},
+			}),
+		}),
+		RedisModule,
 		FacturasVentasModule,
 		OrdenesModule,
 		DomiciliosModule,

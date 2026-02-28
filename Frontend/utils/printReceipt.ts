@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import { formatCurrency } from './formatNumber';
 
 export interface ReceiptProduct {
@@ -77,7 +77,8 @@ export function sendWhatsAppDomicilio(
     metodo: string;
   },
 ) {
-  if (Platform.OS !== 'web') return;
+  // We allow execution on mobile now, so we remove the block.
+  // if (Platform.OS !== 'web') return;
 
   const productList = data.productos
     .map((p) => `- ${p.cantidad}x ${p.nombre} - $${formatCurrency(p.precioUnitario * p.cantidad)}`)
@@ -104,5 +105,10 @@ export function sendWhatsAppDomicilio(
   if (phone.length === 10) phone = '57' + phone;
 
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  window.open(url, '_blank');
+  
+  if (Platform.OS === 'web') {
+    window.open(url, '_blank');
+  } else {
+    Linking.openURL(url).catch(err => console.error('Error opening WhatsApp:', err));
+  }
 }

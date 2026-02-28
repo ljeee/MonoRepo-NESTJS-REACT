@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Text, TouchableOpacity, View, StyleSheet, RefreshControl } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View, StyleSheet, RefreshControl, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { useBreakpoint } from '../../styles/responsive';
@@ -11,6 +11,7 @@ import { colors } from '../../styles/theme';
 import { fontSize, fontWeight, spacing, radius, shadows } from '../../styles/tokens';
 import { getEstadoColor } from '../../constants/estados';
 import { formatDate } from '../../utils/formatNumber';
+import { useOrdenesSocket } from '../../hooks/use-ordenes-socket';
 
 type OrderProduct = {
   id: number;
@@ -75,6 +76,8 @@ export default function OrdersOfDayPending() {
     fetchOrders();
   }, [fetchOrders]);
 
+  const { isConnected } = useOrdenesSocket('cajero', () => fetchOrders(true));
+
   const markAsCompleted = async (ordenId: number) => {
     setPatchLoading(ordenId);
     try {
@@ -113,7 +116,7 @@ export default function OrdersOfDayPending() {
 
       {/* Actions & Filters */}
       <View style={styles.filterRow}>
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
           {([
             { key: 'dia' as const, label: 'Todas', icon: 'calendar-today' as const },
             { key: 'pendientes' as const, label: 'Pendientes', icon: 'clock-outline' as const },
@@ -121,23 +124,30 @@ export default function OrdersOfDayPending() {
             <TouchableOpacity
               key={f.key}
               onPress={() => setFilter(f.key)}
-              style={[styles.filterTab, filter === f.key && styles.filterTabActive]}
+              style={[
+                styles.filterTab,
+                filter === f.key && styles.filterTabActive,
+                { marginRight: spacing.sm, marginBottom: spacing.sm }
+              ]}
             >
               <Icon
                 name={f.icon}
                 size={16}
                 color={filter === f.key ? colors.primary : colors.textMuted}
+                style={{ marginRight: 6 }}
               />
               <Text
                 style={[
                   styles.filterText,
                   filter === f.key && styles.filterTextActive,
                 ]}
+                numberOfLines={1}
               >
                 {f.label}
               </Text>
             </TouchableOpacity>
           ))}
+          <View style={[styles.socketIndicator, { backgroundColor: isConnected ? colors.success : colors.danger, marginBottom: spacing.sm }]} />
         </View>
 
         <Button
@@ -275,26 +285,24 @@ export default function OrdersOfDayPending() {
                   )}
 
                   {/* Actions */}
-                  <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
+                  <View style={{ marginTop: spacing.md, alignItems: 'flex-end' }}>
                     {item.estadoOrden !== 'completada' && item.estadoOrden !== 'cancelado' && (
-                      <Button
-                        title={
-                          patchLoading === item.ordenId
-                            ? 'Actualizando...'
-                            : 'Completar'
-                        }
-                        icon="check-circle-outline"
-                        variant="primary"
-                        size="sm"
-                        fullWidth
-                        loading={patchLoading === item.ordenId}
+                      <TouchableOpacity
+                        style={[
+                          styles.completeButtonCircle,
+                          patchLoading === item.ordenId && { opacity: 0.7 }
+                        ]}
                         onPress={() => markAsCompleted(item.ordenId)}
-                      />
+                        disabled={patchLoading === item.ordenId}
+                        activeOpacity={0.8}
+                      >
+                        {patchLoading === item.ordenId ? (
+                          <ActivityIndicator size="small" color={colors.card} />
+                        ) : (
+                          <Icon name="check-bold" size={24} color={colors.card} />
+                        )}
+                      </TouchableOpacity>
                     )}
-
-
-
-
                   </View>
                 </Card>
               </View>
@@ -336,7 +344,7 @@ const styles = StyleSheet.create({
   filterTab: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    justifyContent: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.lg,
     borderRadius: radius.full,
@@ -408,7 +416,7 @@ const styles = StyleSheet.create({
   },
   observationRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: spacing.xs,
     marginBottom: spacing.sm,
     padding: spacing.sm,
@@ -452,4 +460,19 @@ const styles = StyleSheet.create({
     color: colors.text,
     marginLeft: spacing.sm,
   },
+  socketIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginLeft: spacing.sm,
+  },
+  completeButtonCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  }
 });

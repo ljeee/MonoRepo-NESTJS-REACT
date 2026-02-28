@@ -10,6 +10,8 @@ import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {Productos} from '../productos/esquemas/productos.entity';
 import {ProductoVariantes} from '../productos/esquemas/producto-variantes.entity';
 import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.entity';
+import {OrdenesGateway} from './ordenes.gateway';
+import {PizzaSaboresService} from '../pizza-sabores/pizza-sabores.service';
 
 @Injectable()
 export class OrdenesService {
@@ -22,6 +24,8 @@ export class OrdenesService {
 		@InjectRepository(Productos) private readonly productosRepo: Repository<Productos>,
 		@InjectRepository(ProductoVariantes) private readonly variantesRepo: Repository<ProductoVariantes>,
 		@InjectRepository(OrdenesProductos) private readonly ordenesProductosRepo: Repository<OrdenesProductos>,
+		private readonly ordenesGateway: OrdenesGateway,
+		private readonly pizzaSaboresService: PizzaSaboresService,
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
@@ -150,6 +154,31 @@ export class OrdenesService {
 		return 0;
 	}
 
+	private async calcularRecargoSabores(item: CreateOrdenItemDto): Promise<number> {
+		if (item.tipo?.toLowerCase() !== 'pizza') return 0;
+		const saboresDeBD = await this.pizzaSaboresService.findAll();
+		let recargoTotal = 0;
+		
+		const saboresActivos = [item.sabor1, item.sabor2, item.sabor3].filter(Boolean).map(s => (s as string).toLowerCase());
+		const tamano = (item.tamano || 'grande').toLowerCase();
+
+		for (const saborNombre of saboresActivos) {
+			const saborMatch = saboresDeBD.find(s => s.nombre.toLowerCase() === saborNombre);
+			if (saborMatch && saborMatch.tipo === 'especial') {
+				if (tamano === 'pequena') recargoTotal += Number(saborMatch.recargoPequena || 0);
+				else if (tamano === 'mediana') recargoTotal += Number(saborMatch.recargoMediana || 0);
+				else recargoTotal += Number(saborMatch.recargoGrande || 0);
+			}
+		}
+
+		if (saboresActivos.length >= 3) {
+			const extra3Config = saboresDeBD.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
+			recargoTotal += extra3Config ? Number(extra3Config.recargoGrande || 0) : 3000;
+		}
+
+		return recargoTotal;
+	}
+
 	private async obtenerPrecioVariante(varianteId: number): Promise<number> {
 		const variante = await this.variantesRepo.findOne({where: {varianteId}});
 		return variante?.precio ? Number(variante.precio) : 0;
@@ -252,6 +281,10 @@ export class OrdenesService {
 			} else {
 				// Sistema legacy: calcular precio por tipo/tamaño
 				precio = this.calcularPrecioProducto(item);
+				// Add recargos (Fase 4 server-side)
+				const recargo = await this.calcularRecargoSabores(item);
+				precio += recargo;
+				
 				await this.upsertProducto(nombre, precio);
 			}
 
@@ -381,13 +414,18 @@ export class OrdenesService {
 			await this.procesarDomicilio(data, factura.facturaId, orden.ordenId);
 		}
 
-		return {...orden, factura};
+		const fullOrden = await this.findOne(orden.ordenId);
+		this.ordenesGateway.emitirNuevaOrden(fullOrden);
+
+		return fullOrden;
 	}
 
 	async update(id: number, data: Partial<CreateOrdenesDto>) {
 		await this.repo.update(id, data);
 		// Return the updated order with relations
-		return this.findOne(id);
+		const updated = await this.findOne(id);
+		this.ordenesGateway.emitirOrdenActualizada(updated);
+		return updated;
 	}
 
 	remove(id: number) {
@@ -406,6 +444,8 @@ export class OrdenesService {
 		if (orden.facturaId) {
 			await this.facturasRepo.update(orden.facturaId, {estado: 'cancelado'});
 		}
+
+		this.ordenesGateway.emitirOrdenActualizada(orden);
 
 		return orden;
 	}
