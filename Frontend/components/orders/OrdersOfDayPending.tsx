@@ -98,15 +98,15 @@ export default function OrdersOfDayPending() {
   const numColumns = isMobile ? 1 : isTablet ? 2 : 3;
 
   return (
-    <PageContainer scrollable={false} contentContainerStyle={{ flex: 1 }}>
+    <PageContainer scrollable={false} contentContainerStyle={styles.flex1}>
       <PageHeader
         title={filter === 'pendientes' ? 'Órdenes Pendientes' : 'Órdenes del Día'}
         icon="clipboard-text-outline"
       />
 
       {/* Actions & Filters */}
-      <View style={styles.filterRow}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', flex: 1 }}>
+      <View style={[styles.filterRow, isMobile && styles.filterRowMobile]}>
+        <View style={[styles.filterRowInner, isMobile && styles.filterRowInnerMobile]}>
           {([
             { key: 'dia' as const, label: 'Todas', icon: 'calendar-today' as const },
             { key: 'pendientes' as const, label: 'Pendientes', icon: 'clock-outline' as const },
@@ -117,14 +117,15 @@ export default function OrdersOfDayPending() {
               style={[
                 styles.filterTab,
                 filter === f.key && styles.filterTabActive,
-                { marginRight: spacing.sm, marginBottom: spacing.sm }
+                styles.filterTabSpacing,
+                isMobile && styles.filterTabMobile,
               ]}
             >
               <Icon
                 name={f.icon}
                 size={16}
                 color={filter === f.key ? colors.primary : colors.textMuted}
-                style={{ marginRight: 6 }}
+                style={styles.iconMarginSm}
               />
               <Text
                 style={[
@@ -137,7 +138,16 @@ export default function OrdersOfDayPending() {
               </Text>
             </TouchableOpacity>
           ))}
-          <View style={[styles.socketIndicator, { backgroundColor: isConnected ? colors.success : colors.danger, marginBottom: spacing.sm }]} />
+          <View
+            style={[
+              styles.socketIndicator,
+              isMobile && styles.socketIndicatorMobile,
+              {
+                backgroundColor: isConnected ? colors.success : colors.danger,
+                marginBottom: spacing.sm,
+              },
+            ]}
+          />
         </View>
 
         <Button
@@ -146,6 +156,7 @@ export default function OrdersOfDayPending() {
           variant="ghost"
           size="sm"
           onPress={() => fetchOrders()}
+          style={isMobile ? styles.refreshButtonMobile : undefined}
         />
       </View>
 
@@ -156,7 +167,7 @@ export default function OrdersOfDayPending() {
         <ErrorState message={error} onRetry={fetchOrders} />
       ) : (
         <FlatList
-          style={{ flex: 1 }}
+          style={styles.flex1}
           data={orders}
           keyExtractor={(item, index) =>
             item.ordenId?.toString() || `${item.fechaOrden || 'orden'}-${index}`
@@ -171,7 +182,7 @@ export default function OrdersOfDayPending() {
           }
           numColumns={numColumns}
           key={numColumns}
-          contentContainerStyle={{ paddingBottom: spacing.lg }}
+          contentContainerStyle={styles.listContent}
           columnWrapperStyle={
             numColumns > 1 ? { gap: spacing.md } : undefined
           }
@@ -199,7 +210,7 @@ export default function OrdersOfDayPending() {
                         }
                         size={18}
                         color={colors.primary}
-                        style={{ marginRight: spacing.sm }}
+                        style={styles.iconMarginMd}
                       />
                       <Text style={styles.clientName}>
                         {getClientName(item)}
@@ -275,7 +286,7 @@ export default function OrdersOfDayPending() {
                   )}
 
                   {/* Actions */}
-                  <View style={{ marginTop: spacing.md, alignItems: 'flex-end' }}>
+                  <View style={styles.cardActions}>
                     {item.estadoOrden !== 'completada' && item.estadoOrden !== 'cancelado' && (
                       <TouchableOpacity
                         style={[
@@ -330,6 +341,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  filterRowMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
   },
   filterTab: {
     flexDirection: 'row',
@@ -464,5 +480,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...shadows.sm,
-  }
+  },
+  flex1: {
+    flex: 1,
+  },
+  filterRowInner: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    flex: 1,
+  },
+  filterRowInnerMobile: {
+    flex: 0,
+    width: '100%',
+  },
+  iconMarginSm: {
+    marginRight: 6,
+  },
+  filterTabSpacing: {
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  filterTabMobile: {
+    marginRight: spacing.xs,
+  },
+  socketIndicatorMobile: {
+    marginLeft: 0,
+  },
+  refreshButtonMobile: {
+    alignSelf: 'flex-end',
+  },
+  listContent: {
+    paddingBottom: spacing.lg,
+  },
+  iconMarginMd: {
+    marginRight: spacing.sm,
+  },
+  cardActions: {
+    marginTop: spacing.md,
+    alignItems: 'flex-end',
+  },
 });

@@ -1,4 +1,4 @@
-import {Injectable} from "@nestjs/common";
+import {Injectable, NotFoundException} from "@nestjs/common";
 import {InjectRepository} from "@nestjs/typeorm";
 import {Repository} from "typeorm";
 import {Domiciliarios} from "./esquemas/domiciliarios.entity";
@@ -19,11 +19,15 @@ export class DomiciliariosService {
 		});
 	}
 
-	findOne(telefono: string) {
-		return this.repo.findOne({
+	async findOne(telefono: string) {
+		const domiciliario = await this.repo.findOne({
 			where: { telefono },
 			relations: ['domicilios']
 		});
+		if (!domiciliario) {
+			throw new NotFoundException(`Domiciliario con teléfono ${telefono} no encontrado`);
+		}
+		return domiciliario;
 	}
 
 	create(data: CreateDomiciliariosDto) {

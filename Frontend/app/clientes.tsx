@@ -137,7 +137,7 @@ export default function ClientesScreen() {
 
       {/* ── Create / Edit form ── */}
       {formMode !== 'closed' && (
-        <Card variant="elevated" padding="lg" style={{ marginBottom: spacing.xl }}>
+        <Card variant="elevated" padding="lg" style={styles.cardMarginXl}>
           <View style={styles.formHeader}>
             <Icon
               name={formMode === 'create' ? 'account-plus-outline' : 'account-edit-outline'}
@@ -155,7 +155,7 @@ export default function ClientesScreen() {
               value={formData.telefono}
               onChangeText={(v) => setFormData((p) => ({ ...p, telefono: v }))}
               keyboardType="number-pad"
-              containerStyle={{ flex: 1, minWidth: 200 }}
+              containerStyle={styles.inputContainer}
               editable={formMode === 'create'}
               leftIcon={<Icon name="phone-outline" size={16} color={colors.textMuted} />}
             />
@@ -163,7 +163,7 @@ export default function ClientesScreen() {
               label="Nombre"
               value={formData.clienteNombre}
               onChangeText={(v) => setFormData((p) => ({ ...p, clienteNombre: v }))}
-              containerStyle={{ flex: 1, minWidth: 200 }}
+              containerStyle={styles.inputContainer}
               leftIcon={<Icon name="account-outline" size={16} color={colors.textMuted} />}
             />
           </View>
@@ -180,13 +180,13 @@ export default function ClientesScreen() {
               label="Dirección 2 (opcional)"
               value={formData.direccionDos}
               onChangeText={(v) => setFormData((p) => ({ ...p, direccionDos: v }))}
-              containerStyle={{ flex: 1, minWidth: 200 }}
+              containerStyle={styles.inputContainer}
             />
             <Input
               label="Dirección 3 (opcional)"
               value={formData.direccionTres}
               onChangeText={(v) => setFormData((p) => ({ ...p, direccionTres: v }))}
-              containerStyle={{ flex: 1, minWidth: 200 }}
+              containerStyle={styles.inputContainer}
             />
           </View>
 
@@ -218,7 +218,7 @@ export default function ClientesScreen() {
           onChangeText={setTelefono}
           placeholder="3001234567"
           keyboardType="number-pad"
-          containerStyle={{ flex: 1, minWidth: 200, marginBottom: 0 }}
+          containerStyle={styles.searchInputContainer}
           leftIcon={<Icon name="magnify" size={16} color={colors.textMuted} />}
         />
         <View style={styles.searchActions}>
@@ -249,7 +249,7 @@ export default function ClientesScreen() {
       ) : null}
 
       {client && (
-        <Card padding="md" style={{ marginBottom: spacing.xl, borderLeftWidth: 3, borderLeftColor: colors.primary }}>
+        <Card padding="md" style={styles.searchResultCard}>
           <Text style={styles.resultTitle}>Resultado de búsqueda</Text>
           <View style={styles.resultRow}>
             <Icon name="account-outline" size={16} color={colors.textMuted} />
@@ -286,7 +286,7 @@ export default function ClientesScreen() {
       )}
 
       {!loading && data.map((item) => (
-        <Card key={item.telefono} padding="md" style={{ marginBottom: spacing.md }}>
+        <Card key={item.telefono} padding="md" style={styles.cardMarginMd}>
           <View style={styles.clientHeader}>
             <View style={styles.clientInfo}>
               <Text style={styles.clientName}>{item.clienteNombre || 'Sin nombre'}</Text>
@@ -309,7 +309,7 @@ export default function ClientesScreen() {
                 variant="ghost"
                 size="sm"
                 onPress={() => setDeleteTarget(item)}
-                style={{ opacity: 0.7 }}
+                style={styles.opacityMuted}
               />
             </View>
           </View>
@@ -467,5 +467,28 @@ const styles = StyleSheet.create({
   addressText: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
+  },
+  cardMarginXl: {
+    marginBottom: spacing.xl,
+  },
+  inputContainer: {
+    flex: 1,
+    minWidth: 200,
+  },
+  searchInputContainer: {
+    flex: 1,
+    minWidth: 200,
+    marginBottom: 0,
+  },
+  searchResultCard: {
+    marginBottom: spacing.xl,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  cardMarginMd: {
+    marginBottom: spacing.md,
+  },
+  opacityMuted: {
+    opacity: 0.7,
   },
 });

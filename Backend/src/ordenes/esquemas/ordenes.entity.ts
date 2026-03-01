@@ -4,6 +4,7 @@ import {OrdenesProductos} from '../../ordenes-productos/esquemas/ordenes-product
 import {Domicilios} from '../../domicilios/esquemas/domicilios.entity';
 
 @Entity('ordenes')
+@Index(['estadoOrden', 'fechaOrden'])
 export class Ordenes {
 	@PrimaryGeneratedColumn({name: 'orden_id'})
 	ordenId: number;

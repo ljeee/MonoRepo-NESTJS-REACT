@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { useFacturasDia } from '../hooks/use-facturas';
 import { useFacturasPagosDia, useDeleteFacturaPago } from '../hooks/use-create-factura-pago';
@@ -117,7 +117,7 @@ function GastoRow({ item, onDelete, deleting, s }: {
                     size="sm"
                     onPress={onDelete}
                     disabled={deleting}
-                    style={{ opacity: 0.7 }}
+                    style={localStyles.deleteButton}
                 />
             </View>
         </View>
@@ -239,7 +239,7 @@ export default function BalanceDiaScreen() {
             {errorFacturas && (
                 <View style={fStyles.estadoRow}>
                     <Icon name="alert-circle-outline" size={16} color={colors.danger} />
-                    <Text style={{ color: colors.danger, fontSize: 13 }}>{errorFacturas}</Text>
+                    <Text style={localStyles.errorText}>{errorFacturas}</Text>
                 </View>
             )}
 
@@ -252,9 +252,9 @@ export default function BalanceDiaScreen() {
                 </View>
             )}
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md }}>
+            <View style={localStyles.gridContainer}>
                 {facturas.map((item, idx) => (
-                    <View key={item.facturaId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+                    <View key={item.facturaId?.toString() || idx.toString()} style={isMobile ? localStyles.gridItemFull : localStyles.gridItemHalf}>
                         <FacturaCard
                             item={item}
                             isUpdating={updatingId === item.facturaId}
@@ -276,7 +276,7 @@ export default function BalanceDiaScreen() {
             {errorGastos && (
                 <View style={fStyles.estadoRow}>
                     <Icon name="alert-circle-outline" size={16} color={colors.danger} />
-                    <Text style={{ color: colors.danger, fontSize: 13 }}>{errorGastos}</Text>
+                    <Text style={localStyles.errorText}>{errorGastos}</Text>
                 </View>
             )}
 
@@ -289,9 +289,9 @@ export default function BalanceDiaScreen() {
                 </View>
             )}
 
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md }}>
+            <View style={localStyles.gridContainer}>
                 {gastos.map((item, idx) => (
-                    <View key={item.pagosId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+                    <View key={item.pagosId?.toString() || idx.toString()} style={isMobile ? localStyles.gridItemFull : localStyles.gridItemHalf}>
                         <GastoRow
                             item={item}
                             onDelete={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })}
@@ -317,3 +317,11 @@ export default function BalanceDiaScreen() {
         </PageContainer>
     );
 }
+
+const localStyles = StyleSheet.create({
+    deleteButton: { opacity: 0.7 },
+    errorText: { color: colors.danger, fontSize: 13 },
+    gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md },
+    gridItemFull: { width: '100%' },
+    gridItemHalf: { width: '48.5%' },
+});

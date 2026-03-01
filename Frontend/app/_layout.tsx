@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Navbar from '../components/Navbar';
 import { colors } from '../styles/theme';
 import { GlobalStyles } from '../components/GlobalStyles';
@@ -20,7 +20,7 @@ function AppShell() {
   // if not logged in, just show stack so we can see login page
   if (!token) {
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={layoutStyles.root}>
         <GlobalStyles />
         <Stack screenOptions={{ headerShown: false }} />
         <ToastContainer />
@@ -29,16 +29,23 @@ function AppShell() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, flexDirection: isCompact ? 'column' : 'row' }}>
+    <View style={[layoutStyles.root, isCompact ? layoutStyles.shellColumn : layoutStyles.shellRow]}>
       <GlobalStyles />
       <Navbar />
-      <View style={{ flex: 1 }}>
+      <View style={layoutStyles.content}>
         <Stack screenOptions={{ headerShown: false }} />
       </View>
       <ToastContainer />
     </View>
   );
 }
+
+const layoutStyles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  shellRow: { flexDirection: 'row' },
+  shellColumn: { flexDirection: 'column' },
+  content: { flex: 1 },
+});
 
 export default function RootLayout() {
   return (

@@ -1,4 +1,4 @@
-import {IsString, IsNumber, IsOptional, IsDateString, IsArray, ValidateNested, IsIn} from 'class-validator';
+import {IsString, IsNumber, IsOptional, IsDateString, IsArray, ValidateNested, IsIn, IsNotEmpty} from 'class-validator';
 import {Transform} from 'class-transformer';
 import {ApiProperty, PartialType} from '@nestjs/swagger';
 import {Type} from 'class-transformer';
@@ -85,10 +85,10 @@ export class CreateOrdenItemDto {
 	@IsNumber()
 	productoId?: number;
 
-	@ApiProperty({example: 1, required: false, description: 'ID de la variante del producto'})
-	@IsOptional()
+	@ApiProperty({example: 1, required: true, description: 'ID de la variante del producto'})
+	@IsNotEmpty()
 	@IsNumber()
-	varianteId?: number;
+	varianteId: number;
 
 	@ApiProperty({example: 'grande', required: false, description: 'Tamaño solo para pizzas (legacy)'})
 	@IsOptional()

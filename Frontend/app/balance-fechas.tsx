@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { useFacturasRango } from '../hooks/use-facturas';
 import { useFacturasPagosRango } from '../hooks/use-create-factura-pago';
@@ -153,12 +153,12 @@ export default function BalanceFechasScreen() {
     const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
 
     return (
-        <PageContainer scrollable={false} contentContainerStyle={{ flex: 1 }}>
+        <PageContainer scrollable={false} contentContainerStyle={localStyles.flex1}>
             <FlatList
                 data={facturas}
-                style={{ flex: 1 }}
+                style={localStyles.flex1}
                 keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
-                contentContainerStyle={{ paddingBottom: spacing.lg }}
+                contentContainerStyle={localStyles.listContent}
                 ListHeaderComponent={
                     <>
                         <PageHeader
@@ -186,7 +186,7 @@ export default function BalanceFechasScreen() {
                                 value={from}
                                 onChangeText={setFrom}
                                 placeholder="2025-01-01"
-                                containerStyle={{ flex: 1, minWidth: 140 }}
+                                containerStyle={localStyles.inputContainer}
                                 size="sm"
                                 leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
                             />
@@ -195,7 +195,7 @@ export default function BalanceFechasScreen() {
                                 value={to}
                                 onChangeText={setTo}
                                 placeholder="2026-12-31"
-                                containerStyle={{ flex: 1, minWidth: 140 }}
+                                containerStyle={localStyles.inputContainer}
                                 size="sm"
                                 leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
                             />
@@ -213,9 +213,9 @@ export default function BalanceFechasScreen() {
                         </View>
 
                         {filterError ? (
-                            <View style={errorRowStyle}>
+                            <View style={localStyles.errorRow}>
                                 <Icon name="alert-circle-outline" size={14} color={colors.danger} />
-                                <Text style={{ color: colors.danger, fontSize: 13 }}>{filterError}</Text>
+                                <Text style={localStyles.errorText}>{filterError}</Text>
                             </View>
                         ) : null}
 
@@ -234,9 +234,9 @@ export default function BalanceFechasScreen() {
                         )}
 
                         {errorFacturas && (
-                            <View style={errorRowStyle}>
+                            <View style={localStyles.errorRow}>
                                 <Icon name="alert-circle-outline" size={14} color={colors.danger} />
-                                <Text style={{ color: colors.danger, fontSize: 13 }}>{errorFacturas}</Text>
+                                <Text style={localStyles.errorText}>{errorFacturas}</Text>
                             </View>
                         )}
 
@@ -260,7 +260,7 @@ export default function BalanceFechasScreen() {
                 numColumns={isMobile ? 1 : 2}
                 columnWrapperStyle={!isMobile ? { gap: spacing.md } : undefined}
                 renderItem={({ item }) => (
-                    <View style={{ flex: 1, paddingBottom: spacing.md }}>
+                    <View style={localStyles.renderItem}>
                         <FacturaCard
                             item={item}
                             isUpdating={updatingId === item.facturaId}
@@ -280,15 +280,15 @@ export default function BalanceFechasScreen() {
                             </View>
 
                             {errorGastos && (
-                                <View style={errorRowStyle}>
+                                <View style={localStyles.errorRow}>
                                     <Icon name="alert-circle-outline" size={14} color={colors.danger} />
-                                    <Text style={{ color: colors.danger, fontSize: 13 }}>{errorGastos}</Text>
+                                    <Text style={localStyles.errorText}>{errorGastos}</Text>
                                 </View>
                             )}
 
-                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md }}>
+                            <View style={localStyles.gridContainer}>
                                 {gastos.map((item, idx) => (
-                                    <View key={item.pagosId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+                                    <View key={item.pagosId?.toString() || idx.toString()} style={isMobile ? localStyles.gridItemFull : localStyles.gridItemHalf}>
                                         <View style={s.gastoCard}>
                                             <View style={s.gastoIcon}>
                                                 <Icon
@@ -324,9 +324,14 @@ export default function BalanceFechasScreen() {
 // ─── Structural layout constants ──────────────────────────────────────────────
 // (Static error row — same in all breakpoints)
 
-const errorRowStyle = {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-};
+const localStyles = StyleSheet.create({
+    flex1: { flex: 1 },
+    listContent: { paddingBottom: spacing.lg },
+    inputContainer: { flex: 1, minWidth: 140 },
+    errorText: { color: colors.danger, fontSize: 13 },
+    renderItem: { flex: 1, paddingBottom: spacing.md },
+    gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md },
+    gridItemFull: { width: '100%' },
+    gridItemHalf: { width: '48.5%' },
+    errorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.md },
+});

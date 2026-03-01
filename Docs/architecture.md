@@ -1,385 +1,256 @@
-# 🍕 POS Pizzería — Plan Definitivo de Implementación
-### Versión final al 2026-02-27 · Basado en el código real del proyecto
+# 🍕 POS Pizzería — Arquitectura del Sistema
+### Actualizado al 2026-02-28 · Basado en el código real del proyecto
 
-> **Este documento es la referencia única.** Consolida todo lo discutido en los caps 21-26.
-> Cada tarea tiene: qué hay que hacer, cuánto tarda, qué tanto cuesta en esfuerzo, y por qué ese orden.
-
----
-
-## 📊 Estado actual del proyecto (punto de partida)
-
-```
-✅ YA EXISTE Y FUNCIONA          ❌ FALTA          ⚠️ EXISTE PERO NECESITA AJUSTE
-─────────────────────────────────────────────────────────────────
-✅ NestJS backend (Puerto 3000)   ❌ Redis           ⚠️ Traefik (eliminar)
-✅ PostgreSQL (Docker, 5433)      ❌ Socket.IO       ⚠️ Guards JWT (comentados)
-✅ Expo APK (funciona en LAN)     ❌ Ollama          ⚠️ CORS (ajustar para LAN)
-✅ Sistema de órdenes completo    ❌ Tauri Desktop
-✅ Pizza sabores + recargos DB    ❌ n8n workflow IA
-✅ Auth JWT (módulo listo)        ❌ Evolution QR
-✅ LoggingInterceptor             ❌ start-pos.bat
-✅ Swagger en /swagger            ❌ WhatsApp handoff
-✅ OrderContext (AsyncStorage)
-✅ ToastContext
-✅ Sistema de diseño (tokens)
-```
+> **Este documento es la referencia de arquitectura del sistema.**
+> Describe el estado actual de implementación y las fases pendientes.
 
 ---
 
-## 🏗️ Arquitectura final (inmutable — no cambiar a mitad del camino)
+## 📊 Estado actual del proyecto
+
+```
+✅ YA EXISTE Y FUNCIONA                          ❌ FALTA
+──────────────────────────────────────────────────────────────────
+✅ NestJS backend (Puerto 3000)                   ❌ Ollama (LLM local)
+✅ PostgreSQL (Docker, 5433)                      ❌ n8n workflow IA
+✅ Redis (Docker, Pub/Sub + BullMQ)               ❌ Evolution API (WhatsApp)
+✅ Socket.IO Gateway + Redis Adapter              ❌ ngrok (túnel WhatsApp)
+✅ Auth JWT activa (guards + roles)               ❌ ai-validator (FastAPI)
+✅ Expo APK/Web (15 pantallas)                    ❌ Recargos pizza server-side
+✅ Tauri Desktop (6 vistas, atajos F1-F3)
+✅ WebSocket tiempo real (use-ordenes-socket)
+✅ Swagger en /swagger con Bearer auth
+✅ ThrottlerModule (100 req/60s)
+✅ BullMQ (Redis) para colas
+✅ LoggingInterceptor global
+✅ start-pos.bat (arranque Windows)
+✅ docker-compose (db + redis + backend + frontend)
+✅ OrderContext + ToastContext + AuthContext
+✅ Sistema de diseño (tokens, tema, responsive)
+✅ 10 módulos CRUD completos con entities/DTOs
+✅ Seeders (usuarios, productos, órdenes)
+✅ CORS configurado para LAN + Tauri
+```
+
+---
+
+## 🏗️ Arquitectura actual (implementada)
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
 ║         SISTEMA POS — RED LOCAL DEL NEGOCIO (WiFi/LAN)          ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  PC SERVIDOR (siempre encendida — trastienda o cuarto técnico)   ║
+║  PC SERVIDOR                                                     ║
 ║                                                                  ║
-║  docker-compose levanta TODO esto:                               ║
-║  ┌──────────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐  ║
-║  │ NestJS :3000 │ │ PG :5432 │ │Redis:6379│ │  Ollama :11434 │  ║
-║  │  API + WS    │ │ (interno)│ │ Pub/Sub  │ │  LLM local     │  ║
-║  └──────────────┘ └──────────┘ └──────────┘ └────────────────┘  ║
-║  ┌──────────────┐ ┌──────────────────────────────────────────┐   ║
-║  │  n8n  :5678  │ │  Evolution API  :8080  (ngrok apunta aquí)│  ║
-║  │  Automatiz.  │ │  Puente WhatsApp                         │   ║
-║  └──────────────┘ └──────────────────────────────────────────┘   ║
+║  docker-compose levanta:                                         ║
+║  ┌──────────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐   ║
+║  │ NestJS :3000 │ │ PG :5433 │ │Redis     │ │ Frontend     │   ║
+║  │ API + WS     │ │ (Docker) │ │ Pub/Sub  │ │ :8081 (Nginx)│   ║
+║  │ Swagger      │ │          │ │ BullMQ   │ │              │   ║
+║  └──────────────┘ └──────────┘ └──────────┘ └──────────────┘   ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  PERSONAL DEL NEGOCIO → Se conectan al servidor por WiFi         ║
-║  📱 Expo APK      → celulares del personal (cajeros, cocina)     ║
-║  🖥️  Tauri .exe   → PC fija de caja (opcional pero recomendado) ║
+║  📱 Expo APK/Web  → celulares del personal (cajeros, cocina)     ║
+║  🖥️  Tauri .exe   → PC fija de caja (Windows)                   ║
 ╠══════════════════════════════════════════════════════════════════╣
-║  CLIENTES DEL NEGOCIO → Solo interactúan por WhatsApp            ║
-║  🌐 ngrok → mi-pizzeria.ngrok-free.app → :8080 (Evolution)      ║
-║  WhatsApp → bot IA (Ollama) → orden automática ó handoff humano  ║
+║  PENDIENTE (Fases futuras):                                      ║
+║  🤖 Ollama + n8n + Evolution API → Bot WhatsApp con IA           ║
+║  🌐 ngrok → túnel para recibir mensajes WhatsApp                 ║
 ╚══════════════════════════════════════════════════════════════════╝
 ```
 
-### Reglas de oro que no cambian
-1. Los clientes **solo usan WhatsApp**. Nunca acceden a la app
-2. El personal usa **APK en celular** o **Tauri en PC fija**
-3. **No se necesita dominio comprado** — ngrok gratis es permanente
-4. **No se necesita FastAPI** — n8n + Ollama es suficiente para siempre
-5. **No se necesita la API oficial de Meta** — Evolution API es gratis y funciona
-
 ---
 
-## 📋 Las 8 Fases — Vista general
+## 🧩 Backend — Módulos implementados
 
-| # | Fase | Complejidad | Tiempo real | Impacto | Dependencias |
-|---|------|:-----------:|:-----------:|:-------:|:-------------|
-| **1** | Infraestructura: Redis + docker-compose | 🟡 Media | 4-6 h | 🔴 Crítico | Ninguna |
-| **2** | Backend: Socket.IO Gateway + Redis adapter | 🟡 Media | 4-8 h | 🔴 Crítico | Fase 1 |
-| **3** | Frontend Expo: Hook WS + tiempo real | 🟢 Baja | 3-5 h | 🔴 Crítico | Fase 2 |
-| **4** | Recargos pizza server-side | 🟢 Baja | 2-3 h | 🟡 Importante | Fase 2 |
-| **5** | Autenticación JWT activa | 🔴 Alta | 1-2 días | 🟡 Importante | Fases 3+4 |
-| **6** | ngrok + script arranque | 🟢 Baja | 2-4 h | 🟡 Importante | Fase 1 |
-| **7** | WhatsApp: Evolution + n8n + Ollama | 🔴 Alta | 3-5 días | 🟢 Diferenciador | Fase 6 |
-| **8** | Tauri Desktop (PC de caja) | 🟡 Media | 2-3 días | 🟢 Opcional | Fases 2+3 |
+### app.module.ts importa:
 
-**Total estimado: 3-4 semanas de trabajo efectivo (no días corridos)**
+| Módulo | Descripción |
+|--------|-------------|
+| `ConfigModule` | Variables de entorno globales (`.env`) |
+| `TypeOrmModule` | PostgreSQL con configuración async |
+| `ThrottlerModule` | Rate limiting (100 req / 60s) |
+| `BullModule` | Colas de trabajo con Redis |
+| `RedisModule` | Módulo propio para conexión Redis |
+| `AuthModule` | JWT strategy + guards + roles |
+| `ClientesModule` | CRUD clientes |
+| `ProductosModule` | Catálogo de productos + variantes |
+| `PizzaSaboresModule` | Sabores y recargos por tamaño |
+| `OrdenesModule` | CRUD órdenes + **Socket.IO Gateway** |
+| `OrdenesProductosModule` | Detalle de productos por orden |
+| `DomiciliosModule` | Direcciones de envío |
+| `DomiciliariosModule` | Gestión de domiciliarios |
+| `FacturasVentasModule` | Facturación |
+| `FacturasPagosModule` | Pagos de facturas |
 
-> ⚠️ **Expectativa realista:** Los estimados son para alguien que entiende el proyecto.
-> Multiplica x1.5 si estás aprendiendo en el proceso. La Fase 7 (WhatsApp+IA) es la
-> más incierta porque depende de pruebas reales con el número de WhatsApp.
+### main.ts — Configuración
 
----
+- **WebSocket**: `RedisIoAdapter` (Socket.IO con Redis Adapter para multi-instancia)
+- **CORS**: configurable via `CORS_ORIGINS`, incluye `tauri://localhost`
+- **Swagger**: en `/swagger` con Bearer auth
+- **Pipes**: `ValidationPipe` global (whitelist + transform)
+- **Interceptors**: `LoggingInterceptor` global
+- **Host**: `0.0.0.0` (accesible en toda la LAN)
 
-## FASE 1 — Infraestructura: Redis + docker-compose limpio
-### ⏱️ Tiempo: 4-6 horas · 🎯 Complejidad: Media · 🔴 CRÍTICO (todo depende de esto)
-
-> **Por qué primero:** Sin Redis no hay Socket.IO multi-instancia. Sin docker-compose
-> limpio (sin Traefik) hay confusión en las rutas. Esta fase es el cimiento.
-
-### Lo que cambia
-
-| Archivo | Cambio |
-|---|---|
-| `docker-compose.yml` | Eliminar Traefik, agregar Redis, agregar Ollama |
-| `.env` / `.env.example` | Agregar variables Redis, JWT, n8n, Ollama |
-| `Backend/package.json` | Instalar socket.io, redis, bullmq, throttler |
-
-### docker-compose.yml definitivo
-
-```yaml
-name: pos-pizzeria
-
-services:
-  # ── Base de datos ──────────────────────────────────────────────
-  db:
-    image: postgres:16-alpine
-    container_name: pizzeria-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: appdb
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?requerido}
-    ports:
-      - "5433:5432"          # Puerto externo diferente para no pisar Postgres local
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./Backend/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-    networks: [pizzeria-network]
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
-      interval: 10s; timeout: 5s; retries: 5
-
-  # ── Redis ──────────────────────────────────────────────────────
-  redis:
-    image: redis:7-alpine
-    container_name: pizzeria-redis
-    restart: unless-stopped
-    command: redis-server --save 60 1 --loglevel warning
-    volumes:
-      - redis_data:/data
-    networks: [pizzeria-network]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s; timeout: 5s; retries: 5
-
-  # ── Backend NestJS ─────────────────────────────────────────────
-  backend:
-    build: { context: ./Backend, dockerfile: Dockerfile }
-    container_name: pizzeria-backend
-    restart: unless-stopped
-    ports:
-      - "3000:3000"          # Accesible en toda la LAN
-    environment:
-      DATABASE_HOST: db
-      DATABASE_PORT: 5432
-      DATABASE_USER: appuser
-      DATABASE_PASSWORD: ${DB_PASSWORD}
-      DATABASE_NAME: appdb
-      NODE_ENV: production
-      PORT: 3000
-      HOST: 0.0.0.0
-      JWT_SECRET: ${JWT_SECRET:?requerido}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8081,http://localhost:5173,tauri://localhost}
-    depends_on:
-      db: { condition: service_healthy }
-      redis: { condition: service_healthy }
-    networks: [pizzeria-network]
-
-  # ── n8n (Automatización WhatsApp) ──────────────────────────────
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: pizzeria-n8n
-    restart: unless-stopped
-    ports:
-      - "5678:5678"
-    environment:
-      WEBHOOK_URL: ${N8N_WEBHOOK_URL:?requerido}
-      N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: ${N8N_USER:-admin}
-      N8N_BASIC_AUTH_PASSWORD: ${N8N_PASSWORD:?requerido}
-      GENERIC_TIMEZONE: America/Bogota
-      TZ: America/Bogota
-    volumes:
-      - n8n_data:/home/node/.n8n
-    networks: [pizzeria-network]
-
-  # ── Evolution API (Puente WhatsApp) ────────────────────────────
-  evolution-api:
-    image: atendai/evolution-api:v2.2.3
-    container_name: pizzeria-evolution
-    restart: unless-stopped
-    ports:
-      - "8080:8080"          # ngrok apunta a este puerto
-    environment:
-      SERVER_URL: ${EVOLUTION_SERVER_URL:?requerido}
-      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?requerido}
-      DATABASE_ENABLED: "true"
-      DATABASE_PROVIDER: postgresql
-      DATABASE_CONNECTION_URI: postgresql://appuser:${DB_PASSWORD}@db:5432/evolution
-    depends_on:
-      db: { condition: service_healthy }
-    networks: [pizzeria-network]
-
-  # ── Ollama (LLM local para parsear pedidos de WhatsApp) ────────
-  ollama:
-    image: ollama/ollama:latest
-    container_name: pizzeria-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama    # Los modelos quedan guardados
-    # GPU NVIDIA → descomentar:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: 1
-    #           capabilities: [gpu]
-    networks: [pizzeria-network]
-
-networks:
-  pizzeria-network:
-    driver: bridge
-
-volumes:
-  pgdata:
-    name: pizzeria-pgdata
-  redis_data:
-  n8n_data:
-  ollama_data:
-```
-
-### Variables de entorno `.env`
-
-```env
-# ── Postgres ─────────────────────────────────────────────────
-DB_PASSWORD=contraseña-min-16-chars        # REQUERIDO
-
-# ── JWT ──────────────────────────────────────────────────────
-JWT_SECRET=min-32-caracteres-aleatorios    # REQUERIDO
-JWT_EXPIRES_IN=28800                       # 8 horas (segundos)
-
-# ── CORS ─────────────────────────────────────────────────────
-CORS_ORIGINS=http://localhost:8081,http://localhost:5173,http://localhost:19006,tauri://localhost
-
-# ── n8n ──────────────────────────────────────────────────────
-N8N_USER=admin
-N8N_PASSWORD=contraseña-n8n               # REQUERIDO
-N8N_WEBHOOK_URL=https://mi-pizzeria.ngrok-free.app
-
-# ── Evolution API (WhatsApp bridge) ──────────────────────────
-EVOLUTION_API_KEY=clave-larga-aleatoria-min-32-chars   # REQUERIDO
-EVOLUTION_SERVER_URL=https://mi-pizzeria.ngrok-free.app
-
-# ── Ollama ───────────────────────────────────────────────────
-OLLAMA_MODEL=llama3.2:3b                   # Cambiar según tu hardware
-```
-
-### Instalar dependencias del Backend
-
-```bash
-cd Backend
-npm install @nestjs/websockets @nestjs/platform-socket.io socket.io
-npm install @socket.io/redis-adapter ioredis
-npm install @nestjs/throttler
-npm install @nestjs/bullmq bullmq
-npm install -D @types/ioredis
-
-cd ../Frontend
-npm install socket.io-client
-```
-
-### Descargar modelo Ollama (después de docker-compose up)
-
-```bash
-# Solo la primera vez — descarga ~2 GB y queda en el volumen
-docker exec pizzeria-ollama ollama pull llama3.2:3b
-
-# Verificar
-docker exec pizzeria-ollama ollama list
-```
-
-### Verificación Fase 1 ✅
-
-```bash
-docker-compose ps          # Todos los servicios: Up (healthy)
-docker exec pizzeria-redis redis-cli ping   # → PONG
-curl http://localhost:3000/ordenes/dia      # → JSON de órdenes
-curl http://localhost:11434/api/tags        # → modelos Ollama disponibles
-```
-
----
-
-## FASE 2 — Backend: Socket.IO Gateway + Redis Adapter
-### ⏱️ Tiempo: 4-8 horas · 🎯 Complejidad: Media · 🔴 CRÍTICO
-
-> **Por qué:** Sin esto los dispositivos no reciben eventos en tiempo real.
-> El Gateway ya está diseñado en la Fase 2 del cap 26 — es copiar y conectar.
-
-### Archivos a crear/modificar
-
-| Archivo | Acción | Dificultad |
-|---|---|:-:|
-| `Backend/src/common/redis/redis.module.ts` | Crear | 🟢 Fácil |
-| `Backend/src/main.ts` | Modificar (Redis adapter) | 🟡 Media |
-| `Backend/src/ordenes/ordenes.gateway.ts` | Crear | 🟡 Media |
-| `Backend/src/ordenes/ordenes.module.ts` | Modificar | 🟢 Fácil |
-| `Backend/src/ordenes/ordenes.service.ts` | Modificar (inyectar gateway) | 🟡 Media |
-| `Backend/src/app.module.ts` | Modificar (Redis, Throttler, BullMQ) | 🟡 Media |
-| `Backend/src/whatsapp/whatsapp.controller.ts` | Crear (handoff endpoint) | 🟢 Fácil |
-
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fases 2A al 2F
-
-### Eventos WebSocket del sistema
+### WebSocket Gateway (`ordenes.gateway.ts`)
 
 ```
+Namespace: /ordenes
+
 Servidor → Clientes (broadcast):
-  orden:nueva          → Todos los dispositivos (nueva orden creada)
+  orden:nueva          → Todos los dispositivos
   orden:actualizada    → Todos (cambio de estado)
-  whatsapp:handoff     → Personal (cliente WPP necesita atención humana)
-  cocina:nueva-orden   → Solo room 'cocina' (vista simplificada para cocineros)
+  cocina:nueva-orden   → Solo room 'cocina'
+  whatsapp:handoff     → Personal (alerta de atención)
 
-Rooms por dispositivo (el cliente se une al conectar):
+Rooms por dispositivo:
   auth: { dispositivo: 'cajero' | 'cocina' | 'admin' | 'repartidor' }
 ```
 
-### Verificación Fase 2 ✅
+### Auth JWT
+
+- `JwtAuthGuard` y `RolesGuard` disponibles
+- Decoradores: `@Public()`, `@Roles()`
+- Strategy: `passport-jwt`
+- DTOs: login, register, refresh-token, auth-response
+- Entity: `User` con roles enum
+
+### Seeders disponibles
 
 ```bash
-# Instalar wscat (cliente WebSocket de terminal)
-npm install -g wscat
-
-# Conectar al gateway
-wscat -c "ws://localhost:3000/ordenes" --subprotocol '{"dispositivo":"cajero"}'
-
-# En otra terminal: crear una orden
-curl -X POST http://localhost:3000/ordenes -H "Content-Type: application/json" \
-  -d '{"tipoPedido":"local","metodoPago":"efectivo","productos":[...]}'
-
-# → En wscat debe aparecer: { "event": "orden:nueva", "data": {...} }
+npm run seed:users       # Crear usuarios
+npm run seed:productos   # Cargar productos
+npm run seed:orders      # Generar órdenes de prueba
+npm run seed             # Todo junto
 ```
 
 ---
 
-## FASE 3 — Frontend Expo: WebSocket en tiempo real
-### ⏱️ Tiempo: 3-5 horas · 🎯 Complejidad: Baja · 🔴 CRÍTICO
+## 📱 Frontend (Expo) — Estructura actual
 
-> **Por qué:** La app ya funciona con polling manual. Esto la hace reactiva.
-> El hook `useOrdenesSocket` ya está diseñado — es integrarlo en `OrdersOfDayPending`.
+### 15 Pantallas (Expo Router `app/`)
 
-### Archivos a crear/modificar
+| Pantalla | Descripción |
+|----------|-------------|
+| `index.tsx` | Dashboard principal |
+| `login.tsx` | Autenticación |
+| `crear-orden.tsx` | Formulario de nueva orden |
+| `ordenes.tsx` | Órdenes del día pendientes |
+| `ordenes-todas.tsx` | Historial de órdenes |
+| `orden-detalle.tsx` | Detalle de una orden |
+| `facturas.tsx` | Listado de facturas |
+| `facturas-dia.tsx` | Facturas del día |
+| `facturas-pagos.tsx` | Gestión de pagos |
+| `clientes.tsx` | CRUD clientes |
+| `domiciliarios.tsx` | Gestión domiciliarios |
+| `gestion-productos.tsx` | CRUD productos |
+| `balance-dia.tsx` | Balance diario |
+| `balance-fechas.tsx` | Balance por rango de fechas |
 
-| Archivo | Acción |
-|---|---|
-| `Frontend/hooks/use-ordenes-socket.ts` | Crear |
-| `Frontend/components/orders/OrdersOfDayPending.tsx` | Modificar (agregar hook) |
+### 10 Hooks
 
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fases 3A y 3B
+| Hook | Función |
+|------|---------|
+| `use-ordenes-socket` | **WebSocket tiempo real** (Socket.IO) |
+| `use-create-order` | Crear nueva orden |
+| `use-productos` | Listar productos |
+| `use-pizza-sabores` | Listar sabores de pizza |
+| `use-client-by-phone` | Buscar cliente por teléfono |
+| `use-clientes-list` | Listar clientes |
+| `use-domiciliarios-list` | Listar domiciliarios |
+| `use-facturas` | Listar facturas |
+| `use-facturas-pagos-screen` | Lógica de pantalla pagos |
+| `use-create-factura-pago` | Crear pago de factura |
 
-### Comportamiento esperado después de esta fase
+### Contexts
 
-- Cajero crea orden → **sin refrescar**, todos los dispositivos la ven
-- Cocina marca "listo" → el estado cambia en tiempo real en la pantalla del cajero
-- Punto verde/rojo en la app indica si el WebSocket está activo o no
+- **AuthContext** — Login/logout, token JWT, persistencia en AsyncStorage
+- **OrderContext** — Carrito de compras, productos seleccionados
+- **ToastContext** — Notificaciones tipo toast
 
-### Verificación Fase 3 ✅
+### Componentes destacados
 
-```
-1. Abrir la app en 2 celulares/navegadores en la misma red
-2. Crear una orden desde el Cajero (Celular A)
-3. El Celular B debe mostrar la nueva orden SIN tocar refrescar
-4. Indicador de conexión WS debe estar verde en ambos
-```
+- `orderForm/` — CartPanel, CreateOrderForm, MenuPicker, PizzaPersonalizadaModal
+- `orders/` — OrdersOfDayPending (con WebSocket integrado)
+- `products/` — ProductCard, ProductModal, SaborModal, VariantModal
+- `ui/` — 13 componentes reutilizables (Badge, Button, Card, etc.)
+- `states/` — EmptyState, ErrorState, LoadingState
 
 ---
 
-## FASE 4 — Recargos pizza server-side
-### ⏱️ Tiempo: 2-3 horas · 🎯 Complejidad: Baja · 🟡 IMPORTANTE
+## 🖥️ Desktop (Tauri v2) — Estructura actual
 
-> **Por qué:** Hoy los recargos se calculan en el frontend (no confiable).
-> El backend tiene la tabla `PizzaSabores` con los recargos pero no los aplica al crear orden.
-> **No bloquea nada más** — se puede hacer en cualquier momento después de la Fase 2.
+### 6 Páginas (React Router)
 
-### Lo que cambia
+| Ruta | Vista | Atajo |
+|------|-------|-------|
+| `/login` | Login | — |
+| `/ordenes` | Órdenes del día | F2 |
+| `/crear-orden` | Nueva orden | F1 |
+| `/facturas` | Facturas | F3 |
+| `/historial` | Historial de órdenes | — |
+| `/ajustes` | Configuración (URL backend) | — |
+
+### Características
+
+- **URL del backend configurable** (persiste con Tauri Store)
+- **Atajos de teclado**: F1 (crear orden), F2 (órdenes), F3 (facturas)
+- **Prevención de cierre accidental** (evento Tauri close-requested)
+- **Notificaciones nativas de Windows** (Tauri Notification plugin)
+- **11 hooks** (mismos que Frontend + `use-keyboard-shortcuts`)
+- **Utilidades**: CSV export, formateo de números, impresión de recibos, rangos de fecha
+- **Sidebar** con navegación lateral
+
+### Stack Desktop
+
+- React 19 + React Router v6 + Vite 7
+- Radix UI (Dialog, Select, Toast)
+- Lucide React (iconos)
+- Tauri v2 con plugins: notification, opener, store
+- Socket.IO client (mismo gateway que Frontend)
+
+---
+
+## 🐳 docker-compose.yml actual
+
+4 servicios en producción:
+
+| Servicio | Imagen | Puerto | Dependencias |
+|----------|--------|--------|-------------|
+| `db` | postgres:16-alpine | 5433:5432 | — |
+| `redis` | redis:7-alpine | (interno) | — |
+| `backend` | Build local | 3000:3000 | db (healthy), redis (healthy) |
+| `frontend` | Build local (Nginx) | 8081:8081 | backend |
+
+Volúmenes: `pizzeria-pgdata`, `redis_data`
+Red: `pizzeria-network` (bridge)
+
+---
+
+## 📋 Fases completadas vs pendientes
+
+| # | Fase | Estado | Notas |
+|---|------|:------:|-------|
+| **1** | Infraestructura: Redis + docker-compose | ✅ Completada | Redis, docker-compose limpio (sin Traefik) |
+| **2** | Backend: Socket.IO Gateway + Redis adapter | ✅ Completada | Gateway en `/ordenes`, RedisIoAdapter en main.ts |
+| **3** | Frontend Expo: Hook WS + tiempo real | ✅ Completada | `use-ordenes-socket.ts` implementado |
+| **4** | Recargos pizza server-side | ❌ Pendiente | La tabla PizzaSabores existe pero los recargos no se aplican al crear orden |
+| **5** | Autenticación JWT activa | ✅ Completada | Guards, roles, @Public() disponibles |
+| **6** | ngrok + script arranque | ⚠️ Parcial | `start-pos.bat` existe (sin ngrok — no se necesita hasta Fase 7) |
+| **7** | WhatsApp: Evolution + n8n + Ollama | ❌ Pendiente | No hay servicios de IA/WhatsApp en docker-compose |
+| **7G** | AI Validator (FastAPI) | ❌ Pendiente | Carpeta `ai-validator/` no existe aún |
+| **8** | Tauri Desktop (PC de caja) | ✅ Completada | 6 vistas, atajos de teclado, notificaciones nativas |
+
+---
+
+## ❌ Fases pendientes de implementación
+
+### FASE 4 — Recargos pizza server-side
+#### ⏱️ Tiempo: 2-3 horas · 🎯 Complejidad: Baja · 🟡 IMPORTANTE
+> **Qué falta:** El backend tiene la tabla `PizzaSabores` con los recargos pero no los aplica al crear orden.
+> Los recargos se calculan en el frontend (no confiable).
+
+#### Lo que cambia
 
 - `Backend/src/pizza-sabores/pizza-sabores.module.ts` → exportar `PizzaSaboresService`
 - `Backend/src/ordenes/ordenes.module.ts` → importar `PizzaSaboresModule`
@@ -387,7 +258,7 @@ curl -X POST http://localhost:3000/ordenes -H "Content-Type: application/json" \
 
 > 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fase 4
 
-### Verificación Fase 4 ✅
+#### Verificación Fase 4 ✅
 
 ```bash
 # Crear orden con sabor Quesuda talla mediana (recargo +$3.000)
@@ -399,63 +270,12 @@ curl -X POST http://localhost:3000/ordenes \
 
 ---
 
-## FASE 5 — Autenticación JWT activa
-### ⏱️ Tiempo: 1-2 días · 🎯 Complejidad: Alta · 🟡 IMPORTANTE
+### FASE 6 — ngrok (para WhatsApp)
+#### ⏱️ Tiempo: 2-4 horas · 🎯 Complejidad: Baja · 🟡 IMPORTANTE
 
-> **Por qué es alta complejidad:** Activar los Guards afecta TODOS los endpoints.
-> Hay que asegurarse de que todos los públicos tengan `@Public()` antes de activar.
-> **No hacer esto hasta que las Fases 1-4 estén funcionando y probadas.**
+> `start-pos.bat` ya existe en la raíz. Solo falta agregar ngrok cuando se implemente WhatsApp.
 
-### Pasos (en orden — no saltarse ninguno)
-
-```
-1. Revisar TODOS los controllers y marcar con @Public() los que
-   deben ser accesibles sin login:
-   - ProductosController.findAll()
-   - PizzaSaboresController.findAll()
-   - AppController.health()
-   - WhatsappController.handoff() (n8n llama a este sin token)
-
-2. Descomentar guards en auth.module.ts:
-   { provide: APP_GUARD, useClass: JwtAuthGuard }
-   { provide: APP_GUARD, useClass: RolesGuard }
-
-3. Crear Frontend/contexts/AuthContext.tsx
-   Frontend/app/login.tsx
-
-4. Actualizar Frontend/app/_layout.tsx para envolver en AuthProvider
-
-5. PROBAR: intentar llamar a un endpoint sin token → 401
-             con token válido → respuesta normal
-```
-
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fase 5
-
-### Expectativa realista
-
-La parte más probable de fallar es olvidar un endpoint con `@Public()` y que
-algo deje de funcionar. **Tener wscat y Postman listos para diagnosticar.**
-
-### Verificación Fase 5 ✅
-
-```
-□ Login con credenciales incorrectas → 401 Unauthorized
-□ Login correcto → access_token en la respuesta
-□ GET /ordenes sin token → 401
-□ GET /ordenes con token → array de órdenes
-□ GET /productos sin token → 200 (es público)
-□ La app Expo redirige a login cuando no hay sesión
-□ La app redirige a login si el token expira (8 horas)
-```
-
----
-
-## FASE 6 — ngrok + Script de arranque
-### ⏱️ Tiempo: 2-4 horas · 🎯 Complejidad: Baja · 🟡 IMPORTANTE
-
-> Solo se necesita para el WhatsApp. Se puede hacer en paralelo con la Fase 5.
-
-### Pasos
+#### Pasos para ngrok
 
 ```bash
 # 1. Crear cuenta en ngrok.com (gratis)
@@ -475,44 +295,19 @@ ngrok http --domain=mi-pizzeria.ngrok-free.app 8080
 # → Debe responder como el backend (Evolution API en :8080)
 ```
 
-### `start-pos.bat` — Script de arranque Windows
+### `start-pos.bat` — Ya implementado
+
+El script actual levanta Docker y muestra los endpoints. Cuando se agregue ngrok,
+actualizar para incluir el paso de túnel:
 
 ```batch
-@echo off
-title POS Pizzería
-color 0A
-echo ╔══════════════════════════════╗
-echo ║   POS PIZZERÍA — INICIANDO   ║
-echo ╚══════════════════════════════╝
-echo.
-echo [1/3] Iniciando Docker...
-docker-compose up -d
-if %errorlevel% neq 0 (
-  echo ERROR: ¿Está Docker Desktop abierto?
-  pause & exit /b 1
-)
-echo [2/3] Esperando servicios (20 seg)...
-timeout /t 20 /nobreak >nul
-echo [3/3] Iniciando ngrok (WhatsApp)...
 start "ngrok" /min ngrok http --domain=mi-pizzeria.ngrok-free.app 8080
-echo.
-echo ═══════════════════════════════════════════
-echo   SISTEMA LISTO ✓
-echo   Backend:   http://localhost:3000
-echo   n8n:       http://localhost:5678
-echo   Evolution: http://localhost:8080
-echo   Swagger:   http://localhost:3000/swagger
-echo   Ollama:    http://localhost:11434
-echo   WPP:       https://mi-pizzeria.ngrok-free.app
-echo   LAN:       http://192.168.1.X:3000
-echo ═══════════════════════════════════════════
-pause
 ```
 
 ---
 
-## FASE 7 — WhatsApp: Evolution API + n8n + Ollama
-### ⏱️ Tiempo: 3-5 días · 🎯 Complejidad: Alta · 🟢 DIFERENCIADOR
+### FASE 7 — WhatsApp: Evolution API + n8n + Ollama
+#### ⏱️ Tiempo: 3-5 días · 🎯 Complejidad: Alta · 🟢 DIFERENCIADOR
 
 > Esta es la fase más compleja y la que más tiempo toma **en la práctica**.
 > Los estimados incluyen el tiempo de pruebas reales con el número de WhatsApp.
@@ -675,120 +470,36 @@ Cuando Ollama no entiende el pedido:
 
 ---
 
-## FASE 8 — Tauri Desktop (PC de caja)
-### ⏱️ Tiempo: 2-3 días · 🎯 Complejidad: Media · 🟢 OPCIONAL pero recomendado
-
-> **¿Por qué Tauri y no solo abrir Chrome?**
-> - Autoarranque con Windows (no hay que abrir el browser manualmente)
-> - Sin barra de URL visible (modo kiosko profesional)
-> - Notificaciones nativas de Windows (toast cuando llega una orden)
-> - Preparado para integrar impresora térmica ESC/POS en el futuro
-> - El instalador pesa ~5 MB vs ~150 MB de Electron
-
-### Crear el proyecto
-
-```bash
-# En la raíz del MonoRepo (junto a Backend/ y Frontend/)
-mkdir Desktop && cd Desktop
-npm create tauri-app@latest . -- --template react-ts --identifier com.pizzeria.pos --manager npm
-npm install
-npm install socket.io-client axios
-npm install @tauri-apps/plugin-notification @tauri-apps/plugin-store
-```
-
-### Comandos Rust clave (`Desktop/src-tauri/src/lib.rs`)
-
-| Comando | Qué hace |
-|---|---|
-| `get_config()` | Devuelve la URL del backend (configurable) |
-| `imprimir_recibo(orden_id, total)` | Stub → futuro: ESC/POS por USB |
-| `notificar_nueva_orden(orden_id, tipo)` | Toast de Windows al llegar orden |
-
-### Integración con el mismo WebSocket
-
-El frontend de Tauri conecta al **mismo gateway de la Fase 2** que el APK:
-
-```typescript
-// Desktop/src/App.tsx
-const socket = io(`${apiUrl}/ordenes`, {
-  auth: { dispositivo: 'cajero' },
-  transports: ['websocket'],
-});
-
-socket.on('orden:nueva', async (orden) => {
-  // Notificación de Windows
-  await invoke('notificar_nueva_orden', { ordenId: orden.ordenId, tipo: orden.tipoPedido });
-});
-
-socket.on('whatsapp:handoff', (data) => {
-  // Alerta de atención requerida
-  setAlertas(prev => [data, ...prev]);
-});
-```
-
-### Compilar e instalar
-
-```bash
-npm run tauri build
-# Genera: Desktop/src-tauri/target/release/bundle/
-#   → nsis/POS-Pizzeria_1.0.0_x64-setup.exe   (~5 MB)
-#   → msi/POS-Pizzeria_1.0.0_x64.msi
-# Instalar con doble click en la PC de caja
-```
-
-> 📄 **Código completo:** `26-plan-refinado-final/REfinadoplan.md` — Fases 8A al 8F
-
-### Verificación Fase 8 ✅
-
-```
-□ npm run tauri dev → ventana nativa se abre
-□ Indicador verde de conexión WS
-□ Crear orden desde APK → aparece en Tauri sin refrescar
-□ Crear orden desde APK → Windows toast aparece en PC de caja
-□ npm run tauri build → genera el .exe
-□ Instalar .exe en la PC de caja → funciona
-```
+> ✅ **FASE 8 (Tauri Desktop) YA COMPLETADA** — Ver sección "Desktop (Tauri v2)" arriba.
 
 ---
 
-## 🗓️ Cronograma de implementación
+## 🗓️ Cronograma de implementación (restante)
 
 ```
-SEMANA 1 — La base (sin esto nada funciona)
-  Día 1-2: FASE 1 — docker-compose + Redis + Ollama setup
-            Descargar modelo llama3.2:3b
-            Verificar todos los servicios saludables
-  Día 3-4: FASE 2 — Socket.IO Gateway + Redis adapter en NestJS
-            Verificar con wscat que llegan los eventos
-  Día 5:   FASE 3 — Hook useOrdenesSocket en Expo
-            Verificar tiempo real en 2 dispositivos
+SEMANA 1 — Ajustes al core
+  Día 1:   FASE 4 — Recargos pizza server-side (2-3 h)
+  Día 2:   FASE 6 — ngrok setup (2-4 h)
 
-SEMANA 2 — Completar el núcleo
-  Día 1:   FASE 4 — Recargos pizza server-side
-  Día 2-5: FASE 5 — Auth JWT activa (la más delicada)
-            Tiempo extra reservado para debugging de guardas
-
-SEMANA 3 — Integración WhatsApp
-  Día 1:   FASE 6 — ngrok + start-pos.bat
-  Día 2-3: FASE 7A-B — Evolution API setup + QR WhatsApp
-  Día 4-5: FASE 7C-D — n8n workflow básico (sin Ollama primero)
+SEMANA 2 — Integración WhatsApp
+  Día 1-2: FASE 7A-B — Evolution API setup + QR WhatsApp
+            Agregar servicios a docker-compose (n8n, evolution, ollama)
+  Día 3-4: FASE 7C-D — n8n workflow básico (sin Ollama primero)
             Test básico: mensaje WPP → orden en APK
+  Día 5:   FASE 7F — Reemplazar nodo simple por Ollama IA
 
-SEMANA 4 — IA + pulir detalles
-  Día 1-2: FASE 7F — Reemplazar nodo simple por Ollama IA
-            Test: pedidos complejos con productos extraídos
-  Día 3-4: FASE 8 — Tauri Desktop
-  Día 5:   Tests end-to-end + ajustes finales
+SEMANA 3 — IA + validador
+  Día 1-2: FASE 7G — AI Validator (FastAPI, fuzzy matching)
+  Día 3-5: Tests end-to-end + ajustes finales
 ```
 
-> ⚠️ **Expectativa realista:** Si estás aprendiendo alguna de estas tecnologías
-> en el proceso (especialmente Socket.IO o Tauri), multiplica x1.5 el estimado.
-> La semana 3 (WhatsApp) puede extenderse si hay problemas con el QR o ngrok.
+> ⚠️ **Estimado restante: ~2-3 semanas de trabajo efectivo.**
+> Las fases 1, 2, 3, 5 y 8 ya están completadas.
 
 ---
 
-## FASE 7G — Validador de productos contra la DB (FastAPI)
-### ⏱️ Tiempo: 1 día · 🎯 Complejidad: Media · 🟢 OPCIONAL pero recomendado
+### FASE 7G — Validador de productos contra la DB (FastAPI)
+#### ⏱️ Tiempo: 1 día · 🎯 Complejidad: Media · 🟢 OPCIONAL pero recomendado
 
 > **El problema real:** Ollama devuelve `"pepperoni"` pero en tu DB el sabor se llama
 > `"Pepperoni clásica"` con id `"abc-123"`. Sin validación, el backend rechaza la orden
@@ -1243,96 +954,79 @@ curl -X POST http://localhost:8090/validar-orden \
 
 ---
 
-## ✅ Checklist de producción (estado final esperado)
+## ✅ Checklist de producción
 
 ### Infraestructura
 ```
-□ docker-compose up -d → 6 servicios: db, redis, backend, n8n, evolution, ollama
-□ Todos con status "healthy" en docker ps
-□ start-pos.bat funciona (doble click → sistema listo)
-□ ngrok corriendo con dominio fijo mi-pizzeria.ngrok-free.app
+✅ docker-compose up -d → 4 servicios: db, redis, backend, frontend
+✅ Todos con status "healthy" en docker ps
+✅ start-pos.bat funciona (doble click → sistema listo)
+□ Agregar n8n, evolution, ollama a docker-compose (pendiente — Fase 7)
+□ ngrok con dominio fijo (pendiente — Fase 6 + 7)
 ```
 
 ### Backend
 ```
-□ NestJS escucha en 0.0.0.0:3000 (accesible desde toda la LAN)
-□ CORS acepta IPs de LAN + tauri://localhost
-□ GET /ordenes/dia responde desde celular con IP de LAN
-□ Socket.IO gateway activo (evento orden:nueva llega a todos)
-□ Redis adapter activo (log: "Socket.IO usando Redis adapter")
-□ Recargos pizza calculados server-side (no en el frontend)
-□ JWT Guards activos (401 sin token, 200 con token válido)
-□ POST /whatsapp/handoff emite evento WS al personal
+✅ NestJS escucha en 0.0.0.0:3000 (accesible desde toda la LAN)
+✅ CORS acepta IPs de LAN + tauri://localhost
+✅ 10 módulos CRUD completos (entities, DTOs, controllers, services)
+✅ Socket.IO gateway en /ordenes (orden:nueva, orden:actualizada, etc.)
+✅ Redis adapter activo (RedisIoAdapter)
+✅ ThrottlerModule (100 req/60s)
+✅ BullMQ con Redis
+✅ JWT Guards + Roles disponibles
+✅ LoggingInterceptor global
+✅ Swagger en /swagger con Bearer auth
+✅ Seeders (usuarios, productos, órdenes)
+□ Recargos pizza server-side (pendiente — Fase 4)
+□ POST /whatsapp/handoff (pendiente — Fase 7)
 ```
 
-### Expo APK
+### Frontend (Expo APK/Web)
 ```
-□ Hook useOrdenesSocket conectado y verde en la app
-□ Nueva orden aparece sin refrescar (< 1 segundo)
-□ Alerta de handoff WhatsApp aparece en pantalla
-□ APK compilado y distribuido a todos los celulares del personal
-□ Test real: celular en WiFi del negocio conecta al servidor
+✅ 15 pantallas completas (Expo Router)
+✅ Hook useOrdenesSocket (Socket.IO tiempo real)
+✅ AuthContext + OrderContext + ToastContext
+✅ Sistema de diseño (tokens, tema, responsive)
+✅ 10 hooks especializados
+✅ Componentes UI reutilizables (13 en ui/)
 ```
 
-### WhatsApp + IA
+### Desktop (Tauri v2)
+```
+✅ 6 vistas (Login, Órdenes, CrearOrden, Facturas, Historial, Ajustes)
+✅ Atajos de teclado (F1, F2, F3)
+✅ URL backend configurable (Tauri Store)
+✅ Notificaciones nativas de Windows
+✅ Prevención de cierre accidental
+✅ Conecta al mismo gateway WebSocket
+✅ 11 hooks (incl. keyboard-shortcuts)
+```
+
+### WhatsApp + IA (pendiente)
 ```
 □ Evolution API: QR escaneado, estado "open"
 □ Webhook Evolution → n8n configurado
 □ Ollama: llama3.2:3b descargado y respondiendo
-□ Test simple: "pizza local" → respuesta + orden en la app
-□ Test complejo: "pizza grande pepperoni domicilio calle 15 #4-20"
-  → orden con productos, dirección y total correcto
-□ Test handoff: "lombriz con extra queso"
-  → cliente recibe mensaje de asesor + alerta en app del personal
-```
-
-### Tauri Desktop (si aplica)
-```
-□ Indicador WS verde al abrir la app
-□ Toast de Windows al recibir orden nueva
-□ .exe instalado en la PC de caja
-□ Autoarranque configurado (opcional)
+□ ai-validator (FastAPI) con fuzzy matching
+□ Test e2e: mensaje WPP → orden en la app
+□ Test handoff: mensaje incomprensible → alerta en app
 ```
 
 ---
 
-## 📐 Decisiones de arquitectura (por qué así y no de otra forma)
+## 📐 Decisiones de arquitectura
 
 | Decisión | Razón |
 |---|---|
 | **Sin Traefik** | En LAN puertos directos son suficientes. Traefik agrega complejidad sin beneficio |
 | **Redis adapter en Socket.IO** | Costo mínimo con 1 instancia. Escalar a 2 réplicas = cambiar 1 número |
-| **JWT 8h sin refresh token** | MVPs priorizan simplicidad. El personal reloguea al empezar turno |
 | **Namespace `/ordenes` en WS** | Aisla eventos. Fácil agregar `/cocina` o `/domicilios` en el futuro |
 | **Rutas sin prefijo `/api/`** | El backend actual funciona así. No migrar para no romper |
-| **Ollama en lugar de OpenAI** | Gratis, privado, sin dependencia de internet para cada pedido |
-| **`llama3.2:3b` como modelo** | 1.9 GB, corre en CPU, ~3 tok/s es suficiente para mensajes cortos |
-| **`temperature: 0.1` en Ollama** | Tarea determinística (extraer JSON). Creatividad baja = JSON estable |
-| **Handoff a humano vs fallback** | Mejor UX: el cliente sabe que un humano lo atiende. No se crean órdenes basura |
-| **FastAPI para validación de productos** | Tarea de negocio con 2 llamadas HTTP. Rust sería sobrekill. Migrar a Rust después como ejercicio |
-| **Fuzzy matching para nombres** | Los mensajes de WhatsApp son informales. "pizzita" debe matchear "pizza" |
-| **FUZZY_THRESHOLD: 75%** | Balance entre demasiados handoffs y matches incorrectos |
-| **Catálogo en caché (1h)** | No buscar a la DB en cada mensaje. Recargar manual cuando cambia el menú |
 | **Tauri para PC de caja** | 5 MB vs 150 MB (Electron). Notificaciones nativas. Sin browser visible |
 | **APK para celulares del personal** | Expo ya existe y funciona. Tauri es adicional para las PCs fijas |
-| **ngrok gratis, sin dominio comprado** | El dominio estático de ngrok es permanente. Solo necesario con VPS en nube |
-| **Evolution API v2.2.3 (pinned)** | Versión estable conocida. `:latest` puede romperse sin aviso |
-
----
-
-## 🔗 Referencias al código
-
-| Necesitas | Archivo |
-|---|---|
-| docker-compose completo | `26-plan-refinado-final/REfinadoplan.md` — Fase 1A |
-| RedisModule + main.ts + Gateway | `26-plan-refinado-final/REfinadoplan.md` — Fases 2A-2F |
-| Hook useOrdenesSocket (Frontend) | `26-plan-refinado-final/REfinadoplan.md` — Fase 3A |
-| Auth JWT + AuthContext + Login | `26-plan-refinado-final/REfinadoplan.md` — Fase 5 |
-| Evolution API setup + QR | `26-plan-refinado-final/REfinadoplan.md` — Fases 7A-7C |
-| Workflow n8n completo (nodos) | `26-plan-refinado-final/REfinadoplan.md` — Fases 7D |
-| Prompt Ollama + Nodo Code IA | `26-plan-refinado-final/REfinadoplan.md` — Fases 7F-3 y 7F-4 |
-| Handoff endpoint NestJS + hook | `26-plan-refinado-final/REfinadoplan.md` — Fase 7F-5 |
-| **FastAPI ai-validator completo** | `27-Proyecto refinado fin/Refinadofinal.md` — Fase 7G |
-| **Cómo reemplazar FastAPI por Rust** | `27-Proyecto refinado fin/Refinadofinal.md` — Fase 7G (Rust) |
-| Tauri lib.rs + App.tsx | `26-plan-refinado-final/REfinadoplan.md` — Fases 8C y 8D |
-| Preguntas frecuentes (dominio, FastAPI, Evolution) | `26-plan-refinado-final/LEEME.md` |
+| **Ollama en lugar de OpenAI** (futuro) | Gratis, privado, sin dependencia de internet para cada pedido |
+| **FastAPI para validador** (futuro) | Tarea de negocio con fuzzy matching. Python más productivo |
+| **Handoff a humano vs fallback** (futuro) | Mejor UX: el cliente sabe que un humano lo atiende |
+| **ngrok gratis, sin dominio comprado** (futuro) | El dominio estático de ngrok es permanente |
+| **3 apps cliente (Expo, Tauri, WhatsApp)** | Cada una cubre un caso de uso distinto del negocio |

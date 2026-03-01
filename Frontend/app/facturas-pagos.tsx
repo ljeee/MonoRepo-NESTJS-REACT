@@ -99,7 +99,7 @@ export default function FacturasPagosScreen() {
 
       {/* ── Create / Edit form ── */}
       {showForm && (
-        <Card variant="elevated" padding="lg" style={{ marginBottom: spacing.xl }}>
+        <Card variant="elevated" padding="lg" style={localStyles.cardMarginXl}>
           <View style={localStyles.formHeader}>
             <Icon
               name={editingId ? 'pencil-outline' : 'plus-circle-outline'}
@@ -118,14 +118,14 @@ export default function FacturasPagosScreen() {
               onChangeText={(v) => setTotal(v.replace(/\./g, ''))}
               keyboardType="numeric"
               placeholder="$"
-              containerStyle={{ flex: 1, minWidth: 150 }}
+              containerStyle={localStyles.inputContainerSm}
             />
             <Input
               label="Nombre del gasto *"
               value={nombreGasto}
               onChangeText={setNombreGasto}
               placeholder=""
-              containerStyle={{ flex: 2, minWidth: 200 }}
+              containerStyle={localStyles.inputContainerLg}
               leftIcon={<Icon name="tag-outline" size={16} color={colors.textMuted} />}
             />
           </View>
@@ -256,7 +256,7 @@ export default function FacturasPagosScreen() {
 
       {/* ── Range filter ── */}
       {showRangeFilter && (
-        <Card padding="md" style={{ marginBottom: spacing.xl }}>
+        <Card padding="md" style={localStyles.cardMarginXl}>
           <View style={localStyles.formHeader}>
             <Icon name="calendar-range" size={20} color={colors.primary} />
             <Text style={localStyles.formTitle}>Filtrar por Calendario</Text>
@@ -267,7 +267,7 @@ export default function FacturasPagosScreen() {
               value={from}
               onChangeText={setFrom}
               placeholder="2025-11-01"
-              containerStyle={{ flex: 1, minWidth: 140 }}
+              containerStyle={localStyles.dateInputContainer}
               leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
             />
             <Input
@@ -275,7 +275,7 @@ export default function FacturasPagosScreen() {
               value={to}
               onChangeText={setTo}
               placeholder="2025-11-30"
-              containerStyle={{ flex: 1, minWidth: 140 }}
+              containerStyle={localStyles.dateInputContainer}
               leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
             />
           </View>
@@ -297,9 +297,9 @@ export default function FacturasPagosScreen() {
 
       {/* ── Expense list ── */}
       {displayData.map((item, idx) => (
-        <Card key={item.pagosId?.toString() || idx.toString()} padding="md" style={{ marginBottom: spacing.md }}>
+        <Card key={item.pagosId?.toString() || idx.toString()} padding="md" style={localStyles.cardMarginMd}>
           <View style={localStyles.itemHeader}>
-            <View style={{ flex: 1 }}>
+            <View style={localStyles.flex1}>
               <Text style={localStyles.itemName}>{item.nombreGasto || 'Sin nombre'}</Text>
               <View style={localStyles.metaRow}>
                 {item.fechaFactura && (
@@ -350,7 +350,7 @@ export default function FacturasPagosScreen() {
               size="sm"
               onPress={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })}
               disabled={deleting}
-              style={{ opacity: 0.7 }}
+              style={localStyles.opacityMuted}
             />
           </View>
         </Card>
@@ -536,6 +536,30 @@ function makeLocalStyles(isMobile: boolean) {
       paddingTop: spacing.sm,
       borderTopWidth: 1,
       borderTopColor: colors.divider,
+    },
+    cardMarginXl: {
+      marginBottom: spacing.xl,
+    },
+    inputContainerSm: {
+      flex: 1,
+      minWidth: 150,
+    },
+    inputContainerLg: {
+      flex: 2,
+      minWidth: 200,
+    },
+    dateInputContainer: {
+      flex: 1,
+      minWidth: 140,
+    },
+    cardMarginMd: {
+      marginBottom: spacing.md,
+    },
+    flex1: {
+      flex: 1,
+    },
+    opacityMuted: {
+      opacity: 0.7,
     },
   });
 }

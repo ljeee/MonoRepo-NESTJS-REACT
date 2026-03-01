@@ -238,7 +238,7 @@ export default function OrdenDetalleScreen() {
         title={`Orden #${orden.ordenId}`}
         icon="clipboard-text-outline"
         rightContent={
-          <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' }}>
+          <View style={styles.headerActions}>
             {canCancelOrder() && (
               <Button
                 title="Cancelar"
@@ -246,7 +246,7 @@ export default function OrdenDetalleScreen() {
                 variant="danger"
                 size="sm"
                 onPress={() => setShowCancelModal(true)}
-                style={{ paddingHorizontal: 8, height: 32 }}
+                style={styles.cancelButton}
               />
             )}
             <Button
@@ -262,14 +262,14 @@ export default function OrdenDetalleScreen() {
               variant="ghost"
               size="sm"
               onPress={() => router.push('/ordenes')}
-              style={{ paddingHorizontal: spacing.sm, minWidth: 0 }}
+              style={styles.iconButton}
             />
           </View>
         }
       />
 
       {/* ── General Info ── */}
-      <Card padding="lg" style={{ marginBottom: spacing.lg }}>
+      <Card padding="lg" style={styles.cardMarginLg}>
         <View style={styles.sectionHeader}>
           <Icon name="information-outline" size={20} color={colors.primary} />
           <Text style={styles.sectionTitle}>Información General</Text>
@@ -326,7 +326,7 @@ export default function OrdenDetalleScreen() {
       </Card>
 
       {/* ── Products ── */}
-      <Card padding="lg" style={{ marginBottom: spacing.lg }}>
+      <Card padding="lg" style={styles.cardMarginLg}>
         <View style={styles.sectionHeader}>
           <Icon name="food-variant" size={20} color={colors.primary} />
           <Text style={styles.sectionTitle}>Productos</Text>

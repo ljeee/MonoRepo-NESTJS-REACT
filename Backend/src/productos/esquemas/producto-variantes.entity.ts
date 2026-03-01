@@ -1,5 +1,6 @@
 import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index} from 'typeorm';
 import {Productos} from './productos.entity';
+import {ColumnNumericTransformer} from '../../common/utils/numeric.transformer';
 
 @Entity('producto_variantes')
 export class ProductoVariantes {
@@ -13,7 +14,7 @@ export class ProductoVariantes {
 	@Index()
 	nombre: string;
 
-	@Column({name: 'precio', type: 'numeric'})
+	@Column({name: 'precio', type: 'numeric', transformer: new ColumnNumericTransformer()})
 	precio: number;
 
 	@Column({name: 'descripcion', type: 'text', nullable: true})

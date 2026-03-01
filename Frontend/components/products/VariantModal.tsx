@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../styles/theme';
 import { Button, Input, Icon } from '../ui';
 import { modalStyles as styles } from '../../styles/components/Modal.styles';
@@ -83,7 +83,7 @@ export function VariantModal({
                             title="Cancelar"
                             variant="ghost"
                             onPress={onClose}
-                            style={{ flex: 1 }}
+                            style={localStyles.flexOne}
                         />
                         <Button
                             title={loading ? 'Guardando...' : 'Guardar'}
@@ -91,7 +91,7 @@ export function VariantModal({
                             icon="content-save-outline"
                             onPress={onSave}
                             loading={loading}
-                            style={{ flex: 1 }}
+                            style={localStyles.flexOne}
                         />
                     </View>
                 </Pressable>
@@ -99,5 +99,11 @@ export function VariantModal({
         </Modal>
     );
 }
+
+const localStyles = StyleSheet.create({
+    flexOne: {
+        flex: 1,
+    },
+});
 
 

@@ -29,16 +29,16 @@ export default function PageHeader({
         <View style={[styles.container, isMobile && styles.containerMobile, style]}>
             <View style={styles.left}>
                 {icon && (
-                    <View style={[styles.iconContainer, isMobile && { width: 38, height: 38, marginTop: 40 }]}>
+                    <View style={[styles.iconContainer, isMobile && styles.iconContainerMobile]}>
                         <Icon name={icon} size={isMobile ? 22 : 28} color={colors.primary} />
                     </View>
                 )}
-                <View style={[styles.textContainer, isMobile && { marginLeft: 0 }]}>
+                <View style={[styles.textContainer, isMobile && styles.textContainerMobile]}>
                     {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
                     <Text style={[styles.title, isMobile && styles.titleMobile]}>{title}</Text>
                 </View>
             </View>
-            {rightContent && <View style={[styles.right, isMobile && { marginTop: spacing.md }]}>{rightContent}</View>}
+            {rightContent && <View style={[styles.right, isMobile && styles.rightMobile]}>{rightContent}</View>}
         </View>
     );
 }
@@ -94,5 +94,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.sm,
+    },
+    iconContainerMobile: {
+        width: 38,
+        height: 38,
+    },
+    textContainerMobile: {
+        marginLeft: 0,
+    },
+    rightMobile: {
+        marginTop: spacing.md,
     },
 });

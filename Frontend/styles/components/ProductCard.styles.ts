@@ -146,4 +146,42 @@ export const productCardStyles = StyleSheet.create({
         color: colors.textMuted,
         lineHeight: 16,
     },
+    // Extracted inline styles
+    cardWrapper: {
+        marginBottom: spacing.lg,
+    },
+    flexOne: {
+        flex: 1,
+    },
+    variantBtnCompact: {
+        paddingHorizontal: 6,
+        minWidth: 0,
+    },
+    addVariantBtn: {
+        marginTop: spacing.md,
+    },
+    chipRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'nowrap',
+    },
+    chipContent: {
+        flexShrink: 1,
+    },
+    chipRecargoText: {
+        fontSize: 10,
+        color: colors.secondary,
+        marginTop: 1,
+    },
+    editHintText: {
+        fontSize: 11,
+        color: colors.textMuted,
+        marginLeft: 6,
+    },
+    flavorCategoryLabelSpaced: {
+        marginTop: spacing.md,
+    },
+    pricingIconMargin: {
+        marginLeft: 6,
+    },
 });

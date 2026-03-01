@@ -25,7 +25,24 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions): any {
-    const server = super.createIOServer(port, options);
+    const allowedOrigins = process.env.CORS_ORIGINS
+      ?.split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+
+    const originsToAllow = allowedOrigins && allowedOrigins.length > 0 
+      ? allowedOrigins 
+      : ['tauri://localhost', 'http://localhost:1420', 'http://localhost:8081'];
+
+    const server = super.createIOServer(port, {
+      ...options,
+      cors: {
+        origin: originsToAllow,
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        credentials: true
+      }
+    });
+
     if (this.adapterConstructor) {
         server.adapter(this.adapterConstructor);
     }

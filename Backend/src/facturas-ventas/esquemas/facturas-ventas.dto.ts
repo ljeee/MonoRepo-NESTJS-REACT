@@ -1,9 +1,6 @@
 import {IsString, IsNumber, IsOptional, IsDateString} from "class-validator";
 
 export class CreateFacturasVentasDto {
-	@IsOptional()
-	@IsNumber()
-	facturaId?: number;
 
 	@IsOptional()
 	@IsString()

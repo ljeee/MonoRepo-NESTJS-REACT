@@ -125,7 +125,7 @@ export default function DomiciliariosList() {
 
       {/* ── Create / Edit form ── */}
       {formMode !== 'closed' && (
-        <Card variant="elevated" padding="lg" style={{ marginBottom: spacing.xl }}>
+        <Card variant="elevated" padding="lg" style={styles.cardMarginXl}>
           <View style={styles.formHeader}>
             <Icon
               name={formMode === 'create' ? 'plus-circle-outline' : 'pencil-outline'}
@@ -143,7 +143,7 @@ export default function DomiciliariosList() {
               value={formData.telefono}
               onChangeText={(v) => setFormData((p) => ({ ...p, telefono: v }))}
               keyboardType="number-pad"
-              containerStyle={{ flex: 1, minWidth: 200 }}
+              containerStyle={styles.inputContainer}
               editable={formMode === 'create'}
               leftIcon={<Icon name="phone-outline" size={16} color={colors.textMuted} />}
             />
@@ -151,7 +151,7 @@ export default function DomiciliariosList() {
               label="Nombre"
               value={formData.domiciliarioNombre}
               onChangeText={(v) => setFormData((p) => ({ ...p, domiciliarioNombre: v }))}
-              containerStyle={{ flex: 1, minWidth: 200 }}
+              containerStyle={styles.inputContainer}
               leftIcon={<Icon name="account-outline" size={16} color={colors.textMuted} />}
             />
           </View>
@@ -184,7 +184,7 @@ export default function DomiciliariosList() {
           onChangeText={setTelefono}
           placeholder="3001234567"
           keyboardType="number-pad"
-          containerStyle={{ flex: 1, minWidth: 200, marginBottom: 0 }}
+          containerStyle={styles.searchInputContainer}
           leftIcon={<Icon name="magnify" size={16} color={colors.textMuted} />}
         />
         <View style={styles.searchActions}>
@@ -217,7 +217,7 @@ export default function DomiciliariosList() {
       )}
 
       {!loading && data.map((item) => (
-        <Card key={item.telefono} padding="md" style={{ marginBottom: spacing.md }}>
+        <Card key={item.telefono} padding="md" style={styles.cardMarginMd}>
           <View style={styles.itemHeader}>
             <View style={styles.itemInfo}>
               <Text style={styles.itemName}>{item.domiciliarioNombre || 'Sin nombre'}</Text>
@@ -240,7 +240,7 @@ export default function DomiciliariosList() {
                 variant="ghost"
                 size="sm"
                 onPress={() => setDeleteTarget(item)}
-                style={{ opacity: 0.7 }}
+                style={styles.opacityMuted}
               />
             </View>
           </View>
@@ -349,5 +349,23 @@ const styles = StyleSheet.create({
   itemActions: {
     flexDirection: 'row',
     gap: spacing.xs,
+  },
+  cardMarginXl: {
+    marginBottom: spacing.xl,
+  },
+  inputContainer: {
+    flex: 1,
+    minWidth: 200,
+  },
+  searchInputContainer: {
+    flex: 1,
+    minWidth: 200,
+    marginBottom: 0,
+  },
+  cardMarginMd: {
+    marginBottom: spacing.md,
+  },
+  opacityMuted: {
+    opacity: 0.7,
   },
 });

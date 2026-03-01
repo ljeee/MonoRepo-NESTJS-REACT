@@ -325,4 +325,52 @@ export const fStyles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 12,
   },
+  // Extracted from FacturaShared inline styles
+  cardHeaderInfo: {
+    flex: 1,
+  },
+  cardHeaderRight: {
+    alignItems: 'flex-end' as const,
+  },
+  domicilioBadgeRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  domicilioBadge: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  domicilioBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  domicilioEnvioText: {
+    color: colors.subText,
+    fontSize: 12,
+  },
+  productInfoCol: {
+    flex: 1,
+  },
+  productPriceCol: {
+    alignItems: 'flex-end' as const,
+    marginLeft: 8,
+  },
+  estadoActionsRow: {
+    flexDirection: 'row' as const,
+    gap: 6,
+  },
+  editBtnSquare: {
+    backgroundColor: colors.primary,
+    aspectRatio: 1,
+    paddingHorizontal: 0,
+    width: 36,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
 });

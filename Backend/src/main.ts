@@ -1,15 +1,20 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import {NestFactory} from '@nestjs/core';
+import {HttpAdapterHost, NestFactory} from '@nestjs/core';
 import {ValidationPipe} from '@nestjs/common';
 import {AppModule} from './app.module';
 import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {LoggingInterceptor} from './common/interceptors/logging.interceptor';
 import {RedisIoAdapter} from './common/redis/redis.adapter';
+import {AllExceptionsFilter} from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule);
+
+	// Global exceptions filter
+	const httpAdapterHost = app.get(HttpAdapterHost);
+	app.useGlobalFilters(new AllExceptionsFilter(httpAdapterHost));
 
 	// Global request/response logging
 	app.useGlobalInterceptors(new LoggingInterceptor());
@@ -41,7 +46,7 @@ async function bootstrap() {
 		.filter(Boolean);
 
 	app.enableCors({
-		origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : true,
+		origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : ['tauri://localhost', 'http://localhost:1420', 'http://localhost:8081', '*'],
 		credentials: true,
 	});
 

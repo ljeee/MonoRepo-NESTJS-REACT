@@ -1,4 +1,4 @@
-import {Injectable} from "@nestjs/common";
+import {Injectable, NotFoundException} from "@nestjs/common";
 import {InjectRepository} from "@nestjs/typeorm";
 import {Repository} from "typeorm";
 import {FacturasPagos} from "./esquemas/facturas-pagos.entity";
@@ -51,8 +51,12 @@ export class FacturasPagosService {
 			.getMany();
 	}
 
-	findOne(id: number) {
-		return this.repo.findOneBy({pagosId: id});
+	async findOne(id: number) {
+		const pago = await this.repo.findOneBy({pagosId: id});
+		if (!pago) {
+			throw new NotFoundException(`Factura de pago con ID ${id} no encontrada`);
+		}
+		return pago;
 	}
 
 	create(data: CreateFacturasPagosDto) {

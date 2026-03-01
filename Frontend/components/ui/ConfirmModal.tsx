@@ -56,7 +56,7 @@ export default function ConfirmModal({
 
                     {/* Actions */}
                     <View style={styles.actions}>
-                        <View style={{ flex: 1 }}>
+                        <View style={styles.flexOne}>
                             <Button
                                 title={cancelText}
                                 onPress={onCancel}
@@ -66,7 +66,7 @@ export default function ConfirmModal({
                                 disabled={loading}
                             />
                         </View>
-                        <View style={{ flex: 1 }}>
+                        <View style={styles.flexOne}>
                             <Button
                                 title={confirmText}
                                 onPress={onConfirm}
@@ -129,5 +129,8 @@ const styles = StyleSheet.create({
         gap: spacing.md,
         width: '100%',
         marginTop: spacing.lg,
+    },
+    flexOne: {
+        flex: 1,
     },
 });

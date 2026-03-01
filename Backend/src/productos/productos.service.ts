@@ -1,4 +1,4 @@
-import {Injectable} from "@nestjs/common";
+import {Injectable, NotFoundException} from "@nestjs/common";
 import {InjectRepository} from "@nestjs/typeorm";
 import {Repository} from "typeorm";
 import {Productos} from "./esquemas/productos.entity";
@@ -34,17 +34,25 @@ export class ProductosService {
 	}
 
 	async findOne(productoId: number) {
-		return this.repo.findOne({
+		const producto = await this.repo.findOne({
 			where: {productoId},
 			relations: ['variantes'],
 		});
+		if (!producto) {
+			throw new NotFoundException(`Producto con ID ${productoId} no encontrado`);
+		}
+		return producto;
 	}
 
 	async findByName(productoNombre: string) {
-		return this.repo.findOne({
+		const producto = await this.repo.findOne({
 			where: {productoNombre},
 			relations: ['variantes'],
 		});
+		if (!producto) {
+			throw new NotFoundException(`Producto con nombre ${productoNombre} no encontrado`);
+		}
+		return producto;
 	}
 
 	async create(data: CreateProductosDto) {

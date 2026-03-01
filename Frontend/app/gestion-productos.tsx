@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { RefreshControl, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useProductos, useProductOperations, Producto, ProductoVariante } from '../hooks/use-productos';
 import { usePizzaSabores, useUpdatePizzaSabor, PizzaSabor } from '../hooks/use-pizza-sabores';
 import { colors } from '../styles/theme';
@@ -235,7 +235,7 @@ export default function GestionProductosScreen() {
                 onChangeText={setSearch}
                 placeholder="Buscar producto o categoría..."
                 leftIcon={<Icon name="magnify" size={16} color={colors.textMuted} />}
-                containerStyle={{ marginBottom: spacing.xl }}
+                containerStyle={localStyles.searchContainer}
             />
 
             {/* Loading */}
@@ -347,5 +347,11 @@ export default function GestionProductosScreen() {
         </PageContainer>
     );
 }
+
+const localStyles = StyleSheet.create({
+    searchContainer: {
+        marginBottom: spacing.xl,
+    },
+});
 
 

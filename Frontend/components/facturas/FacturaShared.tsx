@@ -7,6 +7,7 @@ import { fStyles as s } from '../../styles/facturas/facturas.styles';
 import { printReceipt } from '../../utils/printReceipt';
 import UpdateTotalModal from './UpdateTotalModal';
 import Icon from '../ui/Icon';
+import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -144,6 +145,7 @@ export function FacturaCard({
   onUpdateTotal?: (facturaId: number, newTotal: number) => Promise<void>;
   showPrint?: boolean;
 }) {
+  const { isMobile } = useBreakpoint();
   const [editing, setEditing] = React.useState(false);
   const [updateLoading, setUpdateLoading] = React.useState(false);
 
@@ -192,11 +194,11 @@ export function FacturaCard({
     <View style={[s.card, { borderLeftColor: indicadorColor }]}>
       {/* Header: client + total */}
       <View style={s.cardHeader}>
-        <View style={{ flex: 1 }}>
+        <View style={s.cardHeaderInfo}>
           <Text style={s.cardClientName}>{item.clienteNombre || 'Cliente sin nombre'}</Text>
           <Text style={s.cardDate}>{formatDate(item.fechaFactura)}</Text>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
+        <View style={s.cardHeaderRight}>
           <Text style={s.cardTotal}>${formatCurrency(item.total ?? 0)}</Text>
           <Text style={s.cardMetodo}>{item.metodo || 'Sin método'}</Text>
         </View>
@@ -204,12 +206,12 @@ export function FacturaCard({
 
       {/* Badge domicilio */}
       {esDomicilio && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 2 }}>
-          <View style={{ backgroundColor: '#3b82f6', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
-            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>🛵 Domicilio</Text>
+        <View style={s.domicilioBadgeRow}>
+          <View style={s.domicilioBadge}>
+            <Text style={s.domicilioBadgeText}>🛵 Domicilio</Text>
           </View>
           {costoDomicilio > 0 && (
-            <Text style={{ color: colors.subText, fontSize: 12 }}>
+            <Text style={s.domicilioEnvioText}>
               Envío: ${formatCurrency(costoDomicilio)}
             </Text>
           )}
@@ -233,10 +235,10 @@ export function FacturaCard({
           {item.ordenes.map((orden, oIdx) =>
             orden.productos?.map((op, pIdx) => (
               <View key={`${oIdx}-${pIdx}`} style={s.productRow}>
-                <View style={{ flex: 1 }}>
+                <View style={s.productInfoCol}>
                   <Text style={s.productName}>{op.productoNombre || 'Producto'}</Text>
                 </View>
-                <View style={{ alignItems: 'flex-end', marginLeft: 8 }}>
+                <View style={s.productPriceCol}>
                   <Text style={s.productQtyPrice}>
                     {op.cantidad}x ${formatCurrency(op.precioUnitario ?? 0)}
                   </Text>
@@ -256,8 +258,8 @@ export function FacturaCard({
             {item.estado || 'pendiente'}
           </Text>
         </View>
-        <View style={{ flexDirection: 'row', gap: 6 }}>
-          {showPrint && (
+        <View style={s.estadoActionsRow}>
+          {showPrint && !isMobile && (
             <TouchableOpacity
               onPress={handlePrint}
               style={[s.estadoBtn, { backgroundColor: '#3b82f6' }]}
@@ -294,7 +296,7 @@ export function FacturaCard({
           {!isCancelado && (
             <TouchableOpacity
               onPress={() => setEditing(true)}
-              style={[s.estadoBtn, { backgroundColor: colors.primary, aspectRatio: 1, paddingHorizontal: 0, width: 36, justifyContent: 'center', alignItems: 'center' }]}
+              style={[s.estadoBtn, s.editBtnSquare]}
             >
               <Icon name="pencil" size={18} color="#fff" />
             </TouchableOpacity>

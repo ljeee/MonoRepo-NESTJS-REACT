@@ -112,7 +112,7 @@ export default function OrdenesTodasScreen() {
           size="sm"
           onPress={() => fetchData(1)}
         />
-        <View style={{ backgroundColor: colors.card, padding: 8, borderRadius: 8, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center', height: 40, width: 40 }}>
+        <View style={styles.iconBox}>
           <Icon name="format-list-bulleted" size={24} color={colors.primary} />
         </View>
       </View>
@@ -159,7 +159,7 @@ export default function OrdenesTodasScreen() {
           value={from}
           onChangeText={setFrom}
           placeholder="YYYY-MM-DD"
-          containerStyle={{ flex: 1, minWidth: 140 }}
+          containerStyle={styles.dateInputContainer}
           size="sm"
           leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
         />
@@ -168,7 +168,7 @@ export default function OrdenesTodasScreen() {
           value={to}
           onChangeText={setTo}
           placeholder="YYYY-MM-DD"
-          containerStyle={{ flex: 1, minWidth: 140 }}
+          containerStyle={styles.dateInputContainer}
           size="sm"
           leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
         />
@@ -234,7 +234,7 @@ export default function OrdenesTodasScreen() {
               onPress={() =>
                 router.push(`/orden-detalle?ordenId=${orden.ordenId}`)
               }
-              style={{ marginBottom: spacing.md }}
+              style={styles.cardMarginMd}
               padding="md"
             >
               {/* Header */}
@@ -481,5 +481,23 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontStyle: 'italic',
     marginTop: spacing.xs,
+  },
+  iconBox: {
+    backgroundColor: colors.card,
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 40,
+    width: 40,
+  },
+  dateInputContainer: {
+    flex: 1,
+    minWidth: 140,
+  },
+  cardMarginMd: {
+    marginBottom: spacing.md,
   },
 });

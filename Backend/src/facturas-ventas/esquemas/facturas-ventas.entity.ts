@@ -1,8 +1,10 @@
-import {Entity, PrimaryGeneratedColumn, Column, OneToMany} from 'typeorm';
+import {Entity, PrimaryGeneratedColumn, Column, OneToMany, Index} from 'typeorm';
+import {ColumnNumericTransformer} from '../../common/utils/numeric.transformer';
 import {Ordenes} from '../../ordenes/esquemas/ordenes.entity';
 import {Domicilios} from '../../domicilios/esquemas/domicilios.entity';
 
 @Entity('facturas_ventas')
+@Index(['estado', 'fechaFactura'])
 export class FacturasVentas {
 	@PrimaryGeneratedColumn({name: 'factura_id'})
 	facturaId: number;
@@ -14,6 +16,7 @@ export class FacturasVentas {
 	descripcion: string;
 
 	@Column({type: 'timestamptz', default: () => 'now()'})
+	@Index()
 	fechaFactura: Date;
 
 	@Column({name: 'estado', type: 'text', default: 'pendiente', nullable: true})
@@ -22,7 +25,7 @@ export class FacturasVentas {
 	@Column({name: 'metodo', type: 'text', nullable: true})
 	metodo: string;
 
-	@Column({name: 'total', type: 'numeric', nullable: true})
+	@Column({name: 'total', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	total: number;
 
 	@OneToMany(() => Ordenes, (orden) => orden.factura)

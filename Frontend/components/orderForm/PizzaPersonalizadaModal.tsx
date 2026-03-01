@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../styles/theme';
 import { pizzaModalStyles as s } from '../../styles/ordenes/pizza-modal.styles';
 import { Producto, ProductoVariante } from '../../hooks/use-productos';
@@ -135,7 +135,7 @@ export default function PizzaPersonalizadaModal({
 
           {/* Sabores */}
           {loadingSabores ? (
-            <View style={{ alignItems: 'center', padding: 24 }}>
+            <View style={localStyles.loadingCenter}>
               <ActivityIndicator color={colors.primary} />
             </View>
           ) : (
@@ -189,3 +189,10 @@ export default function PizzaPersonalizadaModal({
     </Modal>
   );
 }
+
+const localStyles = StyleSheet.create({
+    loadingCenter: {
+        alignItems: 'center',
+        padding: 24,
+    },
+});

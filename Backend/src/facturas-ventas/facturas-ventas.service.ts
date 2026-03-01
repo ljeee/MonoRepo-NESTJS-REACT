@@ -1,4 +1,4 @@
-import {Injectable} from '@nestjs/common';
+import {Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {FacturasVentas} from './esquemas/facturas-ventas.entity';
@@ -21,7 +21,6 @@ export class FacturasVentasService {
 			.take(limit)
 			.skip((page - 1) * limit)
 			.getMany();
-		console.log('findAll result count:', result.length);
 		return result;
 	}
 
@@ -37,7 +36,6 @@ export class FacturasVentasService {
 			.leftJoinAndSelect('f.domicilios', 'domicilios')
 			.where('f.fechaFactura BETWEEN :start AND :end', {start, end})
 			.getMany();
-		console.log('findByDay result count:', result.length, 'start:', start, 'end:', end);
 		return result;
 	}
 
@@ -81,11 +79,15 @@ export class FacturasVentasService {
 		};
 	}
 
-	findOne(id: number) {
-		return this.repo.findOne({
+	async findOne(id: number) {
+		const factura = await this.repo.findOne({
 			where: {facturaId: id},
 			relations: ['ordenes', 'domicilios'],
 		});
+		if (!factura) {
+			throw new NotFoundException(`Factura con ID ${id} no encontrada`);
+		}
+		return factura;
 	}
 
 	create(data: CreateFacturasVentasDto) {

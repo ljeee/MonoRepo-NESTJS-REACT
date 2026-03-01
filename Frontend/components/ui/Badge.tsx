@@ -43,7 +43,7 @@ export default function Badge({ label, variant = 'neutral', icon, size = 'sm', s
                     name={icon}
                     size={size === 'sm' ? 12 : 14}
                     color={v.text}
-                    style={{ marginRight: spacing.xs }}
+                    style={styles.iconMarginRight}
                 />
             )}
             <Text
@@ -72,5 +72,8 @@ const styles = StyleSheet.create({
         fontWeight: fontWeight.bold,
         letterSpacing: 0.3,
         textTransform: 'capitalize',
+    },
+    iconMarginRight: {
+        marginRight: spacing.xs,
     },
 });

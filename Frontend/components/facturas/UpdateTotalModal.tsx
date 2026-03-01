@@ -57,7 +57,7 @@ export default function UpdateTotalModal({
                     />
 
                     <View style={styles.actions}>
-                        <View style={{ flex: 1 }}>
+                        <View style={styles.flexOne}>
                             <Button
                                 title="Cancelar"
                                 onPress={onCancel}
@@ -67,7 +67,7 @@ export default function UpdateTotalModal({
                                 disabled={loading}
                             />
                         </View>
-                        <View style={{ flex: 1 }}>
+                        <View style={styles.flexOne}>
                             <Button
                                 title="Guardar"
                                 onPress={handleConfirm}
@@ -136,5 +136,8 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: spacing.md,
         width: '100%',
+    },
+    flexOne: {
+        flex: 1,
     },
 });

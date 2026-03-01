@@ -35,7 +35,6 @@ import {RedisModule} from './common/redis/redis.module';
 					autoLoadEntities: true,
 					synchronize: true,
 				};
-				console.log('TypeORM Config:', {...config, password: '***'});
 				return config;
 			},
 		}),

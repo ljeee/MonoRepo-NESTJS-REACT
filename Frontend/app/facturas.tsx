@@ -88,14 +88,14 @@ export default function FacturasRangoScreen() {
   }, [data, from, to]);
 
   return (
-    <PageContainer scrollable={false} contentContainerStyle={{ flex: 1 }}>
+    <PageContainer scrollable={false} contentContainerStyle={styles.flex1}>
       <FlatList
         data={data}
-        style={{ flex: 1 }}
+        style={styles.flex1}
         keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
         key={isMobile ? 'col_1' : 'col_2'}
         numColumns={isMobile ? 1 : 2}
-        contentContainerStyle={{ paddingBottom: spacing.lg }}
+        contentContainerStyle={styles.listContent}
         columnWrapperStyle={!isMobile ? { gap: spacing.md } : undefined}
         ListHeaderComponent={
           <>
@@ -131,7 +131,7 @@ export default function FacturasRangoScreen() {
                 value={from}
                 onChangeText={setFrom}
                 placeholder="2025-01-01"
-                containerStyle={{ flex: 1, minWidth: 140 }}
+                containerStyle={styles.inputContainer}
                 size="sm"
                 leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
               />
@@ -140,7 +140,7 @@ export default function FacturasRangoScreen() {
                 value={to}
                 onChangeText={setTo}
                 placeholder="2026-12-31"
-                containerStyle={{ flex: 1, minWidth: 140 }}
+                containerStyle={styles.inputContainer}
                 size="sm"
                 leftIcon={<Icon name="calendar" size={16} color={colors.textMuted} />}
               />
@@ -199,7 +199,7 @@ export default function FacturasRangoScreen() {
           ) : null
         }
         renderItem={({ item }) => (
-          <View style={{ flex: 1, paddingBottom: spacing.md }}>
+          <View style={styles.renderItem}>
             <FacturaCard
               item={item}
               isUpdating={updating === item.facturaId}
@@ -264,5 +264,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  flex1: {
+    flex: 1,
+  },
+  listContent: {
+    paddingBottom: spacing.lg,
+  },
+  inputContainer: {
+    flex: 1,
+    minWidth: 140,
+  },
+  renderItem: {
+    flex: 1,
+    paddingBottom: spacing.md,
   },
 });

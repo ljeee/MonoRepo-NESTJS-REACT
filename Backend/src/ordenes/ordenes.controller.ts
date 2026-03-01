@@ -100,32 +100,7 @@ export class OrdenesController {
 			},
 		},
 	})
-	async create(@Body() rawBody: any) {
-		console.log('Raw request body:', JSON.stringify(rawBody, null, 2));
-		const dto = plainToInstance(CreateOrdenesDto, rawBody, {enableImplicitConversion: true});
-		// Set default tipoPedido if not provided
-		if (!dto.tipoPedido) {
-			dto.tipoPedido = 'mesa';
-		}
-		console.log('Received DTO (post-transform):', JSON.stringify(dto, null, 2));
-		console.log(
-			'tipoPedido value:',
-			JSON.stringify(dto.tipoPedido),
-			'type:',
-			typeof dto.tipoPedido,
-			'length:',
-			dto.tipoPedido?.length,
-		);
-
-		// Validate the DTO
-		const errors = await validate(dto);
-		if (errors.length > 0) {
-			console.error('Validation errors:', errors);
-			throw new BadRequestException(
-				errors.map((e) => (e.constraints ? Object.values(e.constraints).join(', ') : JSON.stringify(e))),
-			);
-		}
-
+	async create(@Body() dto: CreateOrdenesDto) {
 		return this.service.create(dto);
 	}
 

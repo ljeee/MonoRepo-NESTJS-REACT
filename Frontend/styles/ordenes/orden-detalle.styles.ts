@@ -181,4 +181,20 @@ export const ordenDetalleStyles = StyleSheet.create({
     fontWeight: fontWeight.black,
     color: colors.primary,
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  cancelButton: {
+    paddingHorizontal: 8,
+    height: 32,
+  },
+  iconButton: {
+    paddingHorizontal: spacing.sm,
+    minWidth: 0,
+  },
+  cardMarginLg: {
+    marginBottom: spacing.lg,
+  },
 });

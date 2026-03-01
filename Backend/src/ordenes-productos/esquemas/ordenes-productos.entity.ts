@@ -2,6 +2,7 @@ import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn} from 'typ
 import {Ordenes} from '../../ordenes/esquemas/ordenes.entity';
 import {Productos} from '../../productos/esquemas/productos.entity';
 import {ProductoVariantes} from '../../productos/esquemas/producto-variantes.entity';
+import {ColumnNumericTransformer} from '../../common/utils/numeric.transformer';
 
 @Entity('ordenes_productos')
 export class OrdenesProductos {
@@ -14,10 +15,10 @@ export class OrdenesProductos {
 	@Column({name: 'producto', type: 'text', nullable: true})
 	producto: string;
 
-	@Column({name: 'cantidad', type: 'numeric', nullable: true})
+	@Column({name: 'cantidad', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	cantidad: number;
 
-	@Column({name: 'precio_unitario', type: 'numeric', nullable: true})
+	@Column({name: 'precio_unitario', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	precioUnitario: number | null;
 
 	@Column({name: 'variante_id', type: 'integer', nullable: true})

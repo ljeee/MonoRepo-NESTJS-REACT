@@ -77,9 +77,9 @@ export default function FacturasDiaScreen() {
           </Text>
         </View>
       ) : (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: spacing.md, paddingBottom: spacing.lg }}>
+        <View style={styles.gridContainer}>
           {data?.map((item, idx) => (
-            <View key={item.facturaId?.toString() || idx.toString()} style={{ width: isMobile ? '100%' : '48.5%' }}>
+            <View key={item.facturaId?.toString() || idx.toString()} style={isMobile ? styles.gridItemFull : styles.gridItemHalf}>
               <FacturaCard
                 item={item}
                 isUpdating={updating === item.facturaId}
@@ -134,5 +134,18 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.textMuted,
     textAlign: 'center',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: spacing.md,
+    paddingBottom: spacing.lg,
+  },
+  gridItemFull: {
+    width: '100%',
+  },
+  gridItemHalf: {
+    width: '48.5%',
   },
 });

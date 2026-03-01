@@ -9,9 +9,9 @@ import { Server, Socket } from 'socket.io';
 @WebSocketGateway({
 	namespace: '/ordenes',
 	cors: {
-		origin: (requestOrigin, cb) => {
-		    cb(null, true);
-		},
+		origin: process.env.CORS_ORIGINS
+			? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+			: ['tauri://localhost', 'http://localhost:1420', 'http://localhost:8081'],
 		credentials: true,
 	}
 })

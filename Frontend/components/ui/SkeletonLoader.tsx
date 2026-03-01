@@ -53,13 +53,7 @@ export function Skeleton({
             ]}
         >
             <Animated.View
-                style={{
-                    width: '100%',
-                    height: '100%',
-                    backgroundColor: colors.border,
-                    opacity: 0.5,
-                    transform: [{ translateX }],
-                }}
+                style={[skeletonStyles.shimmer, { transform: [{ translateX }] }]}
             />
         </View>
     );
@@ -75,9 +69,9 @@ export function CardSkeleton({ style }: { style?: ViewStyle }) {
                 <Skeleton width={120} height={16} />
                 <Skeleton width={80} height={24} borderRadius={radius.full} />
             </View>
-            <Skeleton width="70%" height={14} style={{ marginTop: spacing.md }} />
-            <Skeleton width="50%" height={14} style={{ marginTop: spacing.sm }} />
-            <Skeleton width="90%" height={14} style={{ marginTop: spacing.sm }} />
+            <Skeleton width="70%" height={14} style={skeletonStyles.marginTopMd} />
+            <Skeleton width="50%" height={14} style={skeletonStyles.marginTopSm} />
+            <Skeleton width="90%" height={14} style={skeletonStyles.marginTopSm} />
         </View>
     );
 }
@@ -89,7 +83,7 @@ export function ListSkeleton({ count = 3, style }: { count?: number; style?: Vie
     return (
         <View style={style}>
             {Array.from({ length: count }).map((_, i) => (
-                <CardSkeleton key={i} style={{ marginBottom: spacing.md }} />
+                <CardSkeleton key={i} style={skeletonStyles.marginBottomMd} />
             ))}
         </View>
     );
@@ -107,5 +101,20 @@ const skeletonStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+    },
+    shimmer: {
+        width: '100%',
+        height: '100%',
+        backgroundColor: colors.border,
+        opacity: 0.5,
+    },
+    marginTopMd: {
+        marginTop: spacing.md,
+    },
+    marginTopSm: {
+        marginTop: spacing.sm,
+    },
+    marginBottomMd: {
+        marginBottom: spacing.md,
     },
 });

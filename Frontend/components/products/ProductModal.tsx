@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../../styles/theme';
 import { spacing } from '../../styles/tokens';
 import { Button, Input, Icon } from '../ui';
@@ -84,7 +84,7 @@ export function ProductModal({
                             title="Cancelar"
                             variant="ghost"
                             onPress={onClose}
-                            style={{ flex: 1 }}
+                            style={localStyles.flexOne}
                         />
                         <Button
                             title={loading ? 'Guardando...' : 'Guardar'}
@@ -92,7 +92,7 @@ export function ProductModal({
                             icon="content-save-outline"
                             onPress={onSave}
                             loading={loading}
-                            style={{ flex: 1 }}
+                            style={localStyles.flexOne}
                         />
                     </View>
 
@@ -103,7 +103,7 @@ export function ProductModal({
                             icon="trash-can-outline"
                             fullWidth
                             onPress={onDelete}
-                            style={{ marginTop: spacing.md }}
+                            style={localStyles.marginTopMd}
                         />
                     )}
                 </Pressable>
@@ -111,5 +111,14 @@ export function ProductModal({
         </Modal>
     );
 }
+
+const localStyles = StyleSheet.create({
+    flexOne: {
+        flex: 1,
+    },
+    marginTopMd: {
+        marginTop: spacing.md,
+    },
+});
 
 

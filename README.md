@@ -1,68 +1,221 @@
-# POS e Invoicing System with Traefik
-This monorepo contains a NestJS backend, an Expo/React web frontend, and a Docker stack with Traefik for unified routing.
+# POS Pizzería — Monorepo
 
-## What is here
-- POS and invoicing workflow for orders, deliveries, and daily reporting.
-- Backend: NestJS + TypeORM + PostgreSQL; optional thermal printing and Telegram notifications.
-- Frontend: Expo (web) consuming the API.
-- Infra: Docker Compose with Traefik gateway; optional Nginx for the web build.
+Sistema punto de venta para pizzería con tres aplicaciones cliente, WebSocket en tiempo real y autenticación JWT.
 
-## Quick start (Docker)
-1) Copy environment files if needed:
+## Qué contiene
+
+| Carpeta | Tecnología | Descripción |
+|---------|-----------|-------------|
+| **Backend/** | NestJS + TypeORM + PostgreSQL + Redis | API REST, WebSocket Gateway (Socket.IO), Auth JWT, Swagger |
+| **Frontend/** | Expo (React Native Web) + Expo Router | App web/móvil para el personal (cajeros, cocina, repartidores) |
+| **Desktop/** | Tauri v2 + React + Vite | App de escritorio para PC de caja con atajos de teclado y notificaciones nativas |
+| **Docs/** | Markdown | Arquitectura, roadmaps, guías de despliegue |
+
+## Stack actual
+
 ```
+┌──────────────────────────────────────────────────────────────┐
+│  Docker Compose                                              │
+│  ┌────────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │ NestJS     │ │ Postgres │ │  Redis   │ │ Frontend     │  │
+│  │ :3000      │ │ :5433    │ │ (interno)│ │ :8081 (Nginx)│  │
+│  │ API + WS   │ │          │ │ Pub/Sub  │ │              │  │
+│  └────────────┘ └──────────┘ └──────────┘ └──────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+  📱 Expo APK / Web   → celulares del personal (LAN)
+  🖥️  Tauri .exe       → PC fija de caja (Windows)
+```
+
+## Inicio rápido (Docker)
+
+```bash
+# 1. Copiar variables de entorno
 cp Backend/.env.example Backend/.env
-```
-2) Build and start everything:
-```
-docker-compose up -d --build
-```
-3) Main endpoints:
-- Frontend: http://localhost:8081 (or http://localhost via Traefik if configured)
-- Backend API: http://localhost:3000/api (or http://localhost/api via Traefik)
-- Traefik dashboard (optional): http://localhost:8080
-- PostgreSQL: localhost:5433
 
-## Quick start (local without Docker)
+# 2. Levantar todo
+docker-compose up -d --build
+
+# 3. Seed de usuarios (primera vez)
+docker exec -it pizzeria-backend npm run seed:users:prod
 ```
+
+O simplemente ejecutar `start-pos.bat` (Windows).
+
+### Endpoints disponibles
+
+| Servicio | URL |
+|----------|-----|
+| Backend API | http://localhost:3000 |
+| Swagger | http://localhost:3000/swagger |
+| Frontend (web) | http://localhost:8081 |
+| PostgreSQL | localhost:5433 |
+| WebSocket | ws://localhost:3000/ordenes |
+
+## Inicio rápido (desarrollo local)
+
+```bash
 # Backend
 cd Backend
 npm install
 npm run start:dev
 
-# Frontend
+# Frontend (Expo web)
 cd Frontend
 npm install
 npm run web
+
+# Desktop (Tauri)
+cd Desktop
+npm install
+npm run tauri dev
 ```
-The frontend detects the API host from `window.location.hostname` by default.
 
-## Project layout
-- Backend/ — NestJS services, DB schemas, seeds, printing/telegram helpers.
-- Frontend/ — Expo web app with POS UI components.
-- Docs/ — architecture and dependencies (see links below).
-- DOCKER_DEPLOYMENT.md — detailed deployment guide with networking, printing, and Telegram setup.
-- SISTEMA_PRODUCTOS_PRECIOS.md — full reference for the dynamic products/pricing system (API + frontend usage).
+Script combinado desde la raíz:
+```bash
+npm run dev          # Backend + Frontend en paralelo
+npm run dev:docker   # Sube la DB en Docker + Backend local
+```
 
-## Docs
-- Architecture: Docs/architecture.md
-- Dependencies: Docs/dependencias.md
-- Deployment details: DOCKER_DEPLOYMENT.md (full) and TRAEFIK_IMPLEMENTATION.md (summary)
+## Estructura del proyecto
+
+```
+MonoRepo/
+├── Backend/                 # NestJS API
+│   └── src/
+│       ├── auth/            # JWT strategy, guards, roles, login/register
+│       ├── clientes/        # CRUD clientes
+│       ├── common/          # Interceptors, Redis module/adapter, seeders
+│       ├── domiciliarios/   # Gestión de domiciliarios
+│       ├── domicilios/      # Direcciones de envío
+│       ├── facturas-pagos/  # Pagos de facturas
+│       ├── facturas-ventas/ # Facturación
+│       ├── ordenes/         # CRUD + Socket.IO Gateway (tiempo real)
+│       ├── ordenes-productos/ # Detalle de productos por orden
+│       ├── pizza-sabores/   # Sabores y recargos por tamaño
+│       └── productos/       # Catálogo de productos + variantes
+├── Frontend/                # Expo (React Native Web)
+│   ├── app/                 # 15 pantallas (Expo Router)
+│   ├── components/          # UI reutilizable, formularios, estados
+│   ├── contexts/            # AuthContext, OrderContext, ToastContext
+│   ├── hooks/               # 10 hooks (WebSocket, CRUD, búsquedas)
+│   ├── services/            # Cliente Axios
+│   ├── styles/              # Design tokens, tema, responsive
+│   └── types/               # Modelos TypeScript
+├── Desktop/                 # Tauri v2 (PC de caja)
+│   ├── src/                 # React + Vite
+│   │   ├── pages/           # 6 vistas (Login, Ordenes, CrearOrden, etc.)
+│   │   ├── components/      # Sidebar, formularios de orden
+│   │   ├── contexts/        # Auth, Order, Toast
+│   │   ├── hooks/           # 11 hooks (incl. keyboard-shortcuts)
+│   │   ├── services/        # API + settings (URL backend configurable)
+│   │   └── utils/           # CSV export, impresión, fechas
+│   └── src-tauri/           # Rust (Tauri core)
+├── Docs/                    # Documentación
+├── docker-compose.yml       # DB + Redis + Backend + Frontend
+├── start-pos.bat            # Script de arranque Windows
+└── package.json             # Scripts raíz (dev, db:up, etc.)
+```
+
+## Funcionalidades implementadas
+
+### Backend
+- **10 módulos CRUD** con controllers, services, entities y DTOs
+- **WebSocket Gateway** (Socket.IO + Redis Adapter) en namespace `/ordenes`
+  - Eventos: `orden:nueva`, `orden:actualizada`, `cocina:nueva-orden`, `whatsapp:handoff`
+  - Rooms por dispositivo (cajero, cocina, admin, repartidor)
+- **Auth JWT** con guards, roles y decorador `@Public()`
+- **Swagger** en `/swagger` con Bearer auth
+- **Throttling** (100 req/60s via `@nestjs/throttler`)
+- **BullMQ** (Redis) para colas de trabajo
+- **LoggingInterceptor** global
+- **Seeders**: usuarios, productos, órdenes
+
+### Frontend (Expo)
+- 15 pantallas: crear orden, órdenes del día, historial, facturas, balances, clientes, domiciliarios, gestión de productos
+- WebSocket en tiempo real (`use-ordenes-socket`)
+- AuthContext con persistencia en AsyncStorage
+- Sistema de diseño con tokens, tema y responsive
+
+### Desktop (Tauri)
+- 6 vistas: Login, Órdenes, Crear Orden, Facturas, Historial, Ajustes
+- Atajos de teclado: F1 (crear orden), F2 (órdenes), F3 (facturas)
+- URL del backend configurable (persistida con Tauri Store)
+- Notificaciones nativas de Windows
+- Prevención de cierre accidental
+
+## Documentación
+
+| Archivo | Contenido |
+|---------|-----------|
+| [Docs/architecture.md](Docs/architecture.md) | Arquitectura actual y roadmap de fases pendientes |
+| [Docs/dependencias.md](Docs/dependencias.md) | Stack tecnológico y dependencias |
+| [Docs/DOCKER_DEPLOYMENT.md](Docs/DOCKER_DEPLOYMENT.md) | Guía de despliegue Docker |
+| [Docs/SISTEMA_PRODUCTOS_PRECIOS.md](Docs/SISTEMA_PRODUCTOS_PRECIOS.md) | Sistema de productos, variantes y precios |
+| [Docs/README_FLUJO.md](Docs/README_FLUJO.md) | Flujo de trabajo del sistema |
+| [Docs/ROADMAP.md](Docs/ROADMAP.md) | Roadmap general |
+| [Docs/ROADMAPDESKOPT.md](Docs/ROADMAPDESKOPT.md) | Roadmap Desktop |
+| [Docs/ROADMAP_N8N.md](Docs/ROADMAP_N8N.md) | Roadmap integración n8n/WhatsApp |
 
 ## Testing
-- Backend: `npm run test` or `npm run test:e2e` inside Backend
-- Frontend: add tests as needed (none configured yet)
 
-## CI/CD
-CI/CD is not configured yet. Recommended next step: GitHub Actions workflow to build and test Backend and Frontend Docker images on each push to main.
+```bash
+# Backend
+cd Backend
+npm run test          # Unit tests
+npm run test:e2e      # E2E tests
+npm run lint          # ESLint
 
-## Notes
-- Keep secrets in your own .env files; do not commit credentials.
-- Use Docker for the fastest reproduction of the full stack.
+# Frontend
+cd Frontend
+npm run lint
+```
 
 ## Docker
 
+```bash
+# Levantar todo
+docker-compose up -d --build
+
+# Solo la base de datos (desarrollo local)
+npm run db:up
+
+# Bajar todo con volúmenes
 docker-compose down -v
 
-docker-compose up --build -d
-
+# Seed de usuarios en producción
 docker exec -it pizzeria-backend npm run seed:users:prod
+
+# Seed completo (dev)
+cd Backend && npm run seed
+```
+
+## Variables de entorno
+
+Crear `Backend/.env` con:
+
+```env
+# Postgres
+DATABASE_HOST=localhost
+DATABASE_PORT=5433
+DATABASE_USER=appuser
+DATABASE_PASSWORD=tu-contraseña
+DATABASE_NAME=appdb
+
+# JWT
+JWT_SECRET=min-32-caracteres-aleatorios
+JWT_EXPIRES_IN=28800
+
+# CORS
+CORS_ORIGINS=http://localhost:8081,http://localhost:5173,http://localhost:1420,tauri://localhost
+
+# Redis (solo en Docker)
+REDIS_HOST=redis
+REDIS_PORT=6379
+```
+
+## Notas
+
+- Mantener secretos en archivos `.env` locales — no commitear credenciales
+- El Frontend detecta la API desde `window.location.hostname` por defecto
+- El Desktop permite configurar la URL del backend en la pantalla de ajustes
+- Para desarrollo local usar `npm run dev` desde la raíz

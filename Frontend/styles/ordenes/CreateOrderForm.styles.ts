@@ -204,4 +204,43 @@ export const orderFormStyles = StyleSheet.create({
   fullWidth: {
     width: '100%',
   },
+  // Extracted inline styles
+  rootBg: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: colors.text,
+    fontSize: 16,
+  },
+  formCardMobile: {
+    padding: 20,
+    borderRadius: 16,
+  },
+  pickerItemStyle: {
+    color: colors.text,
+    fontSize: 16,
+  },
+  flexOne: {
+    flex: 1,
+  },
+  observationsInput: {
+    height: 100,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  sectionTitleSpaced: {
+    marginTop: 24,
+  },
+  disabledBtn: {
+    opacity: 0.6,
+  },
+  androidBottomSpacer: {
+    height: 32,
+  },
 });

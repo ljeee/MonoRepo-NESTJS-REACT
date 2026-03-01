@@ -105,7 +105,7 @@ export default function Button({
                     <ActivityIndicator size="small" color={v.text} />
                 ) : (
                     <>
-                        {icon && <Icon name={icon} size={s.iconSize} color={v.text} style={{ marginRight: spacing.sm }} />}
+                        {icon && <Icon name={icon} size={s.iconSize} color={v.text} style={styles.iconMarginRight} />}
                         <Text
                             style={[
                                 styles.text,
@@ -117,7 +117,7 @@ export default function Button({
                         >
                             {title}
                         </Text>
-                        {iconRight && <Icon name={iconRight} size={s.iconSize} color={v.text} style={{ marginLeft: spacing.sm }} />}
+                        {iconRight && <Icon name={iconRight} size={s.iconSize} color={v.text} style={styles.iconMarginLeft} />}
                     </>
                 )}
             </Animated.View>
@@ -136,5 +136,11 @@ const styles = StyleSheet.create({
     text: {
         fontWeight: fontWeight.bold,
         letterSpacing: 0.3,
+    },
+    iconMarginRight: {
+        marginRight: spacing.sm,
+    },
+    iconMarginLeft: {
+        marginLeft: spacing.sm,
     },
 });

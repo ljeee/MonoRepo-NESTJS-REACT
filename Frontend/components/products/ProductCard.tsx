@@ -30,10 +30,10 @@ export function ProductCard({
     onEditSabor,
 }: ProductCardProps) {
     return (
-        <Card padding="lg" style={{ marginBottom: spacing.lg }}>
+        <Card padding="lg" style={styles.cardWrapper}>
             {/* Product header */}
             <View style={styles.productHeader}>
-                <View style={{ flex: 1 }}>
+                <View style={styles.flexOne}>
                     <View style={styles.productTitleRow}>
                         <Text style={styles.productName}>{product.productoNombre}</Text>
                         <Badge label={product.categoria} variant="primary" size="sm" />
@@ -77,7 +77,7 @@ export function ProductCard({
                                     variant="ghost"
                                     size="sm"
                                     onPress={() => onEditVariant(v.varianteId)}
-                                    style={{ paddingHorizontal: 6, minWidth: 0 }}
+                                    style={styles.variantBtnCompact}
                                 />
                                 <Button
                                     title=""
@@ -85,7 +85,7 @@ export function ProductCard({
                                     variant="ghost"
                                     size="sm"
                                     onPress={() => onDeleteVariant(v.varianteId, v.nombre)}
-                                    style={{ paddingHorizontal: 6, minWidth: 0 }}
+                                    style={styles.variantBtnCompact}
                                 />
                             </View>
                         </View>
@@ -98,7 +98,7 @@ export function ProductCard({
                     size="sm"
                     fullWidth
                     onPress={onAddVariant}
-                    style={{ marginTop: spacing.md }}
+                    style={styles.addVariantBtn}
                 />
             </View>
 
@@ -128,17 +128,17 @@ function PizzaFlavorsSection({ sabores, onEditSabor }: PizzaFlavorsSectionProps)
                 style={[
                     styles.flavorChip,
                     isEspecial && styles.flavorChipSpecial,
-                    { flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' }
+                    styles.chipRow
                 ]}
                 onPress={() => onEditSabor?.(sabor)}
                 activeOpacity={0.7}
             >
-                <View style={{ flexShrink: 1, marginRight: onEditSabor ? 6 : 0 }}>
+                <View style={[styles.chipContent, { marginRight: onEditSabor ? 6 : 0 }]}>
                     <Text style={[styles.flavorChipText, isEspecial && { color: colors.secondary }]} numberOfLines={1}>
                         {isEspecial ? '★ ' : ''}{sabor.nombre}
                     </Text>
                     {hasRecargo && (
-                        <Text style={{ fontSize: 10, color: colors.secondary, marginTop: 1 }}>
+                        <Text style={styles.chipRecargoText}>
                             +${formatCurrency(Number(sabor.recargoPequena))}/${formatCurrency(Number(sabor.recargoMediana))}
                         </Text>
                     )}
@@ -159,7 +159,7 @@ function PizzaFlavorsSection({ sabores, onEditSabor }: PizzaFlavorsSectionProps)
                 <Icon name="pizza" size={16} color={colors.secondary} />
                 <Text style={styles.flavorsTitle}>Sabores y Recargos</Text>
                 {onEditSabor && (
-                    <Text style={{ fontSize: 11, color: colors.textMuted, marginLeft: 6 }}>
+                    <Text style={styles.editHintText}>
                         (toca para editar)
                     </Text>
                 )}
@@ -170,7 +170,7 @@ function PizzaFlavorsSection({ sabores, onEditSabor }: PizzaFlavorsSectionProps)
                 {tradicionales.map(s => renderChip(s))}
             </View>
 
-            <Text style={[styles.flavorCategoryLabel, { marginTop: spacing.md }]}>Especiales ★</Text>
+            <Text style={[styles.flavorCategoryLabel, styles.flavorCategoryLabelSpaced]}>Especiales ★</Text>
             <View style={styles.flavorsGrid}>
                 {especiales.map(s => renderChip(s))}
             </View>
@@ -191,7 +191,7 @@ function PizzaFlavorsSection({ sabores, onEditSabor }: PizzaFlavorsSectionProps)
                     3 sabores: +${formatCurrency(extra3SaboresAmount)} adicional
                 </Text>
                 {onEditSabor && config3Sabores && (
-                    <Icon name="pencil-outline" size={12} color={colors.textMuted} style={{ marginLeft: 6 }} />
+                    <Icon name="pencil-outline" size={12} color={colors.textMuted} style={styles.pricingIconMargin} />
                 )}
             </TouchableOpacity>
         </View>

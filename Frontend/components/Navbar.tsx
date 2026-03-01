@@ -15,6 +15,7 @@ import { colors } from '../styles/theme';
 import { fontSize, fontWeight, radius, shadows, spacing, layout, duration, zIndex } from '../styles/tokens';
 import { useBreakpoint } from '../styles/responsive';
 import Icon, { IconName } from './ui/Icon';
+import { useAuth } from '../contexts/AuthContext';
 
 // ── Section definitions ──
 type NavItem = { label: string; route: string; icon: IconName };
@@ -82,7 +83,7 @@ function AccordionSection({
             name={section.icon}
             size={18}
             color={hasActive ? colors.primary : colors.textMuted}
-            style={{ marginRight: spacing.sm }}
+            style={styles.sectionHeaderIcon}
           />
           {!compact && (
             <Text style={[styles.sectionTitle, hasActive && styles.sectionTitleActive]}>
@@ -113,7 +114,7 @@ function AccordionSection({
                 name={item.icon}
                 size={16}
                 color={active ? colors.primary : colors.textSecondary}
-                style={{ marginRight: spacing.md }}
+                style={styles.navItemIcon}
               />
               {!compact && (
                 <Text style={[styles.link, active && styles.linkActive]}>{item.label}</Text>
@@ -129,6 +130,7 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const { isMobile, isTablet } = useBreakpoint();
+  const { logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const sidebarWidth = layout.sidebarWidth;
   const translateX = useRef(new Animated.Value(-sidebarWidth)).current;
@@ -222,8 +224,14 @@ export default function Navbar() {
               <Icon name="close" size={20} color={colors.textSecondary} />
             </TouchableOpacity>
           </View>
-          <ScrollView showsVerticalScrollIndicator={false}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
             {renderSections()}
+
+            <View style={{ flex: 1 }} />
+            <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+              <Icon name="logout" size={20} color={colors.danger} />
+              <Text style={styles.logoutText}>Cerrar Sesión</Text>
+            </TouchableOpacity>
           </ScrollView>
         </Animated.View>
       </>
@@ -237,8 +245,14 @@ export default function Navbar() {
         <Icon name="pizza" size={22} color={colors.primary} />
         <Text style={styles.sidebarDesktopTitle}>POS Pizza</Text>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.sidebarScroll} contentContainerStyle={{ flexGrow: 1 }}>
         {renderSections()}
+
+        <View style={{ flex: 1 }} />
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+          <Icon name="logout" size={20} color={colors.danger} />
+          <Text style={styles.logoutText}>Cerrar Sesión</Text>
+        </TouchableOpacity>
       </ScrollView>
       {/* Footer */}
       <View style={styles.sidebarFooter}>
@@ -419,5 +433,32 @@ const styles = StyleSheet.create({
   linkActive: {
     color: colors.primary,
     fontWeight: fontWeight.bold,
+  },
+  sectionHeaderIcon: {
+    marginRight: spacing.sm,
+  },
+  navItemIcon: {
+    marginRight: spacing.md,
+  },
+  sidebarScroll: {
+    flex: 1,
+  },
+  logoutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing['2xl'],
+    marginHorizontal: spacing.sm,
+    marginBottom: spacing.xl,
+    marginTop: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.dangerLight,
+  },
+  logoutText: {
+    fontSize: fontSize.sm,
+    color: colors.danger,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.2,
   },
 });

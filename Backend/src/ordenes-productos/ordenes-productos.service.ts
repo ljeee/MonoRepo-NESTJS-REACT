@@ -1,4 +1,4 @@
-import {Injectable} from '@nestjs/common';
+import {Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {OrdenesProductos} from './esquemas/ordenes-productos.entity';
@@ -19,11 +19,15 @@ export class OrdenesProductosService {
 		});
 	}
 
-	findOne(id: number) {
-		return this.repo.findOne({
+	async findOne(id: number) {
+		const result = await this.repo.findOne({
 			where: {id},
 			relations: ['orden', 'productoObj'],
 		});
+		if (!result) {
+			throw new NotFoundException(`OrdenProducto con ID ${id} no encontrado`);
+		}
+		return result;
 	}
 
 	create(data: CreateOrdenesProductosDto) {

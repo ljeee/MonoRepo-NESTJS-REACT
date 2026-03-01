@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { PizzaSabor } from '../../hooks/use-pizza-sabores';
 import { colors } from '../../styles/theme';
 import { radius, spacing } from '../../styles/tokens';
@@ -46,18 +46,18 @@ export function SaborModal({ visible, sabor, loading, onSave, onClose }: SaborMo
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
             <Pressable
-                style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: spacing.lg }}
+                style={saborStyles.overlay}
                 onPress={onClose}
             >
                 <Pressable
-                    style={{ backgroundColor: colors.card, borderRadius: radius.lg, padding: spacing.xl, width: '100%', maxWidth: 380 }}
+                    style={saborStyles.card}
                     onPress={e => e.stopPropagation()}
                 >
                     {/* Header */}
-                    <Text style={{ fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 4 }}>
+                    <Text style={saborStyles.title}>
                         {isEspecial ? '★ ' : ''}{sabor.nombre}
                     </Text>
-                    <Text style={{ fontSize: 13, color: colors.textMuted, marginBottom: spacing.lg }}>
+                    <Text style={saborStyles.subtitle}>
                         {sabor.tipo === 'configuracion'
                             ? 'Configura el valor de recargo global'
                             : (isEspecial ? 'Sabor especial — configura el recargo por tamaño' : 'Sabor tradicional — sin recargo aplicado')}
@@ -90,15 +90,57 @@ export function SaborModal({ visible, sabor, loading, onSave, onClose }: SaborMo
                     />
 
                     {error && (
-                        <Text style={{ color: colors.danger, fontSize: 13, marginTop: 4, marginBottom: 8 }}>{error}</Text>
+                        <Text style={saborStyles.errorText}>{error}</Text>
                     )}
 
-                    <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
-                        <Button title="Cancelar" variant="ghost" onPress={onClose} style={{ flex: 1 }} />
-                        <Button title={loading ? 'Guardando...' : 'Guardar'} onPress={handleSave} loading={loading} style={{ flex: 1 }} />
+                    <View style={saborStyles.actionsRow}>
+                        <Button title="Cancelar" variant="ghost" onPress={onClose} style={saborStyles.actionBtn} />
+                        <Button title={loading ? 'Guardando...' : 'Guardar'} onPress={handleSave} loading={loading} style={saborStyles.actionBtn} />
                     </View>
                 </Pressable>
             </Pressable>
         </Modal>
     );
 }
+
+const saborStyles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: spacing.lg,
+    },
+    card: {
+        backgroundColor: colors.card,
+        borderRadius: radius.lg,
+        padding: spacing.xl,
+        width: '100%',
+        maxWidth: 380,
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: colors.text,
+        marginBottom: 4,
+    },
+    subtitle: {
+        fontSize: 13,
+        color: colors.textMuted,
+        marginBottom: spacing.lg,
+    },
+    errorText: {
+        color: colors.danger,
+        fontSize: 13,
+        marginTop: 4,
+        marginBottom: 8,
+    },
+    actionsRow: {
+        flexDirection: 'row',
+        gap: spacing.sm,
+        marginTop: spacing.md,
+    },
+    actionBtn: {
+        flex: 1,
+    },
+});
