@@ -93,6 +93,7 @@ export interface FacturaOrdenProducto {
 
 export interface FacturaOrden {
   ordenId?: number;
+  tipoPedido?: string;
   productos?: FacturaOrdenProducto[];
 }
 
