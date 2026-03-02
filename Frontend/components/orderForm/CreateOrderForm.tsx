@@ -133,7 +133,7 @@ export default function CreateOrderForm() {
   // ==================== EFFECTS ====================
   const hasClienteDirecciones = !!(client && [client.direccion, client.direccionDos, client.direccionTres].filter(Boolean).length);
 
-  // Buscar cliente solo cuando hay 10 dÃ­gitos y es domicilio
+  // Buscar cliente solo cuando hay 10 dígitos y es domicilio
   useEffect(() => {
     if (formState.tipoPedido === 'domicilio' && formState.telefonoCliente.length === 10) {
       fetchClient(formState.telefonoCliente);
@@ -172,7 +172,7 @@ export default function CreateOrderForm() {
     // Validar tipo de pedido
     if (formState.tipoPedido === 'mesa' && (!formState.numeroMesa || !formState.numeroMesa.trim())) {
       setLoading(false);
-      showToast('Debe seleccionar un nÃºmero de mesa', 'error');
+      showToast('Debe seleccionar un número de mesa', 'error');
       return;
     }
 
@@ -189,7 +189,7 @@ export default function CreateOrderForm() {
 
       if (!direccion || !direccion.trim()) {
         setLoading(false);
-        showToast('Debe ingresar o seleccionar una direcciÃ³n', 'error');
+        showToast('Debe ingresar o seleccionar una dirección', 'error');
         return;
       }
     }
@@ -273,8 +273,8 @@ export default function CreateOrderForm() {
         observaciones: '',
       });
 
-      // Mostrar Ã©xito y redirigir
-      showToast('Â¡Orden creada exitosamente!', 'success', 2000);
+      // Mostrar éxito y redirigir
+      showToast('¡Orden creada exitosamente!', 'success', 2000);
       setTimeout(() => {
         router.push('/ordenes');
       }, 2000);
@@ -332,7 +332,7 @@ export default function CreateOrderForm() {
 
             {/* METODO DE PAGO */}
             <View style={[styles.col4, isMobile && styles.col4Mobile]}>
-              <Text style={styles.label}>MÃ©todo de pago</Text>
+              <Text style={styles.label}>Método de pago</Text>
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={formState.metodo}
@@ -350,7 +350,7 @@ export default function CreateOrderForm() {
             {/* TELEFONO (Solo Domicilio) */}
             {formState.tipoPedido === 'domicilio' && (
               <View style={[styles.col4, isMobile && styles.col4Mobile]}>
-                <Text style={styles.label}>TelÃ©fono Cliente</Text>
+                <Text style={styles.label}>Teléfono Cliente</Text>
                 <TextInput
                   style={styles.input}
                   value={formState.telefonoCliente}
@@ -405,7 +405,7 @@ export default function CreateOrderForm() {
           {formState.tipoPedido === 'domicilio' && (
             <View style={styles.row}>
               <View style={[styles.col6, isMobile && styles.col6Mobile]}>
-                <Text style={styles.label}>DirecciÃ³n Cliente</Text>
+                <Text style={styles.label}>Dirección Cliente</Text>
                 {hasClienteDirecciones ? (
                   <>
                     <View style={styles.pickerContainer}>
@@ -416,11 +416,11 @@ export default function CreateOrderForm() {
                         itemStyle={styles.pickerItemStyle}
                         dropdownIconColor={colors.text}
                       >
-                        <Picker.Item label="Seleccione direcciÃ³n" value="" color={colors.subText} />
+                        <Picker.Item label="Seleccione dirección" value="" color={colors.subText} />
                         {[client!.direccion, client!.direccionDos, client!.direccionTres]
                           .filter(Boolean)
                           .map((dir, idx) => <Picker.Item key={idx} label={dir!} value={dir!} />)}
-                        <Picker.Item label="Nueva direcciÃ³n..." value="__nueva__" />
+                        <Picker.Item label="Nueva dirección..." value="__nueva__" />
                       </Picker>
                     </View>
                     {formState.selectedAddress === '__nueva__' && (
@@ -478,7 +478,7 @@ export default function CreateOrderForm() {
             </View>
           )}
 
-          {/* =============== PRODUCTOS (MENÃš) =============== */}
+          {/* =============== PRODUCTOS (MENÚ) =============== */}
           <Text style={styles.sectionTitle}>Productos</Text>
           <MenuPicker onAdd={addToCart} />
 
