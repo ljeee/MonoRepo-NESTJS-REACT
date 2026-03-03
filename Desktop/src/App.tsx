@@ -132,8 +132,8 @@ function App() {
   return (
     <AppInitialState>
       <BrowserRouter>
-        <KeyboardShortcutsBinder />
         <ToastProvider>
+          <KeyboardShortcutsBinder />
           <CloseFeedbackBinder />
           <ToastViewport />
           <AuthProvider>

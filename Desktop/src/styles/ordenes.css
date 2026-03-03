@@ -1,0 +1,289 @@
+/* ══════════════════════════════════════════════════════════════════
+   ORDENES — Order cards, status badges, grid, filters
+   ══════════════════════════════════════════════════════════════════ */
+
+.orders-page {
+    padding: 0 10px;
+}
+
+.orders-loading {
+    display: flex;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+}
+
+.orders-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.orders-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin: 0;
+}
+
+.orders-header-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.orders-pill {
+    padding: 6px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+}
+
+.orders-pill-primary {
+    background: var(--primary);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.orders-pill-muted {
+    background: var(--bg-card);
+    color: #cbd5e1;
+}
+
+.orders-empty {
+    text-align: center;
+    padding: 80px 20px;
+    color: #64748b;
+    background: var(--bg-dark);
+    border-radius: 12px;
+    border: 1px dashed var(--border);
+}
+
+.orders-empty h3 {
+    margin: 0 0 8px;
+}
+
+.orders-empty p {
+    margin: 0;
+}
+
+.orders-empty-icon {
+    margin-bottom: 16px;
+}
+
+.orders-grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 20px;
+}
+
+.orders-card {
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+}
+
+.orders-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.orders-card-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.orders-card-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: var(--text-main);
+}
+
+.orders-card-date {
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.orders-card-body {
+    padding: 16px;
+    flex: 1;
+}
+
+.orders-customer {
+    margin-bottom: 16px;
+}
+
+.orders-products {
+    background: var(--bg-dark);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+.orders-product-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.orders-product-row:last-child {
+    margin-bottom: 0;
+}
+
+.orders-product-name {
+    color: #cbd5e1;
+    padding-right: 12px;
+}
+
+.orders-product-price {
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.orders-card-footer {
+    padding: 16px;
+    background: #172033;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.orders-total-label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.orders-total-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.orders-manage-btn {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Filter pills */
+.orders-filters {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Status badges */
+.status-badge {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+}
+
+.status-badge-state {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.status-badge-type {
+    background: var(--border);
+    color: var(--text-main);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    text-transform: uppercase;
+}
+
+.status-pendiente {
+    background: #422006;
+    color: #facc15;
+}
+
+.status-preparacion {
+    background: #1e3a8a;
+    color: #60a5fa;
+}
+
+.status-listo-entregar {
+    background: #064e3b;
+    color: #34d399;
+}
+
+.status-default {
+    background: #1e3a8a;
+    color: #60a5fa;
+}
+
+.status-en-camino {
+    background: #312e81;
+    color: #a78bfa;
+}
+
+.status-completada {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+.status-cancelado {
+    background: #450a0a;
+    color: #fca5a5;
+}
+
+/* OrdenesTodas */
+.ordenes-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.orden-card {
+    transition: border-color 0.2s;
+}
+
+.orden-card.clickable {
+    cursor: pointer;
+}
+
+.orden-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+/* Text labels (OrdenDetalle) */
+.text-label {
+    display: flex;
+    margin-bottom: 4px;
+    align-items: center;
+}
+
+.text-label-key {
+    width: 70px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.text-label-value {
+    font-size: 14px;
+    color: var(--text-main);
+    font-weight: 500;
+}

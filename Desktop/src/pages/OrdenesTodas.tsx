@@ -236,7 +236,7 @@ export function OrdenesTodasPage() {
                             <div
                                 key={orden.ordenId}
                                 className="orden-card pos-card clickable mb-4"
-                                onClick={() => navigate(`/orden-detalle?ordenId=${orden.ordenId}`)}
+                                onClick={() => navigate(`/ordenes/${orden.ordenId}`)}
                             >
                                 <div className="orden-card-header flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">

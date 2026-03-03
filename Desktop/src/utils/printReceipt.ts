@@ -99,6 +99,15 @@ export function sendWhatsAppDomicilio(
   if (phone.length === 10) phone = '57' + phone;
 
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-  
-  window.open(url, '_blank');
+
+  // Tauri WebView2 blocks window.open for external URLs.
+  // Use an anchor element click to open in the system browser.
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => document.body.removeChild(a), 100);
 }

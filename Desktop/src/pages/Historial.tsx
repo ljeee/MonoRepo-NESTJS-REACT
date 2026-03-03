@@ -57,10 +57,10 @@ export function HistorialPage() {
           <div className="desk-subtle-text">No hay facturas registradas hoy.</div>
         ) : (
           <div className="desk-list">
-            {facturas.slice(0, 10).map((factura, index) => (
+            {facturas.map((factura, index) => (
               <div key={factura.facturaId || index} className="desk-list-row">
                 <span>#{factura.facturaId || 'N/A'} · {factura.clienteNombre || 'Sin cliente'}</span>
-                <span>{factura.estado || 'pendiente'} · ${formatCurrency(factura.total || 0)}</span>
+                <span><span className={`factura-estado factura-estado-${factura.estado || 'pendiente'}`}>{factura.estado || 'pendiente'}</span> · ${formatCurrency(factura.total || 0)}</span>
               </div>
             ))}
           </div>
@@ -75,7 +75,7 @@ export function HistorialPage() {
           <div className="desk-subtle-text">No hay gastos registrados hoy.</div>
         ) : (
           <div className="desk-list">
-            {gastos.slice(0, 10).map((gasto, index) => (
+            {gastos.map((gasto, index) => (
               <div key={gasto.pagosId || index} className="desk-list-row">
                 <span>{gasto.nombreGasto || 'Sin nombre'} · {gasto.metodo || 'N/A'}</span>
                 <span>${formatCurrency(gasto.total || 0)}</span>

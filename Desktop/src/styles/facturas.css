@@ -1,0 +1,187 @@
+/* ══════════════════════════════════════════════════════════════════
+   FACTURAS — Invoice cards, estado pills, summary bar, action buttons
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Estado pills (legacy) */
+.factura-estado {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.factura-estado-pagado {
+    background: #064e3b;
+    color: #34d399;
+}
+
+.factura-estado-pendiente {
+    background: #422006;
+    color: #facc15;
+}
+
+.factura-estado-cancelado {
+    background: #450a0a;
+    color: #fca5a5;
+}
+
+/* Summary bar */
+.facturas-summary-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.summary-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.summary-item.summary-success {
+    border-left: 3px solid #34d399;
+}
+
+.summary-item.summary-warning {
+    border-left: 3px solid #facc15;
+}
+
+.summary-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.summary-value {
+    font-size: 18px;
+    font-weight: 800;
+}
+
+/* Cards grid */
+.facturas-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+}
+
+.factura-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.factura-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.factura-client {
+    font-size: 15px;
+    font-weight: 700;
+    display: block;
+}
+
+.factura-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+.factura-card-right {
+    text-align: right;
+}
+
+.factura-total {
+    font-size: 18px;
+    font-weight: 800;
+    display: block;
+}
+
+.factura-metodo {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.factura-products {
+    background: var(--bg-dark);
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.factura-product-item {
+    font-size: 12px;
+    color: #94a3b8;
+}
+
+.factura-product-item:not(:last-child)::after {
+    content: ',';
+}
+
+.factura-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+}
+
+.factura-estado-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Action buttons */
+.btn-factura-pagado {
+    background: #059669;
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: opacity 0.2s;
+}
+
+.btn-factura-pagado:hover {
+    background: #047857;
+}
+
+.btn-factura-pendiente {
+    background: transparent;
+    border: 1px solid #facc15;
+    color: #facc15;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.btn-factura-pendiente:hover {
+    background: rgba(250, 204, 21, 0.1);
+}
+
+.btn-factura-pagado:disabled,
+.btn-factura-pendiente:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
