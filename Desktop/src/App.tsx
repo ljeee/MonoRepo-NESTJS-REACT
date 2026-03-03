@@ -9,7 +9,6 @@ import { AuthProvider } from './contexts/AuthContext';
 import { OrderProvider } from './contexts/OrderContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ToastViewport } from './components/ToastViewport';
-
 import { MainLayout } from './layouts/MainLayout';
 import { LoginPage } from './pages/Login';
 import { OrdersOfDayPending } from './pages/Ordenes';
@@ -17,6 +16,13 @@ import { CreateOrderPage } from './pages/CrearOrden';
 import { FacturasPage } from './pages/Facturas';
 import { HistorialPage } from './pages/Historial';
 import { AjustesPage } from './pages/Ajustes';
+import { ClientesPage } from './pages/Clientes';
+import { DomiciliariosPage } from './pages/Domiciliarios';
+import { GestionProductosPage } from './pages/GestionProductos';
+import { OrdenesTodasPage } from './pages/OrdenesTodas';
+import { BalanceFechasPage } from './pages/BalanceFechas';
+import { FacturasPagosPage } from './pages/FacturasPagos';
+import { OrdenDetallePage } from './pages/OrdenDetalle';
 import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
 
 import './App.css';
@@ -143,6 +149,13 @@ function App() {
                   <Route path="/crear-orden" element={<CreateOrderPage />} />
                   <Route path="/facturas" element={<FacturasPage />} />
                   <Route path="/historial" element={<HistorialPage />} />
+                  <Route path="/clientes" element={<ClientesPage />} />
+                  <Route path="/domiciliarios" element={<DomiciliariosPage />} />
+                  <Route path="/gestion-productos" element={<GestionProductosPage />} />
+                  <Route path="/ordenes-todas" element={<OrdenesTodasPage />} />
+                  <Route path="/ordenes/:ordenId" element={<OrdenDetallePage />} />
+                  <Route path="/balance-fechas" element={<BalanceFechasPage />} />
+                  <Route path="/facturas-pagos" element={<FacturasPagosPage />} />
                   <Route path="/ajustes" element={<AjustesPage />} />
                 </Route>
               </Routes>

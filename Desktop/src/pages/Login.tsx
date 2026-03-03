@@ -10,10 +10,19 @@ export function LoginPage() {
 
     const handleLogin = async (e: FormEvent) => {
         e.preventDefault();
+        setError('');
         try {
             await login(user, pass);
         } catch (err: any) {
-            setError(err?.response?.data?.message || 'Credenciales inválidas');
+            if (err?.response) {
+                // Server responded with an error status
+                setError(`Error ${err.response.status}: ${err.response.data?.message || JSON.stringify(err.response.data)}`);
+            } else if (err?.request) {
+                // Request was made but no response received (CORS, network, timeout)
+                setError(`Sin respuesta del servidor. Verifica que el backend esté corriendo. (${err.message})`);
+            } else {
+                setError(`Error: ${err.message}`);
+            }
         }
     };
 

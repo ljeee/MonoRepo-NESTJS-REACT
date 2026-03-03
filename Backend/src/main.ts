@@ -46,7 +46,7 @@ async function bootstrap() {
 		.filter(Boolean);
 
 	app.enableCors({
-		origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : ['tauri://localhost', 'http://localhost:1420', 'http://localhost:8081', '*'],
+		origin: allowedOrigins && allowedOrigins.length > 0 ? allowedOrigins : ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost', 'http://localhost:1420', 'http://localhost:8081', 'http://localhost:5173'],
 		credentials: true,
 	});
 

@@ -17,10 +17,10 @@ export function getBaseUrl(): string {
   }
   if (typeof window !== 'undefined') {
     const h = window.location.hostname;
-    if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:3000';
+    if (h === 'localhost' || h === '127.0.0.1' || h === 'tauri.localhost') return 'http://127.0.0.1:3000';
     return `http://${h}:3000`;
   }
-  return 'http://localhost:3000';
+  return 'http://127.0.0.1:3000';
 }
 
 const http: AxiosInstance = axios.create({

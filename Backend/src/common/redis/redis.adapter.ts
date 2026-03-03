@@ -32,7 +32,7 @@ export class RedisIoAdapter extends IoAdapter {
 
     const originsToAllow = allowedOrigins && allowedOrigins.length > 0 
       ? allowedOrigins 
-      : ['tauri://localhost', 'http://localhost:1420', 'http://localhost:8081'];
+      : ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost', 'http://localhost:1420', 'http://localhost:8081', 'http://localhost:5173'];
 
     const server = super.createIOServer(port, {
       ...options,

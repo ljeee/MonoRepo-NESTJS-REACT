@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Clock, CheckCircle2, Settings, ChefHat, LogOut, FileText, PlusCircle } from 'lucide-react';
+import { Clock, CheckCircle2, Settings, ChefHat, LogOut, FileText, PlusCircle, Users, Bike, Package, ClipboardList, Scale, CreditCard } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useOrdenesSocket } from '../hooks/use-ordenes-socket';
 
@@ -34,6 +34,30 @@ export function Sidebar() {
                 <NavLink to="/historial" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <CheckCircle2 size={20} />
                     <span>Historial Cierre</span>
+                </NavLink>
+                <NavLink to="/clientes" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Users size={20} />
+                    <span>Clientes</span>
+                </NavLink>
+                <NavLink to="/domiciliarios" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Bike size={20} />
+                    <span>Domiciliarios</span>
+                </NavLink>
+                <NavLink to="/gestion-productos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Package size={20} />
+                    <span>Catálogo</span>
+                </NavLink>
+                <NavLink to="/ordenes-todas" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <ClipboardList size={20} />
+                    <span>Historial Órdenes</span>
+                </NavLink>
+                <NavLink to="/balance-fechas" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <Scale size={20} />
+                    <span>Balance Cierres</span>
+                </NavLink>
+                <NavLink to="/facturas-pagos" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                    <CreditCard size={20} />
+                    <span>Egresos Diarios</span>
                 </NavLink>
                 <NavLink to="/ajustes" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                     <Settings size={20} />

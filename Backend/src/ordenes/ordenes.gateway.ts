@@ -11,7 +11,7 @@ import { Server, Socket } from 'socket.io';
 	cors: {
 		origin: process.env.CORS_ORIGINS
 			? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-			: ['tauri://localhost', 'http://localhost:1420', 'http://localhost:8081'],
+			: ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost', 'http://localhost:1420', 'http://localhost:8081', 'http://localhost:5173'],
 		credentials: true,
 	}
 })
