@@ -19,15 +19,22 @@ export class EstadisticasService {
 		private readonly pagosRepo: Repository<FacturasPagos>,
 	) {}
 
+	private buildDayBounds(from: string, to: string) {
+		const start = from.includes('T') ? new Date(from) : new Date(`${from}T00:00:00`);
+		const end = to.includes('T') ? new Date(to) : new Date(`${to}T23:59:59.999`);
+		return { start, end };
+	}
+
 	// ─── Top Productos ────────────────────────────────────────────────────────────
 	async productosTop(from: string, to: string, limit = 10) {
+		const { start, end } = this.buildDayBounds(from, to);
 		const result = await this.opRepo
 			.createQueryBuilder('op')
 			.select('op.producto', 'producto')
 			.addSelect('SUM(op.cantidad)', 'totalVendido')
 			.addSelect('SUM(op.cantidad * op.precio_unitario)', 'ingresos')
 			.innerJoin('op.orden', 'o')
-			.where('o.fechaOrden BETWEEN :from AND :to', { from, to })
+			.where('o.fechaOrden BETWEEN :from AND :to', { from: start, to: end })
 			.andWhere("o.estadoOrden != 'cancelado'")
 			.groupBy('op.producto')
 			.orderBy('"totalVendido"', 'DESC')
@@ -43,6 +50,7 @@ export class EstadisticasService {
 
 	// ─── Top Sabores (extraídos del texto del producto) ───────────────────────────
 	async saboresTop(from: string, to: string, limit = 10) {
+		const { start, end } = this.buildDayBounds(from, to);
 		// Los sabores están embebidos en el campo 'producto' 
 		// ej: "Pizza Grande (paisa + carnes)" o "Pizza Grande paisa y carnes"
 		// Hacemos un query que busque las pizzas y extraiga los sabores
@@ -51,7 +59,7 @@ export class EstadisticasService {
 			.select('op.producto', 'producto')
 			.addSelect('op.cantidad', 'cantidad')
 			.innerJoin('op.orden', 'o')
-			.where('o.fechaOrden BETWEEN :from AND :to', { from, to })
+			.where('o.fechaOrden BETWEEN :from AND :to', { from: start, to: end })
 			.andWhere("o.estadoOrden != 'cancelado'")
 			.andWhere("LOWER(op.producto) LIKE '%pizza%'")
 			.getRawMany();
@@ -124,13 +132,14 @@ export class EstadisticasService {
 
 	// ─── Ventas por Día ───────────────────────────────────────────────────────────
 	async ventasPorDia(from: string, to: string) {
+		const { start, end } = this.buildDayBounds(from, to);
 		const result = await this.ordenesRepo
 			.createQueryBuilder('o')
 			.select("o.fecha_orden::date", 'fecha')
 			.addSelect('COUNT(*)', 'cantidad')
 			.addSelect('SUM(f.total)', 'total')
 			.innerJoin('o.factura', 'f')
-			.where('o.fecha_orden BETWEEN :from AND :to', { from, to })
+			.where('o.fecha_orden BETWEEN :from AND :to', { from: start, to: end })
 			.andWhere("o.estado_orden != 'cancelado'")
 			.groupBy('fecha')
 			.orderBy('fecha', 'ASC')
@@ -146,12 +155,13 @@ export class EstadisticasService {
 
 	// ─── Métodos de Pago ──────────────────────────────────────────────────────────
 	async metodosPago(from: string, to: string) {
+		const { start, end } = this.buildDayBounds(from, to);
 		const result = await this.facturasRepo
 			.createQueryBuilder('f')
 			.select('f.metodo', 'metodo')
 			.addSelect('COUNT(*)', 'cantidad')
 			.addSelect('SUM(f.total)', 'total')
-			.where("f.fechaFactura BETWEEN :from AND :to", { from, to })
+			.where("f.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
 			.andWhere("f.estado != 'cancelado'")
 			.groupBy('f.metodo')
 			.orderBy('"total"', 'DESC')
@@ -169,29 +179,30 @@ export class EstadisticasService {
 
 	// ─── Resumen del Período ──────────────────────────────────────────────────────
 	async resumenPeriodo(from: string, to: string) {
+		const { start, end } = this.buildDayBounds(from, to);
 		const [ventasResult, egresosResult, ordenesResult, canceladosResult] = await Promise.all([
 			this.facturasRepo
 				.createQueryBuilder('f')
 				.select('COUNT(*)', 'count')
 				.addSelect('COALESCE(SUM(f.total), 0)', 'total')
-				.where("f.fechaFactura BETWEEN :from AND :to", { from, to })
+				.where("f.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
 				.andWhere("f.estado != 'cancelado'")
 				.getRawOne(),
 			this.pagosRepo
 				.createQueryBuilder('p')
 				.select('COALESCE(SUM(p.total), 0)', 'total')
-				.where("p.fechaFactura BETWEEN :from AND :to", { from, to })
+				.where("p.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
 				.getRawOne(),
 			this.ordenesRepo
 				.createQueryBuilder('o')
 				.select('COUNT(*)', 'count')
-				.where("o.fecha_orden BETWEEN :from AND :to", { from, to })
+				.where("o.fecha_orden BETWEEN :from AND :to", { from: start, to: end })
 				.andWhere("o.estado_orden != 'cancelado'")
 				.getRawOne(),
 			this.ordenesRepo
 				.createQueryBuilder('o')
 				.select('COUNT(*)', 'count')
-				.where("o.fecha_orden BETWEEN :from AND :to", { from, to })
+				.where("o.fecha_orden BETWEEN :from AND :to", { from: start, to: end })
 				.andWhere("o.estado_orden = 'cancelado'")
 				.getRawOne(),
 		]);
@@ -241,6 +252,7 @@ export class EstadisticasService {
 
 	// ─── Top Variantes de Producto ────────────────────────────────────────────────
 	async variantesTop(from: string, to: string, limit = 10) {
+		const { start, end } = this.buildDayBounds(from, to);
 		const result = await this.opRepo
 			.createQueryBuilder('op')
 			.select('pv.nombre', 'variante')
@@ -250,7 +262,7 @@ export class EstadisticasService {
 			.innerJoin('op.orden', 'o')
 			.innerJoin('op.variante', 'pv')
 			.innerJoin('op.productoObj', 'p')
-			.where('o.fechaOrden BETWEEN :from AND :to', { from, to })
+			.where('o.fechaOrden BETWEEN :from AND :to', { from: start, to: end })
 			.andWhere("o.estadoOrden != 'cancelado'")
 			.andWhere('op.variante_id IS NOT NULL')
 			.groupBy('pv.nombre')

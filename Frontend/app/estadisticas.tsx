@@ -140,7 +140,8 @@ export default function EstadisticasPage() {
     useEffect(() => {
         const timer = setTimeout(() => { void fetchAll(); }, 0);
         return () => clearTimeout(timer);
-    }, [fetchAll]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const maxProducto = productosTop[0]?.totalVendido || 1;
     const maxSabor = saboresTop[0]?.cantidad || 1;
