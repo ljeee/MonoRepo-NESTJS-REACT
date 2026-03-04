@@ -106,7 +106,13 @@ export default function OrdersOfDayPending() {
 
   const renderOrderItem = useCallback(({ item }: { item: Orden }) => {
     return (
-      <View style={[styles.gridItem, isMobile && styles.gridItemMobile]}>
+      <View
+        style={[
+          styles.gridItem,
+          isTablet && styles.gridItemTablet,
+          isMobile && styles.gridItemMobile,
+        ]}
+      >
         <Card
           onPress={() =>
             router.push(
@@ -114,6 +120,7 @@ export default function OrdersOfDayPending() {
             )
           }
           padding="md"
+          style={styles.orderCard}
         >
           <View style={styles.cardHeader}>
             <View style={styles.cardHeaderLeft}>
@@ -202,7 +209,7 @@ export default function OrdersOfDayPending() {
         </Card>
       </View>
     );
-  }, [getClientName, isMobile, markAsCompleted, patchLoading, router]);
+  }, [getClientName, isMobile, isTablet, markAsCompleted, patchLoading, router]);
 
   const numColumns = isMobile ? 1 : isTablet ? 2 : 3;
 
@@ -278,6 +285,8 @@ export default function OrdersOfDayPending() {
         <FlatList
           style={styles.flex1}
           data={orders}
+          contentContainerStyle={styles.listContent}
+          columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
           keyExtractor={(item) =>
             item.ordenId?.toString() || `${item.fechaOrden || 'orden'}-${item.facturaId ?? 'nf'}`
           }

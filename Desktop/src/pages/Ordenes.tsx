@@ -77,7 +77,7 @@ export function OrdersOfDayPending() {
 
     if (loading) {
         return (
-            <div className="page-container">
+            <div className="page-container orders-page">
                 <div className="loading-state">
                     <RefreshCw size={32} className="spinning text-muted mb-2" />
                     <p>Cargando órdenes en vivo...</p>
@@ -87,7 +87,7 @@ export function OrdersOfDayPending() {
     }
 
     return (
-        <div className="page-container">
+        <div className="page-container orders-page">
             <header className="page-header">
                 <div>
                     <h1 className="page-title">
@@ -155,7 +155,6 @@ export function OrdersOfDayPending() {
                             tabIndex={0}
                             onClick={() => navigate(`/ordenes/${orden.ordenId}`)}
                             onKeyDown={(e) => e.key === 'Enter' && navigate(`/ordenes/${orden.ordenId}`)}
-                            style={{ cursor: 'pointer' }}
                         >
                             <div className="orders-card-header">
                                 <div>

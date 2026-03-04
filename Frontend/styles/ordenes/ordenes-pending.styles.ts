@@ -13,7 +13,7 @@ export const ordenesPendingStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
     gap: spacing.sm,
   },
   filterRowMobile: {
@@ -63,17 +63,28 @@ export const ordenesPendingStyles = StyleSheet.create({
   },
   gridItem: {
     flex: 1,
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.sm,
     maxWidth: '33.33%',
   },
+  gridItemTablet: {
+    maxWidth: '50%',
+  },
   gridItemMobile: {
+    paddingHorizontal: 0,
     maxWidth: '100%',
+  },
+  orderCard: {
+    minHeight: 220,
+    borderRadius: radius.xl,
+    borderColor: 'rgba(51, 65, 85, 0.9)',
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   cardHeaderLeft: {
     flexDirection: 'row',
@@ -89,7 +100,7 @@ export const ordenesPendingStyles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   metaText: {
     fontSize: fontSize.xs,
@@ -129,9 +140,11 @@ export const ordenesPendingStyles = StyleSheet.create({
   },
   productList: {
     marginTop: spacing.sm,
-    padding: spacing.sm,
+    padding: spacing.md,
     backgroundColor: colors.bgLight,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   productRow: {
     flexDirection: 'row',
@@ -166,9 +179,9 @@ export const ordenesPendingStyles = StyleSheet.create({
     marginLeft: 0,
   },
   completeButtonCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -177,6 +190,9 @@ export const ordenesPendingStyles = StyleSheet.create({
   cardActions: {
     marginTop: spacing.md,
     alignItems: 'flex-end',
+  },
+  columnWrapper: {
+    alignItems: 'stretch',
   },
   flex1: {
     flex: 1,
@@ -191,6 +207,7 @@ export const ordenesPendingStyles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   listContent: {
-    paddingBottom: spacing.lg,
+    paddingBottom: spacing['4xl'],
+    paddingHorizontal: spacing.xs,
   },
 });
