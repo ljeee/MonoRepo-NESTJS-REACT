@@ -33,17 +33,9 @@ function SaborModal({
     onSave: (id: number, data: any) => void;
     onClose: () => void;
 }) {
-    const [recargoPequena, setRecargoPequena] = useState('0');
-    const [recargoMediana, setRecargoMediana] = useState('0');
-    const [recargoGrande, setRecargoGrande] = useState('0');
-
-    useEffect(() => {
-        if (sabor) {
-            setRecargoPequena(String(sabor.recargoPequena || 0));
-            setRecargoMediana(String(sabor.recargoMediana || 0));
-            setRecargoGrande(String(sabor.recargoGrande || 0));
-        }
-    }, [sabor]);
+    const [recargoPequena, setRecargoPequena] = useState(() => String(sabor?.recargoPequena || 0));
+    const [recargoMediana, setRecargoMediana] = useState(() => String(sabor?.recargoMediana || 0));
+    const [recargoGrande, setRecargoGrande] = useState(() => String(sabor?.recargoGrande || 0));
 
     if (!sabor) return null;
 
@@ -71,10 +63,11 @@ function SaborModal({
 
                     <form onSubmit={handleSubmit} className="cliente-form">
                         <div className="form-group mb-3">
-                            <label>Recargo Extra Pequeña</label>
+                            <label htmlFor="recargo-pequena">Recargo Extra Pequeña</label>
                             <div className="input-with-icon">
                                 <span className="text-muted pointer-events-none">$</span>
                                 <input
+                                    id="recargo-pequena"
                                     type="number"
                                     value={recargoPequena}
                                     onChange={(e) => setRecargoPequena(e.target.value)}
@@ -86,10 +79,11 @@ function SaborModal({
                         </div>
 
                         <div className="form-group mb-3">
-                            <label>Recargo Extra Mediana / Familiar</label>
+                            <label htmlFor="recargo-mediana">Recargo Extra Mediana / Familiar</label>
                             <div className="input-with-icon">
                                 <span className="text-muted pointer-events-none">$</span>
                                 <input
+                                    id="recargo-mediana"
                                     type="number"
                                     value={recargoMediana}
                                     onChange={(e) => setRecargoMediana(e.target.value)}
@@ -102,10 +96,11 @@ function SaborModal({
 
                         {sabor.tipo === 'configuracion' && (
                             <div className="form-group mb-3">
-                                <label>Recargo Extra Grande (MultiSabor)</label>
+                                <label htmlFor="recargo-grande">Recargo Extra Grande (MultiSabor)</label>
                                 <div className="input-with-icon">
                                     <span className="text-muted pointer-events-none">$</span>
                                     <input
+                                        id="recargo-grande"
                                         type="number"
                                         value={recargoGrande}
                                         onChange={(e) => setRecargoGrande(e.target.value)}
@@ -511,8 +506,9 @@ export function GestionProductosPage() {
 
                         <form onSubmit={handleSaveProduct} className="cliente-form mt-4">
                             <div className="form-group mb-3">
-                                <label>Nombre del Producto *</label>
+                                <label htmlFor="prod-nombre">Nombre del Producto *</label>
                                 <input
+                                    id="prod-nombre"
                                     type="text"
                                     className="w-full form-input"
                                     value={prodName}
@@ -521,8 +517,9 @@ export function GestionProductosPage() {
                                 />
                             </div>
                             <div className="form-group mb-3">
-                                <label>Categoría *</label>
+                                <label htmlFor="prod-categoria">Categoría *</label>
                                 <input
+                                    id="prod-categoria"
                                     type="text"
                                     className="w-full form-input"
                                     value={prodCategory}
@@ -532,8 +529,9 @@ export function GestionProductosPage() {
                                 />
                             </div>
                             <div className="form-group mb-3">
-                                <label>Descripción</label>
+                                <label htmlFor="prod-descripcion">Descripción</label>
                                 <textarea
+                                    id="prod-descripcion"
                                     className="w-full form-input"
                                     rows={2}
                                     value={prodDesc}
@@ -572,8 +570,9 @@ export function GestionProductosPage() {
 
                         <form onSubmit={handleSaveVariant} className="cliente-form mt-4">
                             <div className="form-group mb-3">
-                                <label>Tamaño / Nombre de variante *</label>
+                                <label htmlFor="var-nombre">Tamaño / Nombre de variante *</label>
                                 <input
+                                    id="var-nombre"
                                     type="text"
                                     className="w-full form-input"
                                     value={varName}
@@ -583,10 +582,11 @@ export function GestionProductosPage() {
                                 />
                             </div>
                             <div className="form-group mb-3">
-                                <label>Precio *</label>
+                                <label htmlFor="var-precio">Precio *</label>
                                 <div className="input-with-icon">
                                     <span className="pointer-events-none">$</span>
                                     <input
+                                        id="var-precio"
                                         type="number"
                                         value={varPrice}
                                         onChange={(e) => setVarPrice(e.target.value)}
@@ -597,8 +597,9 @@ export function GestionProductosPage() {
                                 </div>
                             </div>
                             <div className="form-group mb-3">
-                                <label>Detalle adicional (opcional)</label>
+                                <label htmlFor="var-detalle">Detalle adicional (opcional)</label>
                                 <input
+                                    id="var-detalle"
                                     type="text"
                                     className="w-full form-input"
                                     value={varDesc}
@@ -661,6 +662,7 @@ export function GestionProductosPage() {
 
             {/* ── Modal Sabor ── */}
             <SaborModal
+                key={editingSabor?.saborId}
                 visible={!!editingSabor}
                 sabor={editingSabor}
                 loading={saborLoading}

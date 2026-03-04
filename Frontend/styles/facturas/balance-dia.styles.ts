@@ -207,4 +207,4 @@ export function makeBStyles(isMobile: boolean) {
 }
 
 // Alias estático para pantallas que no necesitan adaptar (solo desktop)
-export const bStyles = makeBStyles(false);
+const bStyles = makeBStyles(false);

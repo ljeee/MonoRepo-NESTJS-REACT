@@ -194,8 +194,8 @@ export function ReceiptPreviewModal({ open, onClose, data, businessInfo }: Recei
                         <div className="receipt-divider" />
 
                         <div className="receipt-products">
-                            {data.productos.map((p, i) => (
-                                <div key={i} className="receipt-product-row">
+                            {data.productos.map((p) => (
+                                <div key={`${p.nombre}-${p.cantidad}`} className="receipt-product-row">
                                     <span>{p.cantidad}x {p.nombre}</span>
                                     <span>${formatCurrency(p.precioUnitario * p.cantidad)}</span>
                                 </div>

@@ -2,7 +2,7 @@ import { Store, load } from '@tauri-apps/plugin-store';
 
 let storeRef: Store | null = null;
 
-export function normalizeBackendUrl(value: string): string {
+function normalizeBackendUrl(value: string): string {
   return value.trim().replace(/\/+$/, '');
 }
 

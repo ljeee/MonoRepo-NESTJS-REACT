@@ -89,7 +89,7 @@ export interface Domicilio {
 
 // ─── Facturas Ventas ──────────────────────────────────────────────────────────
 
-export interface FacturaOrdenProducto {
+interface FacturaOrdenProducto {
   cantidad?: number;
   precioUnitario?: number;
   subtotal?: number;

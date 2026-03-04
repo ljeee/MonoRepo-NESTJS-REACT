@@ -11,12 +11,13 @@ export default function CreateDomiciliarioForm() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
+    const telefonoValue = telefono || '';
     setLoading(true);
     setError('');
     setSuccess(false);
     try {
       await api.domiciliarios.create({
-        telefono: telefono || '',
+        telefono: telefonoValue,
         domiciliarioNombre: nombre,
       });
       setSuccess(true);

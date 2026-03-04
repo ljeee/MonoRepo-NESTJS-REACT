@@ -146,10 +146,11 @@ export function OrdenesTodasPage() {
                 {/* Fechas */}
                 <div className="date-filters flex gap-4 flex-wrap">
                     <div className="form-group flex-1 min-w-[150px]">
-                        <label className="text-xs text-muted mb-1 block">Desde</label>
+                        <label htmlFor="ordenes-todas-desde" className="text-xs text-muted mb-1 block">Desde</label>
                         <div className="input-with-icon">
                             <Calendar size={14} />
                             <input
+                                id="ordenes-todas-desde"
                                 type="date"
                                 value={from}
                                 onChange={(e) => setFrom(e.target.value)}
@@ -158,10 +159,11 @@ export function OrdenesTodasPage() {
                         </div>
                     </div>
                     <div className="form-group flex-1 min-w-[150px]">
-                        <label className="text-xs text-muted mb-1 block">Hasta</label>
+                        <label htmlFor="ordenes-todas-hasta" className="text-xs text-muted mb-1 block">Hasta</label>
                         <div className="input-with-icon">
                             <Calendar size={14} />
                             <input
+                                id="ordenes-todas-hasta"
                                 type="date"
                                 value={to}
                                 onChange={(e) => setTo(e.target.value)}
@@ -236,7 +238,10 @@ export function OrdenesTodasPage() {
                             <div
                                 key={orden.ordenId}
                                 className="orden-card pos-card clickable mb-4"
+                                role="button"
+                                tabIndex={0}
                                 onClick={() => navigate(`/ordenes/${orden.ordenId}`)}
+                                onKeyDown={(e) => e.key === 'Enter' && navigate(`/ordenes/${orden.ordenId}`)}
                             >
                                 <div className="orden-card-header flex justify-between items-start mb-2">
                                     <div className="flex items-center gap-2">
@@ -263,8 +268,8 @@ export function OrdenesTodasPage() {
 
                                 {orden.productos && orden.productos.length > 0 && (
                                     <div className="orden-products bg-background rounded p-2 text-sm text-text-secondary">
-                                        {orden.productos.slice(0, 3).map((p, i) => (
-                                            <div key={i} className="py-[2px]">
+                                        {orden.productos.slice(0, 3).map((p) => (
+                                            <div key={`${p.producto}-${p.cantidad}`} className="py-[2px]">
                                                 • {p.cantidad}x {getProductoPreviewName(p)}
                                             </div>
                                         ))}

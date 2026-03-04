@@ -165,8 +165,8 @@ export function FacturasPage() {
                 {/* Products */}
                 {productos.length > 0 && (
                   <div className="factura-products">
-                    {productos.map((p, i) => (
-                      <span key={i} className="factura-product-item">
+                    {productos.map((p) => (
+                      <span key={`${p.productoNombre || ''}-${p.cantidad || 1}`} className="factura-product-item">
                         {p.cantidad || 1}x {p.productoNombre || 'Producto'}
                       </span>
                     ))}
@@ -208,17 +208,17 @@ export function FacturasPage() {
         </h2>
         <div className="date-filters flex gap-4 flex-wrap items-end mb-3">
           <div className="form-group flex-1">
-            <label className="text-xs text-muted mb-1 block">Desde</label>
+            <label htmlFor="facturas-desde" className="text-xs text-muted mb-1 block">Desde</label>
             <div className="input-with-icon">
               <Calendar size={14} />
-              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <input id="facturas-desde" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
           </div>
           <div className="form-group flex-1">
-            <label className="text-xs text-muted mb-1 block">Hasta</label>
+            <label htmlFor="facturas-hasta" className="text-xs text-muted mb-1 block">Hasta</label>
             <div className="input-with-icon">
               <Calendar size={14} />
-              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <input id="facturas-hasta" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
           </div>
           <div className="flex-initial">
@@ -275,8 +275,8 @@ export function FacturasPage() {
 
                     {productos.length > 0 && (
                       <div className="factura-products">
-                        {productos.map((p, i) => (
-                          <span key={i} className="factura-product-item">
+                        {productos.map((p) => (
+                          <span key={`${p.productoNombre || ''}-${p.cantidad || 1}`} className="factura-product-item">
                             {p.cantidad || 1}x {p.productoNombre || 'Producto'}
                           </span>
                         ))}

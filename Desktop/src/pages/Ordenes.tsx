@@ -151,7 +151,10 @@ export function OrdersOfDayPending() {
                         <div
                             key={orden.ordenId}
                             className="orders-card"
+                            role="button"
+                            tabIndex={0}
                             onClick={() => navigate(`/ordenes/${orden.ordenId}`)}
+                            onKeyDown={(e) => e.key === 'Enter' && navigate(`/ordenes/${orden.ordenId}`)}
                             style={{ cursor: 'pointer' }}
                         >
                             <div className="orders-card-header">
@@ -190,8 +193,8 @@ export function OrdersOfDayPending() {
                                 </div>
 
                                 <div className="orders-products">
-                                    {orden.productos?.map((p, i) => (
-                                        <div key={i} className="orders-product-row">
+                                    {orden.productos?.map((p) => (
+                                        <div key={`${p.producto}-${p.cantidad}`} className="orders-product-row">
                                             <span className="orders-product-name">
                                                 {p.cantidad}x{' '}
                                                 {getProductoNombre(p)}

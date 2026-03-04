@@ -283,7 +283,7 @@ export interface ClienteFrecuente {
   ultimaVisita: string;
 }
 
-export interface VarianteTop {
+interface VarianteTop {
   variante: string;
   producto: string;
   totalVendido: number;

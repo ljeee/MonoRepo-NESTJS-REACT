@@ -376,7 +376,7 @@ export function OrdenDetallePage() {
                                         const price = getUnitPrice(p);
                                         const details = getProductDetails(p);
                                         return (
-                                            <div key={index} className="flex flex-col sm:flex-row p-4 hover:bg-surface/50 transition-colors gap-4">
+                                            <div key={p.id != null ? p.id : `${p.producto}-${index}`} className="flex flex-col sm:flex-row p-4 hover:bg-surface/50 transition-colors gap-4">
                                                 <div className="flex items-center justify-center bg-primary-light text-primary font-bold h-8 w-8 rounded shrink-0">
                                                     {index + 1}
                                                 </div>
