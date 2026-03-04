@@ -33,13 +33,13 @@ const SECTIONS: NavSection[] = [
     ],
   },
   {
-    title: 'Facturas',
+    title: 'Facturación',
     icon: 'cash-multiple',
     items: [
       { label: 'Balance del Día', route: '/balance-dia', icon: 'scale-balance' },
-      { label: 'Balance por Fechas', route: '/balance-fechas', icon: 'chart-box-outline' },
-      { label: 'Facturas Hoy', route: '/facturas-dia', icon: 'chart-bar' },
-      { label: 'Facturas Fechas', route: '/facturas', icon: 'calendar-range' },
+      { label: 'Facturación del Día', route: '/facturas-dia', icon: 'chart-bar' },
+      { label: 'Facturación General', route: '/facturas', icon: 'calendar-range' },
+      { label: 'Balance General', route: '/balance-fechas', icon: 'chart-box-outline' },
       { label: 'Gastos', route: '/facturas-pagos', icon: 'credit-card-minus-outline' },
       { label: 'Estadísticas', route: '/estadisticas', icon: 'chart-bar' },
     ],

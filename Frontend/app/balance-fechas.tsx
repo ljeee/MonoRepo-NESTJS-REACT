@@ -3,7 +3,8 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { useFacturasRango } from '../hooks/use-facturas';
 import { useFacturasPagosRango } from '../hooks/use-create-factura-pago';
-import { buildCombinedBalanceCsv, downloadCsv } from '../utils/csvExport';
+import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../utils/csvExport';
+import { exportPdf } from '../utils/exportData';
 import { validateFlexibleDateRange } from '../utils/dateRange';
 import { formatCurrency } from '../utils/formatNumber';
 import { colors } from '../styles/theme';
@@ -163,8 +164,50 @@ export default function BalanceFechasScreen() {
         await updateFactura(facturaId, { total: newTotal });
     }, [updateFactura]);
 
-    const handleExportCsv = useCallback(() => {
-        downloadCsv(buildCombinedBalanceCsv(facturas, gastos), `balance_${from}_${to}.csv`);
+    const handleExportPdf = useCallback(() => {
+        const safeFrom = from || 'inicio';
+        const safeTo = to || 'fin';
+        const rows: (string | number)[][] = [
+            ...facturas.map((f) => [
+                'Ingreso',
+                f.facturaId ?? '',
+                f.clienteNombre || 'Sin nombre',
+                f.fechaFactura || '',
+                `$${formatCurrency(Number(f.total) || 0)}`,
+                f.estado || '',
+                f.metodo || '',
+            ]),
+            ...gastos.map((g) => [
+                'Gasto',
+                g.pagosId ?? '',
+                g.nombreGasto || 'Sin nombre',
+                g.fechaFactura || '',
+                `$${formatCurrency(Number(g.total) || 0)}`,
+                g.estado || '',
+                g.metodo || '',
+            ]),
+        ];
+
+        exportPdf({
+            title: `Balance por Fechas - ${safeFrom} a ${safeTo}`,
+            subtitle: `${rows.length} registros`,
+            headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Total', 'Estado', 'Metodo'],
+            rows,
+        });
+    }, [facturas, gastos, from, to]);
+
+    const handleExportBackup = useCallback(async () => {
+        const safeFrom = from || 'inicio';
+        const safeTo = to || 'fin';
+        const csv = await buildFacturasBackupCsv(facturas);
+        downloadCsv(csv, `facturas_backup_${safeFrom}_${safeTo}.csv`);
+    }, [facturas, from, to]);
+
+    const handleExportContabilidad = useCallback(async () => {
+        const safeFrom = from || 'inicio';
+        const safeTo = to || 'fin';
+        const csv = await buildCombinedBalanceCsv(facturas, gastos);
+        downloadCsv(csv, `contabilidad_${safeFrom}_${safeTo}.csv`);
     }, [facturas, gastos, from, to]);
 
     const loading = loadingFacturas || loadingGastos;
@@ -201,11 +244,27 @@ export default function BalanceFechasScreen() {
                         {/* Actions bar */}
                         <View style={s.actionsBar}>
                             <Button
-                                title="Exportar CSV"
+                                title="PDF"
+                                icon="chart-bar"
+                                variant="outline"
+                                size="sm"
+                                onPress={handleExportPdf}
+                                disabled={!hasData}
+                            />
+                            <Button
+                                title="CSV Backup"
                                 icon="download"
                                 variant="outline"
                                 size="sm"
-                                onPress={handleExportCsv}
+                                onPress={handleExportBackup}
+                                disabled={!hasData}
+                            />
+                            <Button
+                                title="CSV Contabilidad"
+                                icon="scale-balance"
+                                variant="outline"
+                                size="sm"
+                                onPress={handleExportContabilidad}
                                 disabled={!hasData}
                             />
                         </View>

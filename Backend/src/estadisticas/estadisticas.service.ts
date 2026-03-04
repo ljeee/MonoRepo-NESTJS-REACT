@@ -89,15 +89,28 @@ export class EstadisticasService {
 	}
 
 	// ─── Ventas por Hora ──────────────────────────────────────────────────────────
-	async ventasPorHora(fecha: string) {
-		const result = await this.ordenesRepo
+	async ventasPorHora(fecha?: string, from?: string, to?: string) {
+		const qb = this.ordenesRepo
 			.createQueryBuilder('o')
 			.select("EXTRACT(HOUR FROM o.fecha_orden)", 'hora')
 			.addSelect('COUNT(*)', 'cantidad')
 			.addSelect('SUM(f.total)', 'total')
 			.innerJoin('o.factura', 'f')
-			.where("o.fecha_orden::date = :fecha", { fecha })
-			.andWhere("o.estado_orden != 'cancelado'")
+			.andWhere("o.estado_orden != 'cancelado'");
+
+		if (from && to) {
+			qb.where('o.fecha_orden BETWEEN :from AND :to', {
+				from: new Date(`${from}T00:00:00`),
+				to: new Date(`${to}T23:59:59`),
+			});
+		} else if (fecha) {
+			qb.where("o.fecha_orden::date = :fecha", { fecha });
+		} else {
+			const hoy = new Date().toISOString().slice(0, 10);
+			qb.where("o.fecha_orden::date = :fecha", { fecha: hoy });
+		}
+
+		const result = await qb
 			.groupBy('hora')
 			.orderBy('hora', 'ASC')
 			.getRawMany();

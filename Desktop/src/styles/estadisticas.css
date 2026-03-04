@@ -141,6 +141,12 @@
     transition: box-shadow 0.2s;
 }
 
+.stats-card-hourly {
+    display: flex;
+    flex-direction: column;
+    min-height: 360px;
+}
+
 .stats-card:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
@@ -237,6 +243,12 @@
     padding-top: 1.5rem;
 }
 
+.stats-card-hourly .hour-chart {
+    flex: 1;
+    min-height: 240px;
+    margin-top: 0;
+}
+
 .hour-bar-col,
 .day-bar-col {
     flex: 1;
@@ -280,7 +292,7 @@
     background: linear-gradient(0deg, #3b82f6, #60a5fa);
     border-radius: 4px 4px 0 0;
     transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    min-height: 2px;
+    min-height: 0;
 }
 
 .day-bar-fill {
@@ -288,7 +300,7 @@
     background: linear-gradient(0deg, #22c55e, #4ade80);
     border-radius: 4px 4px 0 0;
     transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-    min-height: 2px;
+    min-height: 0;
 }
 
 .hour-label,

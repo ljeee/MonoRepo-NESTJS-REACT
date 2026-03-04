@@ -15,7 +15,8 @@ interface MenuPickerProps {
 export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
+  const useCompactTabs = isMobile || isTablet;
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
@@ -97,7 +98,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   return (
     <View style={s.container}>
       {/* Search bar - only on mobile */}
-      {isMobile && (
+      {useCompactTabs && (
         <View style={s.searchContainer}>
           <TextInput
             style={s.searchInput}
@@ -110,7 +111,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
       )}
 
       {/* Category tabs - wrapped on mobile, scrollable on desktop */}
-      {isMobile ? (
+      {useCompactTabs ? (
         <View style={s.tabsWrapped}>
           {categoryNames.map((cat) => (
             <TouchableOpacity

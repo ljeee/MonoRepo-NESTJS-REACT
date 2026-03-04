@@ -15,6 +15,7 @@ import { LoginPage } from './pages/Login';
 import { OrdersOfDayPending } from './pages/Ordenes';
 import { CreateOrderPage } from './pages/CrearOrden';
 import { FacturasPage } from './pages/Facturas';
+import { FacturasGeneralPage } from './pages/FacturasGeneral';
 import { HistorialPage } from './pages/Historial';
 import { AjustesPage } from './pages/Ajustes';
 import { ClientesPage } from './pages/Clientes';
@@ -149,6 +150,7 @@ function App() {
                     <Route path="/ordenes" element={<OrdersOfDayPending />} />
                     <Route path="/crear-orden" element={<CreateOrderPage />} />
                     <Route path="/facturas" element={<FacturasPage />} />
+                    <Route path="/facturas-general" element={<FacturasGeneralPage />} />
                     <Route path="/historial" element={<HistorialPage />} />
                     <Route path="/clientes" element={<ClientesPage />} />
                     <Route path="/domiciliarios" element={<DomiciliariosPage />} />

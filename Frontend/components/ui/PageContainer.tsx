@@ -63,7 +63,7 @@ export default function PageContainer({
                     maxWidth: effectiveMaxWidth,
                     paddingHorizontal: containerPadding,
                     paddingTop: topPadding,
-                    paddingBottom: isCompact ? 150 : spacing['3xl'],
+                    paddingBottom: isCompact ? spacing['2xl'] : spacing['3xl'],
                 },
                 contentContainerStyle,
             ]}

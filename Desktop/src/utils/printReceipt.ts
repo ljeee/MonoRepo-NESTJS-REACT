@@ -7,7 +7,7 @@ export interface ReceiptProduct {
 }
 
 /**
- * Genera recibo HTML para impresora térmica 80mm y abre window.print()
+ * Genera recibo HTML imprimible adaptable para ticket o hoja estándar.
  */
 export function printReceipt(data: {
   ordenId?: number;
@@ -39,6 +39,12 @@ h1{font-size:24px;margin-bottom:4px}
 table{width:100%;border-collapse:collapse}td{padding:4px 0;vertical-align:top}
 .t td{font-size:20px;font-weight:bold;padding-top:10px}
 .f{margin-top:16px;font-size:14px}
+@media print{
+  body{max-width:100%;padding:12mm;font-size:17px}
+  h1{font-size:28px}
+  td{font-size:16px}
+  .t td{font-size:24px}
+}
 </style></head><body>
 <div class="c"><h1>PIZZERIA</h1><p>${fecha}</p></div>
 <div class="d"></div>
@@ -55,7 +61,7 @@ ${data.costoDomicilio ? `<div class="d"></div><table><tr><td>Domicilio</td><td s
 <script>window.onload=function(){window.print();setTimeout(function(){window.close()},500)};</script>
 </body></html>`;
 
-  const w = window.open('', '_blank', 'width=320,height=600');
+  const w = window.open('', '_blank', 'width=900,height=800');
   if (w) { w.document.write(html); w.document.close(); }
 }
 

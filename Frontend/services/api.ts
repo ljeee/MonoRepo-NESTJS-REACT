@@ -314,8 +314,8 @@ const estadisticas = {
   variantesTop: (from: string, to: string, limit = 10) =>
     http.get<VarianteTop[]>('/estadisticas/variantes-top', { params: { from, to, limit } }).then((r) => arr<VarianteTop>(r.data)),
 
-  ventasPorHora: (fecha: string) =>
-    http.get<VentaHora[]>('/estadisticas/ventas-por-hora', { params: { fecha } }).then((r) => arr<VentaHora>(r.data)),
+  ventasPorHora: (fecha?: string, from?: string, to?: string) =>
+    http.get<VentaHora[]>('/estadisticas/ventas-por-hora', { params: { fecha, from, to } }).then((r) => arr<VentaHora>(r.data)),
 
   ventasPorDia: (from: string, to: string) =>
     http.get<VentaDia[]>('/estadisticas/ventas-por-dia', { params: { from, to } }).then((r) => arr<VentaDia>(r.data)),

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFacturasDia } from '../hooks/use-facturas';
+import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../utils/csvExport';
+import { exportFacturasPdf } from '../utils/exportData';
 import { colors } from '../styles/theme';
 import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
 import { FacturaCard, StatsHeader } from '../components/facturas/FacturaShared';
@@ -26,6 +28,25 @@ export default function FacturasDiaScreen() {
 
   const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
     await updateFactura(facturaId, { total: newTotal });
+  };
+
+  const handleExportPdf = () => {
+    if (!data || data.length === 0) return;
+    exportFacturasPdf(data, 'Hoy');
+  };
+
+  const handleExportBackup = async () => {
+    if (!data || data.length === 0) return;
+    const csv = await buildFacturasBackupCsv(data);
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `facturas_${today}.csv`);
+  };
+
+  const handleExportContabilidad = async () => {
+    if (!data || data.length === 0) return;
+    const csv = await buildCombinedBalanceCsv(data, []);
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `contabilidad_${today}.csv`);
   };
 
   return (
@@ -54,6 +75,30 @@ export default function FacturasDiaScreen() {
           size="sm"
           onPress={refetch}
         />
+        <Button
+          title="PDF"
+          icon="chart-bar"
+          variant="outline"
+          size="sm"
+          onPress={handleExportPdf}
+          disabled={!data || data.length === 0}
+        />
+        <Button
+          title="CSV Backup"
+          icon="download"
+          variant="outline"
+          size="sm"
+          onPress={handleExportBackup}
+          disabled={!data || data.length === 0}
+        />
+        <Button
+          title="CSV Contabilidad"
+          icon="scale-balance"
+          variant="outline"
+          size="sm"
+          onPress={handleExportContabilidad}
+          disabled={!data || data.length === 0}
+        />
       </View>
 
       {/* Stats */}
@@ -80,8 +125,13 @@ export default function FacturasDiaScreen() {
         </View>
       ) : (
         <View style={styles.gridContainer}>
-          {data?.map((item, idx) => (
-            <View key={item.facturaId?.toString() || idx.toString()} style={isMobile ? styles.gridItemFull : styles.gridItemHalf}>
+          {data?.map((item, idx) => {
+            const isLastOddDesktop = !isMobile && !!data && data.length % 2 === 1 && idx === data.length - 1;
+            return (
+            <View
+              key={item.facturaId?.toString() || idx.toString()}
+              style={isMobile ? styles.gridItemFull : isLastOddDesktop ? styles.gridItemFull : styles.gridItemHalf}
+            >
               <FacturaCard
                 item={item}
                 isUpdating={updating === item.facturaId}
@@ -90,7 +140,7 @@ export default function FacturasDiaScreen() {
                 showPrint
               />
             </View>
-          ))}
+          );})}
         </View>
       )}
     </PageContainer>

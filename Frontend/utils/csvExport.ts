@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 import type { FacturaPago } from '../types/models';
 import type { FacturaItem } from '../components/facturas/FacturaShared';
+import type { Cliente } from '../types/models';
+import { api } from '../services/api';
 import { formatCurrency } from './formatNumber';
 
 type BalanceGastoItem = FacturaPago;
@@ -28,8 +30,76 @@ export function downloadCsv(csv: string, filename: string) {
   }, 100);
 }
 
-export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: BalanceGastoItem[]): string {
-  const rows: string[] = ['Tipo,ID,Nombre/Cliente,Fecha,Total,Estado,Método,Tipo Pedido,Costo Domicilio,Notas,Productos'];
+function formatDateForCsv(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('es-CO');
+}
+
+function normalizePhone(value?: string): string {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function resolveCliente(factura: FacturaItem, clientes: Cliente[]): Cliente | undefined {
+  const telefonoDomicilio = normalizePhone((factura as any).domicilios?.[0]?.telefono);
+  if (telefonoDomicilio) {
+    const matchByPhone = clientes.find((c) => normalizePhone(c.telefono) === telefonoDomicilio);
+    if (matchByPhone) return matchByPhone;
+  }
+  const byName = (factura.clienteNombre || '').trim().toLowerCase();
+  if (!byName) return undefined;
+  return clientes.find((c) => (c.clienteNombre || '').trim().toLowerCase() === byName);
+}
+
+async function fetchClientesSafe(): Promise<Cliente[]> {
+  try {
+    return await api.clientes.getAll();
+  } catch {
+    return [];
+  }
+}
+
+export async function buildFacturasBackupCsv(facturas: FacturaItem[]): Promise<string> {
+  const clientes = await fetchClientesSafe();
+  const rows: string[] = [
+    'ID,Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total Factura,Estado,Método,Producto,Cantidad,Precio Unitario,Subtotal',
+  ];
+
+  for (const f of facturas) {
+    const cliente = resolveCliente(f, clientes);
+    const id = String(f.facturaId ?? '');
+    const clienteNombre = escapeCsvValue(f.clienteNombre || '');
+    const tipoDoc = escapeCsvValue(cliente?.tipoDocumento || '');
+    const documento = escapeCsvValue(cliente?.documento || '');
+    const correo = escapeCsvValue(cliente?.correo || '');
+    const fecha = formatDateForCsv(f.fechaFactura);
+    const total = String(f.total ?? 0);
+    const estado = f.estado || 'pendiente';
+    const metodo = f.metodo || '';
+
+    const productos = (f.ordenes ?? []).flatMap((o) => o.productos ?? []);
+
+    if (productos.length === 0) {
+      rows.push(`${id},${clienteNombre},${tipoDoc},${documento},${correo},${fecha},${total},${estado},${metodo},,,,`);
+      continue;
+    }
+
+    for (const p of productos) {
+      const nombre = escapeCsvValue(p.productoNombre || 'Producto');
+      const cant = p.cantidad ?? 1;
+      const precio = p.precioUnitario ?? 0;
+      const sub = cant * precio;
+      rows.push(`${id},${clienteNombre},${tipoDoc},${documento},${correo},${fecha},${total},${estado},${metodo},${nombre},${cant},${precio},${sub}`);
+    }
+  }
+
+  return rows.join('\n');
+}
+
+export async function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: BalanceGastoItem[]): Promise<string> {
+  const clientes = await fetchClientesSafe();
+  const rows: string[] = ['Tipo,ID,Nombre/Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total,Estado,Método,Tipo Pedido,Costo Domicilio,Notas,Productos'];
 
   let ingresosPagados = 0;
   let ingresosPendientes = 0;
@@ -40,7 +110,8 @@ export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: Balance
   const productosVendidos: Record<string, number> = {};
 
   for (const factura of facturas) {
-    const fecha = factura.fechaFactura ? new Date(factura.fechaFactura).toLocaleDateString('es-CO') : '';
+    const cliente = resolveCliente(factura, clientes);
+    const fecha = formatDateForCsv(factura.fechaFactura);
     
     // Extract products and count them
     const productos = (factura.ordenes ?? [])
@@ -70,7 +141,7 @@ export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: Balance
       : 0;
 
     rows.push(
-      `Factura,${factura.facturaId ?? ''},${escapeCsvValue(factura.clienteNombre || '')},${fecha},"$${formatCurrency(factura.total ?? 0)}",${factura.estado || ''},${factura.metodo || ''},${escapeCsvValue(tipoPedido)},"$${formatCurrency(costoDomicilio)}",${escapeCsvValue(factura.descripcion || '')},${escapeCsvValue(productos)}`,
+      `Factura,${factura.facturaId ?? ''},${escapeCsvValue(factura.clienteNombre || '')},${escapeCsvValue(cliente?.tipoDocumento || '')},${escapeCsvValue(cliente?.documento || '')},${escapeCsvValue(cliente?.correo || '')},${fecha},"$${formatCurrency(factura.total ?? 0)}",${factura.estado || ''},${factura.metodo || ''},${escapeCsvValue(tipoPedido)},"$${formatCurrency(costoDomicilio)}",${escapeCsvValue(factura.descripcion || '')},${escapeCsvValue(productos)}`,
     );
 
     if (factura.estado === 'pagado') {
@@ -82,9 +153,9 @@ export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: Balance
   }
 
   for (const gasto of gastos) {
-    const fecha = gasto.fechaFactura ? new Date(gasto.fechaFactura).toLocaleDateString('es-CO') : '';
+    const fecha = formatDateForCsv(gasto.fechaFactura);
     rows.push(
-      `Gasto,${gasto.pagosId ?? ''},${escapeCsvValue(gasto.nombreGasto || '')},${fecha},"$${formatCurrency(gasto.total ?? 0)}",${gasto.estado || ''},${gasto.metodo || ''},"","","",`,
+      `Gasto,${gasto.pagosId ?? ''},${escapeCsvValue(gasto.nombreGasto || '')},"","","",${fecha},"$${formatCurrency(gasto.total ?? 0)}",${gasto.estado || ''},${gasto.metodo || ''},"","","",`,
     );
 
     if (gasto.estado === 'pagado') gastosPagados += gasto.total ?? 0;

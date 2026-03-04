@@ -72,6 +72,13 @@
     gap: 14px;
 }
 
+/* When cards are shown in two columns and count is odd, avoid a broken-looking tail card. */
+@media (min-width: 900px) {
+    .facturas-cards-grid>.factura-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+}
+
 .factura-card {
     display: flex;
     flex-direction: column;

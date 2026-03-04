@@ -59,10 +59,10 @@ export function getShortcutDefinitions(navigate: (path: string) => void): Shortc
     // ── Navigation (F-keys) ──
     { key: 'F1', action: () => navigate('/crear-orden'), label: 'Nueva Orden' },
     { key: 'F2', action: () => navigate('/ordenes'), label: 'Órdenes Activas' },
-    { key: 'F3', action: () => navigate('/facturas'), label: 'Facturas del Día' },
+    { key: 'F3', action: () => navigate('/facturas'), label: 'Facturación del Día' },
     { key: 'F4', action: () => navigate('/'), label: 'Dashboard' },
     { key: 'F5', action: () => navigate('/estadisticas'), label: 'Estadísticas' },
-    { key: 'F6', action: () => navigate('/balance-fechas'), label: 'Balance' },
+    { key: 'F6', action: () => navigate('/balance-fechas'), label: 'Balance General' },
 
     // ── Ctrl shortcuts ──
     { key: 'n', ctrl: true, action: () => navigate('/crear-orden'), label: 'Nueva Orden' },

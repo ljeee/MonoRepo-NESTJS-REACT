@@ -73,7 +73,8 @@ function extractErrorMessage(error: unknown): string {
 
 export default function CreateOrderForm() {
   const router = useRouter();
-  const { isMobile } = useBreakpoint();
+  const { isMobile, isTablet } = useBreakpoint();
+  const isCompact = isMobile || isTablet;
   const { formState, updateForm, clearCart, isHydrated } = useOrder();
   const { showToast } = useToast();
 
@@ -296,15 +297,15 @@ export default function CreateOrderForm() {
       >
         <View style={[
           styles.formCard,
-          isMobile && styles.formCardMobile
+          isCompact && styles.formCardMobile
         ]}>
-          <Text style={[styles.title, isMobile && styles.titleMobile]}>Crear Orden</Text>
+          <Text style={[styles.title, isCompact && styles.titleMobile]}>Crear Orden</Text>
 
           <Text style={styles.sectionTitle}>Detalles del Pedido</Text>
 
           <View style={styles.row}>
             {/* TIPO DE PEDIDO */}
-            <View style={[styles.col4, isMobile && styles.col4Mobile]}>
+            <View style={[styles.col4, isCompact && styles.col4Mobile]}>
               <Text style={styles.label}>Tipo de pedido</Text>
               <View style={styles.pickerContainer}>
                 <Picker
@@ -337,7 +338,7 @@ export default function CreateOrderForm() {
             </View>
 
             {/* METODO DE PAGO */}
-            <View style={[styles.col4, isMobile && styles.col4Mobile]}>
+            <View style={[styles.col4, isCompact && styles.col4Mobile]}>
               <Text style={styles.label}>Método de pago</Text>
               <View style={styles.pickerContainer}>
                 <Picker
@@ -355,7 +356,7 @@ export default function CreateOrderForm() {
 
             {/* TELEFONO (Solo Domicilio) */}
             {formState.tipoPedido === 'domicilio' && (
-              <View style={[styles.col4, isMobile && styles.col4Mobile]}>
+              <View style={[styles.col4, isCompact && styles.col4Mobile]}>
                 <Text style={styles.label}>Teléfono Cliente</Text>
                 <TextInput
                   style={styles.input}
@@ -369,7 +370,7 @@ export default function CreateOrderForm() {
             )}
 
             {/* NOMBRE / MESA */}
-            <View style={[styles.col4, isMobile && styles.col4Mobile]}>
+            <View style={[styles.col4, isCompact && styles.col4Mobile]}>
               <Text style={styles.label}>Nombre / Mesa</Text>
               {formState.tipoPedido === 'mesa' ? (
                 <View style={styles.pickerContainer}>
@@ -410,7 +411,7 @@ export default function CreateOrderForm() {
           {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
           {formState.tipoPedido === 'domicilio' && (
             <View style={styles.row}>
-              <View style={[styles.col6, isMobile && styles.col6Mobile]}>
+              <View style={[styles.col6, isCompact && styles.col6Mobile]}>
                 <Text style={styles.label}>Dirección Cliente</Text>
                 {hasClienteDirecciones ? (
                   <>
@@ -449,7 +450,7 @@ export default function CreateOrderForm() {
                 )}
               </View>
 
-              <View style={[styles.col4, isMobile && styles.col4Mobile]}>
+              <View style={[styles.col4, isCompact && styles.col4Mobile]}>
                 <Text style={styles.label}>Domiciliario</Text>
                 <View style={styles.pickerContainer}>
                   <Picker

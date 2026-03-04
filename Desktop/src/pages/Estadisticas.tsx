@@ -20,15 +20,35 @@ function getDefaultDateRange(): { from: string; to: string } {
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, '0');
     const d = String(now.getDate()).padStart(2, '0');
+    const today = `${y}-${m}-${d}`;
     return {
-        from: `${y}-${m}-01`,
-        to: `${y}-${m}-${d}`,
+        from: today,
+        to: today,
     };
 }
 
-function today(): string {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+function formatDayLabel(fecha: string): string {
+    if (!fecha) return '--';
+    const parsed = new Date(fecha);
+    if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+    }
+    const normalized = fecha.length > 10 ? fecha.slice(0, 10) : fecha;
+    const retry = new Date(`${normalized}T12:00:00`);
+    if (!Number.isNaN(retry.getTime())) {
+        return retry.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+    }
+    return normalized;
+}
+
+function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
+    const byHour = new Map<number, VentaHora>();
+    for (const item of items) {
+        const hour = Number(item.hora);
+        if (Number.isNaN(hour)) continue;
+        byHour.set(hour, { ...item, hora: hour });
+    }
+    return Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
 }
 
 export function EstadisticasPage() {
@@ -53,7 +73,7 @@ export function EstadisticasPage() {
                 api.estadisticas.productosTop(from, to),
                 api.estadisticas.saboresTop(from, to),
                 api.estadisticas.ventasPorDia(from, to),
-                api.estadisticas.ventasPorHora(today()),
+                api.estadisticas.ventasPorHora(undefined, from, to),
                 api.estadisticas.metodosPago(from, to),
                 api.estadisticas.clientesFrecuentes(8),
             ]);
@@ -75,7 +95,8 @@ export function EstadisticasPage() {
 
     const maxProducto = productosTop[0]?.totalVendido || 1;
     const maxSabor = saboresTop[0]?.cantidad || 1;
-    const maxVentaHora = Math.max(...ventasHora.map(v => v.cantidad), 1);
+    const ventasHoraFull = normalizeHourlySeries(ventasHora);
+    const maxVentaHora = Math.max(...ventasHoraFull.map(v => v.cantidad), 1);
     const maxVentaDia = Math.max(...ventasDia.map(v => v.total), 1);
 
     return (
@@ -191,17 +212,17 @@ export function EstadisticasPage() {
                     </div>
                 </div>
 
-                {/* Ventas por Hora (hoy) */}
-                <div className="stats-card">
-                    <h3 className="stats-card-title"><Clock size={18} /> Ventas por Hora (Hoy)</h3>
+                {/* Ventas por Hora (rango) */}
+                <div className="stats-card stats-card-hourly">
+                    <h3 className="stats-card-title"><Clock size={18} /> Ventas por Hora (Rango)</h3>
                     <div className="hour-chart">
-                        {ventasHora.map((v) => (
+                        {ventasHoraFull.map((v) => (
                             <div key={v.hora} className="hour-bar-col">
                                 <span className="hour-value">{v.cantidad}</span>
                                 <div className="hour-bar-track">
                                     <div
                                         className="hour-bar-fill"
-                                        style={{ height: `${(v.cantidad / maxVentaHora) * 100}%` }}
+                                        style={{ height: v.cantidad > 0 ? `${Math.max((v.cantidad / maxVentaHora) * 100, 2)}%` : '0%' }}
                                     />
                                 </div>
                                 <span className="hour-label">{v.hora}h</span>
@@ -242,7 +263,7 @@ export function EstadisticasPage() {
                     <h3 className="stats-card-title"><TrendingUp size={18} /> Ventas por Día</h3>
                     <div className="day-chart">
                         {ventasDia.map((v) => {
-                            const label = new Date(v.fecha + 'T12:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+                            const label = formatDayLabel(v.fecha);
                             return (
                                 <div key={v.fecha} className="day-bar-col" title={`${label}: ${formatCurrency(v.total)} (${v.cantidad} órdenes)`}>
                                     <span className="day-value">{formatCurrency(v.total)}</span>

@@ -49,10 +49,16 @@ export class EstadisticasController {
 	}
 
 	@Get('ventas-por-hora')
-	@ApiOperation({ summary: 'Ventas agrupadas por hora del día' })
-	@ApiQuery({ name: 'fecha', required: true, example: '2026-03-01' })
-	ventasPorHora(@Query('fecha') fecha: string) {
-		return this.service.ventasPorHora(fecha);
+	@ApiOperation({ summary: 'Ventas agrupadas por hora (día o rango)' })
+	@ApiQuery({ name: 'fecha', required: false, example: '2026-03-01' })
+	@ApiQuery({ name: 'from', required: false, example: '2026-03-01' })
+	@ApiQuery({ name: 'to', required: false, example: '2026-03-31' })
+	ventasPorHora(
+		@Query('fecha') fecha?: string,
+		@Query('from') from?: string,
+		@Query('to') to?: string,
+	) {
+		return this.service.ventasPorHora(fecha, from, to);
 	}
 
 	@Get('ventas-por-dia')

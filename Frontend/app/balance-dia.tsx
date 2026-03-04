@@ -183,8 +183,8 @@ export default function BalanceDiaScreen() {
         setDeleteTarget(null);
     };
 
-    const handleExportCsv = useCallback(() => {
-        const csv = buildCombinedBalanceCsv(facturas, gastos);
+    const handleExportCsv = useCallback(async () => {
+        const csv = await buildCombinedBalanceCsv(facturas, gastos);
         const today = new Date().toISOString().slice(0, 10);
         downloadCsv(csv, `balance_${today}.csv`);
     }, [facturas, gastos]);

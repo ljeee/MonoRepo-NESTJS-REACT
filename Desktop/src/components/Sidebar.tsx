@@ -29,9 +29,10 @@ const SECTIONS: NavSection[] = [
         title: 'Facturación',
         icon: <Receipt size={16} />,
         items: [
-            { label: 'Facturas del Día', path: '/facturas', icon: <FileText size={18} />, shortcut: 'F3' },
-            { label: 'Balance / Cierre', path: '/balance-fechas', icon: <Scale size={18} />, shortcut: 'F6' },
-            { label: 'Egresos Diarios', path: '/facturas-pagos', icon: <CreditCard size={18} /> },
+            { label: 'Facturación del Día', path: '/facturas', icon: <FileText size={18} />, shortcut: 'F3' },
+            { label: 'Egresos del Día', path: '/facturas-pagos', icon: <CreditCard size={18} /> },
+            { label: 'Facturación General', path: '/facturas-general', icon: <Receipt size={18} /> },
+            { label: 'Balance General', path: '/balance-fechas', icon: <Scale size={18} />, shortcut: 'F6' },
             { label: 'Historial Cierre', path: '/historial', icon: <CheckCircle2 size={18} /> },
             { label: 'Estadísticas', path: '/estadisticas', icon: <BarChart3 size={18} />, shortcut: 'F5' },
         ],

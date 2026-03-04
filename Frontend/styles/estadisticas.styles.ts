@@ -36,6 +36,7 @@ export const estadisticasStyles = StyleSheet.create({
 
   // Card
   card: { backgroundColor: colors.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, flex: 1, minWidth: 300 },
+  hourlyCard: { minHeight: 320 },
   cardWide: { minWidth: '100%' as any },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
   cardTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text },
@@ -50,12 +51,12 @@ export const estadisticasStyles = StyleSheet.create({
   barValue: { width: 40, textAlign: 'right', fontSize: fontSize.xs, fontWeight: fontWeight.bold, color: colors.text },
 
   // Vertical bars (hours / days)
-  vBarChart: { flexDirection: 'row', alignItems: 'flex-end', height: 160, gap: 2, paddingTop: spacing.md },
+  vBarChart: { flexDirection: 'row', alignItems: 'flex-end', flex: 1, minHeight: 220, gap: 2, paddingTop: 0 },
   vBarCol: { flex: 1, alignItems: 'center', height: '100%' },
   vBarValue: { fontSize: 8, fontWeight: fontWeight.bold, color: colors.textMuted, marginBottom: 2 },
   vBarTrack: { flex: 1, width: '100%', maxWidth: 28, backgroundColor: colors.bg, borderTopLeftRadius: 4, borderTopRightRadius: 4, justifyContent: 'flex-end', overflow: 'hidden' },
-  vBarFill: { width: '100%', backgroundColor: '#3b82f6', borderTopLeftRadius: 4, borderTopRightRadius: 4, minHeight: 2 },
-  vBarFillGreen: { width: '100%', backgroundColor: '#22c55e', borderTopLeftRadius: 4, borderTopRightRadius: 4, minHeight: 2 },
+  vBarFill: { width: '100%', backgroundColor: '#3b82f6', borderTopLeftRadius: 4, borderTopRightRadius: 4, minHeight: 0 },
+  vBarFillGreen: { width: '100%', backgroundColor: '#22c55e', borderTopLeftRadius: 4, borderTopRightRadius: 4, minHeight: 0 },
   vBarLabel: { fontSize: 9, color: colors.textMuted, marginTop: 2 },
 
   // Métodos

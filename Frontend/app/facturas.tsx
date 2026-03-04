@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useFacturasRango } from '../hooks/use-facturas';
-import { downloadCsv, escapeCsvValue } from '../utils/csvExport';
+import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../utils/csvExport';
+import { exportFacturasPdf } from '../utils/exportData';
 import { validateFlexibleDateRange } from '../utils/dateRange';
 import { colors } from '../styles/theme';
 import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
@@ -15,35 +16,6 @@ import {
   ListSkeleton,
 } from '../components/ui';
 import { useBreakpoint } from '../styles/responsive';
-
-function buildCsv(facturas: FacturaItem[]): string {
-  const header = 'ID,Cliente,Fecha,Total Factura,Estado,Método,Producto,Cantidad,Precio Unitario,Subtotal';
-  const rows: string[] = [];
-
-  for (const f of facturas) {
-    const id = String(f.facturaId ?? '');
-    const cliente = escapeCsvValue(f.clienteNombre || '');
-    const fecha = f.fechaFactura ? new Date(f.fechaFactura).toLocaleDateString('es-CO') : '';
-    const total = String(f.total ?? 0);
-    const estado = f.estado || 'pendiente';
-    const metodo = f.metodo || '';
-
-    const productos = (f.ordenes ?? []).flatMap(o => o.productos ?? []);
-
-    if (productos.length === 0) {
-      rows.push(`${id},${cliente},${fecha},${total},${estado},${metodo},,,,`);
-    } else {
-      for (const p of productos) {
-        const nombre = escapeCsvValue(p.productoNombre || 'Producto');
-        const cant = p.cantidad ?? 1;
-        const precio = p.precioUnitario ?? 0;
-        const sub = cant * precio;
-        rows.push(`${id},${cliente},${fecha},${total},${estado},${metodo},${nombre},${cant},${precio},${sub}`);
-      }
-    }
-  }
-  return [header, ...rows].join('\n');
-}
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -82,10 +54,22 @@ export default function FacturasRangoScreen() {
     await updateFactura(facturaId, { total: newTotal });
   }, [updateFactura]);
 
-  const handleExportCsv = useCallback(() => {
+  const handleExportCsv = useCallback(async () => {
     if (data.length === 0) return;
-    const csv = buildCsv(data);
+    const csv = await buildFacturasBackupCsv(data);
     const filename = `facturas_${from || 'inicio'}_${to || 'fin'}.csv`;
+    downloadCsv(csv, filename);
+  }, [data, from, to]);
+
+  const handleExportPdf = useCallback(() => {
+    if (data.length === 0) return;
+    exportFacturasPdf(data, `${from || 'inicio'} a ${to || 'fin'}`);
+  }, [data, from, to]);
+
+  const handleExportContabilidad = useCallback(async () => {
+    if (data.length === 0) return;
+    const csv = await buildCombinedBalanceCsv(data, []);
+    const filename = `contabilidad_${from || 'inicio'}_${to || 'fin'}.csv`;
     downloadCsv(csv, filename);
   }, [data, from, to]);
 
@@ -128,11 +112,27 @@ export default function FacturasRangoScreen() {
                 onPress={fetchData}
               />
               <Button
-                title="Exportar CSV"
+                title="PDF"
+                icon="chart-bar"
+                variant="outline"
+                size="sm"
+                onPress={handleExportPdf}
+                disabled={data.length === 0}
+              />
+              <Button
+                title="CSV Backup"
                 icon="download"
                 variant="outline"
                 size="sm"
                 onPress={handleExportCsv}
+                disabled={data.length === 0}
+              />
+              <Button
+                title="CSV Contabilidad"
+                icon="scale-balance"
+                variant="outline"
+                size="sm"
+                onPress={handleExportContabilidad}
                 disabled={data.length === 0}
               />
             </View>
