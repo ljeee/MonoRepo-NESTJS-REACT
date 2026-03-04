@@ -52,7 +52,7 @@ export default function PageContainer({
             : spacing['2xl'];
 
     const topPadding = isCompact
-        ? 120
+        ? spacing.lg
         : spacing['2xl'];
 
     const content = (

@@ -97,6 +97,38 @@
     justify-content: flex-end;
 }
 
+.form-select,
+.form-group>input,
+.form-group>select {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text-main);
+    font-size: 14px;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.form-select:focus,
+.form-group>input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* Hide number input spinner */
+.input-with-icon input[type="number"]::-webkit-inner-spin-button,
+.input-with-icon input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.input-with-icon input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
 .form-input {
     background: var(--bg-dark);
     border: 1px solid var(--border);

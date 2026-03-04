@@ -155,7 +155,10 @@ export function FacturaCard({
       try {
         await onUpdateTotal(item.facturaId, newTotal);
         setEditing(false);
-      } finally {
+        setUpdateLoading(false);
+      } catch (err) {
+        // Ignorar o manejar error (generalmente el padre lo maneja)
+        console.error('Error in onUpdateTotal:', err);
         setUpdateLoading(false);
       }
     }

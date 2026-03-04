@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Platform, StatusBar } from 'react-native';
 import Navbar from '../components/Navbar';
 import { colors } from '../styles/theme';
 import { GlobalStyles } from '../components/GlobalStyles';
@@ -32,7 +32,14 @@ function AppShell() {
     <View style={[layoutStyles.root, isCompact ? layoutStyles.shellColumn : layoutStyles.shellRow]}>
       <GlobalStyles />
       <Navbar />
-      <View style={layoutStyles.content}>
+      <View
+        style={[
+          layoutStyles.content,
+          isCompact && {
+            paddingTop: (Platform.OS === 'android' ? (StatusBar.currentHeight || 0) : 0) + 70
+          }
+        ]}
+      >
         <Stack screenOptions={{ headerShown: false }} />
       </View>
       <ToastContainer />

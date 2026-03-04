@@ -12,5 +12,3 @@ export { default as PageHeader } from './PageHeader';
 export { default as ConfirmModal } from './ConfirmModal';
 export { Skeleton, CardSkeleton, ListSkeleton } from './SkeletonLoader';
 export { ToastContainer } from './Toast';
-export { default as ResponsiveGrid } from './ResponsiveGrid';
-export { default as TwoColumnLayout } from './TwoColumnLayout';

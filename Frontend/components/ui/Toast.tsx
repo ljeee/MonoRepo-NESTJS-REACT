@@ -1,12 +1,10 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View, Dimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { colors } from '../../styles/theme';
 import { fontSize, fontWeight, spacing, radius, shadows } from '../../styles/tokens';
 import Icon from './Icon';
 import { useToast, ToastVariant } from '../../contexts/ToastContext';
-
-const { width } = Dimensions.get('window');
-const TOAST_WIDTH = Math.min(width - spacing['2xl'] * 2, 400);
 
 function getToastColors(variant: ToastVariant) {
     switch (variant) {
@@ -27,54 +25,42 @@ interface ToastItemProps {
     message: string;
     variant: ToastVariant;
     onDismiss: (id: string) => void;
+    toastWidth: number;
 }
 
-function ToastItem({ id, message, variant, onDismiss }: ToastItemProps) {
-    const slideAnim = useRef(new Animated.Value(-100)).current;
-    const opacityAnim = useRef(new Animated.Value(0)).current;
+function ToastItem({ id, message, variant, onDismiss, toastWidth }: ToastItemProps) {
+    const slideAnim = useSharedValue(-100);
+    const opacityAnim = useSharedValue(0);
     const { bg, border, icon } = getToastColors(variant);
 
     useEffect(() => {
         // Slide in
-        Animated.parallel([
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                useNativeDriver: true,
-                tension: 65,
-                friction: 8,
-            }),
-            Animated.timing(opacityAnim, {
-                toValue: 1,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-        ]).start();
-    }, [slideAnim, opacityAnim]);
+        slideAnim.set(withSpring(0, { damping: 15, stiffness: 150 }));
+        opacityAnim.set(withTiming(1, { duration: 200 }));
+    }, [opacityAnim, slideAnim]);
 
     const handleDismiss = () => {
-        Animated.parallel([
-            Animated.timing(slideAnim, {
-                toValue: -100,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.timing(opacityAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-        ]).start(() => onDismiss(id));
+        slideAnim.set(withTiming(-100, { duration: 200 }));
+        opacityAnim.set(withTiming(0, { duration: 200 }, (finished) => {
+            if (finished) {
+                runOnJS(onDismiss)(id);
+            }
+        }));
     };
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateY: slideAnim.get() }],
+            opacity: opacityAnim.get(),
+        };
+    });
 
     return (
         <Animated.View
             style={[
                 styles.toast,
-                { backgroundColor: bg, borderColor: border },
-                {
-                    transform: [{ translateY: slideAnim }],
-                    opacity: opacityAnim,
-                },
+                { backgroundColor: bg, borderColor: border, width: toastWidth },
+                animatedStyle,
             ]}
         >
             <Icon name={icon} size={20} color={border} />
@@ -90,6 +76,8 @@ function ToastItem({ id, message, variant, onDismiss }: ToastItemProps) {
 
 export function ToastContainer() {
     const { toasts, hideToast } = useToast();
+    const { width } = useWindowDimensions();
+    const toastWidth = Math.min(width - spacing['2xl'] * 2, 400);
 
     if (toasts.length === 0) return null;
 
@@ -102,6 +90,7 @@ export function ToastContainer() {
                     message={toast.message}
                     variant={toast.variant}
                     onDismiss={hideToast}
+                    toastWidth={toastWidth}
                 />
             ))}
         </View>
@@ -119,7 +108,6 @@ const styles = StyleSheet.create({
         gap: spacing.md,
     },
     toast: {
-        width: TOAST_WIDTH,
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing.md,

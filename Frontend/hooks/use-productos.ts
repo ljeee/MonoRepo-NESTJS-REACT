@@ -6,19 +6,24 @@ import type { Producto, ProductoVariante } from '../types/models';
 export type { Producto, ProductoVariante };
 
 export function useProductos() {
-  const [productos, setProductos] = useState<Producto[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<{ productos: Producto[]; loading: boolean; error: string | null }>({
+    productos: [],
+    loading: false,
+    error: null,
+  });
+  const { productos, loading, error } = state;
 
   const fetchProductos = useCallback(async (categoria?: string, activo?: boolean) => {
-    setLoading(true);
-    setError(null);
+    setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      setProductos(await api.productos.getAll({ categoria, activo }));
+      const productosData = await api.productos.getAll({ categoria, activo });
+      setState({ productos: productosData, loading: false, error: null });
     } catch (e: any) {
-      setError(e.message || 'Error cargando productos');
-    } finally {
-      setLoading(false);
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: e.message || 'Error cargando productos',
+      }));
     }
   }, []);
 
@@ -26,17 +31,22 @@ export function useProductos() {
 }
 
 export function useProductOperations() {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, setState] = useState<{ loading: boolean; error: string | null }>({
+    loading: false,
+    error: null,
+  });
+  const { loading, error } = state;
 
   const wrap = async <T>(fn: () => Promise<T>, errMsg: string): Promise<T> => {
-    setLoading(true); setError(null);
+    setState({ loading: true, error: null });
     try {
-      return await fn();
+      const result = await fn();
+      setState({ loading: false, error: null });
+      return result;
     } catch (e: any) {
-      setError(e.message || errMsg);
+      setState({ loading: false, error: e.message || errMsg });
       throw e;
-    } finally { setLoading(false); }
+    }
   };
 
   return {

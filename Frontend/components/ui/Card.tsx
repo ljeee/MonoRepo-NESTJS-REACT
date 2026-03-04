@@ -1,12 +1,11 @@
-import React, { ReactNode, useRef } from 'react';
+import React, { ReactNode } from 'react';
 import {
-    Animated,
-    Platform,
     Pressable,
     StyleSheet,
     View,
     ViewStyle,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { colors } from '../../styles/theme';
 import { radius, shadows, spacing } from '../../styles/tokens';
 
@@ -32,27 +31,23 @@ export default function Card({
     padding = 'md',
     style,
 }: CardProps) {
-    const scale = useRef(new Animated.Value(1)).current;
+    const scale = useSharedValue(1);
 
     const handlePressIn = () => {
         if (!onPress) return;
-        Animated.spring(scale, {
-            toValue: 0.98,
-            useNativeDriver: Platform.OS !== 'web',
-            speed: 50,
-            bounciness: 4,
-        }).start();
+        scale.set(withSpring(0.98, { damping: 12, stiffness: 200 }));
     };
 
     const handlePressOut = () => {
         if (!onPress) return;
-        Animated.spring(scale, {
-            toValue: 1,
-            useNativeDriver: Platform.OS !== 'web',
-            speed: 50,
-            bounciness: 4,
-        }).start();
+        scale.set(withSpring(1, { damping: 12, stiffness: 200 }));
     };
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ scale: scale.get() }],
+        };
+    });
 
     const cardStyle: ViewStyle[] = [
         styles.base,
@@ -65,7 +60,7 @@ export default function Card({
     if (onPress) {
         return (
             <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
-                <Animated.View style={[...cardStyle, { transform: [{ scale }] }]}>
+                <Animated.View style={[...cardStyle, animatedStyle]}>
                     {children}
                 </Animated.View>
             </Pressable>

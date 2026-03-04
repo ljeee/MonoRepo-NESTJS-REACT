@@ -10,7 +10,7 @@ import type { CreateOrdenDto, OrderCartItem, Producto, ProductoVariante } from '
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
 import CartPanel from './CartPanel';
 import MenuPicker from './MenuPicker';
-import './order-form.css';
+import '../../styles/order-form.css';
 
 let cartIdCounter = 0;
 
@@ -75,7 +75,7 @@ export default function CreateOrderForm() {
 
   const cartItems = useMemo(() => formState.cart as OrderCartItem[], [formState.cart]);
   const hasClienteDirecciones = useMemo(
-    () => Boolean(client && [client.direccion, client.direccionDos, client.direccionTres].filter(Boolean).length),
+    () => Boolean(client?.direcciones?.length),
     [client],
   );
 
@@ -272,8 +272,9 @@ export default function CreateOrderForm() {
         <h3 className="section-title">Detalles del pedido</h3>
         <div className="order-grid">
           <div className="order-field">
-            <label>Tipo de pedido</label>
+            <label htmlFor="tipoPedido">Tipo de pedido</label>
             <select
+              id="tipoPedido"
               value={formState.tipoPedido}
               onChange={(event) => updateForm({ tipoPedido: event.target.value as 'mesa' | 'domicilio' | 'llevar' })}
             >
@@ -284,8 +285,8 @@ export default function CreateOrderForm() {
           </div>
 
           <div className="order-field">
-            <label>Método de pago</label>
-            <select value={formState.metodo} onChange={(event) => updateForm({ metodo: event.target.value })}>
+            <label htmlFor="metodoPago">Método de pago</label>
+            <select id="metodoPago" value={formState.metodo} onChange={(event) => updateForm({ metodo: event.target.value })}>
               <option value="efectivo">Efectivo</option>
               <option value="qr">QR</option>
             </select>
@@ -293,8 +294,9 @@ export default function CreateOrderForm() {
 
           {formState.tipoPedido === 'domicilio' && (
             <div className="order-field">
-              <label>Teléfono cliente</label>
+              <label htmlFor="telefonoCliente">Teléfono cliente</label>
               <input
+                id="telefonoCliente"
                 value={formState.telefonoCliente}
                 onChange={(event) => updateForm({ telefonoCliente: event.target.value.replace(/\D/g, '').slice(0, 10) })}
               />
@@ -302,9 +304,10 @@ export default function CreateOrderForm() {
           )}
 
           <div className="order-field">
-            <label>{formState.tipoPedido === 'mesa' ? 'Mesa' : 'Nombre cliente'}</label>
+            <label htmlFor="nombreCliente">{formState.tipoPedido === 'mesa' ? 'Mesa' : 'Nombre cliente'}</label>
             {formState.tipoPedido === 'mesa' ? (
               <select
+                id="nombreCliente"
                 value={formState.numeroMesa}
                 onChange={(event) => updateForm({ numeroMesa: event.target.value, nombreCliente: event.target.value })}
               >
@@ -317,6 +320,7 @@ export default function CreateOrderForm() {
               </select>
             ) : (
               <input
+                id="nombreCliente"
                 value={formState.nombreCliente}
                 onChange={(event) => updateForm({ nombreCliente: event.target.value })}
                 disabled={formState.tipoPedido === 'domicilio' && Boolean(client?.clienteNombre)}
@@ -328,38 +332,40 @@ export default function CreateOrderForm() {
         {formState.tipoPedido === 'domicilio' && (
           <div className="order-grid order-grid-top">
             <div className="order-field">
-              <label>Dirección cliente</label>
+              <label htmlFor="direccionCliente">Dirección cliente</label>
               {hasClienteDirecciones ? (
                 <>
                   <select
+                    id="direccionCliente"
                     value={formState.selectedAddress}
                     onChange={(event) => updateForm({ selectedAddress: event.target.value })}
                   >
                     <option value="">Seleccione dirección</option>
-                    {[client?.direccion, client?.direccionDos, client?.direccionTres]
-                      .filter((value): value is string => Boolean(value))
-                      .map((address) => (
-                        <option key={address} value={address}>
-                          {address}
+                    {(client?.direcciones || [])
+                      .map((dir) => (
+                        <option key={dir.id} value={dir.direccion}>
+                          {dir.direccion}
                         </option>
                       ))}
                     <option value="__nueva__">Nueva dirección...</option>
                   </select>
                   {formState.selectedAddress === '__nueva__' && (
                     <input
+                      id="nuevaDireccion"
                       value={formState.newAddress}
                       onChange={(event) => updateForm({ newAddress: event.target.value })}
                     />
                   )}
                 </>
               ) : (
-                <input value={formState.newAddress} onChange={(event) => updateForm({ newAddress: event.target.value })} />
+                <input id="direccionCliente" value={formState.newAddress} onChange={(event) => updateForm({ newAddress: event.target.value })} />
               )}
             </div>
 
             <div className="order-field">
-              <label>Domiciliario</label>
+              <label htmlFor="domiciliario">Domiciliario</label>
               <select
+                id="domiciliario"
                 value={formState.telefonoDomiciliario}
                 onChange={(event) => updateForm({ telefonoDomiciliario: event.target.value })}
               >
@@ -373,8 +379,9 @@ export default function CreateOrderForm() {
             </div>
 
             <div className="order-field">
-              <label>Costo domicilio</label>
+              <label htmlFor="costoDomicilio">Costo domicilio</label>
               <input
+                id="costoDomicilio"
                 value={formState.costoDomicilio}
                 onChange={(event) => updateForm({ costoDomicilio: event.target.value.replace(/\D/g, '') })}
               />
@@ -388,10 +395,11 @@ export default function CreateOrderForm() {
         <MenuPicker onAdd={addToCart} />
 
         <h3 className="section-title section-title-top">
-          Observaciones
+          <label htmlFor="observaciones">Observaciones</label>
         </h3>
         <div className="order-field">
           <textarea
+            id="observaciones"
             value={formState.observaciones}
             onChange={(event) => updateForm({ observaciones: event.target.value })}
           />

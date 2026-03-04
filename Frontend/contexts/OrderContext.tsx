@@ -60,9 +60,9 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Failed to load order form state:', error);
-      } finally {
-        setIsHydrated(true);
       }
+
+      setIsHydrated(true);
     };
 
     loadFormState();

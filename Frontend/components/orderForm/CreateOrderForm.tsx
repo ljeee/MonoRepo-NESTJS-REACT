@@ -1,8 +1,8 @@
-﻿import { Picker } from '@react-native-picker/picker';
+import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { isAxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { api } from '../../services/api';
 import { useOrder } from '../../contexts/OrderContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -131,39 +131,32 @@ export default function CreateOrderForm() {
   }, [formState.cart, updateForm]);
 
   // ==================== EFFECTS ====================
-  const hasClienteDirecciones = !!(client && [client.direccion, client.direccionDos, client.direccionTres].filter(Boolean).length);
+  const hasClienteDirecciones = !!(client?.direcciones?.length);
 
   // Buscar cliente solo cuando hay 10 dígitos y es domicilio
   useEffect(() => {
     if (formState.tipoPedido === 'domicilio' && formState.telefonoCliente.length === 10) {
-      fetchClient(formState.telefonoCliente);
+      const timer = setTimeout(() => {
+        void fetchClient(formState.telefonoCliente);
+      }, 150);
+      return () => clearTimeout(timer);
     }
   }, [fetchClient, formState.telefonoCliente, formState.tipoPedido]);
 
   // Cargar domiciliarios si es domicilio
   useEffect(() => {
-    if (formState.tipoPedido === 'domicilio') fetchDomiciliarios();
+    if (formState.tipoPedido === 'domicilio') {
+      const timer = setTimeout(() => {
+        void fetchDomiciliarios();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
   }, [fetchDomiciliarios, formState.tipoPedido]);
 
-  // Autocompletar nombre si el cliente existe
-  useEffect(() => {
-    if (formState.tipoPedido === 'domicilio' && client?.clienteNombre) {
-      updateForm({ nombreCliente: client.clienteNombre });
-    }
-  }, [client, formState.tipoPedido, updateForm]);
-
-  // Limpiar direcciones al salir de domicilio
-  useEffect(() => {
-    if (formState.tipoPedido !== 'domicilio') {
-      updateForm({
-        selectedAddress: '',
-        newAddress: '',
-        telefonoCliente: '',
-        telefonoDomiciliario: '',
-        costoDomicilio: '',
-      });
-    }
-  }, [formState.tipoPedido, updateForm]);
+  const resolvedNombreCliente =
+    formState.tipoPedido === 'domicilio'
+      ? (formState.nombreCliente || client?.clienteNombre || '')
+      : formState.nombreCliente;
 
   // ==================== SUBMIT ====================
   const handleSubmit = async () => {
@@ -177,7 +170,7 @@ export default function CreateOrderForm() {
     }
 
     if (formState.tipoPedido === 'domicilio') {
-      if (!formState.nombreCliente || !formState.nombreCliente.trim()) {
+      if (!resolvedNombreCliente || !resolvedNombreCliente.trim()) {
         setLoading(false);
         showToast('Debe ingresar el nombre del cliente', 'error');
         return;
@@ -195,7 +188,7 @@ export default function CreateOrderForm() {
     }
 
     if (formState.tipoPedido === 'llevar') {
-      if (!formState.nombreCliente || !formState.nombreCliente.trim()) {
+      if (!resolvedNombreCliente || !resolvedNombreCliente.trim()) {
         setLoading(false);
         showToast('Debe ingresar el nombre del cliente', 'error');
         return;
@@ -209,80 +202,78 @@ export default function CreateOrderForm() {
       return;
     }
 
-    try {
-      const payload: CreateOrdenDto = {
-        tipoPedido: formState.tipoPedido || 'mesa',
-        telefonoCliente: formState.telefonoCliente || undefined,
-        nombreCliente: formState.tipoPedido === 'mesa' ? formState.numeroMesa : formState.nombreCliente,
-        direccionCliente: formState.tipoPedido === 'domicilio'
-          ? (hasClienteDirecciones
-            ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
-            : formState.newAddress)
-          : undefined,
-        telefonoDomiciliario: formState.telefonoDomiciliario || undefined,
-        costoDomicilio: formState.tipoPedido === 'domicilio' && formState.costoDomicilio
-          ? Number(formState.costoDomicilio)
-          : undefined,
-        metodo: formState.metodo,
-        observaciones: formState.observaciones || undefined,
-        productos: formState.cart.map(item => ({
-          tipo: item.productoNombre,
-          varianteId: item.varianteId,
-          cantidad: item.cantidad,
-          sabor1: item.sabores?.[0],
-          sabor2: item.sabores?.[1],
-          sabor3: item.sabores?.[2],
-        })),
-      };
-
-      await api.ordenes.create(payload);
-
-      // WhatsApp al domiciliario (solo domicilio)
-      if (formState.tipoPedido === 'domicilio' && formState.telefonoDomiciliario) {
-        const costoDom = formState.costoDomicilio ? Number(formState.costoDomicilio) : 0;
-        const total = formState.cart.reduce((s, i) => s + i.precioUnitario * i.cantidad, 0) + costoDom;
-        const receiptProducts = formState.cart.map(i => ({
-          nombre: `${i.productoNombre}${i.varianteNombre ? ' - ' + i.varianteNombre : ''}${i.sabores?.length ? ' (' + i.sabores.join(', ') + ')' : ''}`,
-          cantidad: i.cantidad,
-          precioUnitario: i.precioUnitario,
-        }));
-        const direccion = hasClienteDirecciones
+    const payload: CreateOrdenDto = {
+      tipoPedido: formState.tipoPedido || 'mesa',
+      telefonoCliente: formState.telefonoCliente || undefined,
+      nombreCliente: formState.tipoPedido === 'mesa' ? formState.numeroMesa : resolvedNombreCliente,
+      direccionCliente: formState.tipoPedido === 'domicilio'
+        ? (hasClienteDirecciones
           ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
-          : formState.newAddress;
-        sendWhatsAppDomicilio(formState.telefonoDomiciliario, {
-          clienteNombre: formState.nombreCliente,
-          direccion: direccion || '',
-          telefonoCliente: formState.telefonoCliente || undefined,
-          productos: receiptProducts,
-          total,
-          costoDomicilio: costoDom || undefined,
-          metodo: formState.metodo,
-        });
-      }
+          : formState.newAddress)
+        : undefined,
+      telefonoDomiciliario: formState.telefonoDomiciliario || undefined,
+      costoDomicilio: formState.tipoPedido === 'domicilio' && formState.costoDomicilio
+        ? Number(formState.costoDomicilio)
+        : undefined,
+      metodo: formState.metodo,
+      observaciones: formState.observaciones || undefined,
+      productos: formState.cart.map(item => ({
+        tipo: item.productoNombre,
+        varianteId: item.varianteId,
+        cantidad: item.cantidad,
+        sabor1: item.sabores?.[0],
+        sabor2: item.sabores?.[1],
+        sabor3: item.sabores?.[2],
+      })),
+    };
 
-      // Limpiar formulario
-      clearCart();
-      updateForm({
-        numeroMesa: '',
-        nombreCliente: '',
-        selectedAddress: '',
-        newAddress: '',
-        telefonoCliente: '',
-        telefonoDomiciliario: '',
-        costoDomicilio: '',
-        observaciones: '',
-      });
-
-      // Mostrar éxito y redirigir
-      showToast('¡Orden creada exitosamente!', 'success', 2000);
-      setTimeout(() => {
-        router.push('/ordenes');
-      }, 2000);
+    try {
+      await api.ordenes.create(payload);
     } catch (error: unknown) {
       showToast(extractErrorMessage(error), 'error', 5000);
-    } finally {
       setLoading(false);
+      return;
     }
+
+    if (formState.tipoPedido === 'domicilio' && formState.telefonoDomiciliario) {
+      const costoDom = formState.costoDomicilio ? Number(formState.costoDomicilio) : 0;
+      const total = formState.cart.reduce((s, i) => s + i.precioUnitario * i.cantidad, 0) + costoDom;
+      const receiptProducts = formState.cart.map(i => ({
+        nombre: `${i.productoNombre}${i.varianteNombre ? ' - ' + i.varianteNombre : ''}${i.sabores?.length ? ' (' + i.sabores.join(', ') + ')' : ''}`,
+        cantidad: i.cantidad,
+        precioUnitario: i.precioUnitario,
+      }));
+      const direccion = hasClienteDirecciones
+        ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
+        : formState.newAddress;
+      sendWhatsAppDomicilio(formState.telefonoDomiciliario, {
+        clienteNombre: resolvedNombreCliente,
+        direccion: direccion || '',
+        telefonoCliente: formState.telefonoCliente || undefined,
+        productos: receiptProducts,
+        total,
+        costoDomicilio: costoDom || undefined,
+        metodo: formState.metodo,
+      });
+    }
+
+    clearCart();
+    updateForm({
+      numeroMesa: '',
+      nombreCliente: '',
+      selectedAddress: '',
+      newAddress: '',
+      telefonoCliente: '',
+      telefonoDomiciliario: '',
+      costoDomicilio: '',
+      observaciones: '',
+    });
+
+    showToast('¡Orden creada exitosamente!', 'success', 2000);
+    setTimeout(() => {
+      router.push('/ordenes');
+    }, 2000);
+    setLoading(false);
   };
 
   // ==================== RENDER ====================
@@ -318,7 +309,22 @@ export default function CreateOrderForm() {
               <View style={styles.pickerContainer}>
                 <Picker
                   selectedValue={formState.tipoPedido}
-                  onValueChange={(val) => updateForm({ tipoPedido: val as 'mesa' | 'domicilio' | 'llevar' })}
+                  onValueChange={(val) => {
+                    const tipoPedido = val as 'mesa' | 'domicilio' | 'llevar';
+                    if (tipoPedido === 'domicilio') {
+                      updateForm({ tipoPedido });
+                      return;
+                    }
+
+                    updateForm({
+                      tipoPedido,
+                      selectedAddress: '',
+                      newAddress: '',
+                      telefonoCliente: '',
+                      telefonoDomiciliario: '',
+                      costoDomicilio: '',
+                    });
+                  }}
                   style={styles.picker}
                   itemStyle={styles.pickerItemStyle}
                   dropdownIconColor={colors.text}
@@ -377,13 +383,13 @@ export default function CreateOrderForm() {
                     dropdownIconColor={colors.text}
                   >
                     <Picker.Item label="Seleccione mesa" value="" color={colors.subText} />
-                    {[...Array(10)].map((_, i) => <Picker.Item key={i + 1} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
+                    {[...Array(10)].map((_, i) => <Picker.Item key={`mesaPicker-${i + 1}`} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
                   </Picker>
                 </View>
               ) : formState.tipoPedido === 'domicilio' ? (
                 <TextInput
                   style={styles.input}
-                  value={formState.nombreCliente}
+                  value={resolvedNombreCliente}
                   onChangeText={(val) => updateForm({ nombreCliente: val })}
                   placeholder=""
                   placeholderTextColor={colors.subText}
@@ -417,9 +423,8 @@ export default function CreateOrderForm() {
                         dropdownIconColor={colors.text}
                       >
                         <Picker.Item label="Seleccione dirección" value="" color={colors.subText} />
-                        {[client!.direccion, client!.direccionDos, client!.direccionTres]
-                          .filter(Boolean)
-                          .map((dir, idx) => <Picker.Item key={idx} label={dir!} value={dir!} />)}
+                        {(client?.direcciones || [])
+                          .map((dir) => <Picker.Item key={dir.id} label={dir.direccion} value={dir.direccion} />)}
                         <Picker.Item label="Nueva dirección..." value="__nueva__" />
                       </Picker>
                     </View>

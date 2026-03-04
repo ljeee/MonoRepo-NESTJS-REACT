@@ -1,14 +1,14 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View, ViewStyle } from 'react-native';
+import { StyleSheet, Text, TextInput, TextInputProps, TextStyle, View, ViewStyle } from 'react-native';
 import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, radius, spacing, layout } from '../../styles/tokens';
+import { fontSize, fontWeight, radius, spacing } from '../../styles/tokens';
 
 interface InputProps extends Omit<TextInputProps, 'style'> {
     label?: string;
     error?: string;
     hint?: string;
     containerStyle?: ViewStyle;
-    inputStyle?: ViewStyle;
+    inputStyle?: TextStyle;
     size?: 'sm' | 'md' | 'lg';
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
@@ -16,7 +16,7 @@ interface InputProps extends Omit<TextInputProps, 'style'> {
 
 const sizeMap = {
     sm: { height: 40, fontSize: fontSize.sm, padding: spacing.md },
-    md: { height: layout.inputHeight, fontSize: fontSize.md, padding: spacing.lg },
+    md: { height: 50, fontSize: fontSize.md, padding: spacing.lg },
     lg: { height: 58, fontSize: fontSize.lg, padding: spacing.xl },
 };
 
@@ -53,12 +53,12 @@ export default function Input({
                             paddingHorizontal: s.padding,
                             paddingVertical: multiline ? s.padding : 0,
                         },
-                        leftIcon && { paddingLeft: 0 },
-                        rightIcon && { paddingRight: 0 },
-                        multiline && { textAlignVertical: 'top' },
+                        Boolean(leftIcon) && { paddingLeft: 0 },
+                        Boolean(rightIcon) && { paddingRight: 0 },
+                        Boolean(multiline) && { textAlignVertical: 'top' },
                         inputStyle,
                     ]}
-                    placeholderTextColor={colors.placeholder}
+                    placeholderTextColor={colors.textMuted}
                     selectionColor={colors.primary}
                     cursorColor={colors.primary}
                     multiline={multiline}

@@ -14,9 +14,9 @@ export function usePizzaSabores() {
     try {
       const data = await api.pizzaSabores.getAll();
       setSabores(data);
+      setLoading(false);
     } catch {
       setError('No se pudieron cargar los sabores');
-    } finally {
       setLoading(false);
     }
   }, []);
@@ -38,12 +38,12 @@ export function useUpdatePizzaSabor() {
     setError(null);
     try {
       const updated = await api.pizzaSabores.update(saborId, data);
+      setLoading(false);
       return updated;
     } catch {
       setError('No se pudo actualizar el sabor');
-      throw new Error('update failed');
-    } finally {
       setLoading(false);
+      throw new Error('update failed');
     }
   }, []);
 

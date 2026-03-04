@@ -1,4 +1,5 @@
-import type { FacturaPago, FacturaVenta } from '../types/models';
+import type { FacturaPago, FacturaVenta, Cliente } from '../types/models';
+import { api } from '../services/api';
 import { formatCurrency } from './formatNumber';
 
 type FacturaItem = FacturaVenta;
@@ -28,8 +29,21 @@ export function downloadCsv(csv: string, filename: string) {
   }, 100);
 }
 
-export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: BalanceGastoItem[]): string {
-  const rows: string[] = ['Tipo,ID,Nombre/Cliente,Fecha,Total,Estado,Método,Tipo Pedido,Costo Domicilio,Notas,Productos'];
+export async function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: BalanceGastoItem[]): Promise<string> {
+  const rows: string[] = ['Tipo,ID,Nombre/Cliente,Tipo Documento,No. Documento,Fecha,Total,Estado,Método,Tipo Pedido,Costo Domicilio,Notas,Productos'];
+
+  let clientes: Cliente[] = [];
+  try {
+    clientes = await api.clientes.getAll();
+  } catch (err) {
+    console.error('Failed to fetch clients for export');
+  }
+
+  const getCliente = (f: FacturaItem) => {
+    const telefono = f.domicilios?.[0]?.telefono;
+    if (telefono) return clientes.find(c => c.telefono === telefono);
+    return clientes.find(c => c.clienteNombre === f.clienteNombre);
+  };
 
   let ingresosPagados = 0;
   let ingresosPendientes = 0;
@@ -40,6 +54,7 @@ export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: Balance
   const productosVendidos: Record<string, number> = {};
 
   for (const factura of facturas) {
+    const cc = getCliente(factura);
     const fecha = factura.fechaFactura ? new Date(factura.fechaFactura).toLocaleDateString('es-CO') : '';
     
     // Extract products and count them
@@ -70,7 +85,7 @@ export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: Balance
       : 0;
 
     rows.push(
-      `Factura,${factura.facturaId ?? ''},${escapeCsvValue(factura.clienteNombre || '')},${fecha},"$${formatCurrency(factura.total ?? 0)}",${factura.estado || ''},${factura.metodo || ''},${escapeCsvValue(tipoPedido)},"$${formatCurrency(costoDomicilio)}",${escapeCsvValue(factura.descripcion || '')},${escapeCsvValue(productos)}`,
+      `Factura,${factura.facturaId ?? ''},${escapeCsvValue(factura.clienteNombre || '')},${cc?.tipoDocumento || ''},${cc?.documento || ''},${fecha},"$${formatCurrency(factura.total ?? 0)}",${factura.estado || ''},${factura.metodo || ''},${escapeCsvValue(tipoPedido)},"$${formatCurrency(costoDomicilio)}",${escapeCsvValue(factura.descripcion || '')},${escapeCsvValue(productos)}`,
     );
 
     if (factura.estado === 'pagado') {
@@ -84,7 +99,7 @@ export function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: Balance
   for (const gasto of gastos) {
     const fecha = gasto.fechaFactura ? new Date(gasto.fechaFactura).toLocaleDateString('es-CO') : '';
     rows.push(
-      `Gasto,${gasto.pagosId ?? ''},${escapeCsvValue(gasto.nombreGasto || '')},${fecha},"$${formatCurrency(gasto.total ?? 0)}",${gasto.estado || ''},${gasto.metodo || ''},"","","",`,
+      `Gasto,${gasto.pagosId ?? ''},${escapeCsvValue(gasto.nombreGasto || '')},"","",${fecha},"$${formatCurrency(gasto.total ?? 0)}",${gasto.estado || ''},${gasto.metodo || ''},"","","",`,
     );
 
     if (gasto.estado === 'pagado') gastosPagados += gasto.total ?? 0;

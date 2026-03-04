@@ -1,0 +1,477 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Estadísticas Dashboard — Premium CSS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Controls ── */
+.stats-controls {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.date-range-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.date-range-picker label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.date-range-picker input[type="date"] {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text);
+    font-size: 0.85rem;
+    transition: border-color 0.2s;
+}
+
+.date-range-picker input[type="date"]:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
+}
+
+/* ── KPI Grid ── */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.kpi-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    flex-shrink: 0;
+}
+
+.kpi-ventas .kpi-icon {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.kpi-balance .kpi-icon {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.kpi-ticket .kpi-icon {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.kpi-ordenes .kpi-icon {
+    background: rgba(249, 115, 22, 0.15);
+    color: #f97316;
+}
+
+.kpi-cancelados .kpi-icon {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.kpi-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.kpi-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+}
+
+.kpi-value small {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+/* ── Stats Grid ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.stats-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: box-shadow 0.2s;
+}
+
+.stats-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card-wide {
+    grid-column: span 2;
+}
+
+.stats-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.stats-card-title svg {
+    color: var(--primary);
+}
+
+/* ── Bar Chart (Horizontal) ── */
+.bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.bar-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 50px;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.bar-label {
+    font-size: 0.8rem;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.bar-rank {
+    font-weight: 700;
+    font-size: 0.7rem;
+    color: var(--primary);
+    min-width: 20px;
+}
+
+.bar-track {
+    height: 22px;
+    background: var(--bg);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 4px;
+}
+
+.bar-fill-primary {
+    background: linear-gradient(90deg, #f97316, #fb923c);
+}
+
+.bar-fill-accent {
+    background: linear-gradient(90deg, #a855f7, #c084fc);
+}
+
+.bar-value {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text);
+    text-align: right;
+}
+
+/* ── Vertical Bar Chart (Hours / Days) ── */
+.hour-chart,
+.day-chart {
+    display: flex;
+    gap: 2px;
+    align-items: flex-end;
+    height: 180px;
+    padding-top: 1.5rem;
+}
+
+.hour-bar-col,
+.day-bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    min-width: 0;
+}
+
+.hour-value,
+.day-value {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+
+.day-value {
+    font-size: 0.55rem;
+}
+
+.hour-bar-track,
+.day-bar-track {
+    flex: 1;
+    width: 100%;
+    max-width: 32px;
+    background: var(--bg);
+    border-radius: 4px 4px 0 0;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+}
+
+.hour-bar-fill {
+    width: 100%;
+    background: linear-gradient(0deg, #3b82f6, #60a5fa);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 2px;
+}
+
+.day-bar-fill {
+    width: 100%;
+    background: linear-gradient(0deg, #22c55e, #4ade80);
+    border-radius: 4px 4px 0 0;
+    transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 2px;
+}
+
+.hour-label,
+.day-label {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    white-space: nowrap;
+}
+
+/* ── Métodos de Pago ── */
+.metodo-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.metodo-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.metodo-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.metodo-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    text-transform: capitalize;
+}
+
+.metodo-count {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.metodo-bar-track {
+    height: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.metodo-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f97316, #f59e0b);
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 2px;
+}
+
+.metodo-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.metodo-total {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.metodo-pct {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* ── Clientes Ranking ── */
+.clientes-ranking {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.cliente-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: var(--bg);
+    transition: background 0.2s;
+}
+
+.cliente-rank-row:hover {
+    background: rgba(249, 115, 22, 0.06);
+}
+
+.rank-badge {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 800;
+    flex-shrink: 0;
+}
+
+.rank-1 {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: #fff;
+}
+
+.rank-2 {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    color: #fff;
+}
+
+.rank-3 {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: #fff;
+}
+
+.rank-default {
+    background: var(--border);
+    color: var(--text-muted);
+}
+
+.cliente-rank-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.cliente-rank-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cliente-rank-detail {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+/* ── Spinning animation ── */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spinning {
+    animation: spin 1s linear infinite;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1100px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-card-wide {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .stats-controls {
+        flex-wrap: wrap;
+    }
+
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .bar-row {
+        grid-template-columns: 100px 1fr 40px;
+    }
+}

@@ -1,4 +1,4 @@
-# POS Pizzería — Monorepo
+# 🍕 POS Pizzería — Monorepo
 
 Sistema punto de venta para pizzería con tres aplicaciones cliente, WebSocket en tiempo real y autenticación JWT.
 
@@ -31,6 +31,7 @@ Sistema punto de venta para pizzería con tres aplicaciones cliente, WebSocket e
 ```bash
 # 1. Copiar variables de entorno
 cp Backend/.env.example Backend/.env
+npx -y react-doctor@latest
 
 # 2. Levantar todo
 docker-compose up -d --build
@@ -87,27 +88,29 @@ MonoRepo/
 │       ├── common/          # Interceptors, Redis module/adapter, seeders
 │       ├── domiciliarios/   # Gestión de domiciliarios
 │       ├── domicilios/      # Direcciones de envío
-│       ├── facturas-pagos/  # Pagos de facturas
-│       ├── facturas-ventas/ # Facturación
+│       ├── facturas-pagos/  # Egresos / pagos
+│       ├── facturas-ventas/ # Facturación de ventas
 │       ├── ordenes/         # CRUD + Socket.IO Gateway (tiempo real)
+│       │   └── services/    # FacturaCreation, DomicilioCreation, ProductProcessing
 │       ├── ordenes-productos/ # Detalle de productos por orden
 │       ├── pizza-sabores/   # Sabores y recargos por tamaño
 │       └── productos/       # Catálogo de productos + variantes
 ├── Frontend/                # Expo (React Native Web)
 │   ├── app/                 # 15 pantallas (Expo Router)
-│   ├── components/          # UI reutilizable, formularios, estados
+│   ├── components/          # UI reutilizable (Navbar accordion, formularios, estados)
 │   ├── contexts/            # AuthContext, OrderContext, ToastContext
-│   ├── hooks/               # 10 hooks (WebSocket, CRUD, búsquedas)
+│   ├── hooks/               # 10+ hooks (WebSocket, CRUD, búsquedas)
 │   ├── services/            # Cliente Axios
 │   ├── styles/              # Design tokens, tema, responsive
 │   └── types/               # Modelos TypeScript
 ├── Desktop/                 # Tauri v2 (PC de caja)
-│   ├── src/                 # React + Vite
-│   │   ├── pages/           # 6 vistas (Login, Ordenes, CrearOrden, etc.)
-│   │   ├── components/      # Sidebar, formularios de orden
+│   ├── src/
+│   │   ├── pages/           # 12 vistas (Login, Ordenes, CrearOrden, Facturas, etc.)
+│   │   ├── components/      # Sidebar accordion, formularios de orden
 │   │   ├── contexts/        # Auth, Order, Toast
-│   │   ├── hooks/           # 11 hooks (incl. keyboard-shortcuts)
+│   │   ├── hooks/           # 14 hooks (incl. keyboard-shortcuts)
 │   │   ├── services/        # API + settings (URL backend configurable)
+│   │   ├── styles/          # CSS modular (8 archivos)
 │   │   └── utils/           # CSV export, impresión, fechas
 │   └── src-tauri/           # Rust (Tauri core)
 ├── Docs/                    # Documentación
@@ -129,32 +132,39 @@ MonoRepo/
 - **BullMQ** (Redis) para colas de trabajo
 - **LoggingInterceptor** global
 - **Seeders**: usuarios, productos, órdenes
+- **Servicios refactorizados**: FacturaCreationService, DomicilioCreationService, ProductProcessingService
 
 ### Frontend (Expo)
-- 15 pantallas: crear orden, órdenes del día, historial, facturas, balances, clientes, domiciliarios, gestión de productos
+- **15 pantallas**: crear orden, órdenes del día, historial, facturas, balances, clientes, domiciliarios, gestión de productos
+- **Navbar con acordeón**: 3 secciones (Órdenes, Facturas, Información) con auto-expand
 - WebSocket en tiempo real (`use-ordenes-socket`)
 - AuthContext con persistencia en AsyncStorage
 - Sistema de diseño con tokens, tema y responsive
 
 ### Desktop (Tauri)
-- 6 vistas: Login, Órdenes, Crear Orden, Facturas, Historial, Ajustes
+- **12 vistas**: Login, Órdenes del día, Crear Orden, Todas las Órdenes, Detalle Orden, Facturas, Balance por Fechas, Egresos, Historial, Clientes, Domiciliarios, Catálogo, Ajustes
+- **Sidebar con acordeón**: 3 secciones (Órdenes, Facturación, Información) igual que Expo
+- **CSS modular**: 8 archivos (base, utilities, buttons, layout, sidebar, ordenes, facturas, components)
 - Atajos de teclado: F1 (crear orden), F2 (órdenes), F3 (facturas)
 - URL del backend configurable (persistida con Tauri Store)
 - Notificaciones nativas de Windows
 - Prevención de cierre accidental
+- Cards con estado coloreado (verde=pagado, amarillo=pendiente, rojo=cancelado)
 
 ## Documentación
 
 | Archivo | Contenido |
 |---------|-----------|
-| [Docs/architecture.md](Docs/architecture.md) | Arquitectura actual y roadmap de fases pendientes |
+| [Docs/architecture.md](Docs/architecture.md) | Arquitectura actual del sistema |
 | [Docs/dependencias.md](Docs/dependencias.md) | Stack tecnológico y dependencias |
 | [Docs/DOCKER_DEPLOYMENT.md](Docs/DOCKER_DEPLOYMENT.md) | Guía de despliegue Docker |
 | [Docs/SISTEMA_PRODUCTOS_PRECIOS.md](Docs/SISTEMA_PRODUCTOS_PRECIOS.md) | Sistema de productos, variantes y precios |
 | [Docs/README_FLUJO.md](Docs/README_FLUJO.md) | Flujo de trabajo del sistema |
-| [Docs/ROADMAP.md](Docs/ROADMAP.md) | Roadmap general |
-| [Docs/ROADMAPDESKOPT.md](Docs/ROADMAPDESKOPT.md) | Roadmap Desktop |
-| [Docs/ROADMAP_N8N.md](Docs/ROADMAP_N8N.md) | Roadmap integración n8n/WhatsApp |
+| [Docs/ROADMAP_MEJORAS.md](Docs/ROADMAP_MEJORAS.md) | Roadmap de mejoras UX + Estadísticas (Expo + Tauri) |
+| [Docs/ROADMAP_CONTABILIDAD.md](Docs/ROADMAP_CONTABILIDAD.md) | Roadmap contable (Exports CSV/PDF) |
+| [Docs/ROADMAP_N8N.md](Docs/ROADMAP_N8N.md) | Roadmap integración n8n/WhatsApp/Ollama |
+| [Docs/REFACTORING.md](Docs/REFACTORING.md) | Plan de refactorización técnica |
+| [Docs/VIOLACIONES_BACKEND.md](Docs/VIOLACIONES_BACKEND.md) | Auditoría de código del backend |
 
 ## Testing
 
@@ -180,7 +190,7 @@ docker-compose up -d --build
 npm run db:up
 
 # Bajar todo con volúmenes
-docker-compose down -v
+  docker-compose down -v
 
 # Seed de usuarios en producción
 docker exec -it pizzeria-backend npm run seed:users:prod

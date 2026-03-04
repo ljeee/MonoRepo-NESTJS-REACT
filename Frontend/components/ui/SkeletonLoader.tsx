@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View, ViewStyle } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, View, ViewStyle } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { colors } from '../../styles/theme';
 import { radius, spacing } from '../../styles/tokens';
 
@@ -20,23 +21,20 @@ export function Skeleton({
     borderRadius = radius.sm,
     style,
 }: SkeletonProps) {
-    const shimmer = useRef(new Animated.Value(0)).current;
+    const shimmer = useSharedValue(-200);
 
     useEffect(() => {
-        const animation = Animated.loop(
-            Animated.timing(shimmer, {
-                toValue: 1,
-                duration: 1500,
-                useNativeDriver: true,
-            }),
-        );
-        animation.start();
-        return () => animation.stop();
+        shimmer.set(withRepeat(
+            withTiming(200, { duration: 1500, easing: Easing.linear }),
+            -1,
+            false
+        ));
     }, [shimmer]);
 
-    const translateX = shimmer.interpolate({
-        inputRange: [0, 1],
-        outputRange: [-200, 200],
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ translateX: shimmer.value }],
+        };
     });
 
     return (
@@ -53,7 +51,7 @@ export function Skeleton({
             ]}
         >
             <Animated.View
-                style={[skeletonStyles.shimmer, { transform: [{ translateX }] }]}
+                style={[skeletonStyles.shimmer, animatedStyle]}
             />
         </View>
     );
@@ -83,7 +81,7 @@ export function ListSkeleton({ count = 3, style }: { count?: number; style?: Vie
     return (
         <View style={style}>
             {Array.from({ length: count }).map((_, i) => (
-                <CardSkeleton key={i} style={skeletonStyles.marginBottomMd} />
+                <CardSkeleton key={`skeleton-${i}`} style={skeletonStyles.marginBottomMd} />
             ))}
         </View>
     );

@@ -11,6 +11,7 @@ import {DomiciliariosModule} from './domiciliarios/domiciliarios.module';
 import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 import {AuthModule} from './auth/auth.module';
 import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
+import {EstadisticasModule} from './estadisticas/estadisticas.module';
 import {ThrottlerModule} from '@nestjs/throttler';
 import {BullModule} from '@nestjs/bullmq';
 import {RedisModule} from './common/redis/redis.module';
@@ -63,6 +64,7 @@ import {RedisModule} from './common/redis/redis.module';
 		FacturasPagosModule,
 		AuthModule,
 		PizzaSaboresModule,
+		EstadisticasModule,
 	],
 	controllers: [],
 	providers: [],

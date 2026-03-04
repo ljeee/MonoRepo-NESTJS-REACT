@@ -31,14 +31,14 @@ export function printReceipt(data: {
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo</title>
 <style>
-@page{margin:0;size:80mm auto}*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Courier New',monospace;font-size:12px;width:80mm;padding:4mm;color:#000}
+@page{margin:0;size:auto}*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Courier New',monospace;font-size:16px;width:100%;max-width:400px;margin:0 auto;padding:20px;color:#000}
 .c{text-align:center}.b{font-weight:bold}
-.d{border-top:1px dashed #000;margin:6px 0}
-h1{font-size:18px;margin-bottom:2px}
-table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}
-.t td{font-size:16px;font-weight:bold;padding-top:6px}
-.f{margin-top:8px;font-size:10px}
+.d{border-top:2px dashed #000;margin:12px 0}
+h1{font-size:24px;margin-bottom:4px}
+table{width:100%;border-collapse:collapse}td{padding:4px 0;vertical-align:top}
+.t td{font-size:20px;font-weight:bold;padding-top:10px}
+.f{margin-top:16px;font-size:14px}
 </style></head><body>
 <div class="c"><h1>PIZZERIA</h1><p>${fecha}</p></div>
 <div class="d"></div>

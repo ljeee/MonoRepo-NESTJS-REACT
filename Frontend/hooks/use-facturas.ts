@@ -3,10 +3,6 @@ import { isAxiosError } from 'axios';
 import { api } from '../services/api';
 import type { FacturaVenta, FacturaStats } from '../types/models';
 
-// Re-export for backward compat
-export type Factura = FacturaVenta;
-export type DayStats = FacturaStats;
-
 type UnknownRecord = Record<string, unknown>;
 
 function asRecord(value: unknown): UnknownRecord {
@@ -110,9 +106,9 @@ export function useFacturasDia() {
       } catch {
         setStats(calcStats(mapped));
       }
+      setLoading(false);
     } catch (error: unknown) {
       setError(getErrorMessage(error, 'Error al cargar facturas del día'));
-    } finally {
       setLoading(false);
     }
   }, []);
@@ -162,9 +158,9 @@ export function useFacturasRango() {
       const mapped = raw.map(mapFactura);
       setData(mapped);
       setStats(calcStats(mapped));
+      setLoading(false);
     } catch (error: unknown) {
       setError(getErrorMessage(error, 'Error al cargar facturas'));
-    } finally {
       setLoading(false);
     }
   }, [from, to]);

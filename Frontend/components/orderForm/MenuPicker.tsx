@@ -31,7 +31,10 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
     () =>
       productos.reduce<Record<string, Producto[]>>((acc, p) => {
         const cat = p.categoria || 'Otros';
-        (acc[cat] ??= []).push(p);
+        if (!acc[cat]) {
+          acc[cat] = [];
+        }
+        acc[cat].push(p);
         return acc;
       }, {}),
     [productos],
@@ -51,16 +54,17 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const sortVariantes = (vs: ProductoVariante[]) =>
     [...vs].sort((a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50));
 
-  useEffect(() => {
-    if (categoryNames.length > 0 && !activeCategory) {
-      setActiveCategory(categoryNames[0]);
+  const selectedCategory = useMemo(() => {
+    if (activeCategory && categories[activeCategory]) {
+      return activeCategory;
     }
-  }, [categoryNames, activeCategory]);
+    return categoryNames[0] ?? null;
+  }, [activeCategory, categories, categoryNames]);
 
   // Filter products by search query
   const filteredProducts = useMemo(() => {
-    if (!activeCategory) return [];
-    const products = categories[activeCategory] || [];
+    if (!selectedCategory) return [];
+    const products = categories[selectedCategory] || [];
     if (!searchQuery.trim()) return products;
 
     const query = searchQuery.toLowerCase();
@@ -68,7 +72,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
       p.productoNombre.toLowerCase().includes(query) ||
       p.descripcion?.toLowerCase().includes(query)
     );
-  }, [activeCategory, categories, searchQuery]);
+  }, [selectedCategory, categories, searchQuery]);
 
   if (loading) {
     return (

@@ -7,6 +7,7 @@ import {OrdenesGateway} from './ordenes.gateway';
 import {FacturasVentas} from '../facturas-ventas/esquemas/facturas-ventas.entity';
 import {Domicilios} from '../domicilios/esquemas/domicilios.entity';
 import {Clientes} from '../clientes/esquemas/clientes.entity';
+import {ClienteDirecciones} from '../clientes/esquemas/cliente-direcciones.entity';
 import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {Productos} from '../productos/esquemas/productos.entity';
 import {ProductoVariantes} from '../productos/esquemas/producto-variantes.entity';
@@ -18,7 +19,7 @@ import {ProductProcessingService} from './services/product-processing.service';
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([Ordenes, FacturasVentas, Domicilios, Clientes, Domiciliarios, Productos, ProductoVariantes, OrdenesProductos]),
+		TypeOrmModule.forFeature([Ordenes, FacturasVentas, Domicilios, Clientes, ClienteDirecciones, Domiciliarios, Productos, ProductoVariantes, OrdenesProductos]),
 		PizzaSaboresModule
 	],
 	providers: [

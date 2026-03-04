@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View, TextInput } from 'react-native';
 import { colors } from '../../styles/theme';
 import { fontSize, fontWeight, radius, shadows, spacing } from '../../styles/tokens';
@@ -20,13 +20,9 @@ export default function UpdateTotalModal({
     onConfirm,
     onCancel,
 }: UpdateTotalModalProps) {
-    const [value, setValue] = useState('');
+    const [value, setValue] = useState(() => currentTotal.toString());
 
-    useEffect(() => {
-        if (visible) {
-            setValue(currentTotal.toString());
-        }
-    }, [visible, currentTotal]);
+    const inputKey = `${visible ? 'open' : 'closed'}-${currentTotal}`;
 
     const handleConfirm = () => {
         const num = parseFloat(value);
@@ -46,13 +42,13 @@ export default function UpdateTotalModal({
 
                     <Text style={styles.label}>Nuevo Valor</Text>
                     <TextInput
+                        key={inputKey}
                         style={styles.input}
-                        value={value}
+                        defaultValue={currentTotal.toString()}
                         onChangeText={setValue}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor={colors.textMuted}
-                        autoFocus
                         selectTextOnFocus
                     />
 

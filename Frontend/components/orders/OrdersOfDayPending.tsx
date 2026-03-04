@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Text, TouchableOpacity, View, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
+import { FlatList, Text, TouchableOpacity, View, RefreshControl, ActivityIndicator } from 'react-native';
 import { Href, useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { useBreakpoint } from '../../styles/responsive';
@@ -8,9 +8,10 @@ import { ErrorState } from '../states/ErrorState';
 import { ListSkeleton } from '../ui/SkeletonLoader';
 import { PageContainer, PageHeader, Button, Card, Badge, Icon } from '../ui';
 import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, spacing, radius, shadows } from '../../styles/tokens';
+import { spacing } from '../../styles/tokens';
 import { formatDate } from '../../utils/formatNumber';
 import { useOrdenesSocket } from '../../hooks/use-ordenes-socket';
+import { ordenesPendingStyles as styles } from '../../styles/ordenes/ordenes-pending.styles';
 import type { Orden } from '../../types/models';
 
 function getErrorStatusCode(error: unknown): number | undefined {
@@ -45,17 +46,21 @@ export default function OrdersOfDayPending() {
       setLoading(true);
     }
     setError('');
+    const url_estado = filter === 'pendientes' ? 'pendiente' : undefined;
     try {
-      const url_estado = filter === 'pendientes' ? 'pendiente' : undefined;
       const data = await api.ordenes.getDay(url_estado);
       setOrders(data);
+      if (isRefresh) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
     } catch (error: unknown) {
       if (getErrorStatusCode(error) === 404) {
         setOrders([]);
       } else {
         setError('No pudimos cargar las órdenes. Por favor, intenta de nuevo.');
       }
-    } finally {
       if (isRefresh) {
         setRefreshing(false);
       } else {
@@ -65,24 +70,28 @@ export default function OrdersOfDayPending() {
   }, [filter]);
 
   useEffect(() => {
-    fetchOrders();
+    const timer = setTimeout(() => {
+      void fetchOrders();
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [fetchOrders]);
 
   const { isConnected } = useOrdenesSocket('cajero', () => fetchOrders(true));
 
-  const markAsCompleted = async (ordenId: number) => {
+  const markAsCompleted = useCallback(async (ordenId: number) => {
     setPatchLoading(ordenId);
     try {
       await api.ordenes.update(ordenId, { estadoOrden: 'completada' });
       await fetchOrders();
+      setPatchLoading(null);
     } catch {
       setError('No se pudo actualizar la orden');
-    } finally {
       setPatchLoading(null);
     }
-  };
+  }, [fetchOrders]);
 
-  const getClientName = (item: Orden) => {
+  const getClientName = useCallback((item: Orden) => {
     const nombre = item.factura?.clienteNombre || item.nombreCliente;
     if (!nombre) return 'Sin nombre';
     if (item.tipoPedido === 'mesa') {
@@ -93,7 +102,107 @@ export default function OrdersOfDayPending() {
           : `Mesa ${nombre}`;
     }
     return nombre;
-  };
+  }, []);
+
+  const renderOrderItem = useCallback(({ item }: { item: Orden }) => {
+    return (
+      <View style={[styles.gridItem, isMobile && styles.gridItemMobile]}>
+        <Card
+          onPress={() =>
+            router.push(
+              `/orden-detalle?ordenId=${item.ordenId}` as Href,
+            )
+          }
+          padding="md"
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.cardHeaderLeft}>
+              <Icon
+                name={
+                  item.tipoPedido === 'domicilio'
+                    ? 'truck-delivery-outline'
+                    : item.tipoPedido === 'llevar'
+                      ? 'shopping-outline'
+                      : 'table-furniture'
+                }
+                size={18}
+                color={colors.primary}
+                style={styles.iconMarginMd}
+              />
+              <Text style={styles.clientName}>
+                {getClientName(item)}
+              </Text>
+            </View>
+            <Badge
+              label={item.estadoOrden}
+              variant={
+                item.estadoOrden === 'pendiente'
+                  ? 'warning'
+                  : item.estadoOrden === 'completada' || item.estadoOrden === 'entregado'
+                    ? 'success'
+                    : item.estadoOrden === 'cancelado'
+                      ? 'danger'
+                      : 'info'
+              }
+              size="sm"
+            />
+          </View>
+
+          <View style={styles.metaRow}>
+            <Text style={styles.metaText}>{item.tipoPedido}</Text>
+            <Text style={styles.metaText}>{formatDate(item.fechaOrden)}</Text>
+          </View>
+
+          {item.tipoPedido === 'domicilio' &&
+            item.domicilios?.[0]?.direccionEntrega && (
+              <View style={styles.addressRow}>
+                <Icon name="map-marker-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.addressText}>{item.domicilios[0].direccionEntrega}</Text>
+              </View>
+            )}
+
+          {item.observaciones && (
+            <View style={styles.observationRow}>
+              <Icon name="note-text-outline" size={14} color={colors.warning} />
+              <Text style={styles.observationText}>{item.observaciones}</Text>
+            </View>
+          )}
+
+          {item.productos && item.productos.length > 0 && (
+            <View style={styles.productList}>
+              {item.productos.map((prod) => (
+                <View key={prod.id} style={styles.productRow}>
+                  <View style={styles.productDot} />
+                  <Text style={styles.productText}>{prod.producto}</Text>
+                  <Text style={styles.productQty}>x{prod.cantidad}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <View style={styles.cardActions}>
+            {item.estadoOrden !== 'completada' && item.estadoOrden !== 'cancelado' && (
+              <TouchableOpacity
+                style={[
+                  styles.completeButtonCircle,
+                  patchLoading === item.ordenId && { opacity: 0.7 }
+                ]}
+                onPress={() => markAsCompleted(item.ordenId)}
+                disabled={patchLoading === item.ordenId}
+                activeOpacity={0.8}
+              >
+                {patchLoading === item.ordenId ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Icon name="check" size={22} color={colors.white} />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </Card>
+      </View>
+    );
+  }, [getClientName, isMobile, markAsCompleted, patchLoading, router]);
 
   const numColumns = isMobile ? 1 : isTablet ? 2 : 3;
 
@@ -169,8 +278,8 @@ export default function OrdersOfDayPending() {
         <FlatList
           style={styles.flex1}
           data={orders}
-          keyExtractor={(item, index) =>
-            item.ordenId?.toString() || `${item.fechaOrden || 'orden'}-${index}`
+          keyExtractor={(item) =>
+            item.ordenId?.toString() || `${item.fechaOrden || 'orden'}-${item.facturaId ?? 'nf'}`
           }
           refreshControl={
             <RefreshControl
@@ -182,133 +291,7 @@ export default function OrdersOfDayPending() {
           }
           numColumns={numColumns}
           key={numColumns}
-          contentContainerStyle={styles.listContent}
-          columnWrapperStyle={
-            numColumns > 1 ? { gap: spacing.md } : undefined
-          }
-          renderItem={({ item }) => {
-            return (
-              <View style={[styles.gridItem, isMobile && styles.gridItemMobile]}>
-                <Card
-                  onPress={() =>
-                    router.push(
-                      `/orden-detalle?ordenId=${item.ordenId}` as Href,
-                    )
-                  }
-                  padding="md"
-                >
-                  {/* Header */}
-                  <View style={styles.cardHeader}>
-                    <View style={styles.cardHeaderLeft}>
-                      <Icon
-                        name={
-                          item.tipoPedido === 'domicilio'
-                            ? 'truck-delivery-outline'
-                            : item.tipoPedido === 'llevar'
-                              ? 'shopping-outline'
-                              : 'table-furniture'
-                        }
-                        size={18}
-                        color={colors.primary}
-                        style={styles.iconMarginMd}
-                      />
-                      <Text style={styles.clientName}>
-                        {getClientName(item)}
-                      </Text>
-                    </View>
-                    <Badge
-                      label={item.estadoOrden}
-                      variant={
-                        item.estadoOrden === 'pendiente'
-                          ? 'warning'
-                          : item.estadoOrden === 'completada' || item.estadoOrden === 'entregado'
-                            ? 'success'
-                            : item.estadoOrden === 'cancelado'
-                              ? 'danger'
-                              : 'info'
-                      }
-                      size="sm"
-                    />
-                  </View>
-
-                  {/* Type & Date */}
-                  <View style={styles.metaRow}>
-                    <Text style={styles.metaText}>
-                      {item.tipoPedido}
-                    </Text>
-                    <Text style={styles.metaText}>
-                      {formatDate(item.fechaOrden)}
-                    </Text>
-                  </View>
-
-                  {/* Address for delivery */}
-                  {item.tipoPedido === 'domicilio' &&
-                    item.domicilios?.[0]?.direccionEntrega && (
-                      <View style={styles.addressRow}>
-                        <Icon
-                          name="map-marker-outline"
-                          size={14}
-                          color={colors.textMuted}
-                        />
-                        <Text style={styles.addressText}>
-                          {item.domicilios[0].direccionEntrega}
-                        </Text>
-                      </View>
-                    )}
-
-                  {/* Observations */}
-                  {item.observaciones && (
-                    <View style={styles.observationRow}>
-                      <Icon
-                        name="note-text-outline"
-                        size={14}
-                        color={colors.warning}
-                      />
-                      <Text style={styles.observationText}>
-                        {item.observaciones}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Products */}
-                  {item.productos && item.productos.length > 0 && (
-                    <View style={styles.productList}>
-                      {item.productos.map((prod) => (
-                        <View key={prod.id} style={styles.productRow}>
-                          <View style={styles.productDot} />
-                          <Text style={styles.productText}>
-                            {prod.producto}
-                          </Text>
-                          <Text style={styles.productQty}>x{prod.cantidad}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-
-                  {/* Actions */}
-                  <View style={styles.cardActions}>
-                    {item.estadoOrden !== 'completada' && item.estadoOrden !== 'cancelado' && (
-                      <TouchableOpacity
-                        style={[
-                          styles.completeButtonCircle,
-                          patchLoading === item.ordenId && { opacity: 0.7 }
-                        ]}
-                        onPress={() => markAsCompleted(item.ordenId)}
-                        disabled={patchLoading === item.ordenId}
-                        activeOpacity={0.8}
-                      >
-                        {patchLoading === item.ordenId ? (
-                          <ActivityIndicator size="small" color={colors.card} />
-                        ) : (
-                          <Icon name="check-bold" size={24} color={colors.card} />
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                </Card>
-              </View>
-            );
-          }}
+          renderItem={renderOrderItem}
           ListEmptyComponent={
             <EmptyState
               message="Sin órdenes hoy"
@@ -322,202 +305,6 @@ export default function OrdersOfDayPending() {
           }
         />
       )}
-
-
-
     </PageContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  actionsBar: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-    flexWrap: 'wrap',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
-  },
-  filterRowMobile: {
-    flexDirection: 'column',
-    alignItems: 'stretch',
-  },
-  filterTab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.full,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterTabActive: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-  },
-  filterText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    color: colors.textMuted,
-  },
-  filterTextActive: {
-    color: colors.primary,
-    fontWeight: fontWeight.bold,
-  },
-  gridItem: {
-    flex: 1,
-    marginBottom: spacing.md,
-    maxWidth: '33.33%',
-  },
-  gridItemMobile: {
-    maxWidth: '100%',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  cardHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  clientName: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    flex: 1,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  metaText: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    textTransform: 'capitalize',
-  },
-  addressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.bgLight,
-    borderRadius: radius.sm,
-  },
-  addressText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  observationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.warningLight,
-    borderRadius: radius.sm,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.warning,
-  },
-  observationText: {
-    fontSize: fontSize.sm,
-    color: colors.warning,
-    fontStyle: 'italic',
-    flex: 1,
-  },
-  productList: {
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-    backgroundColor: colors.bgLight,
-    borderRadius: radius.sm,
-  },
-  productRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 3,
-  },
-  productDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
-    marginRight: spacing.sm,
-  },
-  productText: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    flex: 1,
-  },
-  productQty: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    marginLeft: spacing.sm,
-  },
-  socketIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginLeft: spacing.sm,
-  },
-  completeButtonCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  flex1: {
-    flex: 1,
-  },
-  filterRowInner: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    flex: 1,
-  },
-  filterRowInnerMobile: {
-    flex: 0,
-    width: '100%',
-  },
-  iconMarginSm: {
-    marginRight: 6,
-  },
-  filterTabSpacing: {
-    marginRight: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  filterTabMobile: {
-    marginRight: spacing.xs,
-  },
-  socketIndicatorMobile: {
-    marginLeft: 0,
-  },
-  refreshButtonMobile: {
-    alignSelf: 'flex-end',
-  },
-  listContent: {
-    paddingBottom: spacing.lg,
-  },
-  iconMarginMd: {
-    marginRight: spacing.sm,
-  },
-  cardActions: {
-    marginTop: spacing.md,
-    alignItems: 'flex-end',
-  },
-});

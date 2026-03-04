@@ -1,13 +1,12 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
     ActivityIndicator,
-    Animated,
-    Platform,
     Pressable,
     StyleSheet,
     Text,
     ViewStyle,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { colors } from '../../styles/theme';
 import { fontSize, fontWeight, radius, shadows, spacing } from '../../styles/tokens';
 import Icon, { IconName } from './Icon';
@@ -54,28 +53,26 @@ export default function Button({
     fullWidth = false,
     style,
 }: ButtonProps) {
-    const scale = useRef(new Animated.Value(1)).current;
+    const scale = useSharedValue(1);
     const v = variantStyles[variant];
     const s = sizeStyles[size];
     const isDisabled = disabled || loading;
 
     const handlePressIn = () => {
-        Animated.spring(scale, {
-            toValue: 0.96,
-            useNativeDriver: Platform.OS !== 'web',
-            speed: 50,
-            bounciness: 4,
-        }).start();
+        if (!isDisabled) {
+            scale.set(withSpring(0.96, { damping: 12, stiffness: 200 }));
+        }
     };
 
     const handlePressOut = () => {
-        Animated.spring(scale, {
-            toValue: 1,
-            useNativeDriver: Platform.OS !== 'web',
-            speed: 50,
-            bounciness: 4,
-        }).start();
+        scale.set(withSpring(1, { damping: 12, stiffness: 200 }));
     };
+
+    const animatedStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ scale: scale.get() }],
+        };
+    });
 
     return (
         <Pressable
@@ -93,8 +90,8 @@ export default function Button({
                         height: s.h,
                         paddingHorizontal: s.px,
                         opacity: isDisabled ? 0.5 : 1,
-                        transform: [{ scale }],
                     },
+                    animatedStyle,
                     variant === 'outline' && { borderWidth: 1.5 },
                     variant !== 'ghost' && variant !== 'outline' && shadows.sm,
                     fullWidth && { width: '100%' },

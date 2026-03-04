@@ -180,3 +180,23 @@
     cursor: pointer;
     transition: all 0.2s;
 }
+
+/* ── Shortcut Hints ── */
+.shortcut-hint {
+    margin-left: auto;
+    font-size: 0.6rem;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-nav-item:hover .shortcut-hint {
+    opacity: 1;
+}

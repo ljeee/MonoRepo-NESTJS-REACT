@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { listen } from '@tauri-apps/api/event';
 import { Server } from 'lucide-react';
 
@@ -8,6 +8,7 @@ import { getBackendUrl, setBackendUrl as persistBackendUrl, validateBackendUrl }
 import { AuthProvider } from './contexts/AuthContext';
 import { OrderProvider } from './contexts/OrderContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
+import { NotificationsProvider } from './contexts/NotificationsContext';
 import { ToastViewport } from './components/ToastViewport';
 import { MainLayout } from './layouts/MainLayout';
 import { LoginPage } from './pages/Login';
@@ -23,7 +24,9 @@ import { OrdenesTodasPage } from './pages/OrdenesTodas';
 import { BalanceFechasPage } from './pages/BalanceFechas';
 import { FacturasPagosPage } from './pages/FacturasPagos';
 import { OrdenDetallePage } from './pages/OrdenDetalle';
-import { useKeyboardShortcuts } from './hooks/use-keyboard-shortcuts';
+import { EstadisticasPage } from './pages/Estadisticas';
+import { DashboardPage } from './pages/Dashboard';
+import { useKeyboardShortcuts, getShortcutDefinitions } from './hooks/use-keyboard-shortcuts';
 
 import './App.css';
 
@@ -89,18 +92,15 @@ function AppInitialState({ children }: { children: React.ReactNode }) {
 
 function KeyboardShortcutsBinder() {
   const navigate = useNavigate();
-
-  useKeyboardShortcuts({
-    onF1: () => navigate('/crear-orden'),
-    onF2: () => navigate('/ordenes'),
-    onF3: () => navigate('/facturas'),
-  });
-
+  const shortcuts = getShortcutDefinitions(navigate);
+  useKeyboardShortcuts(shortcuts);
   return null;
 }
 
 function CloseFeedbackBinder() {
   const { showToast } = useToast();
+  const showToastRef = React.useRef(showToast);
+  React.useEffect(() => { showToastRef.current = showToast; }, [showToast]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
@@ -111,7 +111,7 @@ function CloseFeedbackBinder() {
       }
 
       unlisten = await listen<string>('app://close-prevented', (event) => {
-        showToast(event.payload || 'Presiona cerrar nuevamente para salir.', 'warning', 2400);
+        showToastRef.current(event.payload || 'Presiona cerrar nuevamente para salir.', 'warning', 2400);
       });
     }
 
@@ -122,7 +122,7 @@ function CloseFeedbackBinder() {
         unlisten();
       }
     };
-  }, [showToast]);
+  }, []); // ← no dependency on showToast
 
   return null;
 }
@@ -137,29 +137,32 @@ function App() {
           <CloseFeedbackBinder />
           <ToastViewport />
           <AuthProvider>
-            <OrderProvider>
-              <Routes>
-                {/* Ruta de Login (Sin Layout) */}
-                <Route path="/login" element={<LoginPage />} />
+            <NotificationsProvider>
+              <OrderProvider>
+                <Routes>
+                  {/* Ruta de Login (Sin Layout) */}
+                  <Route path="/login" element={<LoginPage />} />
 
-                {/* Rutas protegidas (Con MainLayout y Sidebar) */}
-                <Route element={<MainLayout />}>
-                  <Route path="/" element={<Navigate to="/ordenes" replace />} />
-                  <Route path="/ordenes" element={<OrdersOfDayPending />} />
-                  <Route path="/crear-orden" element={<CreateOrderPage />} />
-                  <Route path="/facturas" element={<FacturasPage />} />
-                  <Route path="/historial" element={<HistorialPage />} />
-                  <Route path="/clientes" element={<ClientesPage />} />
-                  <Route path="/domiciliarios" element={<DomiciliariosPage />} />
-                  <Route path="/gestion-productos" element={<GestionProductosPage />} />
-                  <Route path="/ordenes-todas" element={<OrdenesTodasPage />} />
-                  <Route path="/ordenes/:ordenId" element={<OrdenDetallePage />} />
-                  <Route path="/balance-fechas" element={<BalanceFechasPage />} />
-                  <Route path="/facturas-pagos" element={<FacturasPagosPage />} />
-                  <Route path="/ajustes" element={<AjustesPage />} />
-                </Route>
-              </Routes>
-            </OrderProvider>
+                  {/* Rutas protegidas (Con MainLayout y Sidebar) */}
+                  <Route element={<MainLayout />}>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/ordenes" element={<OrdersOfDayPending />} />
+                    <Route path="/crear-orden" element={<CreateOrderPage />} />
+                    <Route path="/facturas" element={<FacturasPage />} />
+                    <Route path="/historial" element={<HistorialPage />} />
+                    <Route path="/clientes" element={<ClientesPage />} />
+                    <Route path="/domiciliarios" element={<DomiciliariosPage />} />
+                    <Route path="/gestion-productos" element={<GestionProductosPage />} />
+                    <Route path="/ordenes-todas" element={<OrdenesTodasPage />} />
+                    <Route path="/ordenes/:ordenId" element={<OrdenDetallePage />} />
+                    <Route path="/balance-fechas" element={<BalanceFechasPage />} />
+                    <Route path="/facturas-pagos" element={<FacturasPagosPage />} />
+                    <Route path="/estadisticas" element={<EstadisticasPage />} />
+                    <Route path="/ajustes" element={<AjustesPage />} />
+                  </Route>
+                </Routes>
+              </OrderProvider>
+            </NotificationsProvider>
           </AuthProvider>
         </ToastProvider>
       </BrowserRouter>

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useReducer, useCallback } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
 import { useFacturasRango } from '../hooks/use-facturas';
@@ -75,13 +75,38 @@ function BalanceCard({ ingresos, gastos, s }: { ingresos: number; gastos: number
 export default function BalanceFechasScreen() {
     const { isMobile } = useBreakpoint();
     const s = makeBStyles(isMobile);
-    // ── Screen-level date state (single source of truth for both hooks) ──
-    const [from, setFrom] = useState('');
-    const [to, setTo] = useState('');
-    const [filterError, setFilterError] = useState('');
-    const [updatingId, setUpdatingId] = useState<number | null>(null);
-    // Increment to fire useEffect after both hook setters have committed
-    const [searchTrigger, setSearchTrigger] = useState(0);
+    // ── Grouped UI/filter state to avoid fragmented updates ──
+    type FilterState = {
+        from: string;
+        to: string;
+        filterError: string;
+        updatingId: number | null;
+    };
+
+    type FilterAction =
+        | { type: 'setFrom'; value: string }
+        | { type: 'setTo'; value: string }
+        | { type: 'setFilterError'; value: string }
+        | { type: 'setUpdatingId'; value: number | null }
+        | { type: 'setRange'; from: string; to: string };
+
+    const [filterState, dispatch] = useReducer((state: FilterState, action: FilterAction): FilterState => {
+        switch (action.type) {
+            case 'setFrom': return { ...state, from: action.value };
+            case 'setTo': return { ...state, to: action.value };
+            case 'setFilterError': return { ...state, filterError: action.value };
+            case 'setUpdatingId': return { ...state, updatingId: action.value };
+            case 'setRange': return { ...state, from: action.from, to: action.to };
+            default: return state;
+        }
+    }, {
+        from: '',
+        to: '',
+        filterError: '',
+        updatingId: null,
+    });
+
+    const { from, to, filterError, updatingId } = filterState;
 
     // ── Facturas hook ──
     const {
@@ -106,42 +131,37 @@ export default function BalanceFechasScreen() {
         fetchData: fetchGastos,
     } = useFacturasPagosRango();
 
-    // Fetch fires after React has committed the setter calls (avoids stale closures)
-    useEffect(() => {
-        if (searchTrigger === 0) return;
-        fetchFacturas();
-        fetchGastos();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [searchTrigger]);
-
     const handleSearch = useCallback(() => {
         const { from: fromParsed, to: toParsed, error } = validateFlexibleDateRange(from, to);
         if (error) {
-            setFilterError(error);
+            dispatch({ type: 'setFilterError', value: error });
             return;
         }
 
-        setFilterError('');
-        // Update input state as well to reflect standard format
-        setFrom(fromParsed);
-        setTo(toParsed);
+        dispatch({ type: 'setFilterError', value: '' });
+        dispatch({ type: 'setRange', from: fromParsed, to: toParsed });
 
-        // Push dates into both hooks, then increment trigger → useEffect fires fetch
+        // Push dates into both hooks and fetch with explicit range args.
         setFromF(fromParsed); setToF(toParsed);
         setFromG(fromParsed); setToG(toParsed);
-        setSearchTrigger((n) => n + 1);
-    }, [from, to, setFromF, setToF, setFromG, setToG]);
+        void fetchFacturas(fromParsed, toParsed);
+        void fetchGastos(fromParsed, toParsed);
+    }, [from, to, setFromF, setToF, setFromG, setToG, fetchFacturas, fetchGastos]);
 
-    const handleToggleEstado = async (facturaId: number, currentEstado?: string) => {
+    const handleToggleEstado = useCallback(async (facturaId: number, currentEstado?: string) => {
         const nuevoEstado = currentEstado === 'pagado' ? 'pendiente' : 'pagado';
-        setUpdatingId(facturaId);
-        try { await updateEstado(facturaId, nuevoEstado); }
-        finally { setUpdatingId(null); }
-    };
+        dispatch({ type: 'setUpdatingId', value: facturaId });
+        try {
+            await updateEstado(facturaId, nuevoEstado);
+        } catch (error) {
+            console.error('Error updating factura estado:', error);
+        }
+        dispatch({ type: 'setUpdatingId', value: null });
+    }, [updateEstado]);
 
-    const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
+    const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
         await updateFactura(facturaId, { total: newTotal });
-    };
+    }, [updateFactura]);
 
     const handleExportCsv = useCallback(() => {
         downloadCsv(buildCombinedBalanceCsv(facturas, gastos), `balance_${from}_${to}.csv`);
@@ -151,6 +171,17 @@ export default function BalanceFechasScreen() {
     const hasData = facturas.length > 0 || gastos.length > 0;
     const ingresos = stats?.totalPagado ?? 0;
     const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
+
+    const renderFacturaItem = useCallback(({ item }: { item: (typeof facturas)[number] }) => (
+        <View style={localStyles.renderItem}>
+            <FacturaCard
+                item={item}
+                isUpdating={updatingId === item.facturaId}
+                onToggleEstado={handleToggleEstado}
+                onUpdateTotal={handleUpdateTotal}
+            />
+        </View>
+    ), [handleToggleEstado, handleUpdateTotal, updatingId]);
 
     return (
         <PageContainer scrollable={false} contentContainerStyle={localStyles.flex1}>
@@ -184,7 +215,7 @@ export default function BalanceFechasScreen() {
                             <Input
                                 label="Desde"
                                 value={from}
-                                onChangeText={setFrom}
+                                onChangeText={(value) => dispatch({ type: 'setFrom', value })}
                                 placeholder="2025-01-01"
                                 containerStyle={localStyles.inputContainer}
                                 size="sm"
@@ -193,7 +224,7 @@ export default function BalanceFechasScreen() {
                             <Input
                                 label="Hasta"
                                 value={to}
-                                onChangeText={setTo}
+                                onChangeText={(value) => dispatch({ type: 'setTo', value })}
                                 placeholder="2026-12-31"
                                 containerStyle={localStyles.inputContainer}
                                 size="sm"
@@ -259,16 +290,7 @@ export default function BalanceFechasScreen() {
                 key={isMobile ? 'col_1' : 'col_2'}
                 numColumns={isMobile ? 1 : 2}
                 columnWrapperStyle={!isMobile ? { gap: spacing.md } : undefined}
-                renderItem={({ item }) => (
-                    <View style={localStyles.renderItem}>
-                        <FacturaCard
-                            item={item}
-                            isUpdating={updatingId === item.facturaId}
-                            onToggleEstado={handleToggleEstado}
-                            onUpdateTotal={handleUpdateTotal}
-                        />
-                    </View>
-                )}
+                renderItem={renderFacturaItem}
                 ListFooterComponent={
                     !loading && gastos.length > 0 ? (
                         <>
@@ -318,11 +340,9 @@ export default function BalanceFechasScreen() {
                 }
             />
         </PageContainer>
+
     );
 }
-
-// ─── Structural layout constants ──────────────────────────────────────────────
-// (Static error row — same in all breakpoints)
 
 const localStyles = StyleSheet.create({
     flex1: { flex: 1 },

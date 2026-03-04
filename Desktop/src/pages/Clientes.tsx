@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
+import type { ClienteFrecuente } from '../services/api';
 import { Cliente, CreateClienteDto } from '../types/models';
 import { useClientByPhone } from '../hooks/use-client-by-phone';
 import { useClientesList } from '../hooks/use-clientes-list';
@@ -14,11 +15,29 @@ import {
     Trash2,
     Phone,
     MapPin,
-    AlertCircle
+    AlertCircle,
+    Clock,
 } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 
 type FormMode = 'closed' | 'create' | 'edit';
+
+function formatCurrency(n: number) {
+    return n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+}
+
+function timeAgo(dateStr: string): string {
+    if (!dateStr) return '—';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Ahora';
+    if (mins < 60) return `Hace ${mins} min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `Hace ${hours}h`;
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `Hace ${days}d`;
+    return `Hace ${Math.floor(days / 30)} mes${Math.floor(days / 30) > 1 ? 'es' : ''}`;
+}
 
 export function ClientesPage() {
     const { data, loading, error, refetch } = useClientesList();
@@ -27,16 +46,17 @@ export function ClientesPage() {
 
     const [telefonoBusqueda, setTelefonoBusqueda] = useState('');
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [frecuentes, setFrecuentes] = useState<ClienteFrecuente[]>([]);
 
     // ── Form state ──
     const [formMode, setFormMode] = useState<FormMode>('closed');
     const [formData, setFormData] = useState<CreateClienteDto>({
         telefono: '',
         clienteNombre: '',
-        direccion: '',
-        direccionDos: '',
-        direccionTres: '',
     });
+    const [newAddress, setNewAddress] = useState('');
+    const [addingAddress, setAddingAddress] = useState<string | null>(null);
+    const [newAddressInput, setNewAddressInput] = useState('');
     const [formLoading, setFormLoading] = useState(false);
     const [formError, setFormError] = useState('');
     const [editingPhone, setEditingPhone] = useState('');
@@ -45,16 +65,37 @@ export function ClientesPage() {
     const [deleteTarget, setDeleteTarget] = useState<Cliente | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
 
+    // ── Fetch frequent clients stats ──
+    useEffect(() => {
+        api.estadisticas.clientesFrecuentes(200)
+            .then(setFrecuentes)
+            .catch(() => { /* ignore */ });
+    }, [data]);
+
+    // Build lookup map: clienteNombre -> stats
+    const statsMap = useMemo(() => {
+        const map = new Map<string, ClienteFrecuente>();
+        for (const f of frecuentes) {
+            if (f.clienteNombre) map.set(f.clienteNombre.toLowerCase(), f);
+        }
+        return map;
+    }, [frecuentes]);
+
+    const getStats = (cliente: Cliente): ClienteFrecuente | undefined => {
+        const name = (cliente.clienteNombre || '').toLowerCase();
+        return name ? statsMap.get(name) : undefined;
+    };
+
     const resetForm = () => {
         setFormMode('closed');
-        setFormData({ telefono: '', clienteNombre: '', direccion: '', direccionDos: '', direccionTres: '' });
+        setFormData({ telefono: '', clienteNombre: '', tipoDocumento: '', documento: '', correo: '' });
         setFormError('');
         setEditingPhone('');
     };
 
     const openCreate = () => {
         setFormMode('create');
-        setFormData({ telefono: '', clienteNombre: '', direccion: '', direccionDos: '', direccionTres: '' });
+        setFormData({ telefono: '', clienteNombre: '', tipoDocumento: '', documento: '', correo: '' });
         setFormError('');
     };
 
@@ -64,11 +105,36 @@ export function ClientesPage() {
         setFormData({
             telefono: c.telefono,
             clienteNombre: c.clienteNombre || '',
-            direccion: c.direccion || '',
-            direccionDos: c.direccionDos || '',
-            direccionTres: c.direccionTres || '',
+            tipoDocumento: c.tipoDocumento || '',
+            documento: c.documento || '',
+            correo: c.correo || '',
         });
         setFormError('');
+    };
+
+    const handleAddAddress = async (telefono: string) => {
+        const dir = telefono === formData.telefono && formMode === 'create' ? newAddress : newAddressInput;
+        if (!dir.trim()) return;
+        try {
+            await api.clientes.addDireccion(telefono, dir.trim());
+            showToast('Dirección agregada', 'success');
+            setAddingAddress(null);
+            setNewAddressInput('');
+            setNewAddress('');
+            refetch();
+        } catch {
+            showToast('Error al agregar dirección', 'error');
+        }
+    };
+
+    const handleRemoveAddress = async (id: number) => {
+        try {
+            await api.clientes.removeDireccion(id);
+            showToast('Dirección eliminada', 'success');
+            refetch();
+        } catch {
+            showToast('Error al eliminar dirección', 'error');
+        }
     };
 
     const handleSave = async (e: React.FormEvent) => {
@@ -132,7 +198,10 @@ export function ClientesPage() {
                         <Users className="page-icon" />
                         Clientes
                     </h1>
-                    <p className="page-description">Gestiona el directorio de clientes para domicilios.</p>
+                    <p className="page-description">
+                        Gestiona el directorio de clientes para domicilios.
+                        {data.length > 0 && <span className="text-muted"> — {data.length} registrados</span>}
+                    </p>
                 </div>
                 <div className="header-actions">
                     <button
@@ -184,47 +253,108 @@ export function ClientesPage() {
                                     />
                                 </div>
                             </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label>Dirección Principal</label>
-                            <div className="input-with-icon">
-                                <MapPin size={16} />
+                            <div className="form-group">
+                                <label>Tipo Documento</label>
+                                <select
+                                    value={formData.tipoDocumento || ''}
+                                    onChange={(e) => setFormData({ ...formData, tipoDocumento: e.target.value })}
+                                    className="form-select"
+                                >
+                                    <option value="">— Sin documento —</option>
+                                    <option value="CC">CC — Cédula</option>
+                                    <option value="NIT">NIT — Empresa</option>
+                                    <option value="CE">CE — Cédula Extranjería</option>
+                                    <option value="TI">TI — Tarjeta de Identidad</option>
+                                    <option value="PP">PP — Pasaporte</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Nº Documento</label>
                                 <input
                                     type="text"
-                                    value={formData.direccion}
-                                    onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
-                                    placeholder="Calle principal #123"
+                                    value={formData.documento || ''}
+                                    onChange={(e) => setFormData({ ...formData, documento: e.target.value })}
+                                    placeholder="Ej. 1234567890"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>Correo Electrónico</label>
+                                <input
+                                    type="email"
+                                    value={formData.correo || ''}
+                                    onChange={(e) => setFormData({ ...formData, correo: e.target.value })}
+                                    placeholder="correo@ejemplo.com"
                                 />
                             </div>
                         </div>
 
-                        <div className="form-grid">
-                            <div className="form-group">
-                                <label>Dirección Alternativa 1</label>
+                        {formMode === 'create' && (
+                            <div className="form-group mt-3">
+                                <label>Dirección Principal (Opcional)</label>
                                 <div className="input-with-icon">
-                                    <MapPin size={16} className="text-muted" />
+                                    <MapPin size={16} />
                                     <input
                                         type="text"
-                                        value={formData.direccionDos}
-                                        onChange={(e) => setFormData({ ...formData, direccionDos: e.target.value })}
-                                        placeholder="Opcional"
+                                        value={newAddress}
+                                        onChange={(e) => setNewAddress(e.target.value)}
+                                        placeholder="Ej. Calle 10 #20-30"
                                     />
                                 </div>
                             </div>
-                            <div className="form-group">
-                                <label>Dirección Alternativa 2</label>
-                                <div className="input-with-icon">
-                                    <MapPin size={16} className="text-muted" />
-                                    <input
-                                        type="text"
-                                        value={formData.direccionTres}
-                                        onChange={(e) => setFormData({ ...formData, direccionTres: e.target.value })}
-                                        placeholder="Opcional"
-                                    />
+                        )}
+
+                        {formMode === 'edit' && (() => {
+                            const editClient = data.find(c => c.telefono === editingPhone);
+                            const editDirs = editClient?.direcciones || [];
+                            return (
+                                <div className="mt-4">
+                                    <h3 className="text-lg font-semibold mb-2">Direcciones</h3>
+                                    <div className="space-y-2">
+                                        {editDirs.length > 0 ? (
+                                            editDirs.map((dir) => (
+                                                <div key={dir.id} className="address-row">
+                                                    <MapPin size={14} className="text-muted" />
+                                                    <span>{dir.direccion}</span>
+                                                    <button
+                                                        type="button"
+                                                        className="btn-icon text-danger"
+                                                        onClick={() => handleRemoveAddress(dir.id)}
+                                                        title="Eliminar dirección"
+                                                        style={{ marginLeft: 'auto', padding: '2px' }}
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="address-row text-muted">
+                                                <MapPin size={14} />
+                                                <span>Sin direcciones registradas</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="address-row mt-3" style={{ gap: '0.5rem' }}>
+                                        <input
+                                            type="text"
+                                            value={newAddressInput}
+                                            onChange={(e) => setNewAddressInput(e.target.value)}
+                                            placeholder="Añadir nueva dirección"
+                                            style={{ flex: 1, padding: '4px 8px', fontSize: '0.85rem', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddAddress(editingPhone); } }}
+                                        />
+                                        <button
+                                            type="button"
+                                            className="btn-primary"
+                                            onClick={() => handleAddAddress(editingPhone)}
+                                            disabled={!newAddressInput.trim()}
+                                            style={{ padding: '4px 10px', fontSize: '0.8rem' }}
+                                        >
+                                            Agregar
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
+                            );
+                        })()}
 
                         {formError && (
                             <div className="error-alert">
@@ -309,11 +439,18 @@ export function ClientesPage() {
                                 <strong>Teléfono:</strong> {client.telefono}
                             </div>
                             <div className="detail-row">
-                                <strong>Dirección:</strong> {client.direccion || '—'}
+                                <strong>Direcciones:</strong>
                             </div>
-                            {client.direccionDos && (
-                                <div className="detail-row">
-                                    <strong>Dir 2:</strong> {client.direccionDos}
+                            {client.direcciones && client.direcciones.length > 0 ? (
+                                client.direcciones.map((dir) => (
+                                    <div key={dir.id} className="detail-row" style={{ paddingLeft: '1rem' }}>
+                                        <MapPin size={14} className="text-muted" />
+                                        <span>{dir.direccion}</span>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="detail-row" style={{ paddingLeft: '1rem' }}>
+                                    <span className="text-muted">Sin direcciones</span>
                                 </div>
                             )}
                         </div>
@@ -346,58 +483,120 @@ export function ClientesPage() {
 
             {!loading && data.length > 0 && (
                 <div className="clientes-grid">
-                    {data.map((item) => (
-                        <div key={item.telefono} className="cliente-card pos-card p-3">
-                            <div className="cliente-card-header">
-                                <div>
-                                    <h3 className="cliente-name">{item.clienteNombre || 'Sin nombre'}</h3>
-                                    <div className="cliente-phone">
-                                        <Phone size={14} />
-                                        <span>{item.telefono}</span>
+                    {data.map((item) => {
+                        const stats = getStats(item);
+                        return (
+                            <div key={item.telefono} className="cliente-card pos-card p-3">
+                                <div className="cliente-card-header">
+                                    <div>
+                                        <h3 className="cliente-name">{item.clienteNombre || 'Sin nombre'}</h3>
+                                        <div className="cliente-phone">
+                                            <Phone size={14} />
+                                            <span>{item.telefono}</span>
+                                        </div>
+                                    </div>
+                                    <div className="cliente-actions">
+                                        <button
+                                            type="button"
+                                            className="btn-icon"
+                                            onClick={() => openEdit(item)}
+                                            title="Editar"
+                                        >
+                                            <Edit size={16} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn-icon text-danger"
+                                            onClick={() => setDeleteTarget(item)}
+                                            title="Eliminar"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
                                     </div>
                                 </div>
-                                <div className="cliente-actions">
-                                    <button
-                                        type="button"
-                                        className="btn-icon"
-                                        onClick={() => openEdit(item)}
-                                        title="Editar"
-                                    >
-                                        <Edit size={16} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="btn-icon text-danger"
-                                        onClick={() => setDeleteTarget(item)}
-                                        title="Eliminar"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div className="cliente-addresses mt-3">
-                                {item.direccion && (
-                                    <div className="address-row">
-                                        <MapPin size={14} className="text-muted" />
-                                        <span>{item.direccion}</span>
-                                    </div>
+                                {/* ── Stats Row ── */}
+                                {stats && (
+                                    <>
+                                        <div className="cliente-stats">
+                                            <div className="cliente-stat">
+                                                <span className="cliente-stat-value text-primary">{stats.totalOrdenes}</span>
+                                                <span className="cliente-stat-label">Órdenes</span>
+                                            </div>
+                                            <div className="cliente-stat">
+                                                <span className="cliente-stat-value text-success">{formatCurrency(stats.gastoTotal)}</span>
+                                                <span className="cliente-stat-label">Gasto Total</span>
+                                            </div>
+                                            <div className="cliente-stat">
+                                                <span className="cliente-stat-value text-info">{formatCurrency(Math.round(stats.gastoTotal / stats.totalOrdenes))}</span>
+                                                <span className="cliente-stat-label">Ticket Promedio</span>
+                                            </div>
+                                        </div>
+                                        {stats.ultimaVisita && (
+                                            <div className="cliente-last-visit">
+                                                <Clock size={12} />
+                                                Última visita: {timeAgo(stats.ultimaVisita)}
+                                            </div>
+                                        )}
+                                    </>
                                 )}
-                                {item.direccionDos && (
-                                    <div className="address-row">
-                                        <MapPin size={14} className="text-muted" />
-                                        <span>{item.direccionDos}</span>
-                                    </div>
-                                )}
-                                {item.direccionTres && (
-                                    <div className="address-row">
-                                        <MapPin size={14} className="text-muted" />
-                                        <span>{item.direccionTres}</span>
-                                    </div>
-                                )}
+
+                                {/* ── Addresses ── */}
+                                <div className="cliente-addresses mt-3">
+                                    {item.direcciones && item.direcciones.length > 0 ? (
+                                        item.direcciones.map((dir) => (
+                                            <div key={dir.id} className="address-row">
+                                                <MapPin size={14} className="text-muted" />
+                                                <span>{dir.direccion}</span>
+                                                <button
+                                                    type="button"
+                                                    className="btn-icon text-danger"
+                                                    onClick={() => handleRemoveAddress(dir.id)}
+                                                    title="Eliminar dirección"
+                                                    style={{ marginLeft: 'auto', padding: '2px' }}
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="address-row text-muted">
+                                            <MapPin size={14} />
+                                            <span>Sin direcciones</span>
+                                        </div>
+                                    )}
+                                    {addingAddress === item.telefono ? (
+                                        <div className="address-row mt-2" style={{ gap: '0.5rem' }}>
+                                            <input
+                                                type="text"
+                                                value={newAddressInput}
+                                                onChange={(e) => setNewAddressInput(e.target.value)}
+                                                placeholder="Nueva dirección"
+                                                style={{ flex: 1, padding: '4px 8px', fontSize: '0.85rem', borderRadius: '4px', border: '1px solid var(--border)' }}
+                                                onKeyDown={(e) => e.key === 'Enter' && handleAddAddress(item.telefono)}
+                                            />
+                                            <button type="button" className="btn-primary" onClick={() => handleAddAddress(item.telefono)} style={{ padding: '4px 10px', fontSize: '0.8rem' }}>
+                                                Agregar
+                                            </button>
+                                            <button type="button" className="btn-ghost" onClick={() => { setAddingAddress(null); setNewAddressInput(''); }} style={{ padding: '4px 8px', fontSize: '0.8rem' }}>
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="btn-ghost mt-2"
+                                            onClick={() => setAddingAddress(item.telefono)}
+                                            style={{ fontSize: '0.8rem', padding: '4px 8px' }}
+                                        >
+                                            <PlusCircle size={14} />
+                                            Agregar dirección
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

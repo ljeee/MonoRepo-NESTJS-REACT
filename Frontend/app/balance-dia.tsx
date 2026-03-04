@@ -164,8 +164,12 @@ export default function BalanceDiaScreen() {
     const handleToggleEstado = async (facturaId: number, currentEstado?: string) => {
         const nuevoEstado = currentEstado === 'pagado' ? 'pendiente' : 'pagado';
         setUpdatingId(facturaId);
-        try { await updateEstado(facturaId, nuevoEstado); }
-        finally { setUpdatingId(null); }
+        try {
+            await updateEstado(facturaId, nuevoEstado);
+        } catch (error) {
+            console.error('Error updating factura estado:', error);
+        }
+        setUpdatingId(null);
     };
 
     const handleUpdateTotal = async (facturaId: number, newTotal: number) => {

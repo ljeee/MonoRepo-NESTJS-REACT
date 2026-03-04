@@ -35,12 +35,12 @@ export function useCreateFacturaPago() {
     try {
       await api.pagos.create(data);
       setSuccess(true);
+      setLoading(false);
       return true;
     } catch (error: unknown) {
       setError(getErrorMessage(error, 'Error creando pago'));
-      return null;
-    } finally {
       setLoading(false);
+      return null;
     }
   };
 
@@ -60,13 +60,13 @@ export function useFacturasPagosDia() {
         .filter((p) => p && Object.keys(p).length > 0)
         .sort((a, b) => (b.pagosId || 0) - (a.pagosId || 0));
       setData(cleaned);
+      setLoading(false);
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setData([]);
       } else {
         setError(getErrorMessage(error, 'Error cargando pagos del día'));
       }
-    } finally {
       setLoading(false);
     }
   }, []);
@@ -81,22 +81,25 @@ export function useFacturasPagosRango() {
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
-  const fetchData = useCallback(async () => {
-    if (!from || !to) return;
-    if (isNaN(new Date(from).getTime()) || isNaN(new Date(to).getTime())) {
+  const fetchData = useCallback(async (f?: string, t?: string) => {
+    const finalFrom = f || from;
+    const finalTo = t || to;
+
+    if (!finalFrom || !finalTo) return;
+    if (isNaN(new Date(finalFrom).getTime()) || isNaN(new Date(finalTo).getTime())) {
       setError('Fechas inválidas');
       return;
     }
     setLoading(true); setError(null);
     try {
-      setData(await api.pagos.getAll({ from, to }));
+      setData(await api.pagos.getAll({ from: finalFrom, to: finalTo }));
+      setLoading(false);
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setData([]);
       } else {
         setError(getErrorMessage(error, 'Error cargando pagos'));
       }
-    } finally {
       setLoading(false);
     }
   }, [from, to]);
@@ -114,12 +117,12 @@ export function useUpdateFacturaPago() {
     try {
       await api.pagos.update(id, data);
       setSuccess(true);
+      setLoading(false);
       return true;
     } catch (error: unknown) {
       setError(getErrorMessage(error, 'Error actualizando pago'));
-      return null;
-    } finally {
       setLoading(false);
+      return null;
     }
   };
 
@@ -134,12 +137,12 @@ export function useDeleteFacturaPago() {
     setLoading(true); setError(null);
     try {
       await api.pagos.delete(id);
+      setLoading(false);
       return true;
     } catch (error: unknown) {
       setError(getErrorMessage(error, 'Error eliminando pago'));
-      return null;
-    } finally {
       setLoading(false);
+      return null;
     }
   };
 

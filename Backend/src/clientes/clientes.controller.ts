@@ -1,4 +1,4 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/common";
+import {Controller, Get, Post, Delete, Param, Body, Patch} from "@nestjs/common";
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {ClientesService} from "./clientes.service";
 import {CreateClientesDto} from "./esquemas/clientes.dto";
@@ -12,7 +12,7 @@ export class ClientesController {
 
 	@Get()
 	@ApiOperation({ summary: 'Obtener todos los clientes' })
-	@ApiResponse({ status: 200, description: 'Lista de clientes.' })
+	@ApiResponse({ status: 200, description: 'Lista de clientes con sus direcciones.' })
 	findAll() {
 		return this.service.findAll();
 	}
@@ -43,5 +43,25 @@ export class ClientesController {
 	@ApiResponse({ status: 200, description: 'Cliente eliminado.' })
 	remove(@Param("telefono") telefono: string) {
 		return this.service.remove(telefono);
+	}
+
+	// ─── Direcciones ──────────────────────────────────────────────
+
+	@Get(":telefono/direcciones")
+	@ApiOperation({ summary: 'Obtener direcciones de un cliente (más recientes primero)' })
+	getDirecciones(@Param("telefono") telefono: string) {
+		return this.service.getDirecciones(telefono);
+	}
+
+	@Post(":telefono/direcciones")
+	@ApiOperation({ summary: 'Agregar dirección a un cliente (auto-deduplica)' })
+	addDireccion(@Param("telefono") telefono: string, @Body('direccion') direccion: string) {
+		return this.service.addDireccion(telefono, direccion);
+	}
+
+	@Delete("direcciones/:id")
+	@ApiOperation({ summary: 'Eliminar una dirección' })
+	removeDireccion(@Param("id") id: number) {
+		return this.service.removeDireccion(id);
 	}
 }

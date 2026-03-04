@@ -2,253 +2,220 @@ import { StyleSheet } from 'react-native';
 import { colors } from '../shared/theme';
 import { fontSize, fontWeight, spacing, radius } from '../shared/tokens';
 
-export const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bg,
-  },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 100,
-    width: '100%',
-    maxWidth: 900,
-    alignSelf: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  headerRow: {
+export const clientesStyles = StyleSheet.create({
+  // ── Form ──
+  formHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-
-  // ── Search bar ──
-  searchContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-    alignItems: 'flex-end',
-    backgroundColor: colors.card,
-    padding: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  inputGroup: {
-    flexGrow: 1,
-    minWidth: 180,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textSecondary,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  input: {
-    backgroundColor: colors.bg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.text,
-  },
-  searchButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  refreshButton: {
-    backgroundColor: colors.info,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-
-  // ── Create / Edit form ──
-  createBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-  },
-  createBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  formCard: {
-    backgroundColor: colors.card,
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.primary,
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
   },
   formTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.primary,
-    marginBottom: 12,
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+    color: colors.text,
   },
-  formRow: {
+  formGrid: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
+    flexWrap: 'wrap',
+    gap: spacing.md,
+  },
+  formActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+
+  // ── Errors ──
+  inlineError: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+    padding: spacing.sm,
+    backgroundColor: colors.dangerLight,
+    borderRadius: radius.sm,
+  },
+  inlineErrorText: {
+    color: colors.danger,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
+  },
+
+  // ── Search ──
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
     flexWrap: 'wrap',
   },
-  formInput: {
-    flex: 1,
-    minWidth: 140,
-    backgroundColor: colors.bg,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.text,
-  },
-  formBtnRow: {
+  searchActions: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 6,
-  },
-  formSaveBtn: {
-    flex: 1,
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  formCancelBtn: {
-    flex: 1,
-    backgroundColor: colors.card,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  formSaveBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  formCancelBtnText: {
-    color: colors.textSecondary,
-    fontWeight: '600',
-    fontSize: 14,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
 
-  // ── Result card ──
-  resultCard: {
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 16,
-  },
+  // ── Search Result ──
   resultTitle: {
-    fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
     color: colors.primary,
-    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.md,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   resultText: {
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 2,
+    fontSize: fontSize.md,
+    color: colors.textSecondary,
   },
 
-  // ── Client card ──
-  listContainer: {
-    paddingBottom: 20,
-    gap: 10,
+  // ── Empty State ──
+  emptyBox: {
+    alignItems: 'center',
+    padding: spacing['5xl'],
+    gap: spacing.md,
   },
-  clientCard: {
-    backgroundColor: colors.card,
-    padding: 14,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+  emptyText: {
+    fontSize: fontSize.lg,
+    color: colors.textMuted,
   },
+
+  // ── Client Card ──
   clientHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: spacing.sm,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  clientInfo: {
+    flex: 1,
+    minWidth: 150,
   },
   clientName: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
     color: colors.text,
+    marginBottom: spacing.xs,
+  },
+  clientPhoneRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  clientPhone: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: fontWeight.semibold,
   },
   clientActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.xs,
   },
-  editBtn: {
-    backgroundColor: colors.info,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+
+  // ── Stats Row ──
+  statsRow: {
+    flexDirection: 'row',
+    backgroundColor: colors.bgLight,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  deleteBtn: {
-    backgroundColor: colors.danger,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
   },
-  actionBtnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 11,
+  statValuePrimary: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.extrabold,
+    color: colors.primary,
   },
-  clientPhone: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginBottom: 2,
+  statValueSuccess: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.extrabold,
+    color: '#22c55e',
   },
-  clientAddress: {
-    fontSize: 13,
+  statValueInfo: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.extrabold,
+    color: '#3b82f6',
+  },
+  statLabel: {
+    fontSize: 10,
+    fontWeight: fontWeight.semibold,
     color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginTop: 2,
   },
 
-  // ── States ──
-  errorText: {
-    color: colors.danger,
-    marginBottom: 12,
-    textAlign: 'center',
-    fontWeight: '600',
-    backgroundColor: colors.dangerLight,
-    padding: 10,
-    borderRadius: 8,
+  // ── Last Visit Badge ──
+  lastVisitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+    paddingVertical: 3,
+    paddingHorizontal: spacing.sm,
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderRadius: 20,
+    alignSelf: 'flex-start',
   },
-  emptyText: {
-    textAlign: 'center',
+  lastVisitText: {
+    fontSize: fontSize.xs,
+    color: '#3b82f6',
+    fontWeight: fontWeight.semibold,
+  },
+
+  // ── Addresses ──
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginTop: spacing.xs,
+  },
+  addressText: {
+    fontSize: fontSize.sm,
+    color: colors.textSecondary,
+  },
+
+  // ── Utils ──
+  cardMarginXl: {
+    marginBottom: spacing.xl,
+  },
+  inputContainer: {
+    flex: 1,
+    minWidth: 200,
+  },
+  searchInputContainer: {
+    flex: 1,
+    minWidth: 200,
+    marginBottom: 0,
+  },
+  searchResultCard: {
+    marginBottom: spacing.xl,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+  },
+  cardMarginMd: {
+    marginBottom: spacing.md,
+  },
+  opacityMuted: {
+    opacity: 0.7,
+  },
+  headerCount: {
+    fontSize: fontSize.sm,
     color: colors.textMuted,
-    marginTop: 32,
-    fontSize: 15,
-  },
-  loader: {
-    marginTop: 40,
+    fontWeight: fontWeight.medium,
   },
 });

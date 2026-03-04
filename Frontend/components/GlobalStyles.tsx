@@ -2,12 +2,7 @@ import React from 'react';
 import { Platform } from 'react-native';
 import { colors } from '../styles/theme';
 
-export const GlobalStyles = () => {
-    if (Platform.OS !== 'web') return null;
-
-    return (
-        <style type="text/css">
-            {`
+const WEB_GLOBAL_CSS = `
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
         * {
@@ -53,7 +48,13 @@ export const GlobalStyles = () => {
         ::-webkit-scrollbar-thumb:hover {
           background: ${colors.success}; 
         }
-      `}
-        </style>
-    );
+      `;
+
+export const GlobalStyles = () => {
+    if (Platform.OS !== 'web') return null;
+
+    return React.createElement('style', {
+        type: 'text/css',
+        dangerouslySetInnerHTML: { __html: WEB_GLOBAL_CSS },
+    } as any);
 };

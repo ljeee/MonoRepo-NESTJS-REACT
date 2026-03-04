@@ -73,9 +73,11 @@ export default function DomiciliariosList() {
       refetch();
     } catch (err: any) {
       setFormError(err.response?.data?.message || 'Error al guardar');
-    } finally {
       setFormLoading(false);
+      return;
     }
+
+    setFormLoading(false);
   };
 
   const handleDelete = async () => {
@@ -87,9 +89,11 @@ export default function DomiciliariosList() {
       setDeleteTarget(null);
     } catch {
       // Error handled
-    } finally {
       setDeleteLoading(false);
+      return;
     }
+
+    setDeleteLoading(false);
   };
 
   const handleRefresh = async () => {

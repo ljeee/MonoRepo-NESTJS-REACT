@@ -1,7 +1,8 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { colors } from '../../styles/theme';
+import { radius, spacing, shadows } from '../../styles/tokens';
+import Icon from '../ui/Icon';
 
 interface ErrorStateProps {
     message?: string;
@@ -17,7 +18,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
     return (
         <View style={styles.container}>
             <View style={styles.iconContainer}>
-                <MaterialCommunityIcons name="alert-circle-outline" size={48} color={colors.danger} />
+                <Icon name="alert-circle-outline" size={48} color={colors.danger} />
             </View>
             <Text style={styles.title}>{title}</Text>
             <Text style={styles.text}>{message}</Text>
@@ -36,14 +37,14 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 24,
+        padding: spacing['2xl'],
         minHeight: 300,
     },
     iconContainer: {
-        marginBottom: 16,
-        padding: 16,
+        marginBottom: spacing.lg,
+        padding: spacing.lg,
         backgroundColor: colors.dangerLight,
-        borderRadius: 50,
+        borderRadius: radius.full,
     },
     title: {
         fontSize: 18,
@@ -61,10 +62,10 @@ const styles = StyleSheet.create({
     },
     button: {
         backgroundColor: colors.primary,
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        elevation: 2,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing['2xl'],
+        borderRadius: radius.md,
+        ...shadows.sm,
     },
     buttonText: {
         color: '#fff',

@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import type {
   AuthResponse,
-  Cliente, CreateClienteDto,
+  Cliente, ClienteDireccion, CreateClienteDto,
   CreateDomiciliarioDto, CreateFacturaPagoDto,
   CreateOrdenDto, Domiciliario,
   FacturaPago, FacturaStats, FacturaVenta,
@@ -147,6 +147,16 @@ const clientes = {
 
   delete: (telefono: string) =>
     http.delete(`/clientes/${telefono}`).then((r) => r.data),
+
+  // ── Direcciones ──
+  getDirecciones: (telefono: string) =>
+    http.get<ClienteDireccion[]>(`/clientes/${telefono}/direcciones`).then((r) => arr<ClienteDireccion>(r.data)),
+
+  addDireccion: (telefono: string, direccion: string) =>
+    http.post<ClienteDireccion>(`/clientes/${telefono}/direcciones`, { direccion }).then((r) => r.data),
+
+  removeDireccion: (id: number) =>
+    http.delete(`/clientes/direcciones/${id}`).then((r) => r.data),
 };
 
 // ─── Domiciliarios ────────────────────────────────────────────────────────────
@@ -222,6 +232,111 @@ const pizzaSabores = {
     http.patch<PizzaSabor>(`/pizza-sabores/${id}`, data).then((r) => r.data),
 };
 
+// ─── Estadísticas ─────────────────────────────────────────────────────────────
+
+export interface ProductoTop {
+  producto: string;
+  totalVendido: number;
+  ingresos: number;
+}
+
+export interface SaborTop {
+  sabor: string;
+  cantidad: number;
+}
+
+export interface VentaHora {
+  hora: number;
+  cantidad: number;
+  total: number;
+}
+
+export interface VentaDia {
+  fecha: string;
+  cantidad: number;
+  total: number;
+  ticketPromedio: number;
+}
+
+export interface MetodoPago {
+  metodo: string;
+  cantidad: number;
+  total: number;
+  porcentaje: number;
+}
+
+export interface ResumenPeriodo {
+  totalVentas: number;
+  totalEgresos: number;
+  balanceNeto: number;
+  facturas: number;
+  ordenes: number;
+  cancelados: number;
+  ticketPromedio: number;
+  tasaCancelacion: number;
+}
+
+export interface ClienteFrecuente {
+  clienteNombre: string;
+  totalOrdenes: number;
+  gastoTotal: number;
+  ultimaVisita: string;
+}
+
+export interface VarianteTop {
+  variante: string;
+  producto: string;
+  totalVendido: number;
+  ingresos: number;
+}
+
+export interface ClienteHistorial {
+  totalOrdenes: number;
+  completadas: number;
+  canceladas: number;
+  gastoTotal: number;
+  ticketPromedio: number;
+  productosTop: { nombre: string; cantidad: number }[];
+  ultimaVisita: string | null;
+  ordenes: {
+    ordenId: number;
+    fechaOrden: string;
+    estadoOrden: string;
+    tipoPedido: string;
+    total: number;
+    productos: { nombre: string; cantidad: number }[];
+  }[];
+}
+
+const estadisticas = {
+  productosTop: (from: string, to: string, limit = 10) =>
+    http.get<ProductoTop[]>('/estadisticas/productos-top', { params: { from, to, limit } }).then((r) => arr<ProductoTop>(r.data)),
+
+  saboresTop: (from: string, to: string, limit = 10) =>
+    http.get<SaborTop[]>('/estadisticas/sabores-top', { params: { from, to, limit } }).then((r) => arr<SaborTop>(r.data)),
+
+  variantesTop: (from: string, to: string, limit = 10) =>
+    http.get<VarianteTop[]>('/estadisticas/variantes-top', { params: { from, to, limit } }).then((r) => arr<VarianteTop>(r.data)),
+
+  ventasPorHora: (fecha: string) =>
+    http.get<VentaHora[]>('/estadisticas/ventas-por-hora', { params: { fecha } }).then((r) => arr<VentaHora>(r.data)),
+
+  ventasPorDia: (from: string, to: string) =>
+    http.get<VentaDia[]>('/estadisticas/ventas-por-dia', { params: { from, to } }).then((r) => arr<VentaDia>(r.data)),
+
+  metodosPago: (from: string, to: string) =>
+    http.get<MetodoPago[]>('/estadisticas/metodos-pago', { params: { from, to } }).then((r) => arr<MetodoPago>(r.data)),
+
+  resumenPeriodo: (from: string, to: string) =>
+    http.get<ResumenPeriodo>('/estadisticas/resumen-periodo', { params: { from, to } }).then((r) => r.data),
+
+  clientesFrecuentes: (limit = 10) =>
+    http.get<ClienteFrecuente[]>('/estadisticas/clientes-frecuentes', { params: { limit } }).then((r) => arr<ClienteFrecuente>(r.data)),
+
+  clienteHistorial: (telefono: string) =>
+    http.get<ClienteHistorial>(`/estadisticas/cliente/${telefono}/historial`).then((r) => r.data),
+};
+
 // ─── Export ───────────────────────────────────────────────────────────────────
 
 export const api = {
@@ -233,5 +348,6 @@ export const api = {
   domiciliarios,
   productos,
   pizzaSabores,
+  estadisticas,
   http, // exposed for edge cases
 };

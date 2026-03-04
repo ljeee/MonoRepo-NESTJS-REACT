@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Clientes } from '../../clientes/esquemas/clientes.entity';
+import { ClienteDirecciones } from '../../clientes/esquemas/cliente-direcciones.entity';
 import { Domiciliarios } from '../../domiciliarios/esquemas/domiciliarios.entity';
 import { Domicilios } from '../../domicilios/esquemas/domicilios.entity';
 import { CreateOrdenesDto } from '../esquemas/ordenes.dto';
@@ -10,6 +11,7 @@ import { CreateOrdenesDto } from '../esquemas/ordenes.dto';
 export class DomicilioCreationService {
 	constructor(
 		@InjectRepository(Clientes) private readonly clientesRepo: Repository<Clientes>,
+		@InjectRepository(ClienteDirecciones) private readonly direccionesRepo: Repository<ClienteDirecciones>,
 		@InjectRepository(Domiciliarios) private readonly domiciliariosRepo: Repository<Domiciliarios>,
 		@InjectRepository(Domicilios) private readonly domiciliosRepo: Repository<Domicilios>,
 	) {}
@@ -25,18 +27,20 @@ export class DomicilioCreationService {
 			cliente = new Clientes();
 			cliente.telefono = telefono;
 			if (nombre) cliente.clienteNombre = nombre;
-			if (direccion) cliente.direccion = direccion;
-			return this.clientesRepo.save(cliente);
+			await this.clientesRepo.save(cliente);
 		}
 
-		if (direccion) {
-			const nueva = direccion.trim();
-			const existentes = [cliente.direccion, cliente.direccionDos, cliente.direccionTres].filter(Boolean);
-
-			if (nueva && !existentes.includes(nueva)) {
-				if (!cliente.direccionDos) cliente.direccionDos = nueva;
-				else if (!cliente.direccionTres) cliente.direccionTres = nueva;
-				return this.clientesRepo.save(cliente);
+		// Autoguardar dirección si no existe
+		if (direccion?.trim()) {
+			const trimmed = direccion.trim();
+			const existe = await this.direccionesRepo.findOne({
+				where: {telefonoCliente: telefono, direccion: trimmed},
+			});
+			if (!existe) {
+				await this.direccionesRepo.save({
+					telefonoCliente: telefono,
+					direccion: trimmed,
+				});
 			}
 		}
 

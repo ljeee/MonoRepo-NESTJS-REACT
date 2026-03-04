@@ -19,12 +19,19 @@ export interface Producto {
 
 // ─── Clientes ─────────────────────────────────────────────────────────────────
 
+export interface ClienteDireccion {
+  id: number;
+  telefonoCliente: string;
+  direccion: string;
+}
+
 export interface Cliente {
   telefono: string;
   clienteNombre?: string;
-  direccion?: string;
-  direccionDos?: string;
-  direccionTres?: string;
+  tipoDocumento?: string;
+  documento?: string;
+  correo?: string;
+  direcciones?: ClienteDireccion[];
 }
 
 // ─── Domiciliarios ────────────────────────────────────────────────────────────
@@ -100,6 +107,7 @@ export interface FacturaOrden {
 export interface FacturaDomicilio {
   costoDomicilio?: number;
   direccionEntrega?: string;
+  telefono?: string;
 }
 
 export interface FacturaVenta {
@@ -183,9 +191,9 @@ export interface CreateFacturaPagoDto {
 export interface CreateClienteDto {
   telefono: string;
   clienteNombre?: string;
-  direccion?: string;
-  direccionDos?: string;
-  direccionTres?: string;
+  tipoDocumento?: string;
+  documento?: string;
+  correo?: string;
 }
 
 export interface CreateDomiciliarioDto {

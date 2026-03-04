@@ -66,19 +66,21 @@ export default function FacturasRangoScreen() {
     fetchData(fromParsed, toParsed);
   }, [from, to, setFrom, setTo, fetchData]);
 
-  const handleChangeEstado = async (facturaId: number, currentEstado?: string) => {
+  const handleChangeEstado = useCallback(async (facturaId: number, currentEstado?: string) => {
     const nuevoEstado = currentEstado === 'pagado' ? 'pendiente' : 'pagado';
     setUpdating(facturaId);
     try {
       await updateEstado(facturaId, nuevoEstado);
-    } finally {
+      setUpdating(null);
+      return;
+    } catch {
       setUpdating(null);
     }
-  };
+  }, [updateEstado]);
 
-  const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
+  const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
     await updateFactura(facturaId, { total: newTotal });
-  };
+  }, [updateFactura]);
 
   const handleExportCsv = useCallback(() => {
     if (data.length === 0) return;
@@ -86,6 +88,17 @@ export default function FacturasRangoScreen() {
     const filename = `facturas_${from || 'inicio'}_${to || 'fin'}.csv`;
     downloadCsv(csv, filename);
   }, [data, from, to]);
+
+  const renderFacturaItem = useCallback(({ item }: { item: FacturaItem }) => (
+    <View style={styles.renderItem}>
+      <FacturaCard
+        item={item}
+        isUpdating={updating === item.facturaId}
+        onToggleEstado={handleChangeEstado}
+        onUpdateTotal={handleUpdateTotal}
+      />
+    </View>
+  ), [handleChangeEstado, handleUpdateTotal, updating]);
 
   return (
     <PageContainer scrollable={false} contentContainerStyle={styles.flex1}>
@@ -198,16 +211,7 @@ export default function FacturasRangoScreen() {
             </View>
           ) : null
         }
-        renderItem={({ item }) => (
-          <View style={styles.renderItem}>
-            <FacturaCard
-              item={item}
-              isUpdating={updating === item.facturaId}
-              onToggleEstado={handleChangeEstado}
-              onUpdateTotal={handleUpdateTotal}
-            />
-          </View>
-        )}
+        renderItem={renderFacturaItem}
       />
     </PageContainer>
   );

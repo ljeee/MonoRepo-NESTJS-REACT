@@ -1,19 +1,19 @@
 import { usePathname, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Animated,
   Platform,
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { colors } from '../styles/theme';
-import { fontSize, fontWeight, radius, shadows, spacing, layout, duration, zIndex } from '../styles/tokens';
+import { duration, layout } from '../styles/tokens';
 import { useBreakpoint } from '../styles/responsive';
+import { navbarStyles as styles } from '../styles/components/navbar.styles';
 import Icon, { IconName } from './ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -26,6 +26,7 @@ const SECTIONS: NavSection[] = [
     title: 'Órdenes',
     icon: 'clipboard-text-outline',
     items: [
+      { label: 'Inicio', route: '/', icon: 'home-outline' },
       { label: 'Crear Orden', route: '/crear-orden', icon: 'plus-circle-outline' },
       { label: 'Órdenes del Día', route: '/ordenes', icon: 'calendar-today' },
       { label: 'Todas las Órdenes', route: '/ordenes-todas', icon: 'format-list-bulleted' },
@@ -40,6 +41,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Facturas Hoy', route: '/facturas-dia', icon: 'chart-bar' },
       { label: 'Facturas Fechas', route: '/facturas', icon: 'calendar-range' },
       { label: 'Gastos', route: '/facturas-pagos', icon: 'credit-card-minus-outline' },
+      { label: 'Estadísticas', route: '/estadisticas', icon: 'chart-bar' },
     ],
   },
   {
@@ -133,7 +135,7 @@ export default function Navbar() {
   const { logout } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const sidebarWidth = layout.sidebarWidth;
-  const translateX = useRef(new Animated.Value(-sidebarWidth)).current;
+  const translateX = useSharedValue(-sidebarWidth);
 
   // Which sections are expanded — auto-expand section containing active route
   const activeIdx = SECTIONS.findIndex((s) =>
@@ -143,27 +145,31 @@ export default function Navbar() {
     activeIdx >= 0 ? { [activeIdx]: true } : { 0: true },
   );
 
-  const toggle = (idx: number) =>
+  const toggle = useCallback((idx: number) => {
     setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  }, []);
 
-  const navigate = (route: string) => {
+  const navigate = useCallback((route: string) => {
     if (isMobile || isTablet) {
       setDrawerOpen(false);
     }
     router.push(route as any);
-  };
+  }, [isMobile, isTablet, router]);
 
   // Animate drawer open/close
   React.useEffect(() => {
-    Animated.timing(translateX, {
-      toValue: drawerOpen ? 0 : -sidebarWidth,
+    translateX.set(withTiming(drawerOpen ? 0 : -sidebarWidth, {
       duration: duration.normal,
-      useNativeDriver: Platform.OS !== 'web',
-    }).start();
+    }));
   }, [drawerOpen, translateX, sidebarWidth]);
 
-  // ── Shared section list ──
-  const renderSections = (compact = false) =>
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.get() }],
+    };
+  });
+
+  const sectionNodes = useMemo(() =>
     SECTIONS.map((section, idx) => (
       <AccordionSection
         key={section.title}
@@ -172,9 +178,9 @@ export default function Navbar() {
         onToggle={() => toggle(idx)}
         pathname={pathname}
         onNavigate={navigate}
-        compact={compact}
+        compact={false}
       />
-    ));
+    )), [expanded, navigate, pathname, toggle]);
 
   // ── MOBILE: Hamburger + Drawer ──
   if (isMobile || isTablet) {
@@ -209,7 +215,8 @@ export default function Navbar() {
         <Animated.View
           style={[
             styles.sidebarMobile,
-            { width: sidebarWidth, transform: [{ translateX }] },
+            { width: sidebarWidth },
+            animatedStyle,
           ]}
         >
           <View style={styles.sidebarHeader}>
@@ -225,7 +232,7 @@ export default function Navbar() {
             </TouchableOpacity>
           </View>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1 }}>
-            {renderSections()}
+            {sectionNodes}
 
             <View style={{ flex: 1 }} />
             <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -246,7 +253,7 @@ export default function Navbar() {
         <Text style={styles.sidebarDesktopTitle}>POS Pizza</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} style={styles.sidebarScroll} contentContainerStyle={{ flexGrow: 1 }}>
-        {renderSections()}
+        {sectionNodes}
 
         <View style={{ flex: 1 }} />
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
@@ -262,203 +269,3 @@ export default function Navbar() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  // ── Mobile menu button ──
-  menuBtnContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: zIndex.drawer,
-    padding: spacing.md,
-  },
-  menuBtn: {
-    backgroundColor: colors.card,
-    borderRadius: radius.md,
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  drawerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    zIndex: zIndex.overlay,
-  },
-
-  // ── Mobile sidebar ──
-  sidebarMobile: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: colors.card,
-    zIndex: zIndex.drawer,
-    height: '100%',
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    ...shadows.lg,
-  },
-  sidebarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  sidebarBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  sidebarHeaderText: {
-    color: colors.text,
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    letterSpacing: 0.5,
-  },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    backgroundColor: colors.bgLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // ── Desktop sidebar ──
-  sidebar: {
-    width: layout.sidebarWidth,
-    height: '100%',
-    backgroundColor: colors.card,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    ...shadows.sm,
-  },
-  sidebarDesktopHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  sidebarDesktopTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    letterSpacing: 0.5,
-  },
-  sidebarFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  sidebarFooterText: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-  },
-
-  // ── Section accordion ──
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    marginTop: spacing.xs,
-  },
-  sectionHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  sectionHeaderActive: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
-    marginHorizontal: spacing.sm,
-    paddingHorizontal: spacing.lg,
-  },
-  sectionTitle: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.extrabold,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  sectionTitleActive: {
-    color: colors.primary,
-  },
-
-  // ── Nav items ──
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing['2xl'],
-    marginHorizontal: spacing.sm,
-    borderRadius: radius.sm,
-  },
-  navItemActive: {
-    backgroundColor: colors.primaryLight,
-  },
-  activeIndicator: {
-    width: 3,
-    height: 18,
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-    position: 'absolute',
-    left: spacing.sm,
-  },
-  link: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    fontWeight: fontWeight.medium,
-    letterSpacing: 0.2,
-  },
-  linkActive: {
-    color: colors.primary,
-    fontWeight: fontWeight.bold,
-  },
-  sectionHeaderIcon: {
-    marginRight: spacing.sm,
-  },
-  navItemIcon: {
-    marginRight: spacing.md,
-  },
-  sidebarScroll: {
-    flex: 1,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing['2xl'],
-    marginHorizontal: spacing.sm,
-    marginBottom: spacing.xl,
-    marginTop: spacing.md,
-    borderRadius: radius.sm,
-    backgroundColor: colors.dangerLight,
-  },
-  logoutText: {
-    fontSize: fontSize.sm,
-    color: colors.danger,
-    fontWeight: fontWeight.bold,
-    letterSpacing: 0.2,
-  },
-});

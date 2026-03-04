@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { api } from '../services/api';
 import { colors } from '../styles/theme';
-import { spacing } from '../styles/tokens';
 import { formatCurrency, formatDate } from '../utils/formatNumber';
 import { getEstadoColor } from '../constants/estados';
 import { useToast } from '../contexts/ToastContext';
@@ -99,35 +98,46 @@ function getErrorMessage(error: unknown, fallback: string): string {
 export default function OrdenDetalleScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const ordenId = params.ordenId as string;
+  const ordenId = params.ordenId as string | undefined;
   const { showToast } = useToast();
 
-  const [orden, setOrden] = useState<OrdenDetalle | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [viewState, setViewState] = useState<{ orden: OrdenDetalle | null; loading: boolean; error: string | null }>({
+    orden: null,
+    loading: true,
+    error: null,
+  });
+  const { orden, loading, error } = viewState;
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [canceling, setCanceling] = useState(false);
 
   useEffect(() => {
     if (!ordenId) {
-      setError('ID de orden no proporcionado');
-      setLoading(false);
       return;
     }
 
     const fetchOrden = async () => {
       try {
         const ordenData = await api.ordenes.getById(Number(ordenId));
-        setOrden(normalizeOrdenDetalle(ordenData));
+        setViewState({ orden: normalizeOrdenDetalle(ordenData), loading: false, error: null });
       } catch (error: unknown) {
-        setError(getErrorMessage(error, 'Error cargando orden'));
-      } finally {
-        setLoading(false);
+        setViewState({ orden: null, loading: false, error: getErrorMessage(error, 'Error cargando orden') });
       }
     };
 
-    fetchOrden();
+    void fetchOrden();
   }, [ordenId]);
+
+  if (!ordenId) {
+    return (
+      <PageContainer>
+        <View style={styles.errorBox}>
+          <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+          <Text style={styles.errorText}>ID de orden no proporcionado</Text>
+          <Button title="Volver" icon="arrow-left" variant="ghost" onPress={() => router.back()} />
+        </View>
+      </PageContainer>
+    );
+  }
 
   const getProductName = (p: OrdenProducto) => {
     if (p.producto) return p.producto;
@@ -196,12 +206,14 @@ export default function OrdenDetalleScreen() {
 
       // Refresh order data
       const ordenData = await api.ordenes.getById(Number(ordenId));
-      setOrden(normalizeOrdenDetalle(ordenData));
+      setViewState((prev) => ({ ...prev, orden: normalizeOrdenDetalle(ordenData) }));
     } catch (error: unknown) {
       showToast(getErrorMessage(error, 'Error al cancelar la orden'), 'error', 5000);
-    } finally {
       setCanceling(false);
+      return;
     }
+
+    setCanceling(false);
   };
 
   const canCancelOrder = () => {
@@ -336,8 +348,12 @@ export default function OrdenDetalleScreen() {
           orden.productos.map((p, index) => {
             const price = getUnitPrice(p);
             const details = getProductDetails(p);
+            const productKey =
+              p.ordenProductoId ??
+              p.productoObj?.productoId ??
+              `${getProductName(p)}-${p.cantidad ?? 1}`;
             return (
-              <View key={index} style={styles.productCard}>
+              <View key={productKey} style={styles.productCard}>
                 <View style={styles.productHeader}>
                   <View style={styles.productNameRow}>
                     <View style={styles.productIndex}>

@@ -9,8 +9,13 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Download,
+  FileText,
+  TrendingUp,
 } from 'lucide-react';
+import { exportFacturasCsv, exportFacturasPdf } from '../utils/exportData';
+import { buildCombinedBalanceCsv, downloadCsv } from '../utils/csvExport';
 
 function getEstadoInfo(estado?: string) {
   switch (estado) {
@@ -49,6 +54,11 @@ export function FacturasPage() {
     }
   };
 
+  const handleExportContabilidad = async (facturasToExport: any[], nombreArchivo: string) => {
+    const csv = await buildCombinedBalanceCsv(facturasToExport, []);
+    downloadCsv(csv, `contabilidad_${nombreArchivo}.csv`);
+  };
+
   const handleSearchRange = () => {
     if (!from || !to) {
       setRangeErrorLocal('Debes ingresar ambas fechas.');
@@ -72,6 +82,18 @@ export function FacturasPage() {
           </h1>
         </div>
         <div className="header-actions">
+          <button type="button" className="btn-outline" onClick={() => exportFacturasPdf(dayFacturas, 'Hoy')} disabled={dayFacturas.length === 0} title="Exportar PDF">
+            <FileText size={16} />
+            <span>PDF</span>
+          </button>
+          <button type="button" className="btn-outline" onClick={() => exportFacturasCsv(dayFacturas, 'hoy')} disabled={dayFacturas.length === 0} title="Exportar CSV Backup">
+            <Download size={16} />
+            <span>CSV Backup</span>
+          </button>
+          <button type="button" className="btn-outline" onClick={() => handleExportContabilidad(dayFacturas, 'hoy')} disabled={dayFacturas.length === 0} title="Exportar Contabilidad">
+            <TrendingUp size={16} />
+            <span>Contabilidad</span>
+          </button>
           <button type="button" className="btn-outline" onClick={refetch} disabled={dayLoading}>
             <RefreshCw size={16} className={dayLoading ? 'spinning' : ''} />
             <span>Refrescar</span>
@@ -218,7 +240,20 @@ export function FacturasPage() {
           <div className="text-muted text-sm">Sin resultados en el rango seleccionado.</div>
         ) : (
           <>
-            <div className="text-sm text-muted mb-3">{rangeFacturas.length} facturas encontradas</div>
+            <div className="text-sm text-muted mb-3" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{rangeFacturas.length} facturas encontradas</span>
+              <div className="header-actions">
+                <button type="button" className="btn-outline" onClick={() => exportFacturasPdf(rangeFacturas, `${from} a ${to}`)} title="Exportar PDF">
+                  <FileText size={14} /> <span>PDF</span>
+                </button>
+                <button type="button" className="btn-outline" onClick={() => exportFacturasCsv(rangeFacturas, `${from}_${to}`)} title="Exportar CSV Backup">
+                  <Download size={14} /> <span>CSV Backup</span>
+                </button>
+                <button type="button" className="btn-outline" onClick={() => handleExportContabilidad(rangeFacturas, `${from}_${to}`)} title="Exportar Contabilidad">
+                  <TrendingUp size={14} /> <span>Contabilidad</span>
+                </button>
+              </div>
+            </div>
             <div className="facturas-cards-grid">
               {rangeFacturas.map((factura, index) => {
                 const productos = (factura.ordenes || []).flatMap((orden) => orden.productos || []);

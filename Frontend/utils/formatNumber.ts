@@ -28,12 +28,3 @@ export function formatDate(date?: string | null): string {
   return d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-/**
- * Formatea fecha solo día: "7 feb 2026"
- */
-export function formatDateShort(date?: string | null): string {
-  if (!date) return '';
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return date;
-  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
-}

@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { useCallback, useEffect, useState } from 'react';
 import { useFacturasRango } from '../hooks/use-facturas';
 import { useFacturasPagosRango, useDeleteFacturaPago } from '../hooks/use-create-factura-pago';
 import { buildCombinedBalanceCsv, downloadCsv } from '../utils/csvExport';
+import { exportPdf, exportFacturasCsv } from '../utils/exportData';
 import { validateFlexibleDateRange } from '../utils/dateRange';
 import { formatCurrency, formatDate } from '../utils/formatNumber';
 import { useToast } from '../contexts/ToastContext';
@@ -23,9 +23,10 @@ import {
     Clock,
     XCircle,
     QrCode,
-    DollarSign
+    DollarSign,
+    FileText,
 } from 'lucide-react';
-import { FacturaItem, FacturaPago } from '../types/models';
+
 
 export function BalanceFechasPage() {
     const { showToast } = useToast();
@@ -77,7 +78,7 @@ export function BalanceFechasPage() {
             setSearchTrigger(1);
             return;
         }
-        fetchFacturas(undefined, true);
+        fetchFacturas();
         fetchGastos();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTrigger]);
@@ -98,10 +99,61 @@ export function BalanceFechasPage() {
         setSearchTrigger((n) => n + 1);
     }, [from, to, setFromF, setToF, setFromG, setToG]);
 
-    const handleExportCsv = useCallback(() => {
+    const handleExportBackup = useCallback(async () => {
         const safeFrom = from || 'inicio';
         const safeTo = to || 'fin';
-        downloadCsv(buildCombinedBalanceCsv(facturas, gastos), `balance_${safeFrom}_${safeTo}.csv`);
+        await exportFacturasCsv(facturas, `${safeFrom}_al_${safeTo}`);
+    }, [facturas, from, to]);
+
+    const handleExportContabilidad = useCallback(async () => {
+        const safeFrom = from || 'inicio';
+        const safeTo = to || 'fin';
+        const csv = await buildCombinedBalanceCsv(facturas, gastos);
+        downloadCsv(csv, `contabilidad_${safeFrom}_${safeTo}.csv`);
+    }, [facturas, gastos, from, to]);
+
+    const handleExportPdf = useCallback(() => {
+        const allRows: (string | number)[][] = [];
+
+        // Add facturas
+        for (const f of facturas) {
+            const fecha = f.fechaFactura ? new Date(f.fechaFactura).toLocaleDateString('es-CO') : '';
+            allRows.push([
+                'Ingreso',
+                f.facturaId ?? '',
+                f.clienteNombre || 'Sin nombre',
+                fecha,
+                `$${formatCurrency(f.total ?? 0)}`,
+                f.estado || '',
+                f.metodo || '',
+            ]);
+        }
+
+        // Add gastos
+        for (const g of gastos) {
+            const fecha = g.fechaFactura ? new Date(g.fechaFactura).toLocaleDateString('es-CO') : '';
+            allRows.push([
+                'Gasto',
+                g.pagosId ?? '',
+                g.nombreGasto || '',
+                fecha,
+                `$${formatCurrency(g.total ?? 0)}`,
+                g.estado || '',
+                g.metodo || '',
+            ]);
+        }
+
+        const safeFrom = from || 'inicio';
+        const safeTo = to || 'fin';
+        const ingresosTotal = facturas.reduce((s, f) => s + (Number(f.total) || 0), 0);
+        const gastosTotal = gastos.reduce((s, g) => s + (Number(g.total) || 0), 0);
+
+        exportPdf({
+            title: `Balance — ${safeFrom} a ${safeTo}`,
+            subtitle: `Ingresos: $${formatCurrency(ingresosTotal)} | Gastos: $${formatCurrency(gastosTotal)} | Neto: $${formatCurrency(ingresosTotal - gastosTotal)}`,
+            headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Total', 'Estado', 'Método'],
+            rows: allRows,
+        });
     }, [facturas, gastos, from, to]);
 
     const handleToggleEstado = async (facturaId: number, currentEstado?: string) => {
@@ -151,17 +203,35 @@ export function BalanceFechasPage() {
                     <button
                         type="button"
                         className="btn-outline"
-                        onClick={handleExportCsv}
+                        onClick={handleExportPdf}
+                        disabled={!hasData}
+                    >
+                        <FileText size={18} />
+                        <span>PDF</span>
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-outline"
+                        onClick={handleExportBackup}
                         disabled={!hasData}
                     >
                         <Download size={18} />
-                        <span>Exportar CSV</span>
+                        <span>CSV Backup</span>
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-outline"
+                        onClick={handleExportContabilidad}
+                        disabled={!hasData}
+                    >
+                        <TrendingUp size={18} />
+                        <span>Contabilidad</span>
                     </button>
                 </div>
             </header>
 
             {/* ── Filtros de Fecha ── */}
-            <div className="pos-card filters-section mb-6">
+            < div className="pos-card filters-section mb-6" >
                 <div className="date-filters flex gap-4 flex-wrap items-end">
                     <div className="form-group flex-1 min-w-[150px]">
                         <label className="text-sm font-medium mb-1 block">Desde</label>
@@ -194,63 +264,147 @@ export function BalanceFechasPage() {
                         </button>
                     </div>
                 </div>
-                {filterError && (
-                    <div className="error-text mt-2 text-sm text-danger flex items-center">
-                        <AlertCircle size={14} className="mr-1" /> {filterError}
-                    </div>
-                )}
-            </div>
+                {
+                    filterError && (
+                        <div className="error-text mt-2 text-sm text-danger flex items-center">
+                            <AlertCircle size={14} className="mr-1" /> {filterError}
+                        </div>
+                    )
+                }
+            </div >
 
             {loading && !hasData && (
                 <div className="loading-state mb-6">
                     <RefreshCw size={32} className="spinning text-muted mb-2" />
                     <p>Calculando balance...</p>
                 </div>
-            )}
+            )
+            }
 
             {/* ── Tarjeta de Resumen de Balance ── */}
-            {hasData && (
-                <div className="balance-summary-card pos-card mb-8 p-6 bg-gradient-to-br from-surface to-background border-l-4 border-l-primary">
-                    <h2 className="text-lg font-bold mb-4 flex items-center">
-                        <Scale size={20} className="mr-2 text-primary" />
-                        Resumen del Período
-                    </h2>
+            {
+                hasData && (
+                    <div className="balance-summary-card pos-card mb-8 p-6 bg-gradient-to-br from-surface to-background border-l-4 border-l-primary">
+                        <h2 className="text-lg font-bold mb-4 flex items-center">
+                            <Scale size={20} className="mr-2 text-primary" />
+                            Resumen del Período
+                        </h2>
 
-                    <div className="flex flex-col md:flex-row gap-6 md:gap-12">
-                        <div className="flex-1">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="flex items-center text-success font-medium">
-                                    <TrendingUp size={18} className="mr-1" /> Ingresos
-                                </span>
-                                <span className="text-xl font-bold text-success">${formatCurrency(ingresos)}</span>
+                        <div className="flex flex-col md:flex-row gap-6 md:gap-12">
+                            <div className="flex-1">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="flex items-center text-success font-medium">
+                                        <TrendingUp size={18} className="mr-1" /> Ingresos
+                                    </span>
+                                    <span className="text-xl font-bold text-success">${formatCurrency(ingresos)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="flex items-center text-danger font-medium">
+                                        <TrendingDown size={18} className="mr-1" /> Egresos
+                                    </span>
+                                    <span className="text-xl font-bold text-danger">-${formatCurrency(totalGastos)}</span>
+                                </div>
+
+                                {/* Visual comparison bar */}
+                                {(ingresos > 0 || totalGastos > 0) && (
+                                    <div style={{ marginTop: '1rem' }}>
+                                        <div style={{ display: 'flex', gap: '4px', height: '12px', borderRadius: '6px', overflow: 'hidden' }}>
+                                            <div style={{
+                                                flex: ingresos,
+                                                background: 'linear-gradient(90deg, #22c55e, #4ade80)',
+                                                borderRadius: '6px 0 0 6px',
+                                                transition: 'flex 0.4s ease',
+                                            }} />
+                                            <div style={{
+                                                flex: totalGastos,
+                                                background: 'linear-gradient(90deg, #ef4444, #f87171)',
+                                                borderRadius: '0 6px 6px 0',
+                                                transition: 'flex 0.4s ease',
+                                            }} />
+                                        </div>
+                                        <div className="flex justify-between" style={{ marginTop: '4px' }}>
+                                            <span className="text-xs text-success font-medium">
+                                                {ingresos + totalGastos > 0 ? Math.round((ingresos / (ingresos + totalGastos)) * 100) : 0}% ingresos
+                                            </span>
+                                            <span className="text-xs text-danger font-medium">
+                                                {ingresos + totalGastos > 0 ? Math.round((totalGastos / (ingresos + totalGastos)) * 100) : 0}% egresos
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="flex items-center text-danger font-medium">
-                                    <TrendingDown size={18} className="mr-1" /> Egresos
+
+                            <div className="md:w-px md:bg-border my-2 md:my-0 h-px w-full bg-border"></div>
+
+                            <div className="flex-1 flex flex-col justify-center">
+                                <span className="text-sm text-muted font-medium mb-1">Balance Neto</span>
+                                <span className={`text-4xl font-extrabold ${neto >= 0 ? 'text-primary' : 'text-danger'}`}>
+                                    {neto < 0 ? '-' : ''}${formatCurrency(Math.abs(neto))}
                                 </span>
-                                <span className="text-xl font-bold text-danger">-${formatCurrency(totalGastos)}</span>
+                                <div className="flex gap-4 mt-2">
+                                    <span className="text-xs text-muted">
+                                        <Receipt size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                                        {facturas.length} facturas
+                                    </span>
+                                    <span className="text-xs text-muted">
+                                        <Trash2 size={12} style={{ display: 'inline', marginRight: '4px' }} />
+                                        {gastos.length} gastos
+                                    </span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="md:w-px md:bg-border my-2 md:my-0 h-px w-full bg-border"></div>
-
-                        <div className="flex-1 flex flex-col justify-center">
-                            <span className="text-sm text-muted font-medium mb-1">Balance Neto</span>
-                            <span className={`text-4xl font-extrabold ${neto >= 0 ? 'text-primary' : 'text-danger'}`}>
-                                {neto < 0 ? '-' : ''}${formatCurrency(Math.abs(neto))}
-                            </span>
-                        </div>
+                        {/* Payment method breakdown */}
+                        {facturas.length > 0 && (() => {
+                            const metodosMap: Record<string, { count: number; total: number }> = {};
+                            facturas.forEach(f => {
+                                const m = f.metodo || 'sin método';
+                                if (!metodosMap[m]) metodosMap[m] = { count: 0, total: 0 };
+                                metodosMap[m].count++;
+                                metodosMap[m].total += Number(f.total) || 0;
+                            });
+                            const entries = Object.entries(metodosMap).sort((a, b) => b[1].total - a[1].total);
+                            return (
+                                <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                                    <h4 className="text-sm font-bold text-muted flex items-center mb-3">
+                                        <CreditCard size={14} className="mr-1" /> Desglose por Método de Pago
+                                    </h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
+                                        {entries.map(([metodo, data]) => {
+                                            const pct = ingresos > 0 ? Math.round((data.total / ingresos) * 100) : 0;
+                                            return (
+                                                <div key={metodo} className="pos-card" style={{ padding: '0.75rem', background: 'var(--bg)' }}>
+                                                    <div className="flex justify-between mb-1">
+                                                        <span className="text-sm font-bold" style={{ textTransform: 'capitalize' }}>{metodo}</span>
+                                                        <span className="text-xs text-muted">{data.count} fact.</span>
+                                                    </div>
+                                                    <div style={{ height: '6px', background: 'var(--border)', borderRadius: '3px', overflow: 'hidden', marginBottom: '4px' }}>
+                                                        <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg, var(--primary), #fb923c)', borderRadius: '3px', transition: 'width 0.4s' }} />
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-sm font-bold">${formatCurrency(data.total)}</span>
+                                                        <span className="text-xs font-bold" style={{ color: 'var(--primary)' }}>{pct}%</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
-                </div>
-            )}
+                )
+            }
 
-            {!loading && !hasData && (
-                <div className="empty-state pos-card mb-6">
-                    <Scale size={48} className="text-muted mb-3" />
-                    <h3>Sin registros</h3>
-                    <p className="text-muted">No encontramos facturas ni gastos para estas fechas.</p>
-                </div>
-            )}
+            {
+                !loading && !hasData && (
+                    <div className="empty-state pos-card mb-6">
+                        <Scale size={48} className="text-muted mb-3" />
+                        <h3>Sin registros</h3>
+                        <p className="text-muted">No encontramos facturas ni gastos para estas fechas.</p>
+                    </div>
+                )
+            }
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
 
@@ -401,6 +555,6 @@ export function BalanceFechasPage() {
                 </Dialog.Portal>
             </Dialog.Root>
 
-        </div>
+        </div >
     );
 }

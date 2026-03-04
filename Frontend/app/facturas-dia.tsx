@@ -17,7 +17,9 @@ export default function FacturasDiaScreen() {
     setUpdating(facturaId);
     try {
       await updateEstado(facturaId, nuevoEstado);
-    } finally {
+      setUpdating(null);
+      return;
+    } catch {
       setUpdating(null);
     }
   };

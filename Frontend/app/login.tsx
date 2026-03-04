@@ -26,9 +26,11 @@ export default function LoginScreen() {
             setError(
                 err.response?.data?.message || 'Credenciales incorrectas o error de conexión'
             );
-        } finally {
             setLoading(false);
+            return;
         }
+
+        setLoading(false);
     };
 
     const isWeb = Platform.OS === 'web';
@@ -123,11 +125,7 @@ const styles = StyleSheet.create({
     card: {
         width: '100%',
         maxWidth: 400,
-        shadowColor: colors.text,
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.1,
-        shadowRadius: 20,
-        elevation: 10,
+        boxShadow: '0px 10px 20px 0px rgba(0,0,0,0.1)',
     },
     inputGroup: {
         marginBottom: spacing.lg,

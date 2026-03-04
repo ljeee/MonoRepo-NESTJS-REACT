@@ -3,7 +3,6 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Producto } from '../../hooks/use-productos';
 import { PizzaSabor } from '../../hooks/use-pizza-sabores';
 import { colors } from '../../styles/theme';
-import { spacing } from '../../styles/tokens';
 import { formatCurrency } from '../../utils/formatNumber';
 import { Button, Card, Icon, Badge } from '../ui';
 import { productCardStyles as styles } from '../../styles/components/ProductCard.styles';

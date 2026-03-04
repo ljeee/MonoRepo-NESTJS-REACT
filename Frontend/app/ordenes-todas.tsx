@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useReducer } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '../services/api';
@@ -62,37 +62,56 @@ function getProductoPreviewName(producto: NonNullable<Orden['productos']>[number
 export default function OrdenesTodasScreen() {
   const router = useRouter();
   const { isMobile } = useBreakpoint();
-  const [page, setPage] = useState(1);
-  const [estado, setEstado] = useState('');
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
-  const [result, setResult] = useState<PaginatedResponse<Orden> | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  type ScreenState = {
+    page: number;
+    estado: string;
+    from: string;
+    to: string;
+    result: PaginatedResponse<Orden> | null;
+    loading: boolean;
+    error: string;
+  };
+
+  const [state, patchState] = useReducer(
+    (prev: ScreenState, patch: Partial<ScreenState>): ScreenState => ({ ...prev, ...patch }),
+    {
+      page: 1,
+      estado: '',
+      from: '',
+      to: '',
+      result: null,
+      loading: false,
+      error: '',
+    },
+  );
+
+  const { page, estado, from, to, result, loading, error } = state;
 
   const fetchData = useCallback(
     async (p: number) => {
-      setLoading(true);
-      setError('');
+      patchState({ loading: true, error: '' });
       try {
         const params: OrdenesQueryParams = { page: p, limit: LIMIT };
         if (estado) params.estado = estado;
         if (from) params.from = from;
         if (to) params.to = to;
         const data = await api.ordenes.getAll(params);
-        setResult(data);
-        setPage(p);
+        patchState({ result: data, page: p, loading: false });
+        return;
       } catch {
-        setError('Error al cargar órdenes');
-      } finally {
-        setLoading(false);
+        patchState({ error: 'Error al cargar órdenes', loading: false });
+        return;
       }
     },
     [estado, from, to],
   );
 
   useEffect(() => {
-    fetchData(1);
+    const timer = setTimeout(() => {
+      void fetchData(1);
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, [fetchData]);
 
   const ordenes = result?.data ?? [];
@@ -134,7 +153,7 @@ export default function OrdenesTodasScreen() {
                 styles.chip,
                 active && { backgroundColor: ec.bg, borderColor: ec.text },
               ]}
-              onPress={() => setEstado(e)}
+              onPress={() => patchState({ estado: e })}
             >
               {e !== '' && (
                 <Icon name={ec.icon} size={14} color={active ? ec.text : colors.textMuted} />
@@ -157,7 +176,7 @@ export default function OrdenesTodasScreen() {
         <Input
           label="Desde"
           value={from}
-          onChangeText={setFrom}
+          onChangeText={(value) => patchState({ from: value })}
           placeholder="YYYY-MM-DD"
           containerStyle={styles.dateInputContainer}
           size="sm"
@@ -166,7 +185,7 @@ export default function OrdenesTodasScreen() {
         <Input
           label="Hasta"
           value={to}
-          onChangeText={setTo}
+          onChangeText={(value) => patchState({ to: value })}
           placeholder="YYYY-MM-DD"
           containerStyle={styles.dateInputContainer}
           size="sm"
@@ -276,8 +295,11 @@ export default function OrdenesTodasScreen() {
               {/* Products preview */}
               {orden.productos && orden.productos.length > 0 && (
                 <View style={styles.productsPreview}>
-                  {orden.productos.slice(0, 3).map((p, i) => (
-                    <Text key={i} style={styles.productPreviewText}>
+                  {orden.productos.slice(0, 3).map((p) => (
+                    <Text
+                      key={`${p.id ?? getProductoPreviewName(p)}-${p.cantidad ?? 1}`}
+                      style={styles.productPreviewText}
+                    >
                       • {getProductoPreviewName(p)} x{p.cantidad}
                     </Text>
                   ))}

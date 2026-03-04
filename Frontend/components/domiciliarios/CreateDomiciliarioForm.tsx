@@ -22,9 +22,9 @@ export default function CreateDomiciliarioForm() {
       setSuccess(true);
       setTelefono('');
       setNombre('');
+      setLoading(false);
     } catch {
       setError('Error al crear el domiciliario');
-    } finally {
       setLoading(false);
     }
   };
