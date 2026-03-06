@@ -2,7 +2,8 @@ import {Body, Controller, Get, Post, Request, UseGuards} from '@nestjs/common';
 import {ApiBearerAuth, ApiTags} from '@nestjs/swagger';
 import {AuthService} from './auth.service';
 import {LoginDto} from './dto/login.dto';
-import {RegisterDto} from './dto/register.dto';
+//Register importado pero no usado por seguridad de producción
+//import {RegisterDto} from './dto/register.dto';
 import {AuthResponseDto} from './dto/auth-response.dto';
 import {RefreshTokenDto} from './dto/refresh-token.dto';
 import {Public} from './decorators/public.decorator';
@@ -15,12 +16,6 @@ import {Role} from './roles.enum';
 @Controller('auth')
 export class AuthController {
 	constructor(private readonly authService: AuthService) {}
-
-	@Public()
-	@Post('register')
-	async register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
-		return this.authService.register(dto);
-	}
 
 	@Public()
 	@Post('login')

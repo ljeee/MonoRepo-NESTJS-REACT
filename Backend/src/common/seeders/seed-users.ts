@@ -22,19 +22,19 @@ export async function seedUsers() {
 		const users: UserSeed[] = [
 			{
 				username: 'admin',
-				password: 'Admin123!',
+				password: 'Dianakainlj1-_!',
 				name: 'Admin',
 				roles: [Role.Admin],
 			},
 			{
 				username: 'cocina',
-				password: 'Cocina123!',
+				password: 'Dianakainlj1-_!!',
 				name: 'Cocina',
 				roles: [Role.Cocina],
 			},
 			{
 				username: 'cajero',
-				password: 'Cajero123!',
+				password: 'Dianakainlj1-_!!',
 				name: 'Caja',
 				roles: [Role.Mesero], // Mesero role is assumed to handle cajero duties
 			},

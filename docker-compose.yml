@@ -10,6 +10,7 @@ services:
       POSTGRES_DB: appdb
       POSTGRES_USER: appuser
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: America/Bogota
     ports:
       - "5433:5432" # Puerto externo diferente para no pisar Postgres local
     volumes:
@@ -54,6 +55,7 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOST: 0.0.0.0
+      TZ: America/Bogota
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
       REDIS_HOST: redis
@@ -75,6 +77,18 @@ services:
     restart: unless-stopped
     ports:
       - "8081:8081"
+    depends_on:
+      - backend
+    networks: [pizzeria-network]
+
+  # ── Cloudflare Tunnel (HTTPS fijo p/ APK y n8n) ──────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: pizzeria-cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - backend
     networks: [pizzeria-network]

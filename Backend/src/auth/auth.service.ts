@@ -25,7 +25,7 @@ export class AuthService {
 			throw new BadRequestException('Username ya registrado');
 		}
 
-		const hash = await bcrypt.hash(dto.password, 10);
+		const hash = await bcrypt.hash(dto.password, 15);
 		const roles = dto.roles && dto.roles.length > 0 ? dto.roles : [Role.Mesero];
 
 		const user = this.usersRepository.create({

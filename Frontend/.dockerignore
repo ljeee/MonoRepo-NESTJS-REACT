@@ -3,8 +3,6 @@ node_modules
 .expo-shared
 dist
 npm-debug.log
-.env
-.env.local
 .git
 .gitignore
 README.md
