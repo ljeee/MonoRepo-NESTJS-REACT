@@ -14,7 +14,11 @@
       "package": "com.pizzeria.pos",
       "usesCleartextTraffic": true,
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#1a1a1a"
+      }
     },
     "web": {
       "output": "static"
