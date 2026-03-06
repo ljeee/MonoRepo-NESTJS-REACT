@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.pizzeria.pos",
+      "usesCleartextTraffic": true,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
