@@ -1,0 +1,18 @@
+# Si lanzas `eas build` desde la raíz por error, no subir esto:
+Backend/
+Desktop/
+Docs/
+docker-compose.yml
+start-pos.bat
+README.md
+.git/
+
+# Node
+node_modules/
+Frontend/node_modules/
+
+# Expo
+.expo/
+Frontend/.expo/
+Frontend/dist/
+Frontend/web-build/
