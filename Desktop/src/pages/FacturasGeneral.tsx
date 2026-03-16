@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useFacturasRango } from '../hooks/use-facturas';
-import { formatCurrency, formatDate } from '../utils/formatNumber';
+import { useFacturasRango } from '@monorepo/shared';
+import { formatCurrency, formatDate } from '@monorepo/shared';
 import {
   Receipt,
   Calendar,
@@ -13,8 +13,8 @@ import {
   Clock,
   XCircle,
 } from 'lucide-react';
-import { exportFacturasCsv, exportFacturasPdf } from '../utils/exportData';
-import { buildCombinedBalanceCsv, downloadCsv } from '../utils/csvExport';
+import { exportFacturasCsv, exportFacturasPdf } from '../../utils/exportData';
+import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 
 function getEstadoInfo(estado?: string) {
   switch (estado) {

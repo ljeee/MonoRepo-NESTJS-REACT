@@ -13,5 +13,6 @@ import { FacturasPagos } from '../facturas-pagos/esquemas/facturas-pagos.entity'
 	],
 	providers: [EstadisticasService],
 	controllers: [EstadisticasController],
+	exports: [EstadisticasService],
 })
 export class EstadisticasModule {}

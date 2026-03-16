@@ -1,7 +1,7 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, radius, shadows, spacing } from '../../styles/tokens';
+import { Modal } from 'react-native';
+import { Pressable } from '../../tw';
+import { View, Text } from '../../tw';
 import Button from './Button';
 import Icon, { IconName } from './Icon';
 
@@ -16,12 +16,9 @@ interface ConfirmModalProps {
     loading?: boolean;
     onConfirm: () => void;
     onCancel: () => void;
+    children?: React.ReactNode;
 }
 
-/**
- * Styled confirmation modal to replace native alert() and confirm() calls.
- * Maintains dark theme consistency.
- */
 export default function ConfirmModal({
     visible,
     title,
@@ -33,30 +30,37 @@ export default function ConfirmModal({
     loading = false,
     onConfirm,
     onCancel,
+    children,
 }: ConfirmModalProps) {
     const variantColor =
-        variant === 'danger' ? colors.danger :
-            variant === 'warning' ? colors.warning :
-                colors.info;
+        variant === 'danger' ? '#EF4444' :
+            variant === 'warning' ? '#F59E0B' :
+                '#3B82F6';
 
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-            <Pressable style={styles.overlay} onPress={onCancel}>
-                <Pressable style={styles.content} onPress={(e) => e.stopPropagation()}>
+            <Pressable className="flex-1 bg-black/60 justify-center items-center p-5" onPress={onCancel}>
+                <Pressable className="bg-(--color-pos-surface) rounded-3xl p-8 w-full max-w-sm items-center border border-white/5 shadow-2xl" onPress={(e) => e.stopPropagation()}>
                     {/* Icon */}
                     {icon && (
-                        <View style={[styles.iconCircle, { backgroundColor: variantColor + '20' }]}>
+                        <View className="w-16 h-16 rounded-full items-center justify-center mb-6" style={{ backgroundColor: variantColor + '20' }}>
                             <Icon name={icon} size={32} color={variantColor} />
                         </View>
                     )}
 
                     {/* Text */}
-                    <Text style={styles.title}>{title}</Text>
-                    <Text style={styles.message}>{message}</Text>
+                    <Text className="text-white font-black text-xl text-center mb-2" style={{ fontFamily: 'Space Grotesk' }}>{title}</Text>
+                    <Text className="text-slate-400 text-sm text-center mb-8 leading-5">{message}</Text>
+
+                    {children && (
+                        <View className="w-full mb-6">
+                            {children}
+                        </View>
+                    )}
 
                     {/* Actions */}
-                    <View style={styles.actions}>
-                        <View style={styles.flexOne}>
+                    <View className="flex-row gap-3 w-full">
+                        <View className="flex-1">
                             <Button
                                 title={cancelText}
                                 onPress={onCancel}
@@ -66,7 +70,7 @@ export default function ConfirmModal({
                                 disabled={loading}
                             />
                         </View>
-                        <View style={styles.flexOne}>
+                        <View className="flex-1">
                             <Button
                                 title={confirmText}
                                 onPress={onConfirm}
@@ -82,55 +86,3 @@ export default function ConfirmModal({
         </Modal>
     );
 }
-
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacing.md,
-    },
-    content: {
-        backgroundColor: colors.card,
-        borderRadius: radius.xl,
-        padding: spacing.xl,
-        width: '100%',
-        maxWidth: 420,
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: colors.border,
-        ...shadows.lg,
-    },
-    iconCircle: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: spacing.lg,
-    },
-    title: {
-        fontSize: fontSize.xl,
-        fontWeight: fontWeight.bold,
-        color: colors.text,
-        textAlign: 'center',
-        marginBottom: spacing.sm,
-    },
-    message: {
-        fontSize: fontSize.md,
-        color: colors.textSecondary,
-        textAlign: 'center',
-        lineHeight: 22,
-        marginBottom: spacing.lg,
-    },
-    actions: {
-        flexDirection: 'row',
-        gap: spacing.md,
-        width: '100%',
-        marginTop: spacing.lg,
-    },
-    flexOne: {
-        flex: 1,
-    },
-});

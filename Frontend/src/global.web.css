@@ -1,0 +1,82 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+
+@layer theme {
+  @theme {
+    /* Fondos — Midnight Navy */
+    --color-pos-bg: #0C0F1A;
+    --color-pos-surface: #151928;
+    --color-pos-surface-hover: #1C2137;
+    --color-pos-border: rgba(255, 255, 255, 0.06);
+
+    /* Acento Principal — Electric Amber */
+    --color-pos-primary: #F5A524;
+    --color-pos-primary-light: rgba(245, 165, 36, 0.12);
+
+    /* Secundario — Electric Violet */
+    --color-pos-secondary: #8B5CF6;
+    --color-pos-secondary-light: rgba(139, 92, 246, 0.12);
+
+    /* Estados */
+    --color-pos-success: #34D399;
+    --color-pos-warning: #FB923C;
+    --color-pos-danger: #F43F5E;
+    --color-pos-info: #22D3EE;
+
+    /* Texto */
+    --color-pos-text: #F1F5F9;
+    --color-pos-text-secondary: #94A3B8;
+    --color-pos-text-muted: #64748B;
+
+    /* Fonts */
+    --font-display: "Space Grotesk", sans-serif;
+    --font-body: "Plus Jakarta Sans", sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* Fix Select/Option Visibility in Dark Mode */
+  select {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    padding: 10px;
+    border-radius: 8px;
+    outline: none;
+  }
+
+  option {
+    background-color: #0f172a !important;
+    color: #f1f5f9 !important;
+  }
+
+  /* Input autofill fix for dark mode */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover, 
+  input:-webkit-autofill:focus, 
+  input:-webkit-autofill:active{
+    -webkit-box-shadow: 0 0 0 30px #0c0f1a inset !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #020617;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.05); 
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #F5A524;
+  }
+}

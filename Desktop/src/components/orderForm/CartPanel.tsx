@@ -1,5 +1,5 @@
-import { formatCurrency } from '../../utils/formatNumber';
-import type { OrderCartItem } from '../../types/models';
+import { formatCurrency } from '@monorepo/shared';
+import type { OrderCartItem } from '@monorepo/shared';
 
 export type CartItem = OrderCartItem;
 

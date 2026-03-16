@@ -21,6 +21,9 @@ export class Productos {
 	@Column({name: 'activo', type: 'boolean', default: true})
 	activo: boolean;
 
+	@Column({name: 'emoji', type: 'text', nullable: true})
+	emoji: string;
+
 	@OneToMany(() => OrdenesProductos, (op) => op.productoObj)
 	ordenesProductos: OrdenesProductos[];
 

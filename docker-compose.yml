@@ -61,6 +61,20 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       CORS_ORIGINS: ${CORS_ORIGINS}
+      # Mail Service (Nodemailer)
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SECURE: ${MAIL_SECURE:-false}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASS: ${MAIL_PASS}
+      REPORT_EMAIL: ${REPORT_EMAIL}
+      # Business Profile (Fallback)
+      COMPANY_NIT: ${COMPANY_NIT}
+      COMPANY_NAME: ${COMPANY_NAME}
+      COMPANY_ADDRESS: ${COMPANY_ADDRESS}
+      COMPANY_PHONE: ${COMPANY_PHONE}
+      COMPANY_TAX_REGIMEN: ${COMPANY_TAX_REGIMEN}
+      COMPANY_TAX_PERCENT: ${COMPANY_TAX_PERCENT}
     depends_on:
       db:
         condition: service_healthy
@@ -71,10 +85,12 @@ services:
   # ── Frontend (Expo Web / Nginx) ────────────────────────────────
   frontend:
     build:
-      context: ./Frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Frontend/Dockerfile
     container_name: pizzeria-frontend
     restart: unless-stopped
+    environment:
+      EXPO_OFFLINE: "1"
     ports:
       - "8081:8081"
     depends_on:
@@ -82,16 +98,16 @@ services:
     networks: [pizzeria-network]
 
   # ── Cloudflare Tunnel (HTTPS fijo p/ APK y n8n) ──────────────────
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: pizzeria-cloudflared
-    restart: unless-stopped
-    command: tunnel run
-    environment:
-      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    depends_on:
-      - backend
-    networks: [pizzeria-network]
+#  cloudflared:
+ #   image: cloudflare/cloudflared:latest
+  #  container_name: pizzeria-cloudflared
+   # restart: unless-stopped
+    #command: tunnel run
+    #environment:
+     # - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    #depends_on:
+     # - backend
+    #networks: [pizzeria-network]
 
 networks:
   pizzeria-network:

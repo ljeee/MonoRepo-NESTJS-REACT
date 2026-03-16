@@ -1,22 +1,39 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
-import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, spacing, radius, shadows } from '../../styles/tokens';
+import { useWindowDimensions } from 'react-native';
+import { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import { Animated } from '../../tw/animated';
+import { View, Text, TouchableOpacity } from '../../tw';
 import Icon from './Icon';
-import { useToast, ToastVariant } from '../../contexts/ToastContext';
+import { useToast } from '@monorepo/shared';
+import type { ToastVariant } from '@monorepo/shared';
 
-function getToastColors(variant: ToastVariant) {
+function getToastConfig(variant: ToastVariant) {
     switch (variant) {
         case 'success':
-            return { bg: colors.successLight, border: colors.success, icon: 'check-circle' as const };
+            return { 
+                classes: 'bg-green-500/10 border-green-500/30 text-green-500',
+                iconColor: '#22C55E',
+                icon: 'check-circle' as const 
+            };
         case 'error':
-            return { bg: colors.dangerLight, border: colors.danger, icon: 'alert-circle' as const };
+            return { 
+                classes: 'bg-red-500/10 border-red-500/30 text-red-500',
+                iconColor: '#EF4444',
+                icon: 'alert-circle' as const 
+            };
         case 'warning':
-            return { bg: colors.warningLight, border: colors.warning, icon: 'alert' as const };
+            return { 
+                classes: 'bg-amber-500/10 border-amber-500/30 text-amber-500',
+                iconColor: '#F59E0B',
+                icon: 'alert' as const 
+            };
         case 'info':
         default:
-            return { bg: colors.infoLight, border: colors.info, icon: 'information' as const };
+            return { 
+                classes: 'bg-blue-500/10 border-blue-500/30 text-blue-500',
+                iconColor: '#3B82F6',
+                icon: 'information' as const 
+            };
     }
 }
 
@@ -31,44 +48,40 @@ interface ToastItemProps {
 function ToastItem({ id, message, variant, onDismiss, toastWidth }: ToastItemProps) {
     const slideAnim = useSharedValue(-100);
     const opacityAnim = useSharedValue(0);
-    const { bg, border, icon } = getToastColors(variant);
+    const { classes, iconColor, icon } = getToastConfig(variant);
 
     useEffect(() => {
-        // Slide in
-        slideAnim.set(withSpring(0, { damping: 15, stiffness: 150 }));
-        opacityAnim.set(withTiming(1, { duration: 200 }));
+        slideAnim.value = withSpring(0, { damping: 15, stiffness: 150 });
+        opacityAnim.value = withTiming(1, { duration: 200 });
     }, [opacityAnim, slideAnim]);
 
     const handleDismiss = () => {
-        slideAnim.set(withTiming(-100, { duration: 200 }));
-        opacityAnim.set(withTiming(0, { duration: 200 }, (finished) => {
+        slideAnim.value = withTiming(-100, { duration: 200 });
+        opacityAnim.value = withTiming(0, { duration: 200 }, (finished) => {
             if (finished) {
                 runOnJS(onDismiss)(id);
             }
-        }));
+        });
     };
 
     const animatedStyle = useAnimatedStyle(() => {
         return {
-            transform: [{ translateY: slideAnim.get() }],
-            opacity: opacityAnim.get(),
+            transform: [{ translateY: slideAnim.value }],
+            opacity: opacityAnim.value,
         };
     });
 
     return (
         <Animated.View
-            style={[
-                styles.toast,
-                { backgroundColor: bg, borderColor: border, width: toastWidth },
-                animatedStyle,
-            ]}
+            style={[{ width: toastWidth }, animatedStyle]}
+            className={`flex-row items-center gap-4 p-5 rounded-2xl border-2 shadow-2xl ${classes}`}
         >
-            <Icon name={icon} size={20} color={border} />
-            <Text style={[styles.message, { color: border }]} numberOfLines={3}>
+            <Icon name={icon} size={22} color={iconColor} />
+            <Text className="flex-1 font-black leading-5 text-sm" numberOfLines={3}>
                 {message}
             </Text>
-            <TouchableOpacity onPress={handleDismiss} style={styles.closeButton}>
-                <Icon name="close" size={18} color={border} />
+            <TouchableOpacity onPress={handleDismiss} className="p-1 opacity-60">
+                <Icon name="close" size={18} color={iconColor} />
             </TouchableOpacity>
         </Animated.View>
     );
@@ -77,12 +90,12 @@ function ToastItem({ id, message, variant, onDismiss, toastWidth }: ToastItemPro
 export function ToastContainer() {
     const { toasts, hideToast } = useToast();
     const { width } = useWindowDimensions();
-    const toastWidth = Math.min(width - spacing['2xl'] * 2, 400);
+    const toastWidth = Math.min(width - 40, 420);
 
     if (toasts.length === 0) return null;
 
     return (
-        <View style={styles.container} pointerEvents="box-none">
+        <View className="absolute top-16 left-0 right-0 items-center z-[9999] gap-3" pointerEvents="box-none">
             {toasts.map((toast) => (
                 <ToastItem
                     key={toast.id}
@@ -96,32 +109,3 @@ export function ToastContainer() {
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        position: 'absolute',
-        top: spacing['3xl'],
-        left: 0,
-        right: 0,
-        alignItems: 'center',
-        zIndex: 9999,
-        gap: spacing.md,
-    },
-    toast: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        padding: spacing.lg,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        ...shadows.lg,
-    },
-    message: {
-        flex: 1,
-        fontSize: fontSize.md,
-        fontWeight: fontWeight.medium,
-    },
-    closeButton: {
-        padding: spacing.xs,
-    },
-});

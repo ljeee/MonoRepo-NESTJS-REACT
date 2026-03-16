@@ -1,35 +1,33 @@
+# Frontend Expo Web Server
 # ============================================
-# STAGE 1: Build
-# ============================================
-FROM node:20-alpine AS builder
+FROM node:20
 
 WORKDIR /app
 
-# Copiar archivos de dependencias
+# Copiar root package files (necesarios para workspaces)
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci
+# Copiar packages compartidos (workspace dependencies)
+COPY packages ./packages
 
-# Copiar código fuente
-COPY . .
+# Copiar código completo del Frontend
+COPY Frontend ./Frontend
 
-# Exportar aplicación web (la detección de URL es dinámica en runtime)
+# Instalar dependencias desde raíz
+# Borramos el lockfile para forzar una resolución limpia en Linux (evita el bug de optional dependencies entre Windows/Linux)
+RUN rm -f package-lock.json && npm install --legacy-peer-deps --include=optional --no-save
+
+# Cambiar a directorio del Frontend
+WORKDIR /app/Frontend
+
+# Instalar 'serve' globalmente para servir los estáticos
+RUN npm install -g serve
+
+# Construir la versión estática de producción
 RUN npx expo export -p web
-
-# ============================================
-# STAGE 2: Production
-# ============================================
-FROM nginx:alpine AS production
-
-# Copiar build de Expo Web
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Configuración personalizada de nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Exponer puerto
 EXPOSE 8081
 
-# Comando de inicio
-CMD ["nginx", "-g", "daemon off;"]
+# Comando de inicio - servir la carpeta dist en el puerto 8081
+CMD ["serve", "dist", "-p", "8081", "-s"]

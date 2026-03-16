@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '../../styles/theme';
-import { pizzaModalStyles as s } from '../../styles/ordenes/pizza-modal.styles';
-import { Producto, ProductoVariante } from '../../hooks/use-productos';
-import { PizzaSabor } from '../../hooks/use-pizza-sabores';
-import { formatCurrency } from '../../utils/formatNumber';
+import { ActivityIndicator, Modal } from 'react-native';
+import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
+import type { Producto, ProductoVariante, PizzaSabor } from '@monorepo/shared';
+import { formatCurrency } from '@monorepo/shared';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Obtiene el recargo de un sabor según el nombre del tamaño de la variante */
 function getRecargo(sabor: PizzaSabor, varianteNombre: string): number {
   if (varianteNombre === 'Pequeña') return Number(sabor.recargoPequena);
   if (varianteNombre === 'Mediana') return Number(sabor.recargoMediana);
@@ -23,7 +20,6 @@ function calcularPrecio(
   if (!variante) return 0;
   let precio = Number(variante.precio);
 
-  // Máximo recargo especial de los sabores seleccionados (no se acumula por sabor, se toma el mayor)
   const maxRecargo = saboresSeleccionados.reduce((max, nombre) => {
     const entry = saboresCatalogo.find(s => s.nombre === nombre);
     if (!entry || entry.tipo !== 'especial') return max;
@@ -69,11 +65,9 @@ export default function PizzaPersonalizadaModal({
 
   const precioFinal = calcularPrecio(variante, selectedSabores, saboresCatalogo);
 
-  // Extract config
   const config3Sabores = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
   const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
 
-  // Recargo que aplica al precio actual dada la selección
   const recargoEspecial = saboresCatalogo
     .filter(s => s.tipo === 'especial' && selectedSabores.includes(s.nombre))
     .reduce((max, s) => Math.max(max, getRecargo(s, variante?.nombre ?? '')), 0);
@@ -104,18 +98,14 @@ export default function PizzaPersonalizadaModal({
     const isSelected = selectedSabores.includes(sabor.nombre);
     const isEspecial = sabor.tipo === 'especial';
     const recargo = variante ? getRecargo(sabor, variante.nombre) : 0;
-    const accentColor = isEspecial ? colors.secondary : colors.primary;
-    const bgColor = isSelected
-      ? (isEspecial ? colors.secondaryLight : colors.primaryLight)
-      : colors.bgLight;
-
+    
     return (
       <TouchableOpacity
         key={sabor.saborId}
         onPress={() => handleSaborPress(sabor.nombre)}
-        style={[s.chip, { borderColor: isSelected ? accentColor : colors.border, backgroundColor: bgColor }]}
+        className={`px-4 py-2 rounded-xl mb-2 mr-2 border ${isSelected ? (isEspecial ? 'bg-(--color-pos-secondary)/20 border-(--color-pos-secondary)' : 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)') : 'bg-white/5 border-white/10'}`}
       >
-        <Text style={[s.chipText, { color: isSelected ? accentColor : colors.textSecondary }]}>
+        <Text className={`font-bold text-sm ${isSelected ? (isEspecial ? 'text-(--color-pos-secondary)' : 'text-(--color-pos-primary)') : 'text-slate-400'}`}>
           {isEspecial ? '★ ' : ''}{sabor.nombre}{isSelected ? ' ✓' : ''}
           {isEspecial && recargo > 0 ? `  +$${formatCurrency(recargo)}` : ''}
         </Text>
@@ -124,29 +114,29 @@ export default function PizzaPersonalizadaModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={s.overlay}>
-        <View style={s.container}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <View className="flex-1 bg-black/60 justify-center items-center p-5">
+        <View className="bg-(--color-pos-surface) w-full max-w-lg rounded-3xl p-6 border border-white/5 shadow-2xl">
           {/* Header */}
-          <Text style={s.headerTitle}>🍕 Pizza {variante?.nombre}</Text>
-          <Text style={s.headerSubtitle}>
+          <Text className="text-white font-black text-2xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>🍕 Pizza {variante?.nombre}</Text>
+          <Text className="text-slate-400 text-sm mt-1 mb-6">
             Selecciona 1-3 sabores • Base ${formatCurrency(Number(variante?.precio))}
           </Text>
 
           {/* Sabores */}
           {loadingSabores ? (
-            <View style={localStyles.loadingCenter}>
-              <ActivityIndicator color={colors.primary} />
+            <View className="py-10 items-center justify-center">
+              <ActivityIndicator color="#F5A524" />
             </View>
           ) : (
-            <ScrollView style={s.scrollArea} showsVerticalScrollIndicator={false}>
-              <Text style={s.sectionLabel}>Tradicionales</Text>
-              <View style={s.chipGrid}>
+            <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
+              <Text className="text-white font-black text-xs uppercase tracking-widest mb-3 opacity-60">Tradicionales</Text>
+              <View className="flex-row flex-wrap mb-6">
                 {tradicionales.map(sb => renderChip(sb))}
               </View>
 
-              <Text style={s.sectionLabelEspecial}>Especiales ★</Text>
-              <View style={s.chipGridLast}>
+              <Text className="text-(--color-pos-secondary) font-black text-xs uppercase tracking-widest mb-3">Especiales ★</Text>
+              <View className="flex-row flex-wrap mb-4">
                 {especiales.map(sb => renderChip(sb))}
               </View>
             </ScrollView>
@@ -154,15 +144,15 @@ export default function PizzaPersonalizadaModal({
 
           {/* Price breakdown */}
           {selectedSabores.length > 0 && (
-            <View style={s.breakdownBox}>
-              <Text style={s.breakdownSabores}>{selectedSabores.join(' + ')}</Text>
+            <View className="bg-black/20 rounded-2xl p-4 my-4">
+              <Text className="text-white font-bold text-sm" numberOfLines={2}>{selectedSabores.join(' + ')}</Text>
               {recargoEspecial > 0 && (
-                <Text style={s.breakdownEspecial}>
+                <Text className="text-(--color-pos-secondary) text-xs font-bold mt-1">
                   + ${formatCurrency(recargoEspecial)} sabor especial
                 </Text>
               )}
               {selectedSabores.length >= 3 && (
-                <Text style={s.breakdownTresSabores}>
+                <Text className="text-(--color-pos-primary) text-xs font-bold mt-1">
                   + ${formatCurrency(extra3SaboresAmount)} por 3 sabores
                 </Text>
               )}
@@ -170,16 +160,20 @@ export default function PizzaPersonalizadaModal({
           )}
 
           {/* Buttons */}
-          <View style={s.btnRow}>
-            <TouchableOpacity onPress={handleClose} style={s.cancelBtn}>
-              <Text style={s.cancelBtnText}>Cancelar</Text>
+          <View className="flex-row -mx-2 mt-4">
+            <TouchableOpacity 
+              onPress={handleClose} 
+              className="flex-1 mx-2 py-4 rounded-2xl bg-white/5 items-center border border-white/5 active:bg-white/10"
+            >
+              <Text className="text-slate-400 font-bold">Cancelar</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
               onPress={handleAdd}
               disabled={selectedSabores.length === 0}
-              style={[s.addBtn, { backgroundColor: selectedSabores.length === 0 ? colors.textMuted : colors.primary }]}
+              className={`flex-[2] mx-2 py-4 rounded-2xl items-center shadow-lg active:scale-[0.95] transition-transform ${selectedSabores.length === 0 ? 'bg-slate-700' : 'bg-(--color-pos-primary)'}`}
             >
-              <Text style={s.addBtnText}>
+              <Text className={`font-black uppercase tracking-wider ${selectedSabores.length === 0 ? 'text-slate-500' : 'text-slate-900'}`}>
                 {selectedSabores.length === 0 ? 'Elige sabores' : `Agregar • $${formatCurrency(precioFinal)}`}
               </Text>
             </TouchableOpacity>
@@ -189,10 +183,3 @@ export default function PizzaPersonalizadaModal({
     </Modal>
   );
 }
-
-const localStyles = StyleSheet.create({
-    loadingCenter: {
-        alignItems: 'center',
-        padding: 24,
-    },
-});

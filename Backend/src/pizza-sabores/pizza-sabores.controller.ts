@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post } from '@nestjs/common';
 import { PizzaSaboresService } from './pizza-sabores.service';
-import { UpdatePizzaSaborDto } from './esquemas/pizza-sabores.dto';
+import { CreatePizzaSaborDto, UpdatePizzaSaborDto } from './esquemas/pizza-sabores.dto';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('pizza-sabores')
@@ -13,11 +13,21 @@ export class PizzaSaboresController {
 		return this.service.findAll();
 	}
 
+	@Post()
+	create(@Body() dto: CreatePizzaSaborDto) {
+		return this.service.create(dto);
+	}
+
 	@Patch(':id')
 	update(
 		@Param('id', ParseIntPipe) id: number,
 		@Body() dto: UpdatePizzaSaborDto,
 	) {
 		return this.service.update(id, dto);
+	}
+
+	@Delete(':id')
+	delete(@Param('id', ParseIntPipe) id: number) {
+		return this.service.delete(id);
 	}
 }

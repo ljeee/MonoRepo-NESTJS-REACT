@@ -61,6 +61,7 @@ export class ProductosService {
 			categoria: data.categoria,
 			descripcion: data.descripcion,
 			activo: data.activo ?? true,
+			emoji: data.emoji,
 		});
 		const savedProducto = await this.repo.save(producto);
 
@@ -85,6 +86,7 @@ export class ProductosService {
 			categoria: data.categoria,
 			descripcion: data.descripcion,
 			activo: data.activo,
+			emoji: data.emoji,
 		});
 		return this.findOne(productoId);
 	}

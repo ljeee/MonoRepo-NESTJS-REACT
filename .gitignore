@@ -1,15 +1,51 @@
-# Ignorar archivos de entorno del frontend
-Frontend/.env
+# Monorepo Root GitIgnore
 
-# Ignorar archivos de entorno del backend
-Backend/.env
-
+# Node
 node_modules/
+**/node_modules/
+.npm
+npm-debug.log*
 
-.env
+# Environment & Secrets
+.env*
+!.env.example
 
-Docs/   
+# Logs
+*.log
 
-.agents
+# IDEs & Editors
+.vscode/
+.idea/
+.agents/
+.agent/
+*.swp
+*.swo
 
-.vscode
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Build Artifacts
+**/dist/
+**/build/
+**/web-build/
+.expo/
+.next/
+out/
+
+# Mobile Credentials & Certificates (EAS/Android/iOS)
+*.jks
+*.p12
+*.p8
+*.keystore
+*.key
+*.mobileprovision
+*.pem
+google-services.json
+GoogleService-Info.plist
+eas-credentials.json
+
+# Docs and temporary files
+Docs/
+eslint-report.json

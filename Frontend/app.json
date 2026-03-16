@@ -1,20 +1,16 @@
 {
   "expo": {
-    "name": "Dfiruexpo",
+    "name": "Dfiru",
     "slug": "Dfiruexpo",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "scheme": "dfiruexpo",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "package": "com.pizzeria.pos",
-      "usesCleartextTraffic": true,
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#1a1a1a"
@@ -30,10 +26,12 @@
       "backgroundColor": "#ffffff"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-font",
+      "expo-web-browser"
     ],
     "experiments": {
-      "typedRoutes": true,
+      "typedRoutes": false,
       "reactCompiler": true
     },
     "extra": {

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { api, setAuthToken } from '../services/api';
-import type { AuthUser } from '../types/models';
+import type { AuthUser } from '@monorepo/shared';
 
 interface AuthContextData {
     token: string | null;
@@ -64,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!token && !inAuthGroup) {
             router.replace('/login' as any);
         } else if (token && inAuthGroup) {
-            // Dashboard predeterminado
             router.replace('/ordenes' as any);
         }
     }, [token, segments, isLoading, router]);
@@ -72,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = async (usuario: string, contrasena: string) => {
         const response = await api.auth.login(usuario, contrasena);
 
-        // The DTO from nestjs is accessToken and refreshToken
         const { accessToken, refreshToken, ...userData } = response;
 
         applySession(accessToken, userData, false);
@@ -115,7 +113,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             async (error) => {
                 const originalRequest = error.config;
 
-                // Don't retry on the refresh endpoint itself — prevents infinite loop
                 if (originalRequest?.url?.includes('/auth/refresh')) {
                     return Promise.reject(error);
                 }
@@ -123,7 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (error.response?.status === 401 && !originalRequest._retry) {
                     originalRequest._retry = true;
 
-                    // If already refreshing, queue this request
                     if (isRefreshingRef.current) {
                         return new Promise((resolve, reject) => {
                             failedQueueRef.current.push({ resolve, reject, config: originalRequest });
@@ -156,6 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             return api.http(originalRequest);
                         })
                         .catch((refreshError) => {
+                            console.error('[Auth] Error refreshing token:', refreshError.response?.data?.message || refreshError.message);
                             processQueue(refreshError, null);
                             logout();
                             return Promise.reject(refreshError);

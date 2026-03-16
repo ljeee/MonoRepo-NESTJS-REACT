@@ -11,10 +11,14 @@ import {DomiciliariosModule} from './domiciliarios/domiciliarios.module';
 import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 import {AuthModule} from './auth/auth.module';
 import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
-import {EstadisticasModule} from './estadisticas/estadisticas.module';
-import {ThrottlerModule} from '@nestjs/throttler';
-import {BullModule} from '@nestjs/bullmq';
-import {RedisModule} from './common/redis/redis.module';
+import { EstadisticasModule } from './estadisticas/estadisticas.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bullmq';
+import { RedisModule } from './common/redis/redis.module';
+import { CierresModule } from './cierres/cierres.module';
+import { EmpresaModule } from './empresa/empresa.module';
+import { ContabilidadModule } from './contabilidad/contabilidad.module';
+import { SocketGateway } from './common/gateways/socket.gateway';
 
 @Module({
 	imports: [
@@ -65,8 +69,11 @@ import {RedisModule} from './common/redis/redis.module';
 		AuthModule,
 		PizzaSaboresModule,
 		EstadisticasModule,
+		CierresModule,
+		EmpresaModule,
+		ContabilidadModule,
 	],
 	controllers: [],
-	providers: [],
+	providers: [SocketGateway],
 })
 export class AppModule {}

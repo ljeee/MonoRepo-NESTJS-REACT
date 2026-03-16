@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { Printer, X, Eye, Phone as PhoneIcon, MapPin } from 'lucide-react';
-import { formatCurrency } from '../utils/formatNumber';
-import type { ReceiptProduct } from '../utils/printReceipt';
+import { formatCurrency } from '@monorepo/shared';
+import type { ReceiptProduct } from '../../utils/printReceipt';
 
 export interface ReceiptData {
     ordenId?: number;

@@ -1,17 +1,18 @@
-import {Controller, Get, Post, Delete, Param, Body, Patch, Query, BadRequestException} from '@nestjs/common';
-import {ApiTags, ApiOperation, ApiResponse, ApiBody, ApiOkResponse} from '@nestjs/swagger';
+import {Controller, Get, Post, Delete, Param, Body, Patch, Query, Ip} from '@nestjs/common';
+import {ApiTags, ApiOperation, ApiResponse, ApiBody, ApiOkResponse, ApiBearerAuth} from '@nestjs/swagger';
 import {OrdenesService} from './ordenes.service';
 import {CreateOrdenesDto, FindOrdenesDto, UpdateOrdenesDto} from './esquemas/ordenes.dto';
-import {plainToInstance} from 'class-transformer';
-import {validate} from 'class-validator';
 import {Public} from '../auth/decorators/public.decorator';
+import {GetUser} from '../auth/decorators/get-user.decorator';
+import {User} from '../auth/esquemas/user.entity';
 
-@Public()
 @ApiTags('Ordenes')
+@ApiBearerAuth()
 @Controller('ordenes')
 export class OrdenesController {
 	constructor(private readonly service: OrdenesService) {}
 
+	@Public()
 	@Get()
 	@ApiOperation({summary: 'Obtener todas las ordenes con filtros opcionales'})
 	@ApiResponse({status: 200, description: 'Lista de ordenes.'})
@@ -19,6 +20,7 @@ export class OrdenesController {
 		return this.service.findAll(query);
 	}
 
+	@Public()
 	@Get('dia')
 	@ApiOperation({summary: 'Obtener todas las ordenes del día actual con filtro opcional de estado'})
 	@ApiResponse({status: 200, description: 'Lista de todas las ordenes del día.'})
@@ -26,6 +28,7 @@ export class OrdenesController {
 		return this.service.findByDay(estado);
 	}
 
+	@Public()
 	@Get('dia/pendientes')
 	@ApiOperation({summary: 'Obtener ordenes pendientes del día actual'})
 	@ApiResponse({status: 200, description: 'Lista de ordenes pendientes del día.'})
@@ -33,6 +36,7 @@ export class OrdenesController {
 		return this.service.findPendingByDay();
 	}
 
+	@Public()
 	@Get(':id')
 	@ApiOperation({summary: 'Obtener una orden por ID'})
 	@ApiResponse({status: 200, description: 'Orden encontrada.'})
@@ -117,10 +121,28 @@ export class OrdenesController {
 	remove(@Param('id') id: number) {
 		return this.service.remove(id);
 	}
+	@Patch(':id/completar')
+	@ApiOperation({summary: 'Completar una orden y su factura asociada con un método de pago'})
+	@ApiResponse({status: 200, description: 'Orden completada.'})
+	completar(
+		@Param('id') id: number,
+		@Body('metodo') metodo: string,
+		@Body('idempotencyKey') idempotencyKey: string,
+		@Body('lastUpdatedAt') lastUpdatedAt: string,
+		@GetUser() user: User,
+		@Ip() ip: string,
+	) {
+		return this.service.completar(id, metodo, user.id, ip, idempotencyKey, lastUpdatedAt);
+	}
+
 	@Patch(':id/cancel')
 	@ApiOperation({summary: 'Cancelar una orden y su factura asociada'})
 	@ApiResponse({status: 200, description: 'Orden cancelada.'})
-	cancel(@Param('id') id: number) {
-		return this.service.cancel(id);
+	cancel(
+		@Param('id') id: number,
+		@Body('reason') reason: string,
+		@GetUser() user: User,
+	) {
+		return this.service.cancel(id, reason, user.id);
 	}
 }

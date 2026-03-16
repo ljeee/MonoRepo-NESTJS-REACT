@@ -8,5 +8,6 @@ import {FacturasVentasController} from './facturas-ventas.controller';
 	imports: [TypeOrmModule.forFeature([FacturasVentas])],
 	providers: [FacturasVentasService],
 	controllers: [FacturasVentasController],
+	exports: [FacturasVentasService],
 })
 export class FacturasVentasModule {}

@@ -1,24 +1,18 @@
 import React from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, TextStyle, View, ViewStyle } from 'react-native';
-import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, radius, spacing } from '../../styles/tokens';
+import { TextInputProps } from 'react-native';
+import { View, Text, TextInput } from '../../tw';
 
 interface InputProps extends Omit<TextInputProps, 'style'> {
     label?: string;
     error?: string;
     hint?: string;
-    containerStyle?: ViewStyle;
-    inputStyle?: TextStyle;
+    containerStyle?: any;
+    inputStyle?: any;
     size?: 'sm' | 'md' | 'lg';
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
+    className?: string;
 }
-
-const sizeMap = {
-    sm: { height: 40, fontSize: fontSize.sm, padding: spacing.md },
-    md: { height: 50, fontSize: fontSize.md, padding: spacing.lg },
-    lg: { height: 58, fontSize: fontSize.lg, padding: spacing.xl },
-};
 
 export default function Input({
     label,
@@ -30,97 +24,42 @@ export default function Input({
     leftIcon,
     rightIcon,
     multiline,
+    className = '',
     ...rest
 }: InputProps) {
-    const s = sizeMap[size];
+    const sizeClasses = {
+        sm: 'h-10 text-sm px-3',
+        md: 'h-12 text-base px-4',
+        lg: 'h-14 text-lg px-5',
+    };
+
+    const wrapperClasses = `flex-row items-center bg-white/5 rounded-xl border-2 ${error ? 'border-red-500/50' : 'border-white/5 focus-within:border-(--color-pos-primary)/50'} overflow-hidden`;
 
     return (
-        <View style={[styles.container, containerStyle]}>
-            {label && <Text style={styles.label}>{label}</Text>}
-            <View
-                style={[
-                    styles.inputWrapper,
-                    { height: multiline ? undefined : s.height, minHeight: multiline ? s.height * 2 : undefined },
-                    error && styles.inputError,
-                ]}
-            >
-                {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
+        <View className={`mb-4 w-full ${className}`} style={containerStyle}>
+            {label && (
+                <Text className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                    {label}
+                </Text>
+            )}
+            <View className={wrapperClasses}>
+                {leftIcon && <View className="pl-3">{leftIcon}</View>}
                 <TextInput
-                    style={[
-                        styles.input,
-                        {
-                            fontSize: s.fontSize,
-                            paddingHorizontal: s.padding,
-                            paddingVertical: multiline ? s.padding : 0,
-                        },
-                        Boolean(leftIcon) && { paddingLeft: 0 },
-                        Boolean(rightIcon) && { paddingRight: 0 },
-                        Boolean(multiline) && { textAlignVertical: 'top' },
-                        inputStyle,
-                    ]}
-                    placeholderTextColor={colors.textMuted}
-                    selectionColor={colors.primary}
-                    cursorColor={colors.primary}
+                    className={`flex-1 text-white focus:outline-none ${sizeClasses[size]} ${leftIcon ? 'pl-2' : ''} ${rightIcon ? 'pr-2' : ''} ${multiline ? 'h-auto py-3' : ''}`}
+                    placeholderTextColor="#64748B"
+                    cursorColor="#F5A524"
+                    selectionColor="#F5A524"
                     multiline={multiline}
+                    style={[{ outlineStyle: 'none' } as any, { textAlignVertical: multiline ? 'top' : 'center' }, inputStyle]}
                     {...rest}
                 />
-                {rightIcon && <View style={styles.iconRight}>{rightIcon}</View>}
+                {rightIcon && <View className="pr-3">{rightIcon}</View>}
             </View>
-            {error && <Text style={styles.errorText}>{error}</Text>}
-            {hint && !error && <Text style={styles.hintText}>{hint}</Text>}
+            {error ? (
+                <Text className="text-red-400 text-[10px] font-bold mt-1 ml-1">{error}</Text>
+            ) : hint ? (
+                <Text className="text-slate-500 text-[10px] mt-1 ml-1">{hint}</Text>
+            ) : null}
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        marginBottom: spacing.lg,
-    },
-    label: {
-        fontSize: fontSize.xs,
-        fontWeight: fontWeight.extrabold,
-        color: colors.textSecondary,
-        marginBottom: spacing.sm,
-        marginLeft: spacing.xs,
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-    },
-    inputWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: colors.bgLight,
-        borderRadius: radius.md,
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        overflow: 'hidden',
-    },
-    inputError: {
-        borderColor: colors.danger,
-    },
-    input: {
-        flex: 1,
-        color: colors.text,
-        height: '100%',
-    },
-    iconLeft: {
-        paddingLeft: spacing.md,
-        paddingRight: spacing.sm,
-    },
-    iconRight: {
-        paddingRight: spacing.md,
-        paddingLeft: spacing.sm,
-    },
-    errorText: {
-        color: colors.danger,
-        fontSize: fontSize.xs,
-        fontWeight: fontWeight.medium,
-        marginTop: spacing.xs,
-        marginLeft: spacing.xs,
-    },
-    hintText: {
-        color: colors.textMuted,
-        fontSize: fontSize.xs,
-        marginTop: spacing.xs,
-        marginLeft: spacing.xs,
-    },
-});

@@ -1,7 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors } from '../../styles/theme';
-import { radius, spacing, shadows } from '../../styles/tokens';
+import { View, Text, TouchableOpacity } from '../../tw';
 import Icon from '../ui/Icon';
 
 interface ErrorStateProps {
@@ -16,60 +14,25 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
     title = '¡Ups! Algo salió mal'
 }) => {
     return (
-        <View style={styles.container}>
-            <View style={styles.iconContainer}>
-                <Icon name="alert-circle-outline" size={48} color={colors.danger} />
+        <View className="flex-1 justify-center items-center p-8 min-h-[300px]">
+            <View className="mb-6 p-6 bg-red-500/10 rounded-full">
+                <Icon name="alert-circle-outline" size={48} color="#EF4444" />
             </View>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.text}>{message}</Text>
+            <Text className="text-lg font-black text-white mb-2 text-center" style={{ fontFamily: 'Space Grotesk' }}>
+                {title}
+            </Text>
+            <Text className="text-slate-400 text-sm text-center mb-6 leading-6 max-w-[300px]">
+                {message}
+            </Text>
 
             {onRetry && (
-                <TouchableOpacity style={styles.button} onPress={onRetry}>
-                    <Text style={styles.buttonText}>Intentar de nuevo</Text>
+                <TouchableOpacity 
+                    className="bg-(--color-pos-primary) py-3 px-8 rounded-xl shadow-lg shadow-amber-500/20 active:scale-[0.95]" 
+                    onPress={onRetry}
+                >
+                    <Text className="text-black font-black uppercase tracking-wider text-sm">Intentar de nuevo</Text>
                 </TouchableOpacity>
             )}
         </View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacing['2xl'],
-        minHeight: 300,
-    },
-    iconContainer: {
-        marginBottom: spacing.lg,
-        padding: spacing.lg,
-        backgroundColor: colors.dangerLight,
-        borderRadius: radius.full,
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: colors.text,
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    text: {
-        color: colors.textSecondary,
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 24,
-        lineHeight: 24,
-    },
-    button: {
-        backgroundColor: colors.primary,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing['2xl'],
-        borderRadius: radius.md,
-        ...shadows.sm,
-    },
-    buttonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
-});

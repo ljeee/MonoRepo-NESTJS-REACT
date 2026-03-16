@@ -8,8 +8,9 @@ import {
     Settings, ChevronDown, ChevronRight,
     ShoppingBag, Receipt, Database, BarChart3, Home
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useOrdenesSocket } from '../hooks/use-ordenes-socket';
+import { useAuth } from '../../contexts/AuthContext';
+import { useOrdenesSocket } from '@monorepo/shared';
+import { getBaseUrl } from '../../services/api';
 import { NotificationBell, NotificationsPanel } from './NotificationsPanel';
 
 type NavItem = { label: string; path: string; icon: React.ReactNode; shortcut?: string };
@@ -97,7 +98,7 @@ function SidebarSection({
 
 export function Sidebar() {
     const { logout, user } = useAuth();
-    const { isConnected } = useOrdenesSocket();
+    const { isConnected } = useOrdenesSocket(getBaseUrl());
     const location = useLocation();
     const [notifOpen, setNotifOpen] = useState(false);
 

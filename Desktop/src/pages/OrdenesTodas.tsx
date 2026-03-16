@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
-import { Orden, PaginatedResponse } from '../types/models';
-import { formatCurrency, formatDate } from '../utils/formatNumber';
+import { api } from '../../services/api';
+import type { Orden, PaginatedResponse } from '@monorepo/shared';
+import { formatCurrency, formatDate } from '@monorepo/shared';
 import {
     ClipboardList,
     RefreshCw,

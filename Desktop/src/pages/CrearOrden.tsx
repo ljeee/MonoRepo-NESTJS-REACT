@@ -1,4 +1,4 @@
-import CreateOrderForm from '../components/orderForm/CreateOrderForm';
+import CreateOrderForm from '../../components/orderForm/CreateOrderForm';
 
 export function CreateOrderPage() {
   return <CreateOrderForm />;

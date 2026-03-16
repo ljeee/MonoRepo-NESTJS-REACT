@@ -1,0 +1,39 @@
+# Monorepo Root Dockerignore
+# Esto previene que se envíen carpetas gigantas al Docker Daemon 
+# y que se copien binarios compilados de Windows dentro de los contenedores Linux.
+
+# Directorios de dependencias locales (¡Crucial para que Docker instale todo desde cero en Linux!)
+node_modules/
+**/node_modules/
+
+# Entornos Virtuales y Entornos Ocultos
+.env*
+!.env.example
+.venv/
+env/
+
+# Carpetas de caché y artefactos de compilación local
+.expo/
+**/dist/
+**/build/
+**/web-build/
+.next/
+out/
+
+# Herramientas del sistema y logs
+.git/
+.gitignore
+.easignore
+*.log
+npm-debug.log*
+
+# Configuraciones de editores o agentes IA
+.vscode/
+.idea/
+.agents/
+.agent/
+.DS_Store
+
+# Documentación para desarrolladores (no necesaria en runtime)
+Docs/
+README.md

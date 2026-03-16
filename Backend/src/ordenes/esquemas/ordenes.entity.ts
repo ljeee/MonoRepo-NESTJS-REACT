@@ -1,4 +1,4 @@
-import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, Index} from 'typeorm';
+import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, Index, UpdateDateColumn} from 'typeorm';
 import {FacturasVentas} from '../../facturas-ventas/esquemas/facturas-ventas.entity';
 import {OrdenesProductos} from '../../ordenes-productos/esquemas/ordenes-productos.entity';
 import {Domicilios} from '../../domicilios/esquemas/domicilios.entity';
@@ -25,6 +25,12 @@ export class Ordenes {
 	@Column({name: 'observaciones', type: 'text', nullable: true})
 	observaciones: string;
 
+	@Column({name: 'usuario_cancelacion_id', type: 'text', nullable: true})
+	usuarioCancelacionId: string;
+
+	@Column({name: 'fecha_cancelacion', type: 'timestamptz', nullable: true})
+	fechaCancelacion: Date;
+
 	@ManyToOne(() => FacturasVentas, (factura) => factura.ordenes, {nullable: true})
     @JoinColumn({name: 'factura_id'})
 	factura: FacturasVentas;
@@ -34,4 +40,7 @@ export class Ordenes {
 
 	@OneToMany(() => Domicilios, (domicilio) => domicilio.orden)
 	domicilios: Domicilios[];
+
+	@UpdateDateColumn({name: 'updated_at', type: 'timestamptz'})
+	updatedAt: Date;
 }

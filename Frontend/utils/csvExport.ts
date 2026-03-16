@@ -1,9 +1,8 @@
 import { Platform } from 'react-native';
-import type { FacturaPago } from '../types/models';
+import type { FacturaPago, FacturaVenta, Cliente } from '@monorepo/shared';
 import type { FacturaItem } from '../components/facturas/FacturaShared';
-import type { Cliente } from '../types/models';
 import { api } from '../services/api';
-import { formatCurrency } from './formatNumber';
+import { formatCurrency } from '@monorepo/shared';
 
 type BalanceGastoItem = FacturaPago;
 

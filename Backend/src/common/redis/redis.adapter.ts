@@ -6,6 +6,10 @@ import { Redis } from 'ioredis';
 export class RedisIoAdapter extends IoAdapter {
   private adapterConstructor: ReturnType<typeof createAdapter> | undefined;
 
+  constructor(appOrHttpServer?: any) {
+    super(appOrHttpServer);
+  }
+
   async connectToRedis(): Promise<void> {
     const pubClient = new Redis({
       host: process.env.REDIS_HOST || '127.0.0.1',

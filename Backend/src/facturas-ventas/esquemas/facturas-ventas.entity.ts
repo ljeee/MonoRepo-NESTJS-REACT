@@ -28,6 +28,19 @@ export class FacturasVentas {
 	@Column({name: 'total', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	total: number;
 
+	@Column({name: 'usuario_cobro_id', type: 'text', nullable: true})
+	usuarioCobroId: string;
+
+	@Column({name: 'fecha_cobro', type: 'timestamptz', nullable: true})
+	fechaCobro: Date;
+
+	@Column({name: 'ip_dispositivo', type: 'text', nullable: true})
+	ipDispositivo: string;
+
+	@Column({name: 'idempotency_key', type: 'text', nullable: true, unique: true})
+	@Index({unique: true})
+	idempotencyKey: string;
+
 	@OneToMany(() => Ordenes, (orden) => orden.factura)
 	ordenes: Ordenes[];
 

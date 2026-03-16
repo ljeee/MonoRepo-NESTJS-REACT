@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '../services/api';
-import type { VentaHora, ResumenPeriodo } from '../services/api';
-import type { Orden } from '../types/models';
+import { api } from '../../services/api';
+import type { VentaHora, ResumenPeriodo } from '@monorepo/shared';
+import type { Orden } from '@monorepo/shared';
 import {
     PlusCircle, ClipboardList, Scale, Clock,
     TrendingUp, ShoppingCart, DollarSign, ChevronRight,
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 function formatCurrency(n: number) {
     return n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });

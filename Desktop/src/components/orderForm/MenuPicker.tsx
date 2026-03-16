@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useProductos, Producto, ProductoVariante } from '../../hooks/use-productos';
-import { usePizzaSabores } from '../../hooks/use-pizza-sabores';
-import { formatCurrency } from '../../utils/formatNumber';
+import { useProductos, usePizzaSabores } from '@monorepo/shared';
+import type { Producto, ProductoVariante } from '@monorepo/shared';
+import { formatCurrency } from '@monorepo/shared';
 import PizzaPersonalizadaModal from './PizzaPersonalizadaModal';
 
 interface MenuPickerProps {
@@ -65,7 +65,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return products;
     return products.filter(
-      (product) =>
+      (product: Producto) =>
         product.productoNombre.toLowerCase().includes(query) ||
         product.descripcion?.toLowerCase().includes(query),
     );
@@ -113,7 +113,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
         {filteredProducts.length === 0 ? (
           <div className="cart-empty">No se encontraron productos</div>
         ) : (
-          filteredProducts.map((producto) => {
+          filteredProducts.map((producto: Producto) => {
             const isExpanded = expandedProductId === producto.productoId;
             return (
               <div key={producto.productoId} className="menu-product">
@@ -126,12 +126,12 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                   <span>{producto.productoNombre}</span>
                   <span>{isExpanded ? '▾' : '▸'}</span>
                 </button>
-
+ 
                 {isExpanded && (
                   <div className="menu-variants">
                     {sortVariantes(producto.variantes)
-                      .filter((variante) => variante.activo)
-                      .map((variante) => (
+                      .filter((variante: ProductoVariante) => variante.activo)
+                      .map((variante: ProductoVariante) => (
                         <button
                           key={variante.varianteId}
                           type="button"

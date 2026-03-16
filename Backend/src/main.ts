@@ -1,6 +1,5 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
-
 import {HttpAdapterHost, NestFactory} from '@nestjs/core';
 import {ValidationPipe} from '@nestjs/common';
 import {AppModule} from './app.module';
@@ -10,6 +9,7 @@ import {RedisIoAdapter} from './common/redis/redis.adapter';
 import {AllExceptionsFilter} from './common/filters/all-exceptions.filter';
 
 async function bootstrap() {
+	process.env.TZ = 'America/Bogota';
 	const app = await NestFactory.create(AppModule);
 
 	// Global exceptions filter

@@ -1,7 +1,7 @@
 import { Outlet, Navigate } from 'react-router-dom';
-import { Sidebar } from '../components/Sidebar';
-import { useAuth } from '../contexts/AuthContext';
-import { useNotificationSocket } from '../hooks/use-notification-socket';
+import { Sidebar } from '../../components/Sidebar';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNotificationSocket } from '../../hooks/use-notification-socket';
 
 export function MainLayout() {
     const { token, isLoading } = useAuth();

@@ -1,6 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '../../styles/theme';
+import { View, Text } from '../../tw';
 import Icon, { IconName } from '../ui/Icon';
 
 interface EmptyStateProps {
@@ -15,40 +14,16 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     icon = 'package-variant-closed'
 }) => {
     return (
-        <View style={styles.container}>
-            <View style={styles.iconContainer}>
-                <Icon name={icon} size={64} color={colors.textMuted} />
+        <View className="flex-1 justify-center items-center p-8 min-h-[300px]">
+            <View className="mb-4 opacity-50 bg-white/5 p-8 rounded-full">
+                <Icon name={icon} size={64} color="#64748B" />
             </View>
-            <Text style={styles.title}>{message}</Text>
-            <Text style={styles.text}>{subMessage}</Text>
+            <Text className="text-xl font-black text-white mb-2 text-center" style={{ fontFamily: 'Space Grotesk' }}>
+                {message}
+            </Text>
+            <Text className="text-slate-400 text-sm text-center max-w-[300px] leading-5">
+                {subMessage}
+            </Text>
         </View>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 32,
-        minHeight: 300,
-    },
-    iconContainer: {
-        marginBottom: 16,
-        opacity: 0.8,
-    },
-    title: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: colors.text,
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    text: {
-        color: colors.textSecondary,
-        fontSize: 16,
-        textAlign: 'center',
-        lineHeight: 22,
-        maxWidth: 300,
-    },
-});

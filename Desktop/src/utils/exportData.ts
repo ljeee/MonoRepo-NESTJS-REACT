@@ -94,7 +94,7 @@ export function exportPdf({ title, subtitle, headers, rows }: PdfConfig) {
 
 // ── Facturas export helpers ─────────────────────────────────────────────────────
 
-import type { FacturaVenta } from '../types/models';
+import type { FacturaVenta } from '@monorepo/shared';
 
 function fmtCurrency(n: number) {
     return n.toLocaleString('es-CO');

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useNotifications, Notification } from '../contexts/NotificationsContext';
+import { useNotifications, Notification } from '../../contexts/NotificationsContext';
 import {
     Bell, X, CheckCheck, Trash2,
     ShoppingCart, Info, AlertTriangle, CheckCircle, XCircle

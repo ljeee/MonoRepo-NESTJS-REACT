@@ -1,34 +1,30 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, ViewStyle } from 'react-native';
+import { View } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
-import { colors } from '../../styles/theme';
-import { radius, spacing } from '../../styles/tokens';
 
 interface SkeletonProps {
     width?: number | string;
     height?: number;
-    borderRadius?: number;
-    style?: ViewStyle;
+    borderRadius?: number | string;
+    className?: string;
+    style?: any;
 }
 
-/**
- * Skeleton loader with shimmer animation for loading states.
- * Use instead of plain "Cargando..." text.
- */
 export function Skeleton({
     width = '100%',
     height = 20,
-    borderRadius = radius.sm,
+    borderRadius = 8,
+    className = '',
     style,
 }: SkeletonProps) {
     const shimmer = useSharedValue(-200);
 
     useEffect(() => {
-        shimmer.set(withRepeat(
+        shimmer.value = withRepeat(
             withTiming(200, { duration: 1500, easing: Easing.linear }),
             -1,
             false
-        ));
+        );
     }, [shimmer]);
 
     const animatedStyle = useAnimatedStyle(() => {
@@ -39,80 +35,44 @@ export function Skeleton({
 
     return (
         <View
+            className={`bg-white/5 overflow-hidden ${className}`}
             style={[
                 {
                     width: width as any,
                     height,
-                    borderRadius,
-                    backgroundColor: colors.card,
-                    overflow: 'hidden',
+                    borderRadius: typeof borderRadius === 'string' ? undefined : borderRadius,
                 },
                 style,
             ]}
         >
             <Animated.View
-                style={[skeletonStyles.shimmer, animatedStyle]}
+                style={animatedStyle}
+                className="w-full h-full bg-white/10 opacity-50"
             />
         </View>
     );
 }
 
-/**
- * Pre-built skeleton for a typical card layout.
- */
-export function CardSkeleton({ style }: { style?: ViewStyle }) {
+export function CardSkeleton({ className = '', style }: { className?: string; style?: any }) {
     return (
-        <View style={[skeletonStyles.card, style]}>
-            <View style={skeletonStyles.cardHeader}>
+        <View className={`bg-(--color-pos-surface) rounded-2xl p-5 border border-white/5 ${className}`} style={style}>
+            <View className="flex-row justify-between items-center mb-4">
                 <Skeleton width={120} height={16} />
-                <Skeleton width={80} height={24} borderRadius={radius.full} />
+                <Skeleton width={80} height={24} borderRadius={20} />
             </View>
-            <Skeleton width="70%" height={14} style={skeletonStyles.marginTopMd} />
-            <Skeleton width="50%" height={14} style={skeletonStyles.marginTopSm} />
-            <Skeleton width="90%" height={14} style={skeletonStyles.marginTopSm} />
+            <Skeleton width="70%" height={14} className="mt-4" />
+            <Skeleton width="50%" height={14} className="mt-2" />
+            <Skeleton width="90%" height={14} className="mt-2" />
         </View>
     );
 }
 
-/**
- * Pre-built skeleton for list views.
- */
-export function ListSkeleton({ count = 3, style }: { count?: number; style?: ViewStyle }) {
+export function ListSkeleton({ count = 3, className = '', style }: { count?: number; className?: string; style?: any }) {
     return (
-        <View style={style}>
+        <View className={className} style={style}>
             {Array.from({ length: count }).map((_, i) => (
-                <CardSkeleton key={`skeleton-${i}`} style={skeletonStyles.marginBottomMd} />
+                <CardSkeleton key={`skeleton-${i}`} className="mb-4" />
             ))}
         </View>
     );
 }
-
-const skeletonStyles = StyleSheet.create({
-    card: {
-        backgroundColor: colors.card,
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        borderWidth: 1,
-        borderColor: colors.border,
-    },
-    cardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    shimmer: {
-        width: '100%',
-        height: '100%',
-        backgroundColor: colors.border,
-        opacity: 0.5,
-    },
-    marginTopMd: {
-        marginTop: spacing.md,
-    },
-    marginTopSm: {
-        marginTop: spacing.sm,
-    },
-    marginBottomMd: {
-        marginBottom: spacing.md,
-    },
-});

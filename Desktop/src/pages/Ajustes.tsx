@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { setApiBaseUrl } from '../services/api';
-import { getBackendUrl, setBackendUrl as persistBackendUrl, validateBackendUrl } from '../services/settings';
+import { setApiBaseUrl } from '../../services/api';
+import { getBackendUrl, setBackendUrl as persistBackendUrl, validateBackendUrl } from '../../services/settings';
 
 export function AjustesPage() {
   const [backendUrl, setBackendUrl] = useState('');

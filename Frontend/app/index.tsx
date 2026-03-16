@@ -8,17 +8,14 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '../services/api';
-import type { VentaHora, ResumenPeriodo } from '../services/api';
-import type { Orden } from '../types/models';
-import { colors } from '../styles/theme';
-import { spacing } from '../styles/tokens';
+import type { VentaHora, ResumenPeriodo, Orden } from '@monorepo/shared';
+import { formatCurrency as sharedFormatCurrency } from '@monorepo/shared';
 import { useBreakpoint } from '../styles/responsive';
-import { dashboardStyles as s } from '../styles/dashboard.styles';
 import Icon from '../components/ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
 
 function formatCurrency(n: number) {
-    return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
+    return '$' + sharedFormatCurrency(n);
 }
 
 function todayStr(): string {
@@ -182,125 +179,132 @@ export default function DashboardPage() {
     const userName = user && (user as any).name ? String((user as any).name) : 'Cajero';
 
     return (
-        <ScrollView style={s.page} contentContainerStyle={s.content}>
+        <ScrollView className="flex-1 bg-(--color-pos-bg)" contentContainerClassName="p-6">
             {/* Welcome */}
-            <View style={[s.welcomeCard, isMobile && s.welcomeCardMobile]}>
-                <View style={{ flex: 1 }}>
-                    <Text style={s.greeting}>{getGreeting()}, {userName} 👋</Text>
-                    <Text style={s.dateText}>
+            <View className={`flex-row items-center p-8 rounded-3xl bg-amber-500/5 border border-amber-500/20 mb-6 ${isMobile ? 'flex-col items-start gap-4' : ''}`}>
+                <View className="flex-1">
+                    <Text className="text-white font-black text-2xl uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>{getGreeting()}, {userName} 👋</Text>
+                    <Text className="text-slate-400 text-sm mt-1 capitalize">
                         {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </Text>
                 </View>
-                <Text style={[s.clock, isMobile && s.clockMobile]}>{clock}</Text>
+                <Text className={`text-amber-500 font-black text-2xl tracking-tighter ${isMobile ? 'self-start' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>{clock}</Text>
             </View>
 
             {/* Quick Actions */}
-            <View style={s.quickRow}>
-                <TouchableOpacity style={s.quickBtn} onPress={() => router.push('/crear-orden')}>
-                    <Icon name="plus-circle-outline" size={18} color={colors.primary} />
-                    <Text style={s.quickBtnText}>Crear Orden</Text>
+            <View className="flex-row flex-wrap gap-2 mb-6">
+                <TouchableOpacity className="flex-row items-center gap-3 px-6 py-4 rounded-2xl bg-(--color-pos-surface) border border-white/5 active:bg-white/10" onPress={() => router.push('/crear-orden')}>
+                    <Icon name="plus-circle-outline" size={18} color="#F5A524" />
+                    <Text className="text-white font-black text-sm uppercase tracking-widest">Crear Orden</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.quickBtn} onPress={() => router.push('/ordenes')}>
-                    <Icon name="clipboard-list-outline" size={18} color={colors.primary} />
-                    <Text style={s.quickBtnText}>Pendientes</Text>
+                <TouchableOpacity className="flex-row items-center gap-3 px-6 py-4 rounded-2xl bg-(--color-pos-surface) border border-white/5 active:bg-white/10" onPress={() => router.push('/ordenes')}>
+                    <Icon name="clipboard-list-outline" size={18} color="#F5A524" />
+                    <Text className="text-white font-black text-sm uppercase tracking-widest">Pendientes</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={s.quickBtn} onPress={() => router.push('/balance-fechas')}>
-                    <Icon name="scale-balance" size={18} color={colors.primary} />
-                    <Text style={s.quickBtnText}>Balance</Text>
+                <TouchableOpacity className="flex-row items-center gap-3 px-6 py-4 rounded-2xl bg-(--color-pos-surface) border border-white/5 active:bg-white/10" onPress={() => router.push('/balance-dia')}>
+                    <Icon name="scale-balance" size={18} color="#F5A524" />
+                    <Text className="text-white font-black text-sm uppercase tracking-widest">Balance</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Status cards */}
-            <View style={[s.statusRow, isMobile && s.statusRowMobile]}>
-                <TouchableOpacity style={[s.statusCard, isMobile && s.statusCardMobile]} onPress={() => router.push('/ordenes')}>
-                    <View style={[s.statusDot, pendientes > 0 ? s.dotRed : s.dotGreen]} />
-                    <View style={s.statusInfo}>
-                        <Text style={s.statusCount}>{pendientes}</Text>
-                        <Text style={s.statusLabel}>Pendientes</Text>
+            <View className={`flex-row gap-4 mb-6 ${isMobile ? 'flex-wrap' : ''}`}>
+                <TouchableOpacity className={`flex-1 flex-row items-center gap-4 p-6 rounded-3xl bg-(--color-pos-surface) border border-white/5 ${isMobile ? 'min-w-[48%]' : ''}`} onPress={() => router.push('/ordenes')}>
+                    <View className={`w-3 h-3 rounded-full ${pendientes > 0 ? 'bg-red-500 shadow-lg shadow-red-500/50' : 'bg-emerald-500'}`} />
+                    <View>
+                        <Text className="text-white font-black text-2xl tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>{pendientes}</Text>
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Pendientes</Text>
                     </View>
                 </TouchableOpacity>
-                <TouchableOpacity style={[s.statusCard, isMobile && s.statusCardMobile]} onPress={() => router.push('/facturas-dia' as any)}>
-                    <View style={[s.statusDot, sinPagar > 0 ? s.dotYellow : s.dotGreen]} />
-                    <View style={s.statusInfo}>
-                        <Text style={s.statusCount}>{sinPagar}</Text>
-                        <Text style={s.statusLabel}>Sin Pagar</Text>
+                <TouchableOpacity className={`flex-1 flex-row items-center gap-4 p-6 rounded-3xl bg-(--color-pos-surface) border border-white/5 ${isMobile ? 'min-w-[48%]' : ''}`} onPress={() => router.push('/facturas-dia' as any)}>
+                    <View className={`w-3 h-3 rounded-full ${sinPagar > 0 ? 'bg-amber-500 shadow-lg shadow-amber-500/50' : 'bg-emerald-500'}`} />
+                    <View>
+                        <Text className="text-white font-black text-2xl tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>{sinPagar}</Text>
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Sin Pagar</Text>
                     </View>
                 </TouchableOpacity>
-                <View style={[s.statusCard, isMobile && s.statusCardMobile]}>
-                    <View style={[s.statusDot, s.dotGreen]} />
-                    <View style={s.statusInfo}>
-                        <Text style={s.statusCount}>{completadas}</Text>
-                        <Text style={s.statusLabel}>Completadas</Text>
+                <View className={`flex-1 flex-row items-center gap-4 p-6 rounded-3xl bg-(--color-pos-surface) border border-white/5 ${isMobile ? 'min-w-[48%]' : ''}`}>
+                    <View className="w-3 h-3 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
+                    <View>
+                        <Text className="text-white font-black text-2xl tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>{completadas}</Text>
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">Completadas</Text>
                     </View>
                 </View>
             </View>
 
             {loading && !resumen && (
-                <ActivityIndicator size="large" color={colors.primary} style={{ paddingVertical: spacing['2xl'] }} />
+                <View className="py-20 items-center">
+                    <ActivityIndicator size="large" color="#F5A524" />
+                </View>
             )}
 
             {/* KPIs */}
             {resumen && (
-                <View style={[s.kpiRow, isMobile && s.kpiRowMobile]}>
-                    <View style={[s.kpiCard, isMobile && s.kpiCardMobile]}>
-                        <Text style={s.kpiLabel}>Ventas Hoy</Text>
-                        <Text style={[s.kpiValue, { color: '#22c55e' }]}>{formatCurrency(resumen.totalVentas)}</Text>
+                <View className={`flex-row gap-4 mb-6 ${isMobile ? 'flex-wrap' : ''}`}>
+                    <View className={`flex-1 p-6 rounded-3xl bg-(--color-pos-surface) border border-white/5 items-center ${isMobile ? 'min-w-[48%]' : ''}`}>
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Ventas Hoy</Text>
+                        <Text className="text-emerald-400 font-black text-xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{formatCurrency(resumen.totalVentas)}</Text>
                     </View>
-                    <View style={[s.kpiCard, isMobile && s.kpiCardMobile]}>
-                        <Text style={s.kpiLabel}>Ticket Promedio</Text>
-                        <Text style={[s.kpiValue, { color: '#a855f7' }]}>{formatCurrency(resumen.ticketPromedio)}</Text>
+                    <View className={`flex-1 p-6 rounded-3xl bg-(--color-pos-surface) border border-white/5 items-center ${isMobile ? 'min-w-[48%]' : ''}`}>
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Ticket Promedio</Text>
+                        <Text className="text-violet-400 font-black text-xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{formatCurrency(resumen.ticketPromedio)}</Text>
                     </View>
-                    <View style={[s.kpiCard, isMobile && s.kpiCardMobile]}>
-                        <Text style={s.kpiLabel}>Órdenes</Text>
-                        <Text style={[s.kpiValue, { color: colors.primary }]}>{resumen.ordenes}</Text>
+                    <View className={`flex-1 p-6 rounded-3xl bg-(--color-pos-surface) border border-white/5 items-center ${isMobile ? 'min-w-[48%]' : ''}`}>
+                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Órdenes</Text>
+                        <Text className="text-amber-500 font-black text-xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{resumen.ordenes}</Text>
                     </View>
                 </View>
             )}
 
             {/* Hour Chart + Recent */}
-            <View style={[s.gridRow, isMobile && s.gridRowMobile]}>
+            <View className={`flex-row gap-6 ${isMobile ? 'flex-col' : ''}`}>
                 {/* Hour chart */}
-                <View style={[s.card, s.hourlyCard]}>
-                    <Text style={s.cardTitle}>📊 Actividad por Hora</Text>
+                <View className="flex-1 bg-(--color-pos-surface) rounded-3xl border border-white/5 p-6 min-h-[260px]">
+                    <Text className="text-white font-black text-base uppercase tracking-tight mb-6 pb-2 border-b border-white/5" style={{ fontFamily: 'Space Grotesk' }}>📊 Actividad por Hora</Text>
                     {ventasHora.length > 0 ? (
-                        <View style={s.hourChart}>
+                        <View className="flex-row items-end flex-1 min-h-[170px] gap-0.5 mt-auto">
                             {ventasHoraFull.map(v => {
                                 const pct = (v.cantidad / maxHora) * 100;
                                 return (
-                                    <View key={v.hora} style={s.hourCol}>
-                                        <View style={s.hourTrack}>
-                                            <View style={[s.hourFill, { height: v.cantidad > 0 ? `${Math.max(pct, 2)}%` : '0%' }]} />
+                                    <View key={v.hora} className="flex-1 items-center h-full">
+                                        <View className="flex-1 w-full max-w-[20px] bg-black/20 rounded-t-lg justify-end overflow-hidden">
+                                            <View 
+                                                className="w-full bg-amber-500 rounded-t-lg" 
+                                                style={{ height: v.cantidad > 0 ? `${Math.max(pct, 2)}%` : '0%' }} 
+                                            />
                                         </View>
-                                        <Text style={s.hourLabel}>{v.hora}h</Text>
+                                        <Text className="text-[8px] text-slate-500 mt-1 font-bold">{v.hora}h</Text>
                                     </View>
                                 );
                             })}
                         </View>
-                    ) : <Text style={s.emptyText}>Sin actividad</Text>}
+                    ) : <Text className="text-center text-slate-500 py-10 italic">Sin actividad registrada hoy</Text>}
                 </View>
 
                 {/* Recent orders */}
-                <View style={s.card}>
-                    <Text style={s.cardTitle}>📋 Recientes</Text>
+                <View className="flex-1 bg-(--color-pos-surface) rounded-3xl border border-white/5 p-6 min-h-[260px]">
+                    <Text className="text-white font-black text-base uppercase tracking-tight mb-6 pb-2 border-b border-white/5" style={{ fontFamily: 'Space Grotesk' }}>📋 Recientes</Text>
                     {ordenes.map(o => (
                         <TouchableOpacity
                             key={o.ordenId}
-                            style={s.orderRow}
+                            className="flex-row items-center gap-4 py-3 border-b border-white/5 active:bg-white/5"
                             onPress={() => router.push(`/orden-detalle?id=${o.ordenId}` as any)}
                         >
-                            <Text style={s.orderId}>#{o.ordenId}</Text>
-                            <View style={{ flex: 1 }}>
-                                <Text style={s.orderName} numberOfLines={1}>{getOrdenDisplayName(o)}</Text>
-                                <Text style={s.orderTime}>{timeAgo(o.fechaOrden)}</Text>
+                            <Text className="text-amber-500 font-black text-xs min-w-[30px]" style={{ fontFamily: 'Space Grotesk' }}>#{o.ordenId}</Text>
+                            <View className="flex-1">
+                                <Text className="text-white font-bold text-sm" numberOfLines={1}>{getOrdenDisplayName(o)}</Text>
+                                <Text className="text-slate-500 text-[10px] uppercase font-bold tracking-tighter">{timeAgo(o.fechaOrden)}</Text>
                             </View>
-                            <Text style={[s.orderBadge, o.estadoOrden === 'pendiente' && s.badgePending, isCompletedEstado(o.estadoOrden) && s.badgeComplete]}>{o.estadoOrden}</Text>
+                            <View className={`px-2 py-0.5 rounded-full ${o.estadoOrden === 'pendiente' ? 'bg-amber-500/10' : 'bg-emerald-500/10'}`}>
+                                <Text className={`text-[10px] font-black uppercase tracking-widest ${o.estadoOrden === 'pendiente' ? 'text-amber-500' : 'text-emerald-500'}`}>{o.estadoOrden}</Text>
+                            </View>
                         </TouchableOpacity>
                     ))}
-                    {ordenes.length === 0 && <Text style={s.emptyText}>Sin órdenes</Text>}
+                    {ordenes.length === 0 && <Text className="text-center text-slate-500 py-10 italic">Sin órdenes recientes</Text>}
                 </View>
             </View>
 
-            {isMobile && <View style={{ height: 80 }} />}
+            {isMobile && <View className="h-20" />}
         </ScrollView>
     );
 }

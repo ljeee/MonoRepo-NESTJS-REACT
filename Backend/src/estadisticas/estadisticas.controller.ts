@@ -101,6 +101,15 @@ export class EstadisticasController {
 		return this.service.clientesFrecuentes(limit ? Number(limit) : 10);
 	}
 
+	@Get('domiciliarios')
+	@ApiOperation({ summary: 'Estadísticas por domiciliario' })
+	domiciliariosStats(
+		@Query('from') from: string,
+		@Query('to') to: string,
+	) {
+		return this.service.domiciliariosStats(from, to);
+	}
+
 	@Get('cliente/:telefono/historial')
 	@ApiOperation({ summary: 'Historial completo de un cliente: órdenes, productos, stats' })
 	@ApiParam({ name: 'telefono', description: 'Teléfono del cliente' })

@@ -44,6 +44,10 @@ export class ProductProcessingService {
 		await this.ordenesProductosRepo.save(item);
 	}
 
+	async eliminarProductosDeOrden(ordenId: number): Promise<void> {
+		await this.ordenesProductosRepo.delete({ordenId});
+	}
+
 	async procesarProductos(
 		ordenId: number,
 		productos: CreateOrdenItemDto[],

@@ -2,11 +2,19 @@ import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/co
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {DomiciliosService} from "./domicilios.service";
 import {CreateDomiciliosDto} from "./esquemas/domicilios.dto";
+import { GetUser } from "../auth/decorators/get-user.decorator";
+import { User } from "../auth/esquemas/user.entity";
 
 @ApiTags('Domicilios')
 @Controller("domicilios")
 export class DomiciliosController {
 	constructor(private readonly service: DomiciliosService) {}
+
+	@Get('me')
+	@ApiOperation({ summary: 'Obtener domicilios asignados al usuario actual' })
+	findMe(@GetUser() user: User) {
+		return this.service.findByUser(user.id);
+	}
 
 	@Get()
 	@ApiOperation({ summary: 'Obtener todos los domicilios' })

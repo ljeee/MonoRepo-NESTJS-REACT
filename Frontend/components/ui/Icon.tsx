@@ -1,6 +1,5 @@
 import React from 'react';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors } from '../../styles/theme';
 
 export type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
@@ -11,11 +10,7 @@ interface IconProps {
     style?: any;
 }
 
-/**
- * Wrapper around MaterialCommunityIcons for consistent icon usage.
- * Replaces emoji icons with proper vector icons.
- */
-export default function Icon({ name, size = 20, color = colors.text, style }: IconProps) {
+export default function Icon({ name, size = 20, color = "#94A3B8", style }: IconProps) {
     return (
         <MaterialCommunityIcons
             name={name}
@@ -27,7 +22,6 @@ export default function Icon({ name, size = 20, color = colors.text, style }: Ic
 }
 
 // ── Section Icon Mapping ──────────────────────────────────────────────────────
-// Replaces emoji icons in navigation and headers
 export const sectionIcons: Record<string, IconName> = {
     ordenes: 'clipboard-text-outline',
     facturas: 'cash-multiple',

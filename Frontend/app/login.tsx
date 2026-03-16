@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { Button, Card } from '../components/ui';
-import { colors } from '../styles/theme';
-import { fontSize, fontWeight, spacing, radius } from '../styles/tokens';
+import { Button, Card, Input, Icon } from '../components/ui';
+import { View, Text } from '../tw';
+import { FadeInUp } from 'react-native-reanimated';
+import { Animated } from '../tw/animated';
 
 export default function LoginScreen() {
     const { login } = useAuth();
@@ -36,119 +37,71 @@ export default function LoginScreen() {
     const isWeb = Platform.OS === 'web';
 
     const loginContent = (
-        <View style={styles.inner}>
-            <View style={styles.header}>
-                <Text style={styles.title}>Dfiru POS</Text>
-                <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
-            </View>
+        <View className="flex-1 justify-center items-center p-6 bg-(--color-pos-bg)">
+            <Animated.View entering={FadeInUp.duration(600).delay(200)} className="items-center mb-10">
+                <View className="w-16 h-16 rounded-2xl bg-(--color-pos-primary-light) items-center justify-center mb-4 border border-(--color-pos-primary)/20">
+                    <Icon name="pizza" size={36} color="#F5A524" />
+                </View>
+                <Text className="text-4xl font-black text-white tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>
+                    Dfiru <Text className="text-(--color-pos-primary)">POS</Text>
+                </Text>
+                <Text className="text-(--color-pos-text-secondary) mt-1 font-medium italic">
+                    Sistema de Gestión de Alimentos
+                </Text>
+            </Animated.View>
 
-            <Card padding="lg" style={styles.card}>
-                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            <Card className="w-full max-w-sm border border-white/5 bg-white/5 backdrop-blur-xl p-8 rounded-3xl">
+                <Text className="text-xl font-bold text-white mb-1">Bienvenido</Text>
+                <Text className="text-sm text-(--color-pos-text-secondary) mb-8">Ingresa tus credenciales para continuar</Text>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Usuario</Text>
-                    <TextInput
-                        style={styles.input}
+                <View className="gap-2">
+                    <Input
+                        label="USUARIO"
                         value={usuario}
                         onChangeText={setUsuario}
-                        placeholder="Ej. cajero"
+                        placeholder="Ej. cajero01"
                         autoCapitalize="none"
-                        placeholderTextColor={colors.textMuted}
+                        leftIcon={<Icon name="account-outline" size={20} color="#64748B" />}
+                        error={error && !usuario ? "Requerido" : undefined}
                     />
-                </View>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Contraseña</Text>
-                    <TextInput
-                        style={styles.input}
+                    <Input
+                        label="CONTRASEÑA"
                         value={contrasena}
                         onChangeText={setContrasena}
-                        placeholder="********"
+                        placeholder="••••••••"
                         secureTextEntry
-                        placeholderTextColor={colors.textMuted}
+                        leftIcon={<Icon name="lock-outline" size={20} color="#64748B" />}
+                        error={error && !contrasena ? "Requerido" : undefined}
                     />
                 </View>
 
+                {error && (
+                    <View className="bg-red-500/10 p-3 rounded-xl mb-6 border border-red-500/20">
+                        <Text className="text-red-400 text-xs text-center font-bold">{error}</Text>
+                    </View>
+                )}
+
                 <Button
-                    title="Ingresar"
+                    title="Iniciar Sesión"
                     onPress={handleLogin}
                     loading={loading}
                     fullWidth
                     variant="primary"
                     size="lg"
+                    className="mt-4 shadow-lg shadow-amber-500/20"
                 />
+
+
             </Card>
         </View>
     );
 
+    if (isWeb) return loginContent;
+
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.container}
-        >
-            {isWeb ? (
-                loginContent
-            ) : (
-                <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-                    {loginContent}
-                </TouchableWithoutFeedback>
-            )}
-        </KeyboardAvoidingView>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            {loginContent}
+        </TouchableWithoutFeedback>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bg,
-    },
-    inner: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacing.xl,
-    },
-    header: {
-        alignItems: 'center',
-        marginBottom: spacing.xl,
-    },
-    title: {
-        fontSize: 40,
-        fontWeight: fontWeight.bold,
-        color: colors.primary,
-        marginBottom: spacing.xs,
-    },
-    subtitle: {
-        fontSize: fontSize.md,
-        color: colors.textSecondary,
-    },
-    card: {
-        width: '100%',
-        maxWidth: 400,
-        boxShadow: '0px 10px 20px 0px rgba(0,0,0,0.1)',
-    },
-    inputGroup: {
-        marginBottom: spacing.lg,
-    },
-    label: {
-        fontSize: fontSize.sm,
-        fontWeight: fontWeight.medium,
-        color: colors.text,
-        marginBottom: spacing.xs,
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: colors.border,
-        borderRadius: radius.md,
-        padding: spacing.md,
-        fontSize: fontSize.md,
-        color: colors.text,
-        backgroundColor: colors.bgLight,
-    },
-    errorText: {
-        color: colors.danger,
-        marginBottom: spacing.md,
-        textAlign: 'center',
-        fontSize: fontSize.sm,
-    },
-});

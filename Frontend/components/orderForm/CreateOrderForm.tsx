@@ -2,18 +2,13 @@ import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { isAxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator } from 'react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
+import { Badge } from '../ui';
 import { api } from '../../services/api';
-import { useOrder } from '../../contexts/OrderContext';
-import { useToast } from '../../contexts/ToastContext';
-
-import { useClientByPhone } from '../../hooks/use-client-by-phone';
-import type { CreateOrdenDto } from '../../types/models';
-import { Domiciliario } from '../../types/models';
-import { Producto, ProductoVariante } from '../../hooks/use-productos';
+import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce } from '@monorepo/shared';
+import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
-import { colors } from '../../styles/theme';
-import { orderFormStyles as styles } from '../../styles/ordenes/CreateOrderForm.styles';
 import CartPanel, { CartItem } from './CartPanel';
 import MenuPicker from './MenuPicker';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
@@ -71,12 +66,38 @@ function extractErrorMessage(error: unknown): string {
   return `Error (${status}): ${msg || 'No se pudo crear la orden'}`;
 }
 
-export default function CreateOrderForm() {
+interface CreateOrderFormProps {
+  mode?: 'create' | 'edit';
+  initialItem?: Partial<OrderFormState>;
+  ordenId?: number;
+}
+
+export default function CreateOrderForm({ mode = 'create', initialItem, ordenId }: CreateOrderFormProps) {
   const router = useRouter();
   const { isMobile, isTablet } = useBreakpoint();
   const isCompact = isMobile || isTablet;
-  const { formState, updateForm, clearCart, isHydrated } = useOrder();
+  const { formState: globalFormState, updateForm: globalUpdateForm, clearCart, isHydrated: globalIsHydrated } = useOrder();
   const { showToast } = useToast();
+
+  const [localFormState, setLocalFormState] = useState<OrderFormState | null>(null);
+
+  // Initialize local state if editing
+  useEffect(() => {
+    if (mode === 'edit' && initialItem) {
+      setLocalFormState(prev => prev || { ...defaultOrderFormState, ...initialItem });
+    }
+  }, [mode, initialItem]);
+
+  const formState = mode === 'edit' ? (localFormState || (initialItem as OrderFormState) || defaultOrderFormState) : globalFormState;
+  const isHydrated = mode === 'edit' ? true : globalIsHydrated;
+
+  const updateForm = useCallback((updates: Partial<OrderFormState>) => {
+    if (mode === 'edit') {
+      setLocalFormState(prev => prev ? ({ ...prev, ...updates }) : null);
+    } else {
+      globalUpdateForm(updates);
+    }
+  }, [mode, globalUpdateForm]);
 
   const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
   const fetchDomiciliarios = useCallback(async () => {
@@ -87,6 +108,7 @@ export default function CreateOrderForm() {
   }, []);
   const [loading, setLoading] = useState(false);
   const { client, fetchClient } = useClientByPhone();
+  const { debounce } = useAntiDebounce();
 
   // ==================== CARRITO ====================
   const addToCart = useCallback((producto: Producto, variante: ProductoVariante, sabores?: string[]) => {
@@ -160,7 +182,7 @@ export default function CreateOrderForm() {
       : formState.nombreCliente;
 
   // ==================== SUBMIT ====================
-  const handleSubmit = async () => {
+  const handleSubmit = debounce(async () => {
     setLoading(true);
 
     // Validar tipo de pedido
@@ -216,7 +238,6 @@ export default function CreateOrderForm() {
       costoDomicilio: formState.tipoPedido === 'domicilio' && formState.costoDomicilio
         ? Number(formState.costoDomicilio)
         : undefined,
-      metodo: formState.metodo,
       observaciones: formState.observaciones || undefined,
       productos: formState.cart.map(item => ({
         tipo: item.productoNombre,
@@ -229,7 +250,11 @@ export default function CreateOrderForm() {
     };
 
     try {
-      await api.ordenes.create(payload);
+      if (mode === 'edit' && ordenId) {
+        await api.ordenes.update(ordenId, payload as any);
+      } else {
+        await api.ordenes.create(payload);
+      }
     } catch (error: unknown) {
       showToast(extractErrorMessage(error), 'error', 5000);
       setLoading(false);
@@ -254,7 +279,7 @@ export default function CreateOrderForm() {
         productos: receiptProducts,
         total,
         costoDomicilio: costoDom || undefined,
-        metodo: formState.metodo,
+        metodo: 'Pendiente',
       });
     }
 
@@ -270,65 +295,64 @@ export default function CreateOrderForm() {
       observaciones: '',
     });
 
-    showToast('¡Orden creada exitosamente!', 'success', 2000);
+    showToast(mode === 'edit' ? '¡Orden actualizada!' : '¡Orden creada exitosamente!', 'success', 2000);
     setTimeout(() => {
-      router.push('/ordenes');
+      router.push(mode === 'edit' ? (`/orden-detalle?ordenId=${ordenId}` as any) : '/ordenes');
     }, 2000);
     setLoading(false);
-  };
+  });
 
   // ==================== RENDER ====================
   // Wait for AsyncStorage to hydrate before rendering
   if (!isHydrated) {
     return (
-      <View style={styles.rootBg}>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Cargando...</Text>
+      <View className="flex-1 bg-(--color-pos-bg)">
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color="#F5A524" />
+          <Text className="text-white mt-4 font-medium">Cargando...</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.rootBg}>
+    <View className="flex-1 bg-(--color-pos-bg)">
       <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.contentContainer}
+        className="flex-1"
+        contentContainerClassName="py-5 px-5 pb-32 w-full self-stretch"
       >
-        <View style={[
-          styles.formCard,
-          isCompact && styles.formCardMobile
-        ]}>
-          <Text style={[styles.title, isCompact && styles.titleMobile]}>Crear Orden</Text>
+        <View className={`bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl ${isCompact ? 'p-3' : ''}`}>
+          <View className="flex-row justify-between items-center mb-4">
+            <Text className={`text-2xl font-black text-white tracking-tighter ${isCompact ? 'text-xl' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>
+              {mode === 'edit' ? 'Editar Orden' : 'Nueva Orden'}
+            </Text>
+            {isCompact && (
+               <Badge label={formState.tipoPedido} variant="info" size="sm" />
+            )}
+          </View>
 
-          <Text style={styles.sectionTitle}>Detalles del Pedido</Text>
-
-          <View style={styles.row}>
+          <View className="flex-row flex-wrap -mx-1">
             {/* TIPO DE PEDIDO */}
-            <View style={[styles.col4, isCompact && styles.col4Mobile]}>
-              <Text style={styles.label}>Tipo de pedido</Text>
-              <View style={styles.pickerContainer}>
+            <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+              <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Tipo</Text>
+              <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
                 <Picker
                   selectedValue={formState.tipoPedido}
+                  enabled={mode === 'create'}
                   onValueChange={(val) => {
                     const tipoPedido = val as 'mesa' | 'domicilio' | 'llevar';
-                    if (tipoPedido === 'domicilio') {
-                      updateForm({ tipoPedido });
-                      return;
-                    }
-
-                    updateForm({
-                      tipoPedido,
-                      selectedAddress: '',
-                      newAddress: '',
-                      telefonoCliente: '',
-                      telefonoDomiciliario: '',
-                      costoDomicilio: '',
+                    updateForm({ 
+                        tipoPedido,
+                        selectedAddress: '',
+                        newAddress: '',
+                        telefonoCliente: '',
+                        telefonoDomiciliario: '',
+                        costoDomicilio: '',
                     });
                   }}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItemStyle}
-                  dropdownIconColor={colors.text}
+                  style={{ height: 40, color: 'white' }}
+                  itemStyle={{ color: 'white', fontSize: 14 }}
+                  dropdownIconColor="#94A3B8"
                 >
                   <Picker.Item label="Domicilio" value="domicilio" />
                   <Picker.Item label="Llevar" value="llevar" />
@@ -337,72 +361,47 @@ export default function CreateOrderForm() {
               </View>
             </View>
 
-            {/* METODO DE PAGO */}
-            <View style={[styles.col4, isCompact && styles.col4Mobile]}>
-              <Text style={styles.label}>Método de pago</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={formState.metodo}
-                  onValueChange={(val) => updateForm({ metodo: val })}
-                  style={styles.picker}
-                  itemStyle={styles.pickerItemStyle}
-                  dropdownIconColor={colors.text}
-                >
-                  <Picker.Item label="Efectivo" value="efectivo" />
-                  <Picker.Item label="QR" value="qr" />
-                </Picker>
-              </View>
-            </View>
-
             {/* TELEFONO (Solo Domicilio) */}
             {formState.tipoPedido === 'domicilio' && (
-              <View style={[styles.col4, isCompact && styles.col4Mobile]}>
-                <Text style={styles.label}>Teléfono Cliente</Text>
+              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Teléfono</Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
                   value={formState.telefonoCliente}
-                  onChangeText={(val) => updateForm({ telefonoCliente: val })}
-                  placeholder=""
-                  placeholderTextColor={colors.subText}
+                  onChangeText={(val) => updateForm({ telefonoCliente: val.replace(/\s/g, '') })}
+                  placeholder="321..."
+                  placeholderTextColor="#475569"
                   keyboardType="numeric"
                 />
               </View>
             )}
 
             {/* NOMBRE / MESA */}
-            <View style={[styles.col4, isCompact && styles.col4Mobile]}>
-              <Text style={styles.label}>Nombre / Mesa</Text>
+            <View className={`px-1 mb-3 ${isCompact ? 'w-full' : (formState.tipoPedido === 'domicilio' ? 'w-2/4' : 'w-3/4')}`}>
+              <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">{formState.tipoPedido === 'mesa' ? 'Mesa' : 'Cliente'}</Text>
               {formState.tipoPedido === 'mesa' ? (
-                <View style={styles.pickerContainer}>
+                <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
                   <Picker
                     selectedValue={formState.numeroMesa}
                     onValueChange={(val) => {
                       updateForm({ numeroMesa: val, nombreCliente: val });
                     }}
-                    style={styles.picker}
-                    itemStyle={styles.pickerItemStyle}
-                    dropdownIconColor={colors.text}
+                    style={{ height: 40, color: 'white' }}
+                    itemStyle={{ color: 'white', fontSize: 14 }}
+                    dropdownIconColor="#94A3B8"
                   >
-                    <Picker.Item label="Seleccione mesa" value="" color={colors.subText} />
-                    {[...Array(10)].map((_, i) => <Picker.Item key={`mesaPicker-${i + 1}`} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
+                    <Picker.Item label="Seleccione mesa" value="" color="#64748B" />
+                    {[...Array(15)].map((_, i) => <Picker.Item key={`mesaPicker-${i + 1}`} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
                   </Picker>
                 </View>
-              ) : formState.tipoPedido === 'domicilio' ? (
-                <TextInput
-                  style={styles.input}
-                  value={resolvedNombreCliente}
-                  onChangeText={(val) => updateForm({ nombreCliente: val })}
-                  placeholder=""
-                  placeholderTextColor={colors.subText}
-                  editable={!client || !client.clienteNombre}
-                />
               ) : (
                 <TextInput
-                  style={styles.input}
-                  value={formState.nombreCliente}
+                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
+                  value={resolvedNombreCliente}
                   onChangeText={(val) => updateForm({ nombreCliente: val })}
-                  placeholder=""
-                  placeholderTextColor={colors.subText}
+                  placeholder="Nombre"
+                  placeholderTextColor="#475569"
+                  editable={!client || !client.clienteNombre}
                 />
               )}
             </View>
@@ -410,74 +409,79 @@ export default function CreateOrderForm() {
 
           {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
           {formState.tipoPedido === 'domicilio' && (
-            <View style={styles.row}>
-              <View style={[styles.col6, isCompact && styles.col6Mobile]}>
-                <Text style={styles.label}>Dirección Cliente</Text>
+            <View className="flex-row flex-wrap -mx-1">
+              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
+                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
                 {hasClienteDirecciones ? (
-                  <>
-                    <View style={styles.pickerContainer}>
+                  <View className="flex-col gap-1">
+                    <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
                       <Picker
                         selectedValue={formState.selectedAddress}
                         onValueChange={(val) => updateForm({ selectedAddress: val })}
-                        style={styles.picker}
-                        itemStyle={styles.pickerItemStyle}
-                        dropdownIconColor={colors.text}
+                        style={{ height: 40, color: 'white' }}
+                        itemStyle={{ color: 'white', fontSize: 14 }}
+                        dropdownIconColor="#94A3B8"
                       >
-                        <Picker.Item label="Seleccione dirección" value="" color={colors.subText} />
+                        <Picker.Item label="Seleccionar Dirección" value="" color="#64748B" />
                         {(client?.direcciones || [])
                           .map((dir) => <Picker.Item key={dir.id} label={dir.direccion} value={dir.direccion} />)}
-                        <Picker.Item label="Nueva dirección..." value="__nueva__" />
+                        <Picker.Item label="+ Nueva dirección..." value="__nueva__" />
                       </Picker>
                     </View>
                     {formState.selectedAddress === '__nueva__' && (
                       <TextInput
-                        style={styles.input}
+                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
                         value={formState.newAddress}
                         onChangeText={(val) => updateForm({ newAddress: val })}
-                        placeholder=""
-                        placeholderTextColor={colors.subText}
+                        placeholder="Calle..."
+                        placeholderTextColor="#475569"
                       />
                     )}
-                  </>
+                  </View>
                 ) : (
                   <TextInput
-                    style={styles.input}
+                    className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
                     value={formState.newAddress}
                     onChangeText={(val) => updateForm({ newAddress: val })}
-                    placeholder=""
-                    placeholderTextColor={colors.subText}
+                    placeholder="Calle..."
+                    placeholderTextColor="#475569"
                   />
                 )}
               </View>
 
-              <View style={[styles.col4, isCompact && styles.col4Mobile]}>
-                <Text style={styles.label}>Domiciliario</Text>
-                <View style={styles.pickerContainer}>
+              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Domiciliario</Text>
+                <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
                   <Picker
                     selectedValue={formState.telefonoDomiciliario}
                     onValueChange={(val) => updateForm({ telefonoDomiciliario: val })}
-                    style={styles.picker}
-                    itemStyle={styles.pickerItemStyle}
-                    dropdownIconColor={colors.text}
+                    style={{ height: 40, color: 'white' }}
+                    itemStyle={{ color: 'white', fontSize: 14 }}
+                    dropdownIconColor="#94A3B8"
                   >
-                    <Picker.Item label="Seleccione domiciliario" value="" color={colors.subText} />
-                    {domiciliarios.map(d => <Picker.Item key={d.telefono} label={d.domiciliarioNombre ? d.domiciliarioNombre : `Sin nombre (${d.telefono})`} value={d.telefono.toString()} />)}
+                    <Picker.Item label="Driver" value="" color="#64748B" />
+                    {domiciliarios.map(d => (
+                      <Picker.Item 
+                        key={d.telefono} 
+                        label={d.domiciliarioNombre || d.telefono.toString()} 
+                        value={d.telefono.toString()} 
+                      />
+                    ))}
                   </Picker>
                 </View>
               </View>
 
-              <View style={[styles.col4, isMobile && styles.col4Mobile]}>
-                <Text style={styles.label}>Costo Domicilio</Text>
+              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Costo</Text>
                 <TextInput
-                  style={styles.input}
+                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
                   value={formState.costoDomicilio ? Number(formState.costoDomicilio).toLocaleString('es-CO') : ''}
                   onChangeText={(val) => {
-                    // Remove all non-numeric characters
                     const numericValue = val.replace(/\D/g, '');
                     updateForm({ costoDomicilio: numericValue });
                   }}
-                  placeholder=""
-                  placeholderTextColor={colors.subText}
+                  placeholder="2,000"
+                  placeholderTextColor="#475569"
                   keyboardType="numeric"
                 />
               </View>
@@ -485,7 +489,11 @@ export default function CreateOrderForm() {
           )}
 
           {/* =============== PRODUCTOS (MENÚ) =============== */}
-          <Text style={styles.sectionTitle}>Productos</Text>
+          <View className="flex-row items-center mt-2 mb-3">
+             <View className="h-[1px] flex-1 bg-white/5" />
+             <Text className="text-[10px] font-black text-(--color-pos-primary) px-3 uppercase tracking-[3px]">Menú</Text>
+             <View className="h-[1px] flex-1 bg-white/5" />
+          </View>
           <MenuPicker onAdd={addToCart} />
 
           {/* =============== CARRITO / BALANCE =============== */}
@@ -497,34 +505,34 @@ export default function CreateOrderForm() {
           />
 
           {/* =============== OBSERVACIONES =============== */}
-          <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>Observaciones</Text>
-          <View style={styles.row}>
-            <View style={styles.flexOne}>
-              <TextInput
-                style={[styles.input, styles.observationsInput]}
-                value={formState.observaciones}
-                onChangeText={(val) => updateForm({ observaciones: val })}
-                placeholder=""
-                placeholderTextColor={colors.subText}
-                multiline
-                numberOfLines={5}
-              />
-            </View>
+          <View className="mt-4 mb-2">
+            <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Observaciones</Text>
+            <TextInput
+            className="bg-black/10 rounded-lg border border-white/5 px-3 py-2 text-sm text-slate-300 h-16"
+            style={{ textAlignVertical: 'top' }}
+            value={formState.observaciones}
+            onChangeText={(val) => updateForm({ observaciones: val })}
+            placeholder="Algún detalle adicional..."
+            placeholderTextColor="#475569"
+            multiline
+            numberOfLines={2}
+            />
           </View>
 
           {/* =============== ACCIONES =============== */}
           <TouchableOpacity
-            style={[styles.createOrderBtn, loading && styles.disabledBtn]}
+            className={`bg-(--color-pos-primary) py-4 rounded-xl items-center mt-4 w-full shadow-lg shadow-amber-500/20 active:scale-[0.95] transition-transform ${loading ? 'opacity-60' : ''}`}
             onPress={handleSubmit}
             disabled={loading}
-            activeOpacity={0.8}
           >
-            <Text style={styles.createOrderBtnText}>{loading ? 'Creando...' : 'Crear Orden'}</Text>
+            <Text className="text-white font-black text-lg tracking-[1px] uppercase">
+              {loading ? (mode === 'edit' ? 'Guardando...' : 'Creando...') : (mode === 'edit' ? 'Actualizar Orden' : 'Confirmar Pedido')}
+            </Text>
           </TouchableOpacity>
 
         </View>
         {/* Extra bottom space for system nav bar on mobile */}
-        {isMobile && <View style={styles.androidBottomSpacer} />}
+        {isMobile && <View className="h-8" />}
       </ScrollView>
     </View>
   );

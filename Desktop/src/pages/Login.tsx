@@ -1,5 +1,5 @@
 import { FormEvent, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { ChefHat } from 'lucide-react';
 
 export function LoginPage() {

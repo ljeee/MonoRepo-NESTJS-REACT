@@ -1,4 +1,7 @@
-# Si lanzas `eas build` desde la raíz por error, no subir esto:
+# Monorepo Root EAS Ignore
+# Evita que eas-cli suba archivos innecesarios al construir en la nube.
+
+# Excluir otros proyectos para ahorrar peso si se lanza desde la raíz
 Backend/
 Desktop/
 Docs/
@@ -9,10 +12,31 @@ README.md
 
 # Node
 node_modules/
-Frontend/node_modules/
+**/node_modules/
 
-# Expo
+# Environment & Secrets
+.env*
+!.env.example
+*.log
+
+# Expo & Build Artifacts
 .expo/
-Frontend/.expo/
-Frontend/dist/
-Frontend/web-build/
+**/dist/
+**/web-build/
+**/build/
+
+# Mobile Credentials & Certificates
+*.jks
+*.p12
+*.p8
+*.keystore
+*.key
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+eas-credentials.json
+
+# Tooling
+.agent/
+.agents/
+.vscode/

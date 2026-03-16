@@ -1,14 +1,8 @@
 import React from 'react';
-import {
-    ActivityIndicator,
-    Pressable,
-    StyleSheet,
-    Text,
-    ViewStyle,
-} from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, radius, shadows, spacing } from '../../styles/tokens';
+import { ActivityIndicator, Pressable } from 'react-native';
+import { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
+import { Animated } from '../../tw/animated';
+import { View, Text } from '../../tw';
 import Icon, { IconName } from './Icon';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
@@ -24,22 +18,9 @@ interface ButtonProps {
     loading?: boolean;
     disabled?: boolean;
     fullWidth?: boolean;
-    style?: ViewStyle;
+    className?: string;
+    style?: any;
 }
-
-const variantStyles: Record<ButtonVariant, { bg: string; text: string; border: string }> = {
-    primary: { bg: colors.primary, text: '#ffffff', border: colors.primary },
-    secondary: { bg: colors.secondary, text: '#ffffff', border: colors.secondary },
-    danger: { bg: colors.danger, text: '#ffffff', border: colors.danger },
-    ghost: { bg: 'transparent', text: colors.text, border: 'transparent' },
-    outline: { bg: 'transparent', text: colors.primary, border: colors.primary },
-};
-
-const sizeStyles: Record<ButtonSize, { h: number; px: number; fs: number; iconSize: number }> = {
-    sm: { h: 40, px: spacing.md, fs: fontSize.sm, iconSize: 18 },
-    md: { h: 50, px: spacing.lg, fs: fontSize.md, iconSize: 20 },
-    lg: { h: 60, px: spacing.xl, fs: fontSize.lg, iconSize: 24 },
-};
 
 export default function Button({
     title,
@@ -51,28 +32,67 @@ export default function Button({
     loading = false,
     disabled = false,
     fullWidth = false,
+    className = '',
     style,
 }: ButtonProps) {
     const scale = useSharedValue(1);
-    const v = variantStyles[variant];
-    const s = sizeStyles[size];
+    const opacity = useSharedValue(0);
+    const translateY = useSharedValue(5);
     const isDisabled = disabled || loading;
+
+    React.useEffect(() => {
+        opacity.value = withTiming(1, { duration: 400 });
+        translateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+    }, []);
 
     const handlePressIn = () => {
         if (!isDisabled) {
-            scale.set(withSpring(0.96, { damping: 12, stiffness: 200 }));
+            scale.value = withSpring(0.96, { damping: 12, stiffness: 200 });
         }
     };
 
     const handlePressOut = () => {
-        scale.set(withSpring(1, { damping: 12, stiffness: 200 }));
+        scale.value = withSpring(1, { damping: 12, stiffness: 200 });
     };
 
     const animatedStyle = useAnimatedStyle(() => {
         return {
-            transform: [{ scale: scale.get() }],
+            opacity: opacity.value,
+            transform: [
+                { scale: scale.value },
+                { translateY: translateY.value }
+            ],
         };
     });
+
+    const variantClasses = {
+        primary: 'bg-(--color-pos-primary) text-black',
+        secondary: 'bg-(--color-pos-secondary) text-white',
+        danger: 'bg-red-500 text-white',
+        ghost: 'bg-transparent text-slate-400',
+        outline: 'bg-transparent border-2 border-(--color-pos-primary) text-(--color-pos-primary)',
+    };
+
+    const sizeClasses = {
+        sm: 'h-11 px-4 text-sm',
+        md: 'h-12 px-6 text-base',
+        lg: 'h-14 px-8 text-lg',
+    };
+
+    const iconSize = size === 'sm' ? 16 : size === 'md' ? 20 : 24;
+    
+    // Determine text color for icon
+    const getIconColor = () => {
+        if (isDisabled) return '#64748B';
+        if (variant === 'primary') return '#000';
+        if (variant === 'secondary' || variant === 'danger') return '#FFF';
+        if (variant === 'outline') return '#F5A524';
+        return '#94A3B8';
+    };
+
+    const combinedClasses = `flex-row items-center justify-center rounded-xl transition-all ${variantClasses[variant].split(' ')[0]} ${sizeClasses[size].split(' ').slice(0, 2).join(' ')} ${fullWidth ? 'w-full' : ''} ${isDisabled ? 'opacity-50' : ''} ${className}`;
+
+    const textClasses = `font-black uppercase tracking-wider ${variantClasses[variant].split(' ').pop()} ${sizeClasses[size].split(' ').pop()}`;
 
     return (
         <Pressable
@@ -82,62 +102,29 @@ export default function Button({
             disabled={isDisabled}
         >
             <Animated.View
-                style={[
-                    styles.base,
-                    {
-                        backgroundColor: v.bg,
-                        borderColor: v.border,
-                        height: s.h,
-                        paddingHorizontal: s.px,
-                        opacity: isDisabled ? 0.5 : 1,
-                    },
-                    animatedStyle,
-                    variant === 'outline' && { borderWidth: 1.5 },
-                    variant !== 'ghost' && variant !== 'outline' && shadows.sm,
-                    fullWidth && { width: '100%' },
-                    style,
-                ]}
+                style={[animatedStyle, style]}
+                className={combinedClasses}
             >
                 {loading ? (
-                    <ActivityIndicator size="small" color={v.text} />
+                    <ActivityIndicator size="small" color={getIconColor()} />
                 ) : (
                     <>
-                        {icon && <Icon name={icon} size={s.iconSize} color={v.text} style={styles.iconMarginRight} />}
-                        <Text
-                            style={[
-                                styles.text,
-                                {
-                                    color: v.text,
-                                    fontSize: s.fs,
-                                },
-                            ]}
-                        >
+                        {icon && (
+                            <View className="mr-2">
+                                <Icon name={icon} size={iconSize} color={getIconColor()} />
+                            </View>
+                        )}
+                        <Text className={textClasses}>
                             {title}
                         </Text>
-                        {iconRight && <Icon name={iconRight} size={s.iconSize} color={v.text} style={styles.iconMarginLeft} />}
+                        {iconRight && (
+                            <View className="ml-2">
+                                <Icon name={iconRight} size={iconSize} color={getIconColor()} />
+                            </View>
+                        )}
                     </>
                 )}
             </Animated.View>
         </Pressable>
     );
 }
-
-const styles = StyleSheet.create({
-    base: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: radius.md,
-        borderWidth: 0,
-    },
-    text: {
-        fontWeight: fontWeight.bold,
-        letterSpacing: 0.3,
-    },
-    iconMarginRight: {
-        marginRight: spacing.sm,
-    },
-    iconMarginLeft: {
-        marginLeft: spacing.sm,
-    },
-});

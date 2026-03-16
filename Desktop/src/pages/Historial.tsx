@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
-import { useFacturasDia } from '../hooks/use-facturas';
-import { useFacturasPagosDia } from '../hooks/use-create-factura-pago';
-import { formatCurrency } from '../utils/formatNumber';
+import { useFacturasDia } from '@monorepo/shared';
+import { useFacturasPagosDia } from '@monorepo/shared';
+import { formatCurrency } from '@monorepo/shared';
 
 export function HistorialPage() {
   const { data: facturas, stats, loading: loadingFacturas, error: errorFacturas, refetch } = useFacturasDia();

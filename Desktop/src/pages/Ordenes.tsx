@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
-import { Orden, OrdenProducto } from '../types/models';
-import { useOrdenesSocket } from '../hooks/use-ordenes-socket';
-import { formatCurrency, formatDate } from '../utils/formatNumber';
+import { api } from '../../services/api';
+import type { Orden, OrdenProducto } from '@monorepo/shared';
+import { useOrdenesSocket } from '@monorepo/shared';
+import { getBaseUrl } from '../../services/api';
+import { formatCurrency, formatDate } from '@monorepo/shared';
 import {
     Clock, ChevronRight, CheckCircle, ClipboardList,
     PlusCircle, RefreshCw, MapPin, User, Phone, MessageSquare
@@ -63,7 +64,7 @@ export function OrdersOfDayPending() {
         }
     };
 
-    useOrdenesSocket('cajero', fetchOrdenes);
+    useOrdenesSocket(getBaseUrl(), 'cajero', fetchOrdenes);
 
     const filtered = filtroEstado
         ? filtroEstado === 'completada'

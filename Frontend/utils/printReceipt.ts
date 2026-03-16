@@ -1,5 +1,5 @@
 import { Platform, Linking } from 'react-native';
-import { formatCurrency } from './formatNumber';
+import { formatCurrency } from '@monorepo/shared';
 
 export interface ReceiptProduct {
   nombre: string;
@@ -8,7 +8,7 @@ export interface ReceiptProduct {
 }
 
 /**
- * Genera recibo HTML para impresora térmica 80mm y abre window.print()
+ * Genera recibo HTML para formato Business Card (55x85mm) y abre window.print()
  */
 export function printReceipt(data: {
   ordenId?: number;
@@ -28,24 +28,25 @@ export function printReceipt(data: {
   const productRows = data.productos
     .map(
       (p) =>
-        `<tr><td>${p.cantidad}x ${p.nombre}</td><td style="text-align:right">$${formatCurrency(p.precioUnitario * p.cantidad)}</td></tr>`,
+        `<tr><td class="b">${p.cantidad}x</td><td>${p.nombre}</td><td style="text-align:right">$${formatCurrency(p.precioUnitario * p.cantidad)}</td></tr>`,
     )
     .join('');
 
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Recibo</title>
 <style>
-@page{margin:0;size:80mm auto}*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Courier New',monospace;font-size:12px;width:80mm;padding:4mm;color:#000}
+@page{margin:0;size:55mm 85mm}*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',system-ui,sans-serif;font-size:10px;width:55mm;height:85mm;padding:3mm;color:#000;background:#fff;line-height:1.2}
 .c{text-align:center}.b{font-weight:bold}
-.d{border-top:1px dashed #000;margin:6px 0}
-h1{font-size:18px;margin-bottom:2px}
-table{width:100%;border-collapse:collapse}td{padding:2px 0;vertical-align:top}
-.t td{font-size:16px;font-weight:bold;padding-top:6px}
-.f{margin-top:8px;font-size:10px}
+.d{border-top:1px dashed #ccc;margin:4px 0}
+h1{font-size:14px;margin-bottom:1px;letter-spacing:-0.5px}
+table{width:100%;border-collapse:collapse}td{padding:1px 0;vertical-align:top}
+.t td{font-size:12px;font-weight:bold;padding-top:4px}
+.f{margin-top:6px;font-size:8px;color:#666}
+.meta{font-size:9px}
 </style></head><body>
-<div class="c"><h1>PIZZERIA</h1><p>${fecha}</p></div>
+<div class="c"><h1>PIZZERIA</h1><p class="meta">${fecha}</p></div>
 <div class="d"></div>
-<div>${data.ordenId ? `<p><span class="b">Orden:</span> #${data.ordenId}</p>` : ''}
+<div class="meta">${data.ordenId ? `<p><span class="b">Orden:</span> #${data.ordenId}</p>` : ''}
 <p><span class="b">Cliente:</span> ${data.clienteNombre || 'N/A'}</p>
 <p><span class="b">Pago:</span> ${data.metodo || 'N/A'}</p></div>
 <div class="d"></div>

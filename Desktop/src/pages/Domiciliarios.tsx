@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { api } from '../services/api';
-import { useDomiciliariosList } from '../hooks/use-domiciliarios-list';
-import { useToast } from '../contexts/ToastContext';
+import { api } from '../../services/api';
+import { useDomiciliariosList } from '@monorepo/shared';
+import { useToast } from '@monorepo/shared';
 import {
     Bike,
     PlusCircle,

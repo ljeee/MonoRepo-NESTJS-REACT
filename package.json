@@ -2,6 +2,12 @@
   "name": "monorepo",
   "private": true,
   "version": "1.0.0",
+  "workspaces": [
+    "packages/*",
+    "Frontend",
+    "Desktop",
+    "Backend"
+  ],
   "scripts": {
     "backend": "npm run start:dev --prefix Backend",
     "backend:docker": "copy Backend\\.env.docker Backend\\.env && npm run start:dev --prefix Backend",
@@ -16,6 +22,10 @@
     "db:down": "docker compose down --volumes --remove-orphans"
   },
   "devDependencies": {
-    "concurrently": "^9.0.0"
+    "concurrently": "^9.0.0",
+    "lightningcss": "1.30.1"
+  },
+  "overrides": {
+    "lightningcss": "1.30.1"
   }
 }

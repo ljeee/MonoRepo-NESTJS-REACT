@@ -1,6 +1,6 @@
-import type { FacturaPago, FacturaVenta, Cliente } from '../types/models';
+import type { FacturaPago, FacturaVenta, Cliente } from '@monorepo/shared';
 import { api } from '../services/api';
-import { formatCurrency } from './formatNumber';
+import { formatCurrency } from '@monorepo/shared';
 
 type FacturaItem = FacturaVenta;
 

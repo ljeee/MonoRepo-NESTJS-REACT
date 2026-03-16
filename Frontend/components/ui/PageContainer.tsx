@@ -1,73 +1,51 @@
 import React, { ReactNode } from 'react';
-import { RefreshControlProps, ScrollView, StyleSheet, View, ViewStyle } from 'react-native';
-import { colors } from '../../styles/theme';
-import { spacing, layout } from '../../styles/tokens';
+import { RefreshControlProps } from 'react-native';
+import { ScrollView, View } from '../../tw';
 import { useBreakpoint } from '../../styles/responsive';
 
 interface PageContainerProps {
     children: ReactNode;
     scrollable?: boolean;
-    maxWidth?: number;
     maxWidthVariant?: 'default' | 'narrow' | 'wide' | 'full';
     noPadding?: boolean;
-    style?: ViewStyle;
-    contentContainerStyle?: ViewStyle;
+    className?: string;
+    style?: any;
+    contentContainerStyle?: any;
+    contentContainerClassName?: string;
     refreshControl?: React.ReactElement<RefreshControlProps>;
 }
 
-/**
- * Consistent page wrapper that handles:
- * - Max-width clamping for readability on large screens
- * - Responsive padding (more on desktop, less on mobile)
- * - Top padding offset for mobile menu button
- * - Optional scrolling
- * - Bottom padding for mobile nav bar
- * - Pull-to-refresh support
- */
 export default function PageContainer({
     children,
     scrollable = true,
-    maxWidth,
     maxWidthVariant = 'default',
     noPadding = false,
+    className = '',
     style,
     contentContainerStyle,
+    contentContainerClassName,
     refreshControl,
 }: PageContainerProps) {
     const { isMobile, isTablet } = useBreakpoint();
     const isCompact = isMobile || isTablet;
 
-    // Determine max width based on variant
-    const effectiveMaxWidth = maxWidth || (
-        maxWidthVariant === 'narrow' ? layout.maxContentWidthNarrow :
-            maxWidthVariant === 'wide' ? layout.maxContentWidthWide :
-                maxWidthVariant === 'full' ? undefined :
-                    layout.maxContentWidth
-    );
+    const maxWidthClasses = {
+        narrow: 'max-w-2xl',
+        default: 'max-w-6xl',
+        wide: 'max-w-7xl',
+        full: 'max-w-none',
+    };
 
-    const containerPadding = noPadding
-        ? 0
+    const paddingClasses = noPadding
+        ? 'px-0'
         : isCompact
-            ? spacing.lg
-            : spacing['2xl'];
+            ? 'px-4 pb-10 pt-4'
+            : 'px-8 pb-16 pt-8';
 
-    const topPadding = isCompact
-        ? spacing.lg
-        : spacing['2xl'];
+    const innerClasses = `w-full self-center ${maxWidthClasses[maxWidthVariant]} ${paddingClasses}`;
 
     const content = (
-        <View
-            style={[
-                styles.inner,
-                {
-                    maxWidth: effectiveMaxWidth,
-                    paddingHorizontal: containerPadding,
-                    paddingTop: topPadding,
-                    paddingBottom: isCompact ? spacing['2xl'] : spacing['3xl'],
-                },
-                contentContainerStyle,
-            ]}
-        >
+        <View className={`${innerClasses} ${contentContainerClassName || ''}`} style={contentContainerStyle}>
             {children}
         </View>
     );
@@ -75,8 +53,9 @@ export default function PageContainer({
     if (scrollable) {
         return (
             <ScrollView
-                style={[styles.container, style]}
-                contentContainerStyle={styles.scrollContent}
+                className={`flex-1 bg-(--color-pos-bg) ${className}`}
+                style={style}
+                contentContainerStyle={{ flexGrow: 1 }}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 refreshControl={refreshControl}
@@ -87,25 +66,8 @@ export default function PageContainer({
     }
 
     return (
-        <View style={[styles.container, styles.fixedContent, style]}>
+        <View className={`flex-1 bg-(--color-pos-bg) ${className}`} style={style}>
             {content}
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: colors.bg,
-    },
-    scrollContent: {
-        flexGrow: 1,
-        alignItems: 'center',
-    },
-    fixedContent: {
-        alignItems: 'center',
-    },
-    inner: {
-        width: '100%',
-    },
-});

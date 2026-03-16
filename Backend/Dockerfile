@@ -12,7 +12,7 @@ RUN apk add --no-cache python3 build-base linux-headers eudev-dev
 COPY package*.json ./
 
 # Instalar dependencias
-RUN npm ci
+RUN npm install
 
 # Copiar código fuente
 COPY . .
@@ -36,7 +36,7 @@ RUN apk add --no-cache python3 build-base linux-headers eudev-dev
 
 # Copiar dependencias de producción
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copiar build desde stage anterior
 COPY --from=builder /app/dist ./dist

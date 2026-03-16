@@ -28,13 +28,13 @@ export async function seedUsers() {
 			},
 			{
 				username: 'cocina',
-				password: 'Dianakainlj1-_!!',
+				password: 'Dianakainlj1-_!',
 				name: 'Cocina',
 				roles: [Role.Cocina],
 			},
 			{
 				username: 'cajero',
-				password: 'Dianakainlj1-_!!',
+				password: 'Dianakainlj1-_!',
 				name: 'Caja',
 				roles: [Role.Mesero], // Mesero role is assumed to handle cajero duties
 			},

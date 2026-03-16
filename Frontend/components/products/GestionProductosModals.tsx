@@ -1,13 +1,12 @@
 import React from 'react';
-import { Producto, ProductoVariante } from '../../hooks/use-productos';
-import { PizzaSabor } from '../../hooks/use-pizza-sabores';
+import type { Producto, ProductoVariante, PizzaSabor } from '@monorepo/shared';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProductModal } from './ProductModal';
 import { VariantModal } from './VariantModal';
 import { SaborModal } from './SaborModal';
 
 interface DeleteTarget {
-    type: 'product' | 'variant';
+    type: 'product' | 'variant' | 'sabor';
     id: number;
     name: string;
 }

@@ -1,5 +1,5 @@
 import type { FacturaItem } from '../components/facturas/FacturaShared';
-import { formatCurrency } from './formatNumber';
+import { formatCurrency } from '@monorepo/shared';
 
 interface PdfConfig {
   title: string;

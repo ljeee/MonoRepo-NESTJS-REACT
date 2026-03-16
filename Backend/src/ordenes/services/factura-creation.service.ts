@@ -24,6 +24,23 @@ export class FacturaCreationService {
 		);
 	}
 
+	async findByIdempotencyKey(key: string): Promise<FacturasVentas | null> {
+		return this.facturasRepo.findOne({ where: { idempotencyKey: key } });
+	}
+
+    async updateFactura(facturaId: number, updates: {
+		total?: number; 
+		descripcion?: string; 
+		metodo?: string; 
+		estado?: string;
+		usuarioCobroId?: string;
+		fechaCobro?: Date;
+		ipDispositivo?: string;
+		idempotencyKey?: string;
+	}) {
+        return this.facturasRepo.update(facturaId, updates);
+    }
+
     async updateFacturaTotal(facturaId: number, total: number) {
         return this.facturasRepo.update(facturaId, {total});
     }

@@ -4,10 +4,11 @@ import { listen } from '@tauri-apps/api/event';
 import { Server } from 'lucide-react';
 
 import { setApiBaseUrl } from './services/api';
+import { api } from './services/api';
 import { getBackendUrl, setBackendUrl as persistBackendUrl, validateBackendUrl } from './services/settings';
 import { AuthProvider } from './contexts/AuthContext';
-import { OrderProvider } from './contexts/OrderContext';
-import { ToastProvider, useToast } from './contexts/ToastContext';
+import { ApiProvider, OrderProvider, ToastProvider, useToast } from '@monorepo/shared';
+import type { OrderStorageAdapter } from '@monorepo/shared';
 import { NotificationsProvider } from './contexts/NotificationsContext';
 import { ToastViewport } from './components/ToastViewport';
 import { MainLayout } from './layouts/MainLayout';
@@ -129,45 +130,52 @@ function CloseFeedbackBinder() {
 }
 
 
+const localStorageAdapter: OrderStorageAdapter = {
+  getItem: async (key: string) => localStorage.getItem(key),
+  setItem: async (key: string, value: string) => { localStorage.setItem(key, value); },
+};
+
 function App() {
   return (
     <AppInitialState>
-      <BrowserRouter>
-        <ToastProvider>
-          <KeyboardShortcutsBinder />
-          <CloseFeedbackBinder />
-          <ToastViewport />
-          <AuthProvider>
-            <NotificationsProvider>
-              <OrderProvider>
-                <Routes>
-                  {/* Ruta de Login (Sin Layout) */}
-                  <Route path="/login" element={<LoginPage />} />
+      <ApiProvider api={api}>
+        <BrowserRouter>
+          <ToastProvider>
+            <KeyboardShortcutsBinder />
+            <CloseFeedbackBinder />
+            <ToastViewport />
+            <AuthProvider>
+              <NotificationsProvider>
+                <OrderProvider storage={localStorageAdapter}>
+                  <Routes>
+                    {/* Ruta de Login (Sin Layout) */}
+                    <Route path="/login" element={<LoginPage />} />
 
-                  {/* Rutas protegidas (Con MainLayout y Sidebar) */}
-                  <Route element={<MainLayout />}>
-                    <Route path="/" element={<DashboardPage />} />
-                    <Route path="/ordenes" element={<OrdersOfDayPending />} />
-                    <Route path="/crear-orden" element={<CreateOrderPage />} />
-                    <Route path="/facturas" element={<FacturasPage />} />
-                    <Route path="/facturas-general" element={<FacturasGeneralPage />} />
-                    <Route path="/historial" element={<HistorialPage />} />
-                    <Route path="/clientes" element={<ClientesPage />} />
-                    <Route path="/domiciliarios" element={<DomiciliariosPage />} />
-                    <Route path="/gestion-productos" element={<GestionProductosPage />} />
-                    <Route path="/ordenes-todas" element={<OrdenesTodasPage />} />
-                    <Route path="/ordenes/:ordenId" element={<OrdenDetallePage />} />
-                    <Route path="/balance-fechas" element={<BalanceFechasPage />} />
-                    <Route path="/facturas-pagos" element={<FacturasPagosPage />} />
-                    <Route path="/estadisticas" element={<EstadisticasPage />} />
-                    <Route path="/ajustes" element={<AjustesPage />} />
-                  </Route>
-                </Routes>
-              </OrderProvider>
-            </NotificationsProvider>
-          </AuthProvider>
-        </ToastProvider>
-      </BrowserRouter>
+                    {/* Rutas protegidas (Con MainLayout y Sidebar) */}
+                    <Route element={<MainLayout />}>
+                      <Route path="/" element={<DashboardPage />} />
+                      <Route path="/ordenes" element={<OrdersOfDayPending />} />
+                      <Route path="/crear-orden" element={<CreateOrderPage />} />
+                      <Route path="/facturas" element={<FacturasPage />} />
+                      <Route path="/facturas-general" element={<FacturasGeneralPage />} />
+                      <Route path="/historial" element={<HistorialPage />} />
+                      <Route path="/clientes" element={<ClientesPage />} />
+                      <Route path="/domiciliarios" element={<DomiciliariosPage />} />
+                      <Route path="/gestion-productos" element={<GestionProductosPage />} />
+                      <Route path="/ordenes-todas" element={<OrdenesTodasPage />} />
+                      <Route path="/ordenes/:ordenId" element={<OrdenDetallePage />} />
+                      <Route path="/balance-fechas" element={<BalanceFechasPage />} />
+                      <Route path="/facturas-pagos" element={<FacturasPagosPage />} />
+                      <Route path="/estadisticas" element={<EstadisticasPage />} />
+                      <Route path="/ajustes" element={<AjustesPage />} />
+                    </Route>
+                  </Routes>
+                </OrderProvider>
+              </NotificationsProvider>
+            </AuthProvider>
+          </ToastProvider>
+        </BrowserRouter>
+      </ApiProvider>
     </AppInitialState>
   );
 }

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { useDomiciliariosList } from '../../hooks/use-domiciliarios-list';
-import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, spacing, radius } from '../../styles/tokens';
+import { RefreshControl } from 'react-native';
+import { useDomiciliariosList } from '@monorepo/shared';
 import { api } from '../../services/api';
+import { View, Text, TouchableOpacity } from '../../tw';
+import { useBreakpoint } from '../../styles/responsive';
 import {
   PageContainer,
   PageHeader,
@@ -18,8 +18,9 @@ import {
 type FormMode = 'closed' | 'create' | 'edit';
 
 export default function DomiciliariosList() {
+  const { isMobile } = useBreakpoint();
   const { data, loading, error, refetch } = useDomiciliariosList();
-  const [telefono, setTelefono] = useState('');
+  const [telefonoBusqueda, setTelefonoBusqueda] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   // ── Form state ──
@@ -88,7 +89,6 @@ export default function DomiciliariosList() {
       refetch();
       setDeleteTarget(null);
     } catch {
-      // Error handled
       setDeleteLoading(false);
       return;
     }
@@ -102,19 +102,25 @@ export default function DomiciliariosList() {
     setRefreshing(false);
   };
 
+  const filteredData = data.filter(d => 
+    d.telefono.includes(telefonoBusqueda) || 
+    (d.domiciliarioNombre?.toLowerCase().includes(telefonoBusqueda.toLowerCase()))
+  );
+
   return (
     <PageContainer
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor={colors.primary}
-          colors={[colors.primary]}
+          tintColor="#F5A524"
+          colors={["#F5A524"]}
         />
       }
     >
       <PageHeader
-        title="Domiciliarios"
+        title="Flota Logística"
+        subtitle="Gestión de domiciliarios"
         icon="moped"
         rightContent={
           <Button
@@ -129,136 +135,146 @@ export default function DomiciliariosList() {
 
       {/* ── Create / Edit form ── */}
       {formMode !== 'closed' && (
-        <Card variant="elevated" padding="lg" style={styles.cardMarginXl}>
-          <View style={styles.formHeader}>
+        <Card className="mb-8 overflow-hidden bg-slate-900 border-orange-500/20 shadow-2xl shadow-orange-500/10">
+          <View className="flex-row items-center gap-3 mb-6 p-4 bg-orange-500/10 border-b border-orange-500/10">
             <Icon
               name={formMode === 'create' ? 'plus-circle-outline' : 'pencil-outline'}
               size={22}
-              color={colors.primary}
+              color="#F5A524"
             />
-            <Text style={styles.formTitle}>
-              {formMode === 'create' ? 'Nuevo Domiciliario' : 'Editar Domiciliario'}
+            <Text className="text-white font-black text-base uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>
+              {formMode === 'create' ? 'Registrar Domiciliario' : 'Editar Información'}
             </Text>
           </View>
 
-          <View style={styles.formGrid}>
-            <Input
-              label="Teléfono *"
-              value={formData.telefono}
-              onChangeText={(v) => setFormData((p) => ({ ...p, telefono: v }))}
-              keyboardType="number-pad"
-              containerStyle={styles.inputContainer}
-              editable={formMode === 'create'}
-              leftIcon={<Icon name="phone-outline" size={16} color={colors.textMuted} />}
-            />
-            <Input
-              label="Nombre"
-              value={formData.domiciliarioNombre}
-              onChangeText={(v) => setFormData((p) => ({ ...p, domiciliarioNombre: v }))}
-              containerStyle={styles.inputContainer}
-              leftIcon={<Icon name="account-outline" size={16} color={colors.textMuted} />}
-            />
-          </View>
-
-          {formError ? (
-            <View style={styles.inlineError}>
-              <Icon name="alert-circle-outline" size={14} color={colors.danger} />
-              <Text style={styles.inlineErrorText}>{formError}</Text>
+          <View className="px-6 pb-6 gap-y-4">
+            <View className={`${isMobile ? 'flex-col' : 'flex-row'} gap-4`}>
+                <Input
+                label="Número de Contacto *"
+                value={formData.telefono}
+                onChangeText={(v) => setFormData((p) => ({ ...p, telefono: v }))}
+                keyboardType="number-pad"
+                className="flex-1"
+                editable={formMode === 'create'}
+                placeholder="Ej. 3001234567"
+                leftIcon={<Icon name="phone-outline" size={16} color="#64748B" />}
+                />
+                <Input
+                label="Nombre Completo"
+                value={formData.domiciliarioNombre}
+                onChangeText={(v) => setFormData((p) => ({ ...p, domiciliarioNombre: v }))}
+                className="flex-1"
+                placeholder="Nombre del conductor"
+                leftIcon={<Icon name="account-outline" size={16} color="#64748B" />}
+                />
             </View>
-          ) : null}
 
-          <View style={styles.formActions}>
-            <Button title="Cancelar" onPress={resetForm} variant="ghost" />
-            <Button
-              title={formLoading ? 'Guardando...' : 'Guardar'}
-              onPress={handleSave}
-              variant="primary"
-              icon="content-save-outline"
-              loading={formLoading}
-            />
+            {formError ? (
+                <View className="flex-row items-center gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                    <Icon name="alert-circle-outline" size={16} color="#EF4444" />
+                    <Text className="text-red-400 text-xs font-black uppercase tracking-tight">{formError}</Text>
+                </View>
+            ) : null}
+
+            <View className="flex-row justify-end gap-3 mt-2">
+                <Button title="Cancelar" onPress={resetForm} variant="ghost" />
+                <Button
+                title={formLoading ? 'Guardando...' : 'Guardar Cambios'}
+                onPress={handleSave}
+                variant="primary"
+                icon="content-save-outline"
+                loading={formLoading}
+                className="px-8"
+                />
+            </View>
           </View>
         </Card>
       )}
 
       {/* ── Search ── */}
-      <View style={styles.searchRow}>
+      <View className="flex-row items-end gap-3 mb-8">
         <Input
-          label="Buscar por teléfono"
-          value={telefono}
-          onChangeText={setTelefono}
-          placeholder="3001234567"
-          keyboardType="number-pad"
-          containerStyle={styles.searchInputContainer}
-          leftIcon={<Icon name="magnify" size={16} color={colors.textMuted} />}
+          label="Filtrar por nombre o teléfono"
+          value={telefonoBusqueda}
+          onChangeText={setTelefonoBusqueda}
+          placeholder="Buscar..."
+          keyboardType="default"
+          className="flex-1"
+          leftIcon={<Icon name="magnify" size={18} color="#64748B" />}
         />
-        <View style={styles.searchActions}>
-          <Button
-            title="Refrescar"
-            icon="refresh"
-            onPress={refetch}
-            variant="ghost"
-            size="sm"
-            loading={loading}
-          />
-        </View>
+        <Button
+          title="Recargar"
+          icon="refresh"
+          onPress={refetch}
+          variant="secondary"
+          size="md"
+          loading={loading}
+          className="h-11 px-4"
+        />
       </View>
 
       {/* ── Error / Loading ── */}
       {error && (
-        <View style={styles.inlineError}>
-          <Icon name="alert-circle-outline" size={14} color={colors.danger} />
-          <Text style={styles.inlineErrorText}>{error}</Text>
+        <View className="flex-row items-center gap-2 bg-red-500/10 p-4 rounded-xl border border-red-500/20 mb-6">
+          <Icon name="alert-circle-outline" size={18} color="#EF4444" />
+          <Text className="text-red-400 text-sm font-bold">{error}</Text>
         </View>
       )}
       {loading && <ListSkeleton count={4} />}
 
       {/* ── Domiciliario list ── */}
-      {!loading && data.length === 0 && !error && (
-        <View style={styles.emptyBox}>
-          <Icon name="moped-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyText}>Sin domiciliarios registrados</Text>
+      {!loading && filteredData.length === 0 && !error && (
+        <View className="py-20 items-center justify-center opacity-40">
+          <Icon name="moped-outline" size={64} color="#94A3B8" />
+          <Text className="text-slate-400 font-bold mt-4 text-center">No se encontraron domiciliarios</Text>
         </View>
       )}
 
-      {!loading && data.map((item) => (
-        <Card key={item.telefono} padding="md" style={styles.cardMarginMd}>
-          <View style={styles.itemHeader}>
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemName}>{item.domiciliarioNombre || 'Sin nombre'}</Text>
-              <View style={styles.itemPhoneRow}>
-                <Icon name="phone-outline" size={14} color={colors.primary} />
-                <Text style={styles.itemPhone}>{item.telefono}</Text>
-              </View>
-            </View>
-            <View style={styles.itemActions}>
-              <Button
-                title="Editar"
-                icon="pencil-outline"
-                variant="ghost"
-                size="sm"
-                onPress={() => openEdit(item)}
-              />
-              <Button
-                title="Eliminar"
-                icon="trash-can-outline"
-                variant="ghost"
-                size="sm"
-                onPress={() => setDeleteTarget(item)}
-                style={styles.opacityMuted}
-              />
-            </View>
-          </View>
-        </Card>
-      ))}
+      <View className="gap-y-4 pb-10">
+        {!loading && filteredData.map((item) => (
+            <Card key={item.telefono} className="overflow-hidden border-white/5 bg-slate-900/40">
+                <View className="flex-row items-center p-4">
+                    <View className="w-14 h-14 rounded-2xl bg-orange-500/10 items-center justify-center mr-4 border border-orange-500/20">
+                        <Icon name="account-tie" size={28} color="#F5A524" />
+                    </View>
+
+                    <View className="flex-1">
+                        <Text className="text-white font-black text-lg uppercase leading-tight" style={{ fontFamily: 'Space Grotesk' }}>
+                            {item.domiciliarioNombre || 'Sin nombre'}
+                        </Text>
+                        <View className="flex-row items-center gap-1.5 mt-1">
+                            <Icon name="phone" size={14} color="#F5A524" />
+                            <Text className="text-(--color-pos-primary) font-black tracking-widest text-sm">{item.telefono}</Text>
+                        </View>
+                    </View>
+
+                    <View className="flex-row gap-2">
+                        <TouchableOpacity
+                            onPress={() => openEdit(item)}
+                            className="w-10 h-10 rounded-full bg-white/5 items-center justify-center active:bg-white/10"
+                        >
+                            <Icon name="pencil" size={18} color="#94A3B8" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setDeleteTarget(item)}
+                            className="w-10 h-10 rounded-full bg-red-500/10 items-center justify-center active:bg-red-500/20"
+                        >
+                            <Icon name="trash-can-outline" size={18} color="#EF4444" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Card>
+        ))}
+      </View>
 
       {/* ── Delete Confirmation Modal ── */}
       <ConfirmModal
         visible={!!deleteTarget}
-        title="Eliminar domiciliario"
-        message={`¿Estás seguro de eliminar a ${deleteTarget?.domiciliarioNombre || deleteTarget?.telefono}? Esta acción no se puede deshacer.`}
+        title="Eliminar registro"
+        message={`¿Estás seguro de eliminar a ${deleteTarget?.domiciliarioNombre || deleteTarget?.telefono}? Esta acción revocará su acceso a las órdenes.`}
         icon="trash-can-outline"
         variant="danger"
-        confirmText="Eliminar"
+        confirmText="Confirmar eliminación"
         loading={deleteLoading}
         onConfirm={handleDelete}
         onCancel={() => setDeleteTarget(null)}
@@ -266,110 +282,3 @@ export default function DomiciliariosList() {
     </PageContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  formHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  formTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-  },
-  formGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  formActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  inlineError: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    marginBottom: spacing.md,
-    padding: spacing.sm,
-    backgroundColor: colors.dangerLight,
-    borderRadius: radius.sm,
-  },
-  inlineErrorText: {
-    color: colors.danger,
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-    flexWrap: 'wrap',
-  },
-  searchActions: {
-    marginBottom: spacing.lg,
-  },
-  emptyBox: {
-    alignItems: 'center',
-    padding: spacing['5xl'],
-    gap: spacing.md,
-  },
-  emptyText: {
-    fontSize: fontSize.lg,
-    color: colors.textMuted,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  itemInfo: {
-    flex: 1,
-    minWidth: 150,
-  },
-  itemName: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  itemPhoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  itemPhone: {
-    fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: fontWeight.semibold,
-  },
-  itemActions: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  cardMarginXl: {
-    marginBottom: spacing.xl,
-  },
-  inputContainer: {
-    flex: 1,
-    minWidth: 200,
-  },
-  searchInputContainer: {
-    flex: 1,
-    minWidth: 200,
-    marginBottom: 0,
-  },
-  cardMarginMd: {
-    marginBottom: spacing.md,
-  },
-  opacityMuted: {
-    opacity: 0.7,
-  },
-});

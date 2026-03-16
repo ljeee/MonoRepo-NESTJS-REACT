@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { api } from '../services/api';
-import type { ClienteFrecuente } from '../services/api';
-import { Cliente, CreateClienteDto } from '../types/models';
-import { useClientByPhone } from '../hooks/use-client-by-phone';
-import { useClientesList } from '../hooks/use-clientes-list';
-import { useToast } from '../contexts/ToastContext';
+import { api } from '../../services/api';
+import type { Cliente, CreateClienteDto, ClienteFrecuente } from '@monorepo/shared';
+import { useClientByPhone } from '@monorepo/shared';
+import { useClientesList } from '@monorepo/shared';
+import { useToast } from '@monorepo/shared';
 import {
     Users,
     PlusCircle,

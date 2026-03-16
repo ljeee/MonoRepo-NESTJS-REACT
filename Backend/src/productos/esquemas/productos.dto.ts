@@ -48,7 +48,13 @@ export class CreateProductosDto {
 	@IsBoolean()
 	activo?: boolean;
 
+	@ApiProperty({example: '🍕', required: false, description: 'Emoji personalizado para el producto'})
+	@IsOptional()
+	@IsString()
+	emoji?: string;
+
 	@ApiProperty({type: [CreateProductoVarianteDto], required: false, description: 'Variantes del producto (tamaños, sabores, etc)'})
+
 	@IsOptional()
 	@ValidateNested({each: true})
 	@Type(() => CreateProductoVarianteDto)

@@ -1,7 +1,5 @@
 import React, { ReactNode } from 'react';
-import { StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { colors } from '../../styles/theme';
-import { fontSize, fontWeight, spacing } from '../../styles/tokens';
+import { View, Text } from '../../tw';
 import { useBreakpoint } from '../../styles/responsive';
 import Icon, { IconName } from './Icon';
 
@@ -10,99 +8,53 @@ interface PageHeaderProps {
     subtitle?: string;
     icon?: IconName;
     rightContent?: ReactNode;
-    style?: ViewStyle;
+    children?: ReactNode;
+    style?: any;
+    className?: string;
 }
 
-/**
- * Consistent page header with title, optional subtitle, icon, and right-side actions.
- */
 export default function PageHeader({
     title,
     subtitle,
     icon,
     rightContent,
+    children,
     style,
+    className = '',
 }: PageHeaderProps) {
     const { isMobile } = useBreakpoint();
 
     return (
-        <View style={[styles.container, isMobile && styles.containerMobile, style]}>
-            <View style={styles.left}>
+        <View 
+          className={`flex-row justify-between items-center mb-8 flex-wrap gap-4 ${isMobile ? 'flex-col items-start' : ''} ${className}`} 
+          style={style}
+        >
+            <View className="flex-row items-center gap-4 flex-1">
                 {icon && (
-                    <View style={[styles.iconContainer, isMobile && styles.iconContainerMobile]}>
-                        <Icon name={icon} size={isMobile ? 22 : 28} color={colors.primary} />
+                    <View className="w-12 h-12 rounded-2xl bg-(--color-pos-primary)/10 items-center justify-center">
+                        <Icon name={icon} size={isMobile ? 22 : 28} color="#F5A524" />
                     </View>
                 )}
-                <View style={[styles.textContainer, isMobile && styles.textContainerMobile]}>
-                    {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-                    <Text style={[styles.title, isMobile && styles.titleMobile]}>{title}</Text>
+                <View className="flex-1">
+                    {subtitle && (
+                        <Text className="text-[10px] font-black text-(--color-pos-primary) uppercase tracking-[2px] mb-1">
+                            {subtitle}
+                        </Text>
+                    )}
+                    <View className="flex-row items-center">
+                        <Text className="text-white font-black text-3xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>
+                            {title}
+                        </Text>
+                        {children}
+                    </View>
                 </View>
             </View>
-            {rightContent && <View style={[styles.right, isMobile && styles.rightMobile]}>{rightContent}</View>}
+            
+            {(rightContent || (isMobile && !rightContent && false)) && (
+                <View className={`flex-row items-center gap-2 ${isMobile ? 'mt-4' : ''}`}>
+                    {rightContent}
+                </View>
+            )}
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: spacing['2xl'],
-        flexWrap: 'wrap',
-        gap: spacing.md,
-    },
-    containerMobile: {
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-    },
-    left: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        flex: 1,
-    },
-    iconContainer: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        backgroundColor: colors.primaryLight,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    textContainer: {
-        flex: 1,
-    },
-    title: {
-        fontSize: fontSize['3xl'],
-        fontWeight: fontWeight.black,
-        color: colors.text,
-        letterSpacing: -0.5,
-    },
-    titleMobile: {
-        fontSize: fontSize['2xl'],
-    },
-    subtitle: {
-        fontSize: fontSize.xs,
-        fontWeight: fontWeight.bold,
-        color: colors.primary,
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-        marginBottom: spacing.xs,
-    },
-    right: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.sm,
-    },
-    iconContainerMobile: {
-        width: 38,
-        height: 38,
-    },
-    textContainerMobile: {
-        marginLeft: 0,
-    },
-    rightMobile: {
-        marginTop: spacing.md,
-    },
-});

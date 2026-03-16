@@ -27,6 +27,9 @@ export class Domicilios {
 	@Column({name: 'telefono_domiciliario_asignado', type: 'text', nullable: true})
 	telefonoDomiciliarioAsignado: string;
 
+	@Column({name: 'assigned_user_id', type: 'uuid', nullable: true})
+	assignedUserId: string;
+
 	@Column({name: 'direccion_entrega', type: 'text', nullable: true})
 	direccionEntrega: string;
 

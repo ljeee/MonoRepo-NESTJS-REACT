@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api } from '../services/api';
+import { api } from '../../services/api';
 import type {
     ProductoTop, SaborTop, VentaDia,
     MetodoPago, ResumenPeriodo, ClienteFrecuente, VentaHora,
-} from '../services/api';
+} from '@monorepo/shared';
+import { formatCurrency as sharedFormatCurrency } from '@monorepo/shared';
 import {
     BarChart3, TrendingUp, TrendingDown, DollarSign,
     ShoppingCart, Users, XCircle, RefreshCw,
@@ -12,7 +13,7 @@ import {
 import '../styles/estadisticas.css';
 
 function formatCurrency(n: number) {
-    return n.toLocaleString('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 });
+    return '$' + sharedFormatCurrency(n);
 }
 
 function getDefaultDateRange(): { from: string; to: string } {

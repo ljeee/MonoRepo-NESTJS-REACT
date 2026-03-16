@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { api } from '../../services/api';
-import { createDomiciliarioFormStyles as styles } from '../../styles/domiciliarios/create-domiciliario-form.styles';
 
 export default function CreateDomiciliarioForm() {
   const [telefono, setTelefono] = useState('');
@@ -62,3 +61,15 @@ export default function CreateDomiciliarioForm() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { padding: 20 },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#fff', marginBottom: 16 },
+  label: { fontSize: 14, color: '#94a3b8', marginBottom: 4, marginTop: 12 },
+  input: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 12, color: '#fff', fontSize: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  button: { backgroundColor: '#F5A524', borderRadius: 12, padding: 14, alignItems: 'center' as const, marginTop: 20 },
+  buttonDisabled: { opacity: 0.5 },
+  buttonText: { color: '#000', fontWeight: 'bold', fontSize: 14 },
+  success: { color: '#22c55e', marginTop: 12, fontWeight: 'bold' },
+  error: { color: '#ef4444', marginTop: 12, fontWeight: 'bold' },
+});

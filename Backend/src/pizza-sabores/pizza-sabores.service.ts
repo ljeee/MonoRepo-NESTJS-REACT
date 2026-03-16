@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PizzaSabor } from './esquemas/pizza-sabores.entity';
-import { UpdatePizzaSaborDto } from './esquemas/pizza-sabores.dto';
+import { CreatePizzaSaborDto, UpdatePizzaSaborDto } from './esquemas/pizza-sabores.dto';
 
 // Sabores precisos del menú actual con sus recargos por tamaño
 const SABORES_INICIALES: Omit<PizzaSabor, 'saborId'>[] = [
@@ -60,5 +60,15 @@ export class PizzaSaboresService implements OnModuleInit {
 			...(dto.activo !== undefined && { activo: dto.activo }),
 		});
 		return this.repo.findOne({ where: { saborId } });
+	}
+
+	async create(dto: CreatePizzaSaborDto) {
+		const nuevo = this.repo.create(dto);
+		return this.repo.save(nuevo);
+	}
+
+	async delete(saborId: number) {
+		const result = await this.repo.delete(saborId);
+		return { deleted: !!result.affected && result.affected > 0 };
 	}
 }

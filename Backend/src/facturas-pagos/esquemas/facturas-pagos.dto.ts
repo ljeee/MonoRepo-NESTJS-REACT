@@ -28,6 +28,10 @@ export class CreateFacturasPagosDto {
 	@IsOptional()
 	@IsString()
 	metodo?: string;
+
+	@IsOptional()
+	@IsString()
+	categoria?: string;
 }
 
 export class FindFacturasPagosDto {

@@ -1,9 +1,9 @@
 import React from 'react';
 import { Platform } from 'react-native';
-import { colors } from '../styles/theme';
 
 const WEB_GLOBAL_CSS = `
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 
         * {
           font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -11,17 +11,17 @@ const WEB_GLOBAL_CSS = `
 
         /* Fix Select/Option Visibility in Dark Mode */
         select {
-          background-color: ${colors.bgLight} !important;
-          color: ${colors.text} !important;
-          border-color: ${colors.border} !important;
+          background-color: #0f172a !important; /* bg-surface color fallback */
+          color: #f1f5f9 !important;
+          border-color: rgba(255, 255, 255, 0.05) !important;
           padding: 10px;
           border-radius: 8px;
           outline: none;
         }
 
         option {
-          background-color: ${colors.bgLight} !important;
-          color: ${colors.text} !important;
+          background-color: #0f172a !important;
+          color: #f1f5f9 !important;
         }
 
         /* Input autofill fix for dark mode */
@@ -29,8 +29,8 @@ const WEB_GLOBAL_CSS = `
         input:-webkit-autofill:hover, 
         input:-webkit-autofill:focus, 
         input:-webkit-autofill:active{
-          -webkit-box-shadow: 0 0 0 30px ${colors.bgLight} inset !important;
-          -webkit-text-fill-color: ${colors.text} !important;
+          -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+          -webkit-text-fill-color: #f1f5f9 !important;
         }
 
         /* Custom Scrollbar */
@@ -39,14 +39,14 @@ const WEB_GLOBAL_CSS = `
           height: 8px;
         }
         ::-webkit-scrollbar-track {
-          background: ${colors.bg}; 
+          background: #020617; /* bg-bg color fallback */
         }
         ::-webkit-scrollbar-thumb {
-          background: ${colors.border}; 
+          background: rgba(255, 255, 255, 0.05); 
           border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-          background: ${colors.success}; 
+          background: #F5A524; /* primary color fallback */
         }
       `;
 

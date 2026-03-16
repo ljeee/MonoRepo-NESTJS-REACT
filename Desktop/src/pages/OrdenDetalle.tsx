@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
-import { formatCurrency, formatDate } from '../utils/formatNumber';
-import { getEstadoColor } from '../utils/estados';
-import { useToast } from '../contexts/ToastContext';
+import { api } from '../../services/api';
+import { formatCurrency, formatDate } from '@monorepo/shared';
+import { getEstadoColor } from '../../utils/estados';
+import { useToast } from '@monorepo/shared';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
     ClipboardList,
@@ -25,13 +25,13 @@ import {
     Palette,
     AlertCircle
 } from 'lucide-react';
-import {
+import type {
     FacturaVenta,
     Domicilio as BaseDomicilio,
     OrdenProducto as BaseOrdenProducto,
     Producto,
     ProductoVariante
-} from '../types/models';
+} from '@monorepo/shared';
 
 type Domicilio = BaseDomicilio & {
     costoDomicilio?: number;

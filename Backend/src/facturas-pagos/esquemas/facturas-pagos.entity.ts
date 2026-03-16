@@ -23,4 +23,7 @@ export class FacturasPagos {
 
 	@Column({name: 'metodo', type: 'text', nullable: true})
 	metodo: string;
+
+	@Column({name: 'categoria', type: 'text', nullable: true, default: 'general'})
+	categoria: string;
 }

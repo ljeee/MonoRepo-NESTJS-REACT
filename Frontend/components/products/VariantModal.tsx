@@ -1,9 +1,7 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors } from '../../styles/theme';
+import { Modal } from 'react-native';
+import { View, Text, Pressable } from '../../tw';
 import { Button, Input, Icon } from '../ui';
-import { modalStyles as styles } from '../../styles/components/Modal.styles';
-
 
 interface VariantModalProps {
     visible: boolean;
@@ -36,74 +34,81 @@ export function VariantModal({
 }: VariantModalProps) {
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-            <Pressable style={styles.modalOverlay} onPress={onClose}>
-                <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-                    <View style={styles.modalHeader}>
-                        <Icon
-                            name={editing ? 'pencil-outline' : 'plus-circle-outline'}
-                            size={22}
-                            color={colors.primary}
-                        />
-                        <Text style={styles.modalTitle}>
+            <Pressable 
+                className="flex-1 bg-black/60 items-center justify-center p-6" 
+                onPress={onClose}
+            >
+                <Pressable 
+                    className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-3xl overflow-hidden" 
+                    onPress={(e: any) => e.stopPropagation()}
+                >
+                    <View className="flex-row items-center gap-3 p-6 bg-white/5 border-b border-white/5">
+                        <View className="w-10 h-10 rounded-xl bg-blue-500/10 items-center justify-center">
+                            <Icon
+                                name={editing ? 'pencil' : 'plus'}
+                                size={20}
+                                color="#3B82F6"
+                            />
+                        </View>
+                        <Text className="text-white font-black uppercase tracking-widest text-sm" style={{ fontFamily: 'Space Grotesk' }}>
                             {editing ? 'Editar Variante' : 'Nueva Variante'}
                         </Text>
                     </View>
 
-                    <Input
-                        label="Nombre (Tamaño/Sabor) *"
-                        value={name}
-                        onChangeText={onNameChange}
-                        placeholder="Ej: Mediana, Pequeña"
-                    />
-                    <Input
-                        label="Precio *"
-                        value={price}
-                        onChangeText={onPriceChange}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        leftIcon={<Icon name="currency-usd" size={16} color={colors.textMuted} />}
-                    />
-                    <Input
-                        label="Descripción (Opcional)"
-                        value={description}
-                        onChangeText={onDescriptionChange}
-                        placeholder="Detalles extra"
-                        multiline
-                    />
+                    <View className="p-6 gap-y-4">
+                        <Input
+                            label="Nombre (Tamaño/Sabor)"
+                            value={name}
+                            onChangeText={onNameChange}
+                            placeholder="Ej: Mediana, Pequeña"
+                            className="bg-black/20"
+                        />
+                        <Input
+                            label="Precio"
+                            value={price}
+                            onChangeText={onPriceChange}
+                            keyboardType="numeric"
+                            placeholder="0"
+                            leftIcon={<Icon name="currency-usd" size={16} color="#64748B" />}
+                            className="bg-black/20"
+                        />
+                        <Input
+                            label="Descripción (Opcional)"
+                            value={description}
+                            onChangeText={onDescriptionChange}
+                            placeholder="Detalles extra"
+                            multiline
+                            className="bg-black/20"
+                        />
 
-                    {error ? (
-                        <View style={styles.inlineError}>
-                            <Icon name="alert-circle-outline" size={14} color={colors.danger} />
-                            <Text style={styles.inlineErrorText}>{error}</Text>
+                        {error ? (
+                            <View className="flex-row items-center gap-2 bg-red-500/10 p-3 rounded-xl">
+                                <Icon name="alert-circle" size={14} color="#EF4444" />
+                                <Text className="text-red-400 font-bold text-xs">{error}</Text>
+                            </View>
+                        ) : null}
+
+                        <View className="flex-row gap-3 mt-2">
+                            <Button
+                                title="Cancelar"
+                                variant="ghost"
+                                onPress={onClose}
+                                className="flex-1"
+                            />
+                            <Button
+                                title={loading ? '...' : 'Guardar'}
+                                variant="primary"
+                                icon="content-save"
+                                onPress={onSave}
+                                loading={loading}
+                                className="flex-1"
+                            />
                         </View>
-                    ) : null}
-
-                    <View style={styles.modalActions}>
-                        <Button
-                            title="Cancelar"
-                            variant="ghost"
-                            onPress={onClose}
-                            style={localStyles.flexOne}
-                        />
-                        <Button
-                            title={loading ? 'Guardando...' : 'Guardar'}
-                            variant="primary"
-                            icon="content-save-outline"
-                            onPress={onSave}
-                            loading={loading}
-                            style={localStyles.flexOne}
-                        />
                     </View>
                 </Pressable>
             </Pressable>
         </Modal>
     );
 }
-
-const localStyles = StyleSheet.create({
-    flexOne: {
-        flex: 1,
-    },
-});
 
 

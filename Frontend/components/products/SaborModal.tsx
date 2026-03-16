@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { PizzaSabor } from '../../hooks/use-pizza-sabores';
-import { colors } from '../../styles/theme';
-import { radius, spacing } from '../../styles/tokens';
-import { Input, Button } from '../ui';
+import { Modal, Platform } from 'react-native';
+import { View, Text, Pressable, KeyboardAvoidingView } from '../../tw';
+import type { PizzaSabor } from '@monorepo/shared';
+import { Input, Button, Icon } from '../ui';
 
 interface SaborModalProps {
     visible: boolean;
@@ -18,18 +17,23 @@ export function SaborModal({ visible, sabor, loading, onSave, onClose }: SaborMo
 
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-            <Pressable
-                style={saborStyles.overlay}
-                onPress={onClose}
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                className="flex-1"
             >
-                <SaborModalForm
-                    key={`${sabor.saborId}-${visible ? 'open' : 'closed'}`}
-                    sabor={sabor}
-                    loading={loading}
-                    onSave={onSave}
-                    onClose={onClose}
-                />
-            </Pressable>
+                <Pressable
+                    className="flex-1 bg-black/60 items-center justify-center p-6"
+                    onPress={onClose}
+                >
+                    <SaborModalForm
+                        key={`${sabor.saborId}-${visible ? 'open' : 'closed'}`}
+                        sabor={sabor}
+                        loading={loading}
+                        onSave={onSave}
+                        onClose={onClose}
+                    />
+                </Pressable>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }
@@ -62,97 +66,89 @@ function SaborModalForm({
     };
 
     const isEspecial = sabor.tipo === 'especial';
+    const isConfig = sabor.tipo === 'configuracion';
 
     return (
         <Pressable
-            style={saborStyles.card}
+            className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-3xl overflow-hidden"
             onPress={e => e.stopPropagation()}
         >
-            <Text style={saborStyles.title}>
-                {isEspecial ? '★ ' : ''}{sabor.nombre}
-            </Text>
-            <Text style={saborStyles.subtitle}>
-                {sabor.tipo === 'configuracion'
-                    ? 'Configura el valor de recargo global'
-                    : (isEspecial ? 'Sabor especial — configura el recargo por tamaño' : 'Sabor tradicional — sin recargo aplicado')}
-            </Text>
-
-            {sabor.tipo !== 'configuracion' && (
-                <>
-                    <Input
-                        label="Recargo Pequeña ($)"
-                        value={pequena}
-                        onChangeText={setPequena}
-                        keyboardType="numeric"
-                        placeholder="0"
+            <View className="flex-row items-center gap-3 p-6 bg-white/5 border-b border-white/5">
+                <View className="w-10 h-10 rounded-xl bg-purple-500/10 items-center justify-center">
+                    <Icon
+                        name={isConfig ? 'cog-outline' : 'pizza'}
+                        size={20}
+                        color="#A855F7"
                     />
-                    <Input
-                        label="Recargo Mediana ($)"
-                        value={mediana}
-                        onChangeText={setMediana}
-                        keyboardType="numeric"
-                        placeholder="0"
+                </View>
+                <View className="flex-1">
+                    <Text className="text-white font-black uppercase tracking-widest text-sm" style={{ fontFamily: 'Space Grotesk' }}>
+                        {isEspecial ? '★ ' : ''}{sabor.nombre}
+                    </Text>
+                    <Text className="text-slate-500 text-[10px] font-bold uppercase tracking-tighter">
+                        {isConfig ? 'Ajuste Global' : (isEspecial ? 'Sabor Especial' : 'Sabor Tradicional')}
+                    </Text>
+                </View>
+            </View>
+
+            <View className="p-6 gap-y-4">
+                {sabor.tipo !== 'configuracion' && (
+                    <View className="flex-row gap-4">
+                        <View className="flex-1">
+                            <Input
+                                label="Pequena ($)"
+                                value={pequena}
+                                onChangeText={setPequena}
+                                keyboardType="numeric"
+                                placeholder="0"
+                                className="bg-black/20"
+                            />
+                        </View>
+                        <View className="flex-1">
+                            <Input
+                                label="Mediana ($)"
+                                value={mediana}
+                                onChangeText={setMediana}
+                                keyboardType="numeric"
+                                placeholder="0"
+                                className="bg-black/20"
+                            />
+                        </View>
+                    </View>
+                )}
+                
+                <Input
+                    label={isConfig ? "Valor Adicional ($)" : "Grande ($)"}
+                    value={grande}
+                    onChangeText={setGrande}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    className="bg-black/20"
+                />
+
+                {error && (
+                    <View className="flex-row items-center gap-2 bg-red-500/10 p-2 rounded-xl">
+                        <Icon name="alert-circle" size={14} color="#EF4444" />
+                        <Text className="text-red-400 font-bold text-xs">{error}</Text>
+                    </View>
+                )}
+
+                <View className="flex-row gap-3 mt-2">
+                    <Button 
+                        title="Cancelar" 
+                        variant="ghost" 
+                        onPress={onClose} 
+                        className="flex-1" 
                     />
-                </>
-            )}
-            <Input
-                label={sabor.tipo === 'configuracion' ? "Valor Adicional ($)" : "Recargo Grande ($)"}
-                value={grande}
-                onChangeText={setGrande}
-                keyboardType="numeric"
-                placeholder="0"
-            />
-
-            {error && (
-                <Text style={saborStyles.errorText}>{error}</Text>
-            )}
-
-            <View style={saborStyles.actionsRow}>
-                <Button title="Cancelar" variant="ghost" onPress={onClose} style={saborStyles.actionBtn} />
-                <Button title={loading ? 'Guardando...' : 'Guardar'} onPress={handleSave} loading={loading} style={saborStyles.actionBtn} />
+                    <Button 
+                        title={loading ? '...' : 'Guardar'} 
+                        variant="primary"
+                        onPress={handleSave} 
+                        loading={loading} 
+                        className="flex-1" 
+                    />
+                </View>
             </View>
         </Pressable>
     );
 }
-
-const saborStyles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: spacing.lg,
-    },
-    card: {
-        backgroundColor: colors.card,
-        borderRadius: radius.lg,
-        padding: spacing.xl,
-        width: '100%',
-        maxWidth: 380,
-    },
-    title: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: colors.text,
-        marginBottom: 4,
-    },
-    subtitle: {
-        fontSize: 13,
-        color: colors.textMuted,
-        marginBottom: spacing.lg,
-    },
-    errorText: {
-        color: colors.danger,
-        fontSize: 13,
-        marginTop: 4,
-        marginBottom: 8,
-    },
-    actionsRow: {
-        flexDirection: 'row',
-        gap: spacing.sm,
-        marginTop: spacing.md,
-    },
-    actionBtn: {
-        flex: 1,
-    },
-});

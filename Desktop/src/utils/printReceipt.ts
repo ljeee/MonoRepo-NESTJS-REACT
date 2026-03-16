@@ -1,4 +1,4 @@
-import { formatCurrency } from './formatNumber';
+import { formatCurrency } from '@monorepo/shared';
 
 export interface ReceiptProduct {
   nombre: string;

@@ -362,4 +362,39 @@ export class EstadisticasService {
 			})),
 		};
 	}
+
+	// ─── Estadísticas por Domiciliario ───────────────────────────────────────────
+	async domiciliariosStats(from: string, to: string) {
+		const { start, end } = this.buildDayBounds(from, to);
+		
+		// Unimos con la tabla de usuarios para obtener el nombre real del domiciliario asignado
+		const result = await this.facturasRepo.manager
+			.createQueryBuilder('domicilios', 'd')
+			.leftJoin('users', 'u', 'u.id::text = d.assigned_user_id')
+			.select('u.name', 'nombre')
+			.addSelect('COUNT(*)', 'entregas')
+			.addSelect('COALESCE(SUM(d.costo_domicilio), 0)', 'ganancia')
+			.where('d.fecha_creado BETWEEN :from AND :to', { from: start, to: end })
+			.andWhere("d.estado_domicilio = 'entregado'")
+			.groupBy('u.name')
+			.getRawMany();
+
+		return result.map(r => ({
+			nombre: r.nombre || 'Sin asignar/Varios',
+			entregas: Number(r.entregas),
+			ganancia: Number(r.ganancia) || 0,
+		}));
+	}
+ 
+	// ─── Detalle de Facturas ──────────────────────────────────────────────────────
+	async facturasDetalle(from: string, to: string) {
+		const { start, end } = this.buildDayBounds(from, to);
+		return this.facturasRepo.find({
+			where: {
+				fechaFactura: Between(start, end),
+				estado: 'pagado', // Only paid ones as requested in "selecionador de facturas deberia ser solo efectivo y transferencia" implicitly implies valid ones
+			},
+			order: { fechaFactura: 'ASC' },
+		});
+	}
 }

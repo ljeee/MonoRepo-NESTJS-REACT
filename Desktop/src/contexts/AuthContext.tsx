@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { api, setAuthToken } from '../services/api';
-import type { AuthUser } from '../types/models';
+import { api, setAuthToken } from '../../services/api';
+import type { AuthUser } from '@monorepo/shared';
 
 interface AuthContextData {
     token: string | null;
@@ -50,7 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!token && !inAuthGroup) {
             navigate('/login', { replace: true });
         } else if (token && inAuthGroup) {
-            // Dashboard predeterminado
             navigate('/ordenes', { replace: true });
         }
     }, [token, location.pathname, isLoading]);
@@ -58,7 +57,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const login = async (usuario: string, contrasena: string) => {
         const response = await api.auth.login(usuario, contrasena);
 
-        // The DTO from nestjs is accessToken and refreshToken
         const { accessToken, refreshToken, ...userData } = response;
 
         setToken(accessToken);

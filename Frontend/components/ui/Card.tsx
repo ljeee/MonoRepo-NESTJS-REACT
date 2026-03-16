@@ -1,90 +1,85 @@
-import React, { ReactNode } from 'react';
-import {
-    Pressable,
-    StyleSheet,
-    View,
-    ViewStyle,
-} from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { colors } from '../../styles/theme';
-import { radius, shadows, spacing } from '../../styles/tokens';
+import React, { ReactNode, useEffect } from 'react';
+import { Pressable } from 'react-native';
+import { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
+import { Animated } from '../../tw/animated';
+import { View } from '../../tw';
 
 interface CardProps {
     children: ReactNode;
     onPress?: () => void;
     variant?: 'default' | 'elevated' | 'outlined';
     padding?: 'none' | 'sm' | 'md' | 'lg';
-    style?: ViewStyle;
+    className?: string;
+    style?: any;
+    delay?: number;
 }
-
-const paddingMap = {
-    none: 0,
-    sm: spacing.md,
-    md: spacing.lg,
-    lg: spacing['2xl'],
-};
 
 export default function Card({
     children,
     onPress,
     variant = 'default',
     padding = 'md',
+    className = '',
     style,
+    delay = 0,
 }: CardProps) {
     const scale = useSharedValue(1);
+    const opacity = useSharedValue(0);
+    const translateY = useSharedValue(10);
+
+    useEffect(() => {
+        opacity.value = withDelay(delay, withTiming(1, { duration: 400 }));
+        translateY.value = withDelay(delay, withSpring(0, { damping: 15, stiffness: 100 }));
+    }, [delay]);
 
     const handlePressIn = () => {
         if (!onPress) return;
-        scale.set(withSpring(0.98, { damping: 12, stiffness: 200 }));
+        scale.value = withSpring(0.98, { damping: 12, stiffness: 200 });
     };
 
     const handlePressOut = () => {
         if (!onPress) return;
-        scale.set(withSpring(1, { damping: 12, stiffness: 200 }));
+        scale.value = withSpring(1, { damping: 12, stiffness: 200 });
     };
 
     const animatedStyle = useAnimatedStyle(() => {
         return {
-            transform: [{ scale: scale.get() }],
+            opacity: opacity.value,
+            transform: [
+                { scale: scale.value },
+                { translateY: translateY.value }
+            ],
         };
     });
 
-    const cardStyle: ViewStyle[] = [
-        styles.base,
-        { padding: paddingMap[padding] },
-        variant === 'elevated' && styles.elevated,
-        variant === 'outlined' && styles.outlined,
-        style,
-    ].filter(Boolean) as ViewStyle[];
+    const paddingClasses = {
+        none: 'p-0',
+        sm: 'p-3',
+        md: 'p-5',
+        lg: 'p-8',
+    };
+
+    const variantClasses = {
+        default: 'bg-(--color-pos-surface) border border-white/5',
+        elevated: 'bg-(--color-pos-surface) border border-white/5 shadow-2xl',
+        outlined: 'bg-transparent border-2 border-white/10',
+    };
+
+    const combinedClasses = `rounded-2xl ${paddingClasses[padding]} ${variantClasses[variant]} ${className}`;
 
     if (onPress) {
         return (
             <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
-                <Animated.View style={[...cardStyle, animatedStyle]}>
+                <Animated.View style={[animatedStyle, style]} className={combinedClasses}>
                     {children}
                 </Animated.View>
             </Pressable>
         );
     }
 
-    return <View style={cardStyle}>{children}</View>;
+    return (
+        <View className={combinedClasses} style={style}>
+            {children}
+        </View>
+    );
 }
-
-const styles = StyleSheet.create({
-    base: {
-        backgroundColor: colors.card,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        borderColor: colors.border,
-        ...shadows.sm,
-    },
-    elevated: {
-        ...shadows.lg,
-        borderColor: 'transparent',
-    },
-    outlined: {
-        backgroundColor: 'transparent',
-        borderWidth: 1.5,
-        borderColor: colors.border,
-    },
-});

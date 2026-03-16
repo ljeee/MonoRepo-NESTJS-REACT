@@ -66,6 +66,21 @@ export class DomiciliosService {
 		return this.repo.update(id, data);
 	}
 
+	findByUser(userId: string) {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+		const end = new Date();
+		end.setHours(23, 59, 59, 999);
+		return this.repo.createQueryBuilder('d')
+			.leftJoinAndSelect('d.factura', 'factura')
+			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('d.cliente', 'cliente')
+			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
+			.where('d.assignedUserId = :userId', { userId })
+			.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end })
+			.getMany();
+	}
+
 	remove(id: number) {
 		return this.repo.delete(id);
 	}

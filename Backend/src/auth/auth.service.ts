@@ -19,6 +19,13 @@ export class AuthService {
 		private readonly configService: ConfigService,
 	) {}
 
+	async findAll(): Promise<User[]> {
+		return this.usersRepository.find({
+			select: ['id', 'username', 'name', 'roles', 'createdAt'],
+			order: { createdAt: 'DESC' }
+		});
+	}
+
 	async register(dto: RegisterDto): Promise<AuthResponseDto> {
 		const existing = await this.usersRepository.findOne({where: {username: dto.username}});
 		if (existing) {
@@ -26,6 +33,11 @@ export class AuthService {
 		}
 
 		const hash = await bcrypt.hash(dto.password, 15);
+		// Reforzar que NADIE puede crear un admin vía registro público
+		if (dto.roles?.some(role => role === Role.Admin)) {
+			throw new BadRequestException('No se permite la creación de usuarios con rol Administrador desde este endpoint.');
+		}
+
 		const roles = dto.roles && dto.roles.length > 0 ? dto.roles : [Role.Mesero];
 
 		const user = this.usersRepository.create({

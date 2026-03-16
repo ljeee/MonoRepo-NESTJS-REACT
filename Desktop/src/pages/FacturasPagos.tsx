@@ -1,7 +1,7 @@
 import React from 'react';
-import { useFacturasPagosScreen, todayISO } from '../hooks/use-facturas-pagos-screen';
-import { formatCurrency, formatDate } from '../utils/formatNumber';
-import { useToast } from '../contexts/ToastContext';
+import { useFacturasPagosScreen, todayISO } from '@monorepo/shared';
+import { formatCurrency, formatDate } from '@monorepo/shared';
+import { useToast } from '@monorepo/shared';
 import * as Dialog from '@radix-ui/react-dialog';
 import {
     CreditCard,

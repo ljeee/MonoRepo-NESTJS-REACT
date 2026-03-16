@@ -1,4 +1,4 @@
-import { useToast } from '../contexts/ToastContext';
+import { useToast } from '@monorepo/shared';
 
 const variantClass: Record<string, string> = {
   success: 'toast-success',

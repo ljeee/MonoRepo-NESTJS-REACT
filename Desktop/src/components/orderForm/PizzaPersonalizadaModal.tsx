@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
-import type { Producto, ProductoVariante } from '../../types/models';
-import type { PizzaSabor } from '../../services/api';
-import { formatCurrency } from '../../utils/formatNumber';
+import type { Producto, ProductoVariante, PizzaSabor } from '@monorepo/shared';
+import { formatCurrency } from '@monorepo/shared';
 
 function getRecargo(sabor: PizzaSabor, varianteNombre: string): number {
   if (varianteNombre === 'Pequeña') return Number(sabor.recargoPequena);

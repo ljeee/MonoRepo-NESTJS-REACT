@@ -1,5 +1,3 @@
-import { colors } from '../styles/theme';
-
 // ── Order States ──────────────────────────────────────────────────────────────
 export const ESTADOS_ORDEN = ['', 'pendiente', 'en preparación', 'enviado', 'entregado', 'completada', 'cancelado'] as const;
 export type EstadoOrden = typeof ESTADOS_ORDEN[number];
@@ -17,19 +15,18 @@ export const ESTADO_LABELS: Record<string, string> = {
 export function getEstadoColor(estado?: string) {
   switch (estado) {
     case 'pendiente':
-      return { bg: colors.warningLight, text: colors.warning, icon: 'clock-outline' as const };
+      return { bg: 'rgba(251, 146, 60, 0.12)', text: '#FB923C', icon: 'clock-outline' as const };
     case 'en preparación':
-      return { bg: colors.infoLight, text: colors.info, icon: 'chef-hat' as const };
+      return { bg: 'rgba(34, 211, 238, 0.12)', text: '#22D3EE', icon: 'chef-hat' as const };
     case 'enviado':
-      return { bg: colors.primaryLight, text: colors.primary, icon: 'truck-delivery-outline' as const };
+      return { bg: 'rgba(245, 165, 36, 0.12)', text: '#F5A524', icon: 'truck-delivery-outline' as const };
     case 'entregado':
-      return { bg: colors.successLight, text: colors.success, icon: 'check-circle-outline' as const };
     case 'completada':
-      return { bg: colors.successLight, text: colors.success, icon: 'check-all' as const };
+      return { bg: 'rgba(52, 211, 153, 0.12)', text: '#34D399', icon: estado === 'completada' ? 'check-all' : 'check-circle-outline' as const };
     case 'cancelado':
-      return { bg: colors.dangerLight, text: colors.danger, icon: 'close-circle-outline' as const };
+      return { bg: 'rgba(244, 63, 94, 0.12)', text: '#F43F5E', icon: 'close-circle-outline' as const };
     default:
-      return { bg: colors.card, text: colors.textMuted, icon: 'help-circle-outline' as const };
+      return { bg: '#151928', text: '#64748B', icon: 'help-circle-outline' as const };
   }
 }
 
