@@ -6,7 +6,7 @@ Resumen de tecnologías usadas en el monorepo.
 - Docker & Docker Compose — orquestación local y producción.
 - PostgreSQL 16 (Alpine) — base de datos.
 - Redis 7 (Alpine) — Pub/Sub para Socket.IO, colas BullMQ.
-- Nginx — hosting estático del frontend en producción.
+- Cloudflare — hosting estático del frontend en producción.
 
 ## Backend (NestJS)
 - **NestJS 11** + TypeScript — framework principal.
