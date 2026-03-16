@@ -23,13 +23,16 @@ Resumen de tecnologías usadas en el monorepo.
 ## Frontend (Expo)
 - **Expo SDK 54** + React 19 + React Native 0.81.
 - **Expo Router** — enrutamiento basado en archivos.
+- **NativeWind v5** + **Tailwind CSS v4** — sistema de diseño y utilidades CSS.
 - **Axios** — cliente HTTP.
 - **socket.io-client** — WebSocket en tiempo real.
 - **AsyncStorage** — persistencia local (tokens, estado).
+- **clsx** + **tailwind-merge** — manejo de clases CSS.
 
 ## Desktop (Tauri v2)
 - **Tauri v2** (Rust) — framework de aplicación de escritorio.
 - **React 19** + **Vite 7** — frontend web.
+- **Tailwind CSS** — utilidades CSS para el frontend.
 - **React Router v6** — navegación.
 - **Radix UI** — componentes (Dialog, Select, Toast).
 - **Lucide React** — iconos.
@@ -40,6 +43,7 @@ Resumen de tecnologías usadas en el monorepo.
 - ESLint + Prettier en Backend y Frontend.
 - Node.js / npm para scripts y builds.
 - concurrently — ejecutar Backend + Frontend en paralelo.
+- **react-doctor** — diagnóstico y salud del proyecto React.
 
 ## Notas
 - Los archivos de entorno no se commitean; copiar `.env.example` donde exista.

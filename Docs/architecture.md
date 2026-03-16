@@ -14,10 +14,10 @@
 ✅ NestJS backend (Puerto 3000)                   ❌ Ollama (LLM local)
 ✅ PostgreSQL (Docker, 5433)                      ❌ n8n workflow IA
 ✅ Redis (Docker, Pub/Sub + BullMQ)               ❌ Evolution API (WhatsApp)
-✅ Socket.IO Gateway + Redis Adapter              ❌ ngrok (túnel WhatsApp)
+✅ Socket.IO Gateway + Redis Adapter            
 ✅ Auth JWT activa (guards + roles)               ❌ ai-validator (FastAPI)
-✅ Expo APK/Web (15 pantallas)                    ❌ Recargos pizza server-side
-✅ Tauri Desktop (6 vistas, atajos F1-F3)
+✅ Expo APK/Web (24+ pantallas)                  
+✅ Tauri Desktop (16 vistas, atajos F1-F3)
 ✅ WebSocket tiempo real (use-ordenes-socket)
 ✅ Swagger en /swagger con Bearer auth
 ✅ ThrottlerModule (100 req/60s)
@@ -26,8 +26,8 @@
 ✅ start-pos.bat (arranque Windows)
 ✅ docker-compose (db + redis + backend + frontend)
 ✅ OrderContext + ToastContext + AuthContext
-✅ Sistema de diseño (tokens, tema, responsive)
-✅ 10 módulos CRUD completos con entities/DTOs
+✅ Sistema de diseño (NativeWind + Tailwind)
+✅ 15 módulos CRUD completos con entities/DTOs
 ✅ Seeders (usuarios, productos, órdenes)
 ✅ CORS configurado para LAN + Tauri
 ```
@@ -43,15 +43,15 @@
 ║  PC SERVIDOR                                                     ║
 ║                                                                  ║
 ║  docker-compose levanta:                                         ║
-║  ┌──────────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐   ║
-║  │ NestJS :3000 │ │ PG :5433 │ │Redis     │ │ Frontend     │   ║
-║  │ API + WS     │ │ (Docker) │ │ Pub/Sub  │ │ :8081 (Nginx)│   ║
-║  │ Swagger      │ │          │ │ BullMQ   │ │              │   ║
-║  └──────────────┘ └──────────┘ └──────────┘ └──────────────┘   ║
+║  ┌──────────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐     ║
+║  │ NestJS :3000 │ │ PG :5433 │ │Redis     │ │ Frontend     │     ║
+║  │ API + WS     │ │ (Docker) │ │ Pub/Sub  │ │ :8081 (Cloudflare)│║
+║  │ Swagger      │ │          │ │ BullMQ   │ │              │     ║
+║  └──────────────┘ └──────────┘ └──────────┘ └──────────────┘     ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  PERSONAL DEL NEGOCIO → Se conectan al servidor por WiFi         ║
 ║  📱 Expo APK/Web  → celulares del personal (cajeros, cocina)     ║
-║  🖥️  Tauri .exe   → PC fija de caja (Windows)                   ║
+║  🖥️  Tauri .exe   → PC fija de caja (Windows)                    ║
 ╠══════════════════════════════════════════════════════════════════╣
 ║  PENDIENTE (Fases futuras):                                      ║
 ║  🤖 Ollama + n8n + Evolution API → Bot WhatsApp con IA           ║
@@ -82,6 +82,10 @@
 | `DomiciliariosModule` | Gestión de domiciliarios |
 | `FacturasVentasModule` | Facturación |
 | `FacturasPagosModule` | Pagos de facturas |
+| `CierresModule` | Gestión de cierres de caja [NEW] |
+| `ContabilidadModule` | Gestión contable y reportes [NEW] |
+| `EmpresaModule` | Información del negocio [NEW] |
+| `EstadisticasModule` | Reportes y visualización [NEW] |
 
 ### main.ts — Configuración
 
@@ -128,7 +132,8 @@ npm run seed             # Todo junto
 
 ## 📱 Frontend (Expo) — Estructura actual
 
-### 15 Pantallas (Expo Router `app/`)
+### 24+ Pantallas (Expo Router `app/`)
+Diferenciadas por jerarquía `app/(app)` (Personal) y `app/(web)` (Externos).
 
 | Pantalla | Descripción |
 |----------|-------------|
@@ -180,16 +185,25 @@ npm run seed             # Todo junto
 
 ## 🖥️ Desktop (Tauri v2) — Estructura actual
 
-### 6 Páginas (React Router)
+### 16 Páginas (React Router)
 
 | Ruta | Vista | Atajo |
 |------|-------|-------|
 | `/login` | Login | — |
+| `/dashboard` | Dashboard Principal | — |
 | `/ordenes` | Órdenes del día | F2 |
 | `/crear-orden` | Nueva orden | F1 |
 | `/facturas` | Facturas | F3 |
 | `/historial` | Historial de órdenes | — |
+| `/clientes` | Gestión de Clientes | — |
+| `/productos` | Gestión de Productos | — |
+| `/estadisticas` | Estadísticas del Día | — |
+| `/balance-fechas` | Balance por Fechas | — |
+| `/cierres` | Cierres de Caja | — |
+| `/ajustes-negocio` | Ajustes de Negocio | — |
 | `/ajustes` | Configuración (URL backend) | — |
+
+... y otras vistas de gestión interna (16 en total).
 
 ### Características
 
@@ -239,7 +253,7 @@ Red: `pizzeria-network` (bridge)
 | **6** | ngrok + script arranque | ⚠️ Parcial | `start-pos.bat` existe (sin ngrok — no se necesita hasta Fase 7) |
 | **7** | WhatsApp: Evolution + n8n + Ollama | ❌ Pendiente | No hay servicios de IA/WhatsApp en docker-compose |
 | **7G** | AI Validator (FastAPI) | ❌ Pendiente | Carpeta `ai-validator/` no existe aún |
-| **8** | Tauri Desktop (PC de caja) | ✅ Completada | 6 vistas, atajos de teclado, notificaciones nativas |
+| **8** | Tauri Desktop (PC de caja) | ✅ Completada | 16 vistas, atajos de teclado, sidebar premium |
 
 ---
 
