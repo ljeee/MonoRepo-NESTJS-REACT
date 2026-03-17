@@ -1,0 +1,327 @@
+/* ═══════════════════════════════════════════════════════════════════════════════
+   Dashboard Home — Premium CSS
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Welcome Banner ── */
+.dashboard-welcome {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.12) 0%, rgba(168, 85, 247, 0.08) 100%);
+    border: 1px solid rgba(249, 115, 22, 0.2);
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-welcome-text h2 {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0 0 0.25rem 0;
+}
+
+.dashboard-welcome-text p {
+    color: var(--text-muted);
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.dashboard-clock {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+}
+
+/* ── Quick Actions ── */
+.quick-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.quick-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+}
+
+.quick-action-btn:hover {
+    border-color: var(--primary);
+    background: rgba(249, 115, 22, 0.08);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.quick-action-btn svg {
+    color: var(--primary);
+}
+
+/* ── Status Cards Row ── */
+.status-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.status-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+}
+
+.status-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.red {
+    background: #ef4444;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
+.status-dot.yellow {
+    background: #f59e0b;
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.4);
+}
+
+.status-dot.green {
+    background: #22c55e;
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.status-info {
+    flex: 1;
+}
+
+.status-count {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+}
+
+.status-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.status-arrow {
+    color: var(--text-muted);
+}
+
+/* ── Dashboard Grid ── */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 1.25rem;
+}
+
+.dashboard-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.dashboard-card-hourly {
+    display: flex;
+    flex-direction: column;
+    min-height: 360px;
+}
+
+.dashboard-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.dashboard-card-title svg {
+    color: var(--primary);
+}
+
+/* ── Mini Hour Chart ── */
+.mini-hour-chart {
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    flex: 1;
+    min-height: 240px;
+}
+
+.mini-hour-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.mini-hour-track {
+    flex: 1;
+    width: 100%;
+    max-width: 24px;
+    background: var(--bg);
+    border-radius: 3px 3px 0 0;
+    display: flex;
+    align-items: flex-end;
+    overflow: hidden;
+}
+
+.mini-hour-fill {
+    width: 100%;
+    background: linear-gradient(0deg, var(--primary), #fb923c);
+    border-radius: 3px 3px 0 0;
+    transition: height 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    min-height: 0;
+}
+
+.mini-hour-label {
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+}
+
+/* ── Recent orders list ── */
+.recent-orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.recent-order-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 8px;
+    background: var(--bg);
+    transition: background 0.2s;
+}
+
+.recent-order-row:hover {
+    background: rgba(249, 115, 22, 0.06);
+}
+
+.recent-order-id {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--primary);
+    min-width: 50px;
+}
+
+.recent-order-detail {
+    flex: 1;
+    min-width: 0;
+}
+
+.recent-order-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recent-order-time {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.recent-order-total {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.order-estado-badge {
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.order-estado-badge.pendiente {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.order-estado-badge.completado {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.order-estado-badge.en-camino {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+}
+
+.order-estado-badge.cancelado {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1000px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .status-row {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-actions {
+        flex-wrap: wrap;
+    }
+}

@@ -1,0 +1,202 @@
+/* ══════════════════════════════════════════════════════════════════
+   SIDEBAR — Accordion navigation, brand, status, logout
+   ══════════════════════════════════════════════════════════════════ */
+
+.pos-sidebar {
+    width: 250px;
+    background-color: var(--bg-card);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.pos-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 20px 8px;
+}
+
+.pos-brand h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.sidebar-user-info {
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.pos-nav {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    padding: 8px 0;
+}
+
+/* Section accordion */
+.sidebar-section {
+    margin-bottom: 2px;
+}
+
+.sidebar-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: color 0.2s;
+}
+
+.sidebar-section-header:hover {
+    color: var(--text-main);
+}
+
+.sidebar-section-header.section-active {
+    color: var(--primary);
+}
+
+.sidebar-section-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-section-title {
+    font-size: 11px;
+}
+
+.sidebar-section-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 0 8px 6px;
+}
+
+/* Nav items */
+.sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px 9px 28px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    position: relative;
+}
+
+.sidebar-nav-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+}
+
+.sidebar-nav-item.active {
+    background: var(--primary-light);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.sidebar-nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 18px;
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+.sidebar-nav-item.standalone {
+    padding-left: 20px;
+    margin: 0 8px;
+}
+
+.sidebar-section-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 16px;
+}
+
+/* Status indicator */
+.pos-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--danger);
+    flex-shrink: 0;
+}
+
+.status-indicator.online {
+    background-color: var(--success);
+    box-shadow: 0 0 6px var(--success);
+}
+
+.status-text {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* Logout */
+.sidebar-logout-wrap {
+    padding: 8px 12px 12px;
+}
+
+.sidebar-logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* ── Shortcut Hints ── */
+.shortcut-hint {
+    margin-left: auto;
+    font-size: 0.6rem;
+    font-weight: 600;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+    letter-spacing: 0.5px;
+}
+
+.sidebar-nav-item:hover .shortcut-hint {
+    opacity: 1;
+}

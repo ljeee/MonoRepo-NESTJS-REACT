@@ -1,0 +1,119 @@
+name: pos-pizzeria
+
+services:
+  # ── Base de datos ──────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: pizzeria-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: America/Bogota
+    ports:
+      - "5433:5432" # Puerto externo diferente para no pisar Postgres local
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./Backend/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./Backend/seed-menu.sql:/docker-entrypoint-initdb.d/02-seed-menu.sql:ro
+    networks: [pizzeria-network]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d appdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ──────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: pizzeria-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    networks: [pizzeria-network]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend NestJS ─────────────────────────────────────────────
+  backend:
+    build: { context: ./Backend, dockerfile: Dockerfile }
+    container_name: pizzeria-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000" # Accesible en toda la LAN
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: appuser
+      DATABASE_PASSWORD: ${DB_PASSWORD}
+      DATABASE_NAME: appdb
+      NODE_ENV: production
+      PORT: 3000
+      HOST: 0.0.0.0
+      TZ: America/Bogota
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-28800}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      # Mail Service (Nodemailer)
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_SECURE: ${MAIL_SECURE:-false}
+      MAIL_USER: ${MAIL_USER}
+      MAIL_PASS: ${MAIL_PASS}
+      REPORT_EMAIL: ${REPORT_EMAIL}
+      # Business Profile (Fallback)
+      COMPANY_NIT: ${COMPANY_NIT}
+      COMPANY_NAME: ${COMPANY_NAME}
+      COMPANY_ADDRESS: ${COMPANY_ADDRESS}
+      COMPANY_PHONE: ${COMPANY_PHONE}
+      COMPANY_TAX_REGIMEN: ${COMPANY_TAX_REGIMEN}
+      COMPANY_TAX_PERCENT: ${COMPANY_TAX_PERCENT}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [pizzeria-network]
+
+  # ── Frontend (Expo Web / Nginx) ────────────────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Frontend/Dockerfile
+    container_name: pizzeria-frontend
+    restart: unless-stopped
+    environment:
+      EXPO_OFFLINE: "1"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - backend
+    networks: [pizzeria-network]
+
+  # ── Cloudflare Tunnel (HTTPS fijo p/ APK y n8n) ──────────────────
+#  cloudflared:
+ #   image: cloudflare/cloudflared:latest
+  #  container_name: pizzeria-cloudflared
+   # restart: unless-stopped
+    #command: tunnel run
+    #environment:
+     # - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    #depends_on:
+     # - backend
+    #networks: [pizzeria-network]
+
+networks:
+  pizzeria-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+    name: pizzeria-pgdata
+  redis_data:
