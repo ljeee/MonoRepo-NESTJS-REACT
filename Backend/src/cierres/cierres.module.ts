@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CierreCaja } from './esquemas/cierre.entity';
 import { CierresService } from './cierres.service';
 import { CierresController } from './cierres.controller';
+import { CierresCronService } from './cierres.cron';
 import { EstadisticasModule } from '../estadisticas/estadisticas.module';
 import { MailService } from '../common/services/mail.service';
 import { EmpresaModule } from '../empresa/empresa.module';
@@ -14,7 +15,7 @@ import { EmpresaModule } from '../empresa/empresa.module';
         EmpresaModule,
     ],
     controllers: [CierresController],
-    providers: [CierresService, MailService],
+    providers: [CierresService, MailService, CierresCronService],
     exports: [CierresService],
 })
 export class CierresModule {}

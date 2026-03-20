@@ -92,7 +92,7 @@ function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
     return Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
 }
 
-export default function DashboardPage() {
+function DashboardPage() {
     const router = useRouter();
     const { user } = useAuth();
     const { isMobile } = useBreakpoint();
@@ -128,15 +128,14 @@ export default function DashboardPage() {
         setDashboard((prev) => ({ ...prev, loading: true }));
         const hoy = todayStr();
         try {
-            const [r, vh, ords, facts] = await Promise.allSettled([
+            const [r, vh, ords] = await Promise.allSettled([
                 api.estadisticas.resumenPeriodo(hoy, hoy),
                 api.estadisticas.ventasPorHora(hoy),
                 api.ordenes.getDay(),
-                api.facturas.getDay(),
             ]);
 
             const ordData = ords.status === 'fulfilled' ? ords.value : [];
-            const factsData = facts.status === 'fulfilled' ? facts.value : [];
+            const factsData: any[] = [];
             const sorted = [...ordData].sort((a, b) => new Date(b.fechaOrden).getTime() - new Date(a.fechaOrden).getTime());
 
             const apiResumen = r.status === 'fulfilled' ? r.value : null;
@@ -149,7 +148,7 @@ export default function DashboardPage() {
                 ordenes: sorted.slice(0, 6),
                 pendientes: ordData.filter(o => o.estadoOrden === 'pendiente').length,
                 completadas: ordData.filter(o => isCompletedEstado(o.estadoOrden)).length,
-                sinPagar: factsData.filter(f => f.estado === 'pendiente').length,
+                sinPagar: 0,
             });
         } catch (err) {
             console.error('Dashboard fetch error', err);
@@ -308,4 +307,24 @@ export default function DashboardPage() {
             {isMobile && <View className="h-20" />}
         </ScrollView>
     );
+}
+
+export default function SafeDashboardWrapper() {
+    const [ready, setReady] = useState(false);
+    useEffect(() => {
+        // Retrasamos el render 1 tick para que react-native-css 
+        // compile e inyecte los estilos globales antes de pintar la ruta inicial
+        const timer = setTimeout(() => setReady(true), 10);
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (!ready) {
+        return (
+            <View className="flex-1 bg-[#0C0F1A] items-center justify-center">
+                <ActivityIndicator size="large" color="#F5A524" />
+            </View>
+        );
+    }
+
+    return <DashboardPage />;
 }

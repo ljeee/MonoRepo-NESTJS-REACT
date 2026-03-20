@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useCreateFacturaPago, useDeleteFacturaPago, useFacturasPagosDia, useFacturasPagosRango, useUpdateFacturaPago } from './use-create-factura-pago';
 import type { CreateFacturaPagoDto, FacturaPago } from '../types/models';
 
+import { validateFlexibleDateRange } from '../utils/dateRange';
+
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 export function todayISO() {
@@ -35,7 +37,7 @@ export function useFacturasPagosScreen() {
   const [total, setTotal] = useState('');
   const [nombreGasto, setNombreGasto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [estado, setEstado] = useState('pendiente');
+  const [estado, setEstado] = useState('pagado');
   const [fechaFactura, setFechaFactura] = useState(todayISO());
   const [metodo, setMetodo] = useState('efectivo');
 
@@ -47,7 +49,7 @@ export function useFacturasPagosScreen() {
     setTotal('');
     setNombreGasto('');
     setDescripcion('');
-    setEstado('pendiente');
+    setEstado('pagado');
     setFechaFactura(todayISO());
     setMetodo('efectivo');
     setEditingId(null);
@@ -119,20 +121,15 @@ export function useFacturasPagosScreen() {
   };
 
   const handleSearchRange = () => {
-    if (!from || !to) {
-      setFormError('Debe ingresar ambas fechas');
-      return;
-    }
-    if (!DATE_REGEX.test(from) || !DATE_REGEX.test(to)) {
-      setFormError('Formato inválido. Use YYYY-MM-DD');
-      return;
-    }
-    if (new Date(from) > new Date(to)) {
-      setFormError('"Desde" no puede ser posterior a "Hasta"');
+    const { from: fromParsed, to: toParsed, error } = validateFlexibleDateRange(from, to);
+    if (error) {
+      setFormError(error);
       return;
     }
     setFormError('');
-    fetchRango();
+    setFrom(fromParsed);
+    setTo(toParsed);
+    fetchRango(fromParsed, toParsed);
   };
 
   const displayData = showRangeFilter && dataRango ? dataRango : (dataDia || []);

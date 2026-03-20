@@ -16,6 +16,22 @@ import {
     ConfirmModal
 } from '../../components/ui';
 
+function formatFlavorName(name: string): string {
+    if (!name) return '';
+    // Específicamente para RECARGO_3_SABORES -> Recargo de tres sabores
+    if (name.toUpperCase() === 'RECARGO_3_SABORES') return 'Recargo de tres sabores';
+    
+    // Para otros: Sustituir guiones bajos por espacios y capitalizar
+    return name
+        .toLowerCase()
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function formatCurrency(n: number) {
+    return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
+}
+
 export default function GestionSaboresScreen() {
     const api = apiService;
     const { showToast } = useToast();
@@ -103,14 +119,20 @@ export default function GestionSaboresScreen() {
                         key={sabor.saborId}
                         entering={FadeInUp.delay(idx * 50)}
                     >
-                        <Card className="mb-4 p-8 bg-slate-900/50 border-white/5 mx-2 rounded-[32px]">
+                        <Card className="mb-4 p-8 bg-[#0F172A] border-white/5 mx-2 rounded-[32px] shadow-sm">
                             <View className="flex-row justify-between items-center mb-8">
                                 <View className="flex-row items-center flex-1">
-                                    <Text className="text-white text-xl font-black uppercase tracking-tight mr-4" style={{ fontFamily: 'Space Grotesk' }}>
-                                        {sabor.nombre}
-                                    </Text>
-                                    <View className="bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">
-                                        <Text className="text-blue-400 text-[10px] font-black uppercase tracking-widest">Configuración</Text>
+                                    <View className="w-12 h-12 rounded-2xl bg-orange-500/20 items-center justify-center mr-4 border border-orange-500/30">
+                                        <Icon name="pizza" size={24} color="#F5A524" />
+                                    </View>
+                                    <View>
+                                        <Text className="text-white text-xl font-bold tracking-tight" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>
+                                            {formatFlavorName(sabor.nombre)}
+                                        </Text>
+                                        <View className="flex-row items-center mt-1">
+                                            <View className={`w-2 h-2 rounded-full mr-2 ${sabor.tipo === 'especial' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest">{sabor.tipo}</Text>
+                                        </View>
                                     </View>
                                 </View>
                                 
@@ -120,31 +142,46 @@ export default function GestionSaboresScreen() {
                                             setEditingSabor(sabor);
                                             setIsModalVisible(true);
                                         }}
-                                        className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center border border-white/5 hover:bg-white/10 active:scale-95 transition-all"
+                                        className="w-11 h-11 rounded-xl bg-white/5 items-center justify-center border border-white/5 hover:bg-white/10 active:scale-95 transition-all"
                                     >
-                                        <Icon name="pencil" size={20} color="#F5A524" />
+                                        <Icon name="pencil" size={18} color="#94A3B8" />
                                     </TouchableOpacity>
                                     <TouchableOpacity 
                                         onPress={() => setDeleteId(sabor.saborId)}
-                                        className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center border border-white/5 hover:bg-white/10 active:scale-95 transition-all"
+                                        className="w-11 h-11 rounded-xl bg-red-500/10 items-center justify-center border border-red-500/20 hover:bg-red-500/20 active:scale-95 transition-all"
                                     >
-                                        <Icon name="trash-can-outline" size={20} color="#F43F5E" />
+                                        <Icon name="trash-can-outline" size={18} color="#F43F5E" />
                                     </TouchableOpacity>
                                 </View>
                             </View>
  
-                            <View className="flex-row gap-12">
-                                <View>
-                                    <Text className="text-slate-500 text-[11px] font-black uppercase tracking-widest mb-2">Pequeña</Text>
-                                    <Text className="text-white font-black text-2xl" style={{ fontFamily: 'Space Grotesk' }}>${sabor.recargoPequena}</Text>
+                            <View className="flex-row gap-8 md:gap-16">
+                                <View className="flex-row items-center gap-4">
+                                    <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/10">
+                                        <Text className="text-white font-black text-xs">S</Text>
+                                    </View>
+                                    <View>
+                                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-0.5">Pequeña</Text>
+                                        <Text className="text-white font-bold text-xl" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>{formatCurrency(Number(sabor.recargoPequena))}</Text>
+                                    </View>
                                 </View>
-                                <View>
-                                    <Text className="text-slate-500 text-[11px] font-black uppercase tracking-widest mb-2">Mediana</Text>
-                                    <Text className="text-white font-black text-2xl" style={{ fontFamily: 'Space Grotesk' }}>${sabor.recargoMediana}</Text>
+                                <View className="flex-row items-center gap-4">
+                                    <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/10">
+                                        <Text className="text-white font-black text-xs">M</Text>
+                                    </View>
+                                    <View>
+                                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-0.5">Mediana</Text>
+                                        <Text className="text-white font-bold text-xl" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>{formatCurrency(Number(sabor.recargoMediana))}</Text>
+                                    </View>
                                 </View>
-                                <View>
-                                    <Text className="text-slate-500 text-[11px] font-black uppercase tracking-widest mb-2">Grande</Text>
-                                    <Text className="text-white font-black text-2xl" style={{ fontFamily: 'Space Grotesk' }}>${sabor.recargoGrande}</Text>
+                                <View className="flex-row items-center gap-4">
+                                    <View className="w-10 h-10 rounded-full bg-white/10 items-center justify-center border border-white/10">
+                                        <Text className="text-white font-black text-xs">L</Text>
+                                    </View>
+                                    <View>
+                                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-0.5">Grande</Text>
+                                        <Text className="text-white font-bold text-xl" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>{formatCurrency(Number(sabor.recargoGrande))}</Text>
+                                    </View>
                                 </View>
                             </View>
                         </Card>

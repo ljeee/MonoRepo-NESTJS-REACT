@@ -1,6 +1,6 @@
 import React, { ReactNode } from 'react';
-import { RefreshControlProps } from 'react-native';
-import { ScrollView, View } from '../../tw';
+import { RefreshControlProps, Platform } from 'react-native';
+import { ScrollView, View, KeyboardAvoidingView } from '../../tw';
 import { useBreakpoint } from '../../styles/responsive';
 
 interface PageContainerProps {
@@ -42,7 +42,7 @@ export default function PageContainer({
             ? 'px-4 pb-10 pt-4'
             : 'px-8 pb-16 pt-8';
 
-    const innerClasses = `w-full self-center ${maxWidthClasses[maxWidthVariant]} ${paddingClasses}`;
+    const innerClasses = `flex-1 w-full self-center ${maxWidthClasses[maxWidthVariant]} ${paddingClasses}`;
 
     const content = (
         <View className={`${innerClasses} ${contentContainerClassName || ''}`} style={contentContainerStyle}>
@@ -52,22 +52,34 @@ export default function PageContainer({
 
     if (scrollable) {
         return (
-            <ScrollView
-                className={`flex-1 bg-(--color-pos-bg) ${className}`}
-                style={style}
-                contentContainerStyle={{ flexGrow: 1 }}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                refreshControl={refreshControl}
+            <KeyboardAvoidingView 
+                className={`flex-1 ${className}`}
+                style={[{ backgroundColor: '#0C0F1A' }, style]}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             >
-                {content}
-            </ScrollView>
+                <ScrollView
+                    className="flex-1"
+                    contentContainerStyle={{ flexGrow: 1 }}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    refreshControl={refreshControl}
+                    automaticallyAdjustKeyboardInsets={true}
+                >
+                    {content}
+                </ScrollView>
+            </KeyboardAvoidingView>
         );
     }
 
     return (
-        <View className={`flex-1 bg-(--color-pos-bg) ${className}`} style={style}>
+        <KeyboardAvoidingView 
+            className={`flex-1 ${className}`} 
+            style={[{ backgroundColor: '#0C0F1A' }, style]}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+        >
             {content}
-        </View>
+        </KeyboardAvoidingView>
     );
 }

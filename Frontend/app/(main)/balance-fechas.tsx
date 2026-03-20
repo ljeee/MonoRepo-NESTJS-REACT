@@ -1,5 +1,5 @@
 import React, { useReducer, useCallback } from 'react';
-import { FlatList, RefreshControl, ScrollView } from 'react-native';
+import { FlatList, RefreshControl, ScrollView, Platform } from 'react-native';
 
 import { useFacturasRango } from '@monorepo/shared';
 import { useFacturasPagosRango } from '@monorepo/shared';
@@ -183,51 +183,7 @@ export default function BalanceFechasScreen() {
         await updateFactura(facturaId, { total: newTotal });
     }, [updateFactura]);
 
-    const handleExportPdf = useCallback(() => {
-        const safeFrom = from || 'inicio';
-        const safeTo = to || 'fin';
-        const rows: (string | number)[][] = [
-            ...facturas.map((f) => [
-                'Ingreso',
-                f.facturaId ?? '',
-                f.clienteNombre || 'Sin nombre',
-                f.fechaFactura || '',
-                `$${formatCurrency(Number(f.total) || 0)}`,
-                f.estado || '',
-                f.metodo || '',
-            ]),
-            ...gastos.map((g) => [
-                'Gasto',
-                g.pagosId ?? '',
-                g.nombreGasto || 'Sin nombre',
-                g.fechaFactura || '',
-                `$${formatCurrency(Number(g.total) || 0)}`,
-                g.estado || '',
-                g.metodo || '',
-            ]),
-        ];
 
-        exportPdf({
-            title: `Balance por Fechas - ${safeFrom} a ${safeTo}`,
-            subtitle: `${rows.length} registros`,
-            headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Total', 'Estado', 'Metodo'],
-            rows,
-        });
-    }, [facturas, gastos, from, to]);
-
-    const handleExportBackup = useCallback(async () => {
-        const safeFrom = from || 'inicio';
-        const safeTo = to || 'fin';
-        const csv = await buildFacturasBackupCsv(facturas);
-        downloadCsv(csv, `facturas_backup_${safeFrom}_${safeTo}.csv`);
-    }, [facturas, from, to]);
-
-    const handleExportContabilidad = useCallback(async () => {
-        const safeFrom = from || 'inicio';
-        const safeTo = to || 'fin';
-        const csv = await buildCombinedBalanceCsv(facturas, gastos);
-        downloadCsv(csv, `contabilidad_${safeFrom}_${safeTo}.csv`);
-    }, [facturas, gastos, from, to]);
 
     const loading = loadingFacturas || loadingGastos;
     const hasData = facturas.length > 0 || gastos.length > 0;
@@ -261,32 +217,9 @@ export default function BalanceFechasScreen() {
                         />
 
                         {/* Actions bar */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8 overflow-visible">
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-0 overflow-visible">
                             <View className="flex-row items-center gap-2 pr-4">
-                                <Button
-                                    title="Exportar PDF"
-                                    icon="chart-bar"
-                                    variant="secondary"
-                                    size="sm"
-                                    onPress={handleExportPdf}
-                                    disabled={!hasData}
-                                />
-                                <Button
-                                    title="CSV Backup"
-                                    icon="download"
-                                    variant="secondary"
-                                    size="sm"
-                                    onPress={handleExportBackup}
-                                    disabled={!hasData}
-                                />
-                                <Button
-                                    title="CSV Contable"
-                                    icon="scale-balance"
-                                    variant="secondary"
-                                    size="sm"
-                                    onPress={handleExportContabilidad}
-                                    disabled={!hasData}
-                                />
+                                {/* Exports removed for mobile */}
                             </View>
                         </ScrollView>
 

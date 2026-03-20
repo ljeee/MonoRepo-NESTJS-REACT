@@ -10,13 +10,13 @@ import type {
     ResumenPeriodo,
     ClienteFrecuente,
 } from '@monorepo/shared';
-import { formatCurrency as sharedFormatCurrency } from '@monorepo/shared';
+import { formatCompactCurrency as sharedFormatCompact } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from '../../tw';
 import { PageContainer, PageHeader, Card, Icon, Button, ListSkeleton } from '../../components/ui';
 
 function formatCurrency(n: number) {
-    return '$' + sharedFormatCurrency(n || 0);
+    return sharedFormatCompact(n || 0);
 }
 
 function getDefaultDateRange() {

@@ -32,30 +32,7 @@ export default function FacturasDiaScreen() {
     await updateFactura(facturaId, { total: newTotal });
   };
 
-  const handleExportPdf = () => {
-    if (!data || data.length === 0) return;
-    exportFacturasPdf(data, 'Hoy');
-  };
 
-  const handleExportBackup = async () => {
-    if (!data || data.length === 0) return;
-    const csv = await buildFacturasBackupCsv(data);
-    const today = (() => {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    })();
-    downloadCsv(csv, `facturas_${today}.csv`);
-  };
-
-  const handleExportContabilidad = async () => {
-    if (!data || data.length === 0) return;
-    const csv = await buildCombinedBalanceCsv(data, []);
-    const today = (() => {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    })();
-    downloadCsv(csv, `contabilidad_${today}.csv`);
-  };
 
   return (
     <PageContainer
@@ -83,33 +60,7 @@ export default function FacturasDiaScreen() {
         }
       />
 
-      {/* Actions Bar (Exports) */}
-      <View className="flex-row gap-4 mb-8 flex-wrap">
-        <Button
-          title="PDF"
-          icon="chart-bar"
-          variant="outline"
-          size="sm"
-          onPress={handleExportPdf}
-          disabled={!data || data.length === 0}
-        />
-        <Button
-          title="CSV Backup"
-          icon="download"
-          variant="outline"
-          size="sm"
-          onPress={handleExportBackup}
-          disabled={!data || data.length === 0}
-        />
-        <Button
-          title="CSV Contabilidad"
-          icon="scale-balance"
-          variant="outline"
-          size="sm"
-          onPress={handleExportContabilidad}
-          disabled={!data || data.length === 0}
-        />
-      </View>
+
 
       {/* Stats */}
       {stats && <StatsHeader stats={stats} periodLabel="Total del Día" />}

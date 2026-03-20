@@ -263,7 +263,7 @@ export default function BalanceFechasScreen() {
 
                         {/* Actions bar */}
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8 overflow-visible">
-                            <View className="flex-row items-center gap-2 pr-4">
+                            <View className="flex-row items-center gap-2 pr-4 pb-4">
                                 <Button
                                     title="Exportar PDF"
                                     icon="chart-bar"

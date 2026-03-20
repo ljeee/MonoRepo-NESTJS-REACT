@@ -139,34 +139,18 @@ export default function FacturasPagosScreen() {
           </View>
 
           <View className={`flex-row gap-6 mb-2 ${isMobile ? 'flex-col' : ''}`}>
-            <View className={`mb-6 ${!isMobile ? 'flex-1 min-w-[150px]' : ''}`}>
-              <Text className="text-[10px] font-black text-slate-400 mb-3 ml-1 uppercase tracking-widest">Estado</Text>
-              <View className="flex-row gap-3">
-                {['pendiente', 'pagado'].map((e) => (
-                  <TouchableOpacity
-                    key={e}
-                    className={`flex-row items-center gap-2 py-2 px-6 rounded-full border ${estado === e ? 'bg-amber-500/10 border-amber-500/20' : 'bg-black/20 border-white/5'}`}
-                    onPress={() => setEstado(e)}
-                  >
-                    <Text className={`text-sm tracking-tight capitalize ${estado === e ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'}`}>
-                      {e}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-            <View className={`mb-6 ${!isMobile ? 'flex-1 min-w-[150px]' : ''}`}>
-              <Text className="text-[10px] font-black text-slate-400 mb-3 ml-1 uppercase tracking-widest">Método</Text>
+            <View className={`mb-6 ${!isMobile ? 'flex-1 min-w-[300px]' : ''}`}>
+              <Text className="text-[10px] font-black text-slate-400 mb-3 ml-1 uppercase tracking-widest">Método de Pago</Text>
               <View className="flex-row gap-3">
                 {['efectivo', 'qr'].map((m) => (
                   <TouchableOpacity
                     key={m}
-                    className={`flex-row items-center gap-3 py-2 px-6 rounded-full border ${metodo === m ? 'bg-amber-500/10 border-amber-500/20' : 'bg-black/20 border-white/5'}`}
+                    className={`flex-row items-center gap-3 py-2.5 px-8 rounded-full border ${metodo === m ? 'bg-amber-500/10 border-amber-500/20' : 'bg-black/20 border-white/5'}`}
                     onPress={() => setMetodo(m)}
                   >
                     <Icon
                       name={m === 'efectivo' ? 'cash' : 'qrcode'}
-                      size={14}
+                      size={16}
                       color={metodo === m ? '#F5A524' : '#64748B'}
                     />
                     <Text className={`text-sm tracking-tight capitalize ${metodo === m ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'}`}>

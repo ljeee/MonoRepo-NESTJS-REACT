@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
-import { useAuth } from '../contexts/AuthContext';
-import { Button, Card, Input, Icon } from '../components/ui';
-import { View, Text } from '../tw';
+import React, { useState, useEffect } from 'react';
+import { Platform, Keyboard, TouchableWithoutFeedback, Pressable } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../contexts/AuthContext';
+import { Button, Card, Input, Icon } from '../../components/ui';
+import { View, Text } from '../../tw';
 import { FadeInUp } from 'react-native-reanimated';
-import { Animated } from '../tw/animated';
+import { Animated } from '../../tw/animated';
 
 export default function LoginScreen() {
     const { login } = useAuth();
@@ -12,6 +13,24 @@ export default function LoginScreen() {
     const [contrasena, setContrasena] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [recordar, setRecordar] = useState(false);
+
+    useEffect(() => {
+        const loadCreds = async () => {
+            try {
+                const stored = await AsyncStorage.getItem('@App:credenciales');
+                if (stored) {
+                    const { user, pass } = JSON.parse(stored);
+                    setUsuario(user);
+                    setContrasena(pass);
+                    setRecordar(true);
+                }
+            } catch (e) {
+                // Ignore parsing errors
+            }
+        };
+        loadCreds();
+    }, []);
 
     const handleLogin = async () => {
         if (!usuario || !contrasena) {
@@ -23,6 +42,12 @@ export default function LoginScreen() {
             setLoading(true);
             setError('');
             await login(usuario, contrasena);
+
+            if (recordar) {
+                await AsyncStorage.setItem('@App:credenciales', JSON.stringify({ user: usuario, pass: contrasena }));
+            } else {
+                await AsyncStorage.removeItem('@App:credenciales');
+            }
         } catch (err: any) {
             setError(
                 err.response?.data?.message || 'Credenciales incorrectas o error de conexión'
@@ -74,6 +99,19 @@ export default function LoginScreen() {
                         leftIcon={<Icon name="lock-outline" size={20} color="#64748B" />}
                         error={error && !contrasena ? "Requerido" : undefined}
                     />
+
+                    <Pressable 
+                        className={`flex-row items-center mt-3 mb-6 p-4 border rounded-2xl ${recordar ? 'bg-orange-500/10 border-orange-500/30' : 'bg-white/5 border-white/5 active:bg-white/10'}`} 
+                        onPress={() => setRecordar(!recordar)}
+                    >
+                        <View className={`w-6 h-6 rounded-lg items-center justify-center mr-3 ${recordar ? 'bg-orange-500' : 'border-2 border-slate-600 bg-black/40'}`}>
+                            {recordar && <Icon name="check-bold" size={14} color="black" />}
+                        </View>
+                        <View className="flex-1">
+                            <Text className={`font-black text-sm uppercase tracking-wider mb-0.5 ${recordar ? 'text-orange-500' : 'text-slate-300'}`}>Mantener sesión</Text>
+                            <Text className="text-slate-500 text-[10px] font-bold">Recordar credenciales al volver</Text>
+                        </View>
+                    </Pressable>
                 </View>
 
                 {error && (

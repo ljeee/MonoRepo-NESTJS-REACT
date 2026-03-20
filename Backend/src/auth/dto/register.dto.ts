@@ -21,4 +21,9 @@ export class RegisterDto {
 	@IsOptional()
 	@IsArray()
 	roles?: Role[];
+
+	@ApiProperty({required: false})
+	@IsOptional()
+	@IsString()
+	telefono?: string;
 }

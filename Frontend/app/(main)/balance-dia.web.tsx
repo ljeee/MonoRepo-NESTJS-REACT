@@ -4,6 +4,7 @@ import { ScrollView } from '../../tw';
 import { useFacturasDia } from '@monorepo/shared';
 import { useFacturasPagosDia, useDeleteFacturaPago } from '@monorepo/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
+import { exportPdf } from '../../utils/exportData';
 import type { FacturaPago } from '@monorepo/shared';
 import { formatCurrency } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -190,18 +191,33 @@ export default function BalanceDiaScreen() {
         setDeleteTarget(null);
     };
 
-    const handleExportCsv = useCallback(async () => {
-        const csv = await buildCombinedBalanceCsv(facturas, gastos);
-        const today = (() => {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        })();
-        downloadCsv(csv, `balance_${today}.csv`);
-    }, [facturas, gastos]);
-
     const ingresos = stats?.totalPagado ?? 0;
     const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
     const loading = loadingFacturas || loadingGastos;
+
+    const handleExportPdf = useCallback(async () => {
+        if (!facturas.length) return;
+        exportPdf({
+            title: 'Reporte de Balance Diario',
+            subtitle: `Fecha: ${new Date().toLocaleDateString()} | Ingresos: $${formatCurrency(ingresos)} | Gastos: $${formatCurrency(totalGastos)}`,
+            headers: ['ID', 'Tipo', 'Concepto', 'Metodo', 'Total'],
+            rows: [
+                ...facturas.map(f => [f.facturaId || '', 'Factura', f.clienteNombre || 'Venta', f.metodo || '-', `$${formatCurrency(Number(f.total) || 0)}`]),
+                ...gastos.map(g => [g.pagosId || '', 'Gasto', g.nombreGasto || 'Gasto', g.metodo || '-', `-$${formatCurrency(Number(g.total) || 0)}`])
+            ],
+            footer: `Balance Neto: $${formatCurrency(ingresos - totalGastos)} | Generado: ${new Date().toLocaleString()}`
+        });
+    }, [facturas, gastos, ingresos, totalGastos]);
+
+    const handleExportBackup = useCallback(async () => {
+        const csv = await buildCombinedBalanceCsv(facturas, gastos);
+        downloadCsv(csv, `backup_balance_${new Date().toISOString().split('T')[0]}.csv`);
+    }, [facturas, gastos]);
+
+    const handleExportContabilidad = useCallback(async () => {
+        const csv = await buildCombinedBalanceCsv(facturas, gastos);
+        downloadCsv(csv, `contabilidad_balance_${new Date().toISOString().split('T')[0]}.csv`);
+    }, [facturas, gastos]);
 
     return (
         <PageContainer
@@ -220,7 +236,31 @@ export default function BalanceDiaScreen() {
                 icon="scale-balance"
                 rightContent={
                     <View className="flex-row items-center gap-2">
-                         <Button
+                        <Button
+                            title="Exportar PDF"
+                            icon="file-pdf-outline"
+                            variant="secondary"
+                            size="sm"
+                            onPress={handleExportPdf}
+                            className="bg-purple-600/20 border-purple-500/30"
+                        />
+                        <Button
+                            title="CSV Backup"
+                            icon="cloud-download-outline"
+                            variant="secondary"
+                            size="sm"
+                            onPress={handleExportBackup}
+                            className="bg-blue-600/20 border-blue-500/30"
+                        />
+                        <Button
+                            title="CSV Contable"
+                            icon="table-large"
+                            variant="secondary"
+                            size="sm"
+                            onPress={handleExportContabilidad}
+                            className="bg-emerald-600/20 border-emerald-500/30"
+                        />
+                        <Button
                             title=""
                             icon="refresh"
                             variant="ghost"

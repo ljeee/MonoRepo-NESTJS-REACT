@@ -2,8 +2,8 @@ import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { isAxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
+import { ActivityIndicator, Platform } from 'react-native';
+import { ScrollView, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView } from '../../tw';
 import { Badge } from '../ui';
 import { api } from '../../services/api';
 import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce } from '@monorepo/shared';
@@ -316,10 +316,16 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   }
 
   return (
-    <View className="flex-1 bg-(--color-pos-bg)">
+    <KeyboardAvoidingView 
+      className="flex-1 bg-(--color-pos-bg)"
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="py-5 px-5 pb-32 w-full self-stretch"
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets={true}
+        contentContainerClassName="pt-2 px-5 pb-32 w-full self-stretch"
       >
         <View className={`bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl ${isCompact ? 'p-3' : ''}`}>
           <View className="flex-row justify-between items-center mb-4">
@@ -335,7 +341,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
             {/* TIPO DE PEDIDO */}
             <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
               <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Tipo</Text>
-              <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
+              <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
                 <Picker
                   selectedValue={formState.tipoPedido}
                   enabled={mode === 'create'}
@@ -350,7 +356,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         costoDomicilio: '',
                     });
                   }}
-                  style={{ height: 40, color: 'white' }}
+                  style={{ color: 'white' }}
                   itemStyle={{ color: 'white', fontSize: 14 }}
                   dropdownIconColor="#94A3B8"
                 >
@@ -366,7 +372,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
               <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
                 <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Teléfono</Text>
                 <TextInput
-                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
+                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
                   value={formState.telefonoCliente}
                   onChangeText={(val) => updateForm({ telefonoCliente: val.replace(/\s/g, '') })}
                   placeholder="321..."
@@ -380,13 +386,13 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
             <View className={`px-1 mb-3 ${isCompact ? 'w-full' : (formState.tipoPedido === 'domicilio' ? 'w-2/4' : 'w-3/4')}`}>
               <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">{formState.tipoPedido === 'mesa' ? 'Mesa' : 'Cliente'}</Text>
               {formState.tipoPedido === 'mesa' ? (
-                <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
+                <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
                   <Picker
                     selectedValue={formState.numeroMesa}
                     onValueChange={(val) => {
                       updateForm({ numeroMesa: val, nombreCliente: val });
                     }}
-                    style={{ height: 40, color: 'white' }}
+                    style={{ color: 'white' }}
                     itemStyle={{ color: 'white', fontSize: 14 }}
                     dropdownIconColor="#94A3B8"
                   >
@@ -396,7 +402,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                 </View>
               ) : (
                 <TextInput
-                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
+                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
                   value={resolvedNombreCliente}
                   onChangeText={(val) => updateForm({ nombreCliente: val })}
                   placeholder="Nombre"
@@ -414,11 +420,11 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                 <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
                 {hasClienteDirecciones ? (
                   <View className="flex-col gap-1">
-                    <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
+                    <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
                       <Picker
                         selectedValue={formState.selectedAddress}
                         onValueChange={(val) => updateForm({ selectedAddress: val })}
-                        style={{ height: 40, color: 'white' }}
+                        style={{ color: 'white' }}
                         itemStyle={{ color: 'white', fontSize: 14 }}
                         dropdownIconColor="#94A3B8"
                       >
@@ -430,7 +436,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                     </View>
                     {formState.selectedAddress === '__nueva__' && (
                       <TextInput
-                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
+                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
                         value={formState.newAddress}
                         onChangeText={(val) => updateForm({ newAddress: val })}
                         placeholder="Calle..."
@@ -440,7 +446,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                   </View>
                 ) : (
                   <TextInput
-                    className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
+                    className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
                     value={formState.newAddress}
                     onChangeText={(val) => updateForm({ newAddress: val })}
                     placeholder="Calle..."
@@ -451,11 +457,11 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
 
               <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
                 <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Domiciliario</Text>
-                <View className="bg-black/20 rounded-lg border border-white/5 h-10 justify-center overflow-hidden">
+                <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
                   <Picker
                     selectedValue={formState.telefonoDomiciliario}
                     onValueChange={(val) => updateForm({ telefonoDomiciliario: val })}
-                    style={{ height: 40, color: 'white' }}
+                    style={{ color: 'white' }}
                     itemStyle={{ color: 'white', fontSize: 14 }}
                     dropdownIconColor="#94A3B8"
                   >
@@ -474,7 +480,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
               <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
                 <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Costo</Text>
                 <TextInput
-                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-1 text-sm text-white h-10"
+                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
                   value={formState.costoDomicilio ? Number(formState.costoDomicilio).toLocaleString('es-CO') : ''}
                   onChangeText={(val) => {
                     const numericValue = val.replace(/\D/g, '');
@@ -534,6 +540,6 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         {/* Extra bottom space for system nav bar on mobile */}
         {isMobile && <View className="h-8" />}
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

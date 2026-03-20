@@ -19,6 +19,7 @@ import { CierresModule } from './cierres/cierres.module';
 import { EmpresaModule } from './empresa/empresa.module';
 import { ContabilidadModule } from './contabilidad/contabilidad.module';
 import { SocketGateway } from './common/gateways/socket.gateway';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
 	imports: [

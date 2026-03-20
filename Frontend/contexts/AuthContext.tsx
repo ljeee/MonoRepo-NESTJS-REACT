@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!token && !inAuthGroup) {
             router.replace('/login' as any);
         } else if (token && inAuthGroup) {
-            router.replace('/ordenes' as any);
+            router.replace('/' as any);
         }
     }, [token, segments, isLoading, router]);
 

@@ -15,10 +15,7 @@ export class ImportadorController {
 		schema: {
 			type: 'object',
 			properties: {
-				file: {
-					type: 'string',
-					format: 'binary',
-				},
+				file: { type: 'string', format: 'binary' },
 			},
 		},
 	})
@@ -35,37 +32,75 @@ export class ImportadorController {
 			throw new BadRequestException('El archivo CSV está vacío o le faltan datos');
 		}
 
-		// Header: fecha,cliente,descripcion,total,metodo,estado
-		const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-		const dataRows = lines.slice(1);
+		// Parse utility for CSV rows protecting quoted commas
+		const parseCsvRow = (text: string) => {
+			const re = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
+			return text.split(re).map(v => v.replace(/^"|"$/g, '').trim());
+		};
 
-		const imported: any[] = [];
+		const rawHeaders = parseCsvRow(lines[0]);
+		const headers = rawHeaders.map(h => 
+			h.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+		);
+
+		const dataRows = lines.slice(1);
+		const facturasMap = new Map<string, any>();
 		const errors: { line: number; error: string }[] = [];
 
 		for (const [index, line] of dataRows.entries()) {
-			const values = line.split(',').map(v => v.trim());
-			if (values.length < headers.length) continue;
+			const values = parseCsvRow(line);
+			if (values.length < 2) continue; // Skip malformed lines
 
-			try {
-				const row: any = {};
-				headers.forEach((header, i) => {
-					row[header] = values[i];
-				});
+			const row: Record<string, string> = {};
+			headers.forEach((header, i) => {
+				row[header] = values[i] || '';
+			});
 
-				// Transformación básica
+			const id = row['id'];
+			// Ignorar agrupaciones si no hay ID válido (o autogenerar)
+			const facturaKey = id || `temp_row_${index}`;
+
+			if (!facturasMap.has(facturaKey)) {
+				// Buscar campos bajo diferentes posibles traducciones
+				const rawFecha = row['fecha'] || row['fechafactura'] || '';
+				const rawTotal = row['total factura'] || row['total'] || '0';
+				const rawMetodo = row['metodo'] || row['metodo de pago'] || row['metodopago'] || 'efectivo';
+				const rawEstado = row['estado'] || 'pagado';
+				const rawCliente = row['cliente'] || row['nombre/cliente'] || 'Importado';
+
+				// Parse currency format string ($20,000) or raw (20000)
+				const cleanTotal = rawTotal.replace(/[^0-9.-]+/g, "");
+
 				const factura = {
-					fechaFactura: row.fecha ? new Date(row.fecha) : new Date(),
-					clienteNombre: row.cliente || 'Importado',
-					descripcion: row.descripcion || 'Sin descripción',
-					total: parseFloat(row.total) || 0,
-					metodo: row.metodo || 'efectivo',
-					estado: row.estado || 'pagada',
+					facturaId: id ? parseInt(id, 10) : undefined,
+					fechaFactura: rawFecha ? new Date(rawFecha.split('/').reverse().join('-')) : new Date(),
+					clienteNombre: rawCliente,
+					descripcion: row['descripcion'] || row['notas'] || 'Importado desde CSV de Recuperación',
+					total: parseFloat(cleanTotal) || 0,
+					metodo: rawMetodo.toLowerCase() || 'efectivo',
+					estado: rawEstado.toLowerCase() || 'pagado',
+					ordenes: [], // Puedes expandir esto para construir la orden entera si se requiere
 				};
 
+				// Fallback to ISO parsing if standard Date breaks on Colombian ES formats
+				if (isNaN(factura.fechaFactura.getTime())) {
+					factura.fechaFactura = new Date(rawFecha); // Intentar ISO
+				}
+				if (isNaN(factura.fechaFactura.getTime())) {
+					factura.fechaFactura = new Date(); // Ultra fallback seguro
+				}
+
+				facturasMap.set(facturaKey, factura);
+			}
+		}
+
+		const imported: any[] = [];
+		for (const [key, factura] of facturasMap.entries()) {
+			try {
 				await this.facturasService.create(factura as any);
 				imported.push(factura);
 			} catch (err) {
-				errors.push({line: index + 2, error: err.message});
+				errors.push({line: -1, error: `Factura ID ${key}: ${err.message}`});
 			}
 		}
 
@@ -73,7 +108,7 @@ export class ImportadorController {
 			success: true,
 			totalImported: imported.length,
 			totalErrors: errors.length,
-			errors: errors.slice(0, 10), // Limitar logs de errores
+			errors: errors.slice(0, 10),
 		};
 	}
 }

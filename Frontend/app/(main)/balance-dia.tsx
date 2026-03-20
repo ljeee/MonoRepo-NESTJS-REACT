@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView } from 'react-native';
+import { RefreshControl, ScrollView, Platform } from 'react-native';
 import { useFacturasDia } from '@monorepo/shared';
 import { useFacturasPagosDia, useDeleteFacturaPago } from '@monorepo/shared';
-import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import type { FacturaPago } from '@monorepo/shared';
 import { formatCurrency } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -189,15 +188,6 @@ export default function BalanceDiaScreen() {
         setDeleteTarget(null);
     };
 
-    const handleExportCsv = useCallback(async () => {
-        const csv = await buildCombinedBalanceCsv(facturas, gastos);
-        const today = (() => {
-            const now = new Date();
-            return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        })();
-        downloadCsv(csv, `balance_${today}.csv`);
-    }, [facturas, gastos]);
-
     const ingresos = stats?.totalPagado ?? 0;
     const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
     const loading = loadingFacturas || loadingGastos;
@@ -219,14 +209,7 @@ export default function BalanceDiaScreen() {
                 icon="scale-balance"
                 rightContent={
                     <View className="flex-row items-center gap-2">
-                         <Button
-                            title="Exportar"
-                            icon="download"
-                            variant="secondary"
-                            size="sm"
-                            onPress={handleExportCsv}
-                            disabled={facturas.length === 0 && gastos.length === 0}
-                        />
+
                          <Button
                             title=""
                             icon="refresh"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, Switch } from 'react-native';
+import { Alert, Switch, Modal } from 'react-native';
 import { View, Text, ScrollView, TouchableOpacity, TextInput } from '../../tw';
 import { api as apiService } from '../../services/api';
 import { PizzaSabor } from '@monorepo/shared';
@@ -108,10 +108,10 @@ export default function GestionSaboresScreen() {
                         key={sabor.saborId}
                         entering={FadeInUp.delay(idx * 50)}
                     >
-                        <Card className="mb-4 p-6 bg-slate-900/50 border-white/5 mx-2 rounded-[24px]">
+                        <Card className="mb-4 p-6 bg-[#0F172A] border-white/5 mx-2 rounded-[24px] shadow-sm">
                             <View className="flex-row justify-between items-center mb-6">
                                 <View className="flex-row items-center flex-1">
-                                    <Text className="text-white text-base font-black uppercase tracking-tight mr-3" style={{ fontFamily: 'Space Grotesk' }}>
+                                    <Text className="text-white text-base font-black uppercase tracking-tight mr-3" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>
                                         {sabor.nombre}
                                     </Text>
                                     <View className="bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
@@ -141,15 +141,15 @@ export default function GestionSaboresScreen() {
                             <View className="flex-row gap-8">
                                 <View>
                                     <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5">Pequena</Text>
-                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>${sabor.recargoPequena}</Text>
+                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>${sabor.recargoPequena}</Text>
                                 </View>
                                 <View>
                                     <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5">Mediana</Text>
-                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>${sabor.recargoMediana}</Text>
+                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>${sabor.recargoMediana}</Text>
                                 </View>
                                 <View>
                                     <Text className="text-slate-500 text-[9px] font-black uppercase tracking-widest mb-1.5">Grande</Text>
-                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>${sabor.recargoGrande}</Text>
+                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk', color: '#FFFFFF' }}>${sabor.recargoGrande}</Text>
                                 </View>
                             </View>
                         </Card>
@@ -158,11 +158,12 @@ export default function GestionSaboresScreen() {
             </View>
 
             {isModalVisible && editingSabor && (
-                <View className="absolute inset-0 bg-black/90 flex items-center justify-center px-6 z-50">
-                    <Card className="w-full p-8 bg-zinc-900 border-zinc-800">
-                        <Text className="text-white text-2xl font-black mb-6 uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
-                            {editingSabor.saborId ? 'Editar Sabor' : 'Nuevo Sabor'}
-                        </Text>
+                <Modal visible={true} transparent animationType="fade" onRequestClose={() => setIsModalVisible(false)}>
+                    <View className="flex-1 bg-black/80 items-center justify-center p-4">
+                        <Card className="w-full max-w-2xl p-8 bg-[#0F172A] border border-white/10 rounded-[24px] shadow-2xl shadow-black/50">
+                            <Text className="text-white text-2xl font-black mb-6 uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
+                                {editingSabor.saborId ? 'Editar Sabor' : 'Nuevo Sabor'}
+                            </Text>
                         
                         <View className="mb-6">
                             <Input
@@ -204,7 +205,8 @@ export default function GestionSaboresScreen() {
                         </View>
                     </Card>
                 </View>
-            )}
-        </PageContainer>
-    );
+            </Modal>
+        )}
+    </PageContainer>
+  );
 }

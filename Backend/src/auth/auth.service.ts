@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import {JwtService} from '@nestjs/jwt';
 import {ConfigService} from '@nestjs/config';
 import {User} from './esquemas/user.entity';
+import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {LoginDto} from './dto/login.dto';
 import {RegisterDto} from './dto/register.dto';
 import {Role} from './roles.enum';
@@ -15,6 +16,7 @@ import {JwtPayload} from './types/jwt-payload.type';
 export class AuthService {
 	constructor(
 		@InjectRepository(User) private readonly usersRepository: Repository<User>,
+		@InjectRepository(Domiciliarios) private readonly domiciliariosRepository: Repository<Domiciliarios>,
 		private readonly jwtService: JwtService,
 		private readonly configService: ConfigService,
 	) {}
@@ -27,6 +29,19 @@ export class AuthService {
 	}
 
 	async register(dto: RegisterDto): Promise<AuthResponseDto> {
+		const isDomiciliario = dto.roles?.some(role => role === Role.Domiciliario);
+
+		if (isDomiciliario && !dto.telefono) {
+			throw new BadRequestException('El número de teléfono es obligatorio para registrar un domiciliario.');
+		}
+
+		if (isDomiciliario && dto.telefono) {
+			const existingDom = await this.domiciliariosRepository.findOne({where: {telefono: dto.telefono}});
+			if (existingDom) {
+				throw new BadRequestException('Este número de teléfono ya pertenece a un domiciliario registrado.');
+			}
+		}
+
 		const existing = await this.usersRepository.findOne({where: {username: dto.username}});
 		if (existing) {
 			throw new BadRequestException('Username ya registrado');
@@ -47,6 +62,15 @@ export class AuthService {
 			roles,
 		});
 		const saved = await this.usersRepository.save(user);
+
+		if (isDomiciliario && dto.telefono) {
+			const domiciliario = this.domiciliariosRepository.create({
+				telefono: dto.telefono,
+				domiciliarioNombre: dto.name || dto.username,
+			});
+			await this.domiciliariosRepository.save(domiciliario);
+		}
+
 		return this.toAuthResponse(saved);
 	}
 

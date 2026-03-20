@@ -21,16 +21,22 @@ export default function RegistroUsuariosScreen() {
     const { showToast } = useToast();
 
     const [loading, setLoading] = useState(false);
-    const [form, setForm] = useState<RegisterDto>({
+    const [form, setForm] = useState<RegisterDto & { telefono?: string }>({
         username: '',
         password: '',
         name: '',
         roles: [Role.Cajero],
+        telefono: '',
     });
 
     const handleRegister = async () => {
         if (!form.username || !form.password || !form.name) {
             showToast('Todos los campos son obligatorios', 'error');
+            return;
+        }
+        
+        if (form.roles?.[0] === Role.Domiciliario && !form.telefono) {
+            showToast('El teléfono es obligatorio para los domiciliarios', 'error');
             return;
         }
 
@@ -109,6 +115,17 @@ export default function RegistroUsuariosScreen() {
                                 </Picker>
                             </View>
                         </View>
+
+                        {form.roles?.[0] === Role.Domiciliario && (
+                            <Input
+                                label="Teléfono (Obligatorio para domiciliarios)"
+                                value={form.telefono || ''}
+                                onChangeText={(val) => setForm(prev => ({ ...prev, telefono: val }))}
+                                placeholder="Ej: 3001234567"
+                                keyboardType="phone-pad"
+                                leftIcon={<Icon name="phone" size={16} color="#64748B" />}
+                            />
+                        )}
 
                         <Button 
                             title={loading ? 'Registrando...' : 'Finalizar Registro'}

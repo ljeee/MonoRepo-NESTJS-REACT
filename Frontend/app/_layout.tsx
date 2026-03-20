@@ -1,6 +1,6 @@
 import { Stack, usePathname } from 'expo-router';
-import React, { useEffect } from 'react';
-import { Platform, StatusBar, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, StatusBar, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 if (Platform.OS === 'web') {
   require('../src/global.web.css');
@@ -89,17 +89,16 @@ function AppShell() {
       {isCompact && (
         <>
           <View 
-            style={{ paddingTop: insets.top }}
-            className="px-6 flex-row items-center justify-between border-b border-white/5 bg-(--color-pos-surface) z-50 min-h-[64px]"
+            style={{ paddingTop: insets.top + 16 }}
+            className="px-6 pb-4 flex-row items-center justify-between border-b border-white/5 bg-(--color-pos-surface) z-50 min-h-[80px] shadow-sm shadow-black/30"
           >
-            <View className="flex-row items-center gap-3">
-               <View className="w-8 h-8 rounded-lg bg-orange-500/20 items-center justify-center border border-orange-500/30">
-                 <Icon name="pizza" size={16} color="#F5A524" />
+            <View className="flex-row items-center">
+               <View className="w-12 h-12 rounded-2xl bg-orange-500/20 items-center justify-center border border-orange-500/30">
+                 <Icon name="pizza" size={26} color="#F5A524" />
                </View>
-               <Text className="text-white font-black tracking-widest text-sm" style={{ fontFamily: 'Space Grotesk' }}>POS PIZZA</Text>
             </View>
-            <Pressable onPress={() => setShowMobileMenu(!showMobileMenu)} className="p-2 active:bg-white/5 rounded-lg">
-               <Icon name={showMobileMenu ? "close" : "menu"} size={24} color="#94A3B8" />
+            <Pressable onPress={() => setShowMobileMenu(!showMobileMenu)} className="p-3 bg-white/5 active:bg-white/10 rounded-xl transition-colors">
+               <Icon name={showMobileMenu ? "close" : "menu"} size={28} color="#94A3B8" />
             </Pressable>
           </View>
 
@@ -110,9 +109,6 @@ function AppShell() {
                  onPress={() => setShowMobileMenu(false)} 
                />
                <View className="w-72 h-full bg-(--color-pos-surface) shadow-2xl border-r border-white/5">
-                 <View className="h-16 px-6 flex-row items-center border-b border-white/5 bg-black/10">
-                    <Text className="text-orange-500 font-black tracking-widest text-xs uppercase">Menú Principal</Text>
-                 </View>
                  <Navbar />
                </View>
             </View>
@@ -130,6 +126,23 @@ function AppShell() {
 }
 
 export default function RootLayout() {
+  const [ready, setReady] = useState(Platform.OS !== 'web');
+
+  useEffect(() => {
+      if (Platform.OS === 'web') {
+        const timer = setTimeout(() => setReady(true), 50);
+        return () => clearTimeout(timer);
+    }
+  }, []);
+
+  if (!ready) {
+      return (
+          <View style={{ flex: 1, backgroundColor: '#0C0F1A', alignItems: 'center', justifyContent: 'center' }}>
+              <ActivityIndicator size="large" color="#F5A524" />
+          </View>
+      );
+  }
+
   return (
     <ErrorBoundary>
       <SafeAreaProvider>

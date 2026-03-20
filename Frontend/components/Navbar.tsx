@@ -3,6 +3,8 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable } from '../tw';
 import { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { Animated } from '../tw/animated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBreakpoint } from '../styles/responsive';
 import Icon, { IconName } from './ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -83,7 +85,7 @@ function AccordionSection({
   return (
     <View className="mb-2">
       <Pressable
-        className={`flex-row items-center justify-between px-4 py-3.5 rounded-2xl mx-3 transition-colors will-change-pressable ${hasActive ? 'bg-orange-500/5' : 'active:bg-white/5'}`}
+        className={`flex-row items-center justify-between px-4 py-3.5 rounded-2xl mx-3 transition-colors active:opacity-70 ${hasActive ? 'bg-orange-500/5' : ''}`}
         onPress={onToggle}
       >
         <View className="flex-row items-center gap-3">
@@ -116,7 +118,7 @@ function AccordionSection({
             return (
               <Pressable
                 key={item.route}
-                className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl transition-all will-change-pressable ${active ? 'bg-orange-500/10' : 'active:bg-white/5'}`}
+                className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl transition-all active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
                 onPress={() => onNavigate(item.route)}
               >
                 <View className={`w-1 h-3 rounded-full mr-4 ${active ? 'bg-orange-500' : 'bg-transparent'}`} />
@@ -165,17 +167,22 @@ function SidebarContent({ compact }: { compact?: boolean }) {
   return (
     <>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
-        {SECTIONS.map((section, idx) => (
-          <AccordionSection
-            key={section.title}
-            section={section}
-            expanded={compact ? false : !!expanded[idx]}
-            onToggle={() => !compact && toggle(idx)}
-            pathname={pathname}
-            onNavigate={navigate}
-            compact={compact}
-          />
-        ))}
+        {SECTIONS.map((section, idx) => {
+          // Si es mobile/tablet, filtramos el ítem de Configuración POS de la sección 'Sistema'
+          const filteredItems = compact ? section.items.filter(i => i.route !== '/ajustes-negocio') : section.items;
+          
+          return (
+            <AccordionSection
+              key={section.title}
+              section={{ ...section, items: filteredItems }}
+              expanded={compact ? false : !!expanded[idx]}
+              onToggle={() => !compact && toggle(idx)}
+              pathname={pathname}
+              onNavigate={navigate}
+              compact={compact}
+            />
+          );
+        })}
       </ScrollView>
 
       <View className="p-6 border-t border-white/5">
@@ -195,15 +202,23 @@ function SidebarContent({ compact }: { compact?: boolean }) {
 export default function Navbar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const width = useSharedValue(280); 
+  const insets = useSafeAreaInsets();
+  const { isMobile, isTablet } = useBreakpoint();
+  const isCompact = isMobile || isTablet;
 
   useEffect(() => {
+    if (isCompact) {
+      setIsCollapsed(false);
+      width.value = 280;
+      return;
+    }
     AsyncStorage.getItem('@Auth:sidebarCollapsed').then((val) => {
       if (val === 'true') {
         setIsCollapsed(true);
         width.value = 88; 
       }
     });
-  }, []);
+  }, [isCompact]);
 
   const toggleCollapse = () => {
     const nextValue = !isCollapsed;
@@ -223,7 +238,7 @@ export default function Navbar() {
 
   return (
     <Animated.View 
-      style={animatedStyle}
+      style={[animatedStyle, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 20) }]}
       className={`h-full border-r border-white/5 bg-(--color-pos-surface) overflow-hidden flex-shrink-0`}
     >
       {/* Brand Header */}
@@ -242,13 +257,13 @@ export default function Navbar() {
                 >
                   POS PIZZA
                 </Text>
-                <Text className="text-[9px] text-orange-500 font-black tracking-widest uppercase mt-1">Premium Edition</Text>
+                <Text className="text-[10px] text-orange-500 font-black tracking-widest uppercase mt-1">D Firu</Text>
               </View>
             )}
           </Animated.View>
         </View>
 
-        {!isCollapsed && (
+        {!isCompact && !isCollapsed && (
             <Pressable 
                 onPress={toggleCollapse}
                 className="w-8 h-8 rounded-xl bg-white/5 items-center justify-center hover:bg-white/10 active:scale-[0.9] transition-all border border-white/5"
@@ -258,7 +273,7 @@ export default function Navbar() {
         )}
       </View>
       
-      {isCollapsed && (
+      {!isCompact && isCollapsed && (
           <Pressable 
             onPress={toggleCollapse}
             className="h-10 border-b border-white/5 items-center justify-center bg-white/5"

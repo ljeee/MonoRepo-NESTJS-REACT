@@ -120,76 +120,11 @@ export default function DomiciliariosList() {
     >
       <PageHeader
         title="Flota Logística"
-        subtitle="Gestión de domiciliarios"
+        subtitle="Monitoreo de domiciliarios y analíticas"
         icon="moped"
-        rightContent={
-          <Button
-            title="Nuevo"
-            icon="plus"
-            variant="primary"
-            size="sm"
-            onPress={openCreate}
-          />
-        }
       />
 
-      {/* ── Create / Edit form ── */}
-      {formMode !== 'closed' && (
-        <Card className="mb-8 overflow-hidden bg-slate-900 border-orange-500/20 shadow-2xl shadow-orange-500/10">
-          <View className="flex-row items-center gap-3 mb-6 p-4 bg-orange-500/10 border-b border-orange-500/10">
-            <Icon
-              name={formMode === 'create' ? 'plus-circle-outline' : 'pencil-outline'}
-              size={22}
-              color="#F5A524"
-            />
-            <Text className="text-white font-black text-base uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>
-              {formMode === 'create' ? 'Registrar Domiciliario' : 'Editar Información'}
-            </Text>
-          </View>
 
-          <View className="px-6 pb-6 gap-y-4">
-            <View className={`${isMobile ? 'flex-col' : 'flex-row'} gap-4`}>
-                <Input
-                label="Número de Contacto *"
-                value={formData.telefono}
-                onChangeText={(v) => setFormData((p) => ({ ...p, telefono: v }))}
-                keyboardType="number-pad"
-                className="flex-1"
-                editable={formMode === 'create'}
-                placeholder="Ej. 3001234567"
-                leftIcon={<Icon name="phone-outline" size={16} color="#64748B" />}
-                />
-                <Input
-                label="Nombre Completo"
-                value={formData.domiciliarioNombre}
-                onChangeText={(v) => setFormData((p) => ({ ...p, domiciliarioNombre: v }))}
-                className="flex-1"
-                placeholder="Nombre del conductor"
-                leftIcon={<Icon name="account-outline" size={16} color="#64748B" />}
-                />
-            </View>
-
-            {formError ? (
-                <View className="flex-row items-center gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                    <Icon name="alert-circle-outline" size={16} color="#EF4444" />
-                    <Text className="text-red-400 text-xs font-black uppercase tracking-tight">{formError}</Text>
-                </View>
-            ) : null}
-
-            <View className="flex-row justify-end gap-3 mt-2">
-                <Button title="Cancelar" onPress={resetForm} variant="ghost" />
-                <Button
-                title={formLoading ? 'Guardando...' : 'Guardar Cambios'}
-                onPress={handleSave}
-                variant="primary"
-                icon="content-save-outline"
-                loading={formLoading}
-                className="px-8"
-                />
-            </View>
-          </View>
-        </Card>
-      )}
 
       {/* ── Search ── */}
       <View className="flex-row items-end gap-3 mb-8">

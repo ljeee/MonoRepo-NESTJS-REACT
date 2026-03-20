@@ -99,7 +99,7 @@ export default function MonitoreoScreen() {
                     
                     {/* CARD 1: SYNC STATUS */}
                     <View className="flex-1 min-w-[320px]">
-                        <Card className="h-full p-8 border-white/5 bg-slate-900 overflow-hidden relative">
+                        <Card className="h-full p-8 border-white/5 bg-pos-surface overflow-hidden relative">
                             <View className="absolute top-0 right-0 p-4 opacity-10">
                                 <Icon name="sync" size={80} color="#F5A524" />
                             </View>
@@ -107,7 +107,7 @@ export default function MonitoreoScreen() {
                             <View className="flex-row items-center justify-between mb-8">
                                 <View className="flex-row items-center gap-4">
                                     <View className={`w-3 h-3 rounded-full ${hasItems ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500 shadow-lg shadow-emerald-500/50'}`} />
-                                    <Text className="text-white text-lg font-black uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>Sincronización</Text>
+                                    <Text className="text-white text-lg font-black uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>Estado Sincronización</Text>
                                 </View>
                                 <Badge 
                                     label={hasItems ? `${queue.length} PENDIENTES` : 'AL DÍA'} 
@@ -135,7 +135,7 @@ export default function MonitoreoScreen() {
 
                     {/* CARD 2: DATA BACKUP / IMPORT */}
                     <View className="flex-1 min-w-[320px]">
-                        <Card className="h-full p-8 border-white/5 bg-slate-900 overflow-hidden relative">
+                        <Card className="h-full p-8 border-white/5 bg-pos-surface overflow-hidden relative">
                              <View className="absolute top-0 right-0 p-4 opacity-10">
                                 <Icon name="database-import" size={80} color="#F5A524" />
                             </View>

@@ -130,7 +130,7 @@ export default function AjustesNegocioScreen() {
                                     {renderInput('Teléfono', 'phone-outline', 'telefono', '300 000 0000', 'phone-pad')}
                                 </View>
                                 <View className="flex-1">
-                                    {renderInput('Municipio', 'city-variant-outline', 'municipio', 'Cali')}
+                                    {renderInput('Municipio', 'city-variant-outline', 'municipio', 'Medellin')}
                                 </View>
                             </View>
                         </View>

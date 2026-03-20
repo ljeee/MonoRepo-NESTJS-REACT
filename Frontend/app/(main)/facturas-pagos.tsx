@@ -137,26 +137,10 @@ export default function FacturasPagosScreen() {
                 placeholder="Ej. Pago Proveedor"
                 className="flex-1"
                 size="md"
-                leftIcon={<Icon name="tag-outline" size={16} color="#64748B" />}
                 />
             </View>
 
             <View className={`${isMobile ? 'flex-col' : 'flex-row'} gap-4`}>
-                <View className="flex-1">
-                    <Text className="text-white/60 font-black text-[10px] uppercase tracking-widest mb-2 ml-1">Estado del Pago</Text>
-                    <View className="flex-row gap-2">
-                        {['pendiente', 'pagado'].map((e) => (
-                        <TouchableOpacity
-                            key={e}
-                            onPress={() => setEstado(e)}
-                            className={`flex-1 py-3 items-center rounded-xl border ${estado === e ? 'bg-orange-500/20 border-orange-500' : 'bg-white/5 border-white/10'}`}
-                        >
-                            <Text className={`text-xs font-black uppercase ${estado === e ? 'text-orange-400' : 'text-slate-500'}`}>{e}</Text>
-                        </TouchableOpacity>
-                        ))}
-                    </View>
-                </View>
-
                 <View className="flex-1">
                     <Text className="text-white/60 font-black text-[10px] uppercase tracking-widest mb-2 ml-1">Medio de Pago</Text>
                     <View className="flex-row gap-2">
@@ -300,11 +284,11 @@ export default function FacturasPagosScreen() {
                     </View>
 
                     <View className="flex-1">
-                        <View className="flex-row justify-between items-start mb-1">
-                            <Text className="text-white font-black text-base uppercase" style={{ fontFamily: 'Space Grotesk' }}>
+                        <View className="flex-row justify-between items-start mb-1 gap-4">
+                            <Text className="text-white font-black text-base uppercase flex-1" style={{ fontFamily: 'Space Grotesk' }}>
                                 {item.nombreGasto || 'Sin concepto'}
                             </Text>
-                            <Text className="text-(--color-pos-primary) font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>
+                            <Text className="text-(--color-pos-primary) font-black text-xl flex-shrink-0" style={{ fontFamily: 'Space Grotesk' }}>
                                 ${formatCurrency(item.total || 0)}
                             </Text>
                         </View>

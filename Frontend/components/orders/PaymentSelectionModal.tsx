@@ -24,7 +24,7 @@ export default function PaymentSelectionModal({ visible, onClose, onSelect, load
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
             <Pressable className="flex-1 bg-black/60 justify-center items-center p-5" onPress={onClose}>
                 <Pressable 
-                    className="bg-(--color-pos-surface) rounded-3xl p-8 w-full max-w-sm border border-white/5 shadow-2xl" 
+                    className="bg-(--color-pos-surface) rounded-3xl p-6 w-full max-w-sm border border-white/5 shadow-2xl" 
                     onPress={(e) => e.stopPropagation()}
                 >
                     <Text className="text-white font-black text-2xl mb-2" style={{ fontFamily: 'Space Grotesk' }}>Finalizar Venta</Text>
@@ -37,8 +37,8 @@ export default function PaymentSelectionModal({ visible, onClose, onSelect, load
                                 <TouchableOpacity
                                     key={m.id}
                                     onPress={() => setSelected(m.id)}
-                                    className={`flex-row items-center p-4 rounded-2xl border-2 transition-all ${
-                                        isSelected ? 'bg-white/10 border-(--color-pos-primary)' : 'bg-black/20 border-white/5'
+                                    className={`flex-row items-center p-4 rounded-2xl border-2 ${
+                                        isSelected ? 'bg-white/10 border-[#F5A524]' : 'bg-black/20 border-white/5'
                                     }`}
                                 >
                                     <View className="w-10 h-10 rounded-xl items-center justify-center mr-4" style={{ backgroundColor: m.color + '20' }}>
@@ -53,12 +53,13 @@ export default function PaymentSelectionModal({ visible, onClose, onSelect, load
 
                     <View className="flex-row gap-3">
                         <View className="flex-1">
-                            <Button title="Cancelar" variant="ghost" onPress={onClose} disabled={loading} />
+                            <Button title="Cancelar" variant="ghost" size="sm" onPress={onClose} disabled={loading} />
                         </View>
                         <View className="flex-1">
                             <Button 
                                 title="Confirmar" 
                                 variant="primary" 
+                                size="sm"
                                 onPress={() => onSelect(selected)} 
                                 loading={loading} 
                             />

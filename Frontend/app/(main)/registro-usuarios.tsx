@@ -30,11 +30,12 @@ export default function RegistroUsuariosScreen() {
 
     const [loading, setLoading] = useState(false);
 
-    const [form, setForm] = useState<RegisterDto>({
+    const [form, setForm] = useState<RegisterDto & { telefono?: string }>({
         username: '',
         password: '',
         name: '',
         roles: [Role.Cajero],
+        telefono: '',
     });
 
     const handleRegister = async () => {
@@ -45,6 +46,11 @@ export default function RegistroUsuariosScreen() {
 
         if (form.password.length < 8) {
             showToast('La contraseña debe tener al menos 8 caracteres', 'error');
+            return;
+        }
+
+        if (form.roles?.[0] === Role.Domiciliario && !form.telefono) {
+            showToast('El teléfono es obligatorio para los domiciliarios', 'error');
             return;
         }
 
@@ -124,6 +130,20 @@ export default function RegistroUsuariosScreen() {
                                 </Picker>
                             </View>
                         </View>
+
+                        {form.roles?.[0] === Role.Domiciliario && (
+                            <View>
+                                <Text className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Teléfono (Obligatorio para domiciliarios)</Text>
+                                <TextInput
+                                    className="bg-black/20 rounded-2xl border-2 border-white/5 px-5 py-4 text-white text-lg"
+                                    value={form.telefono || ''}
+                                    onChangeText={(val) => setForm(prev => ({ ...prev, telefono: val }))}
+                                    placeholder="Ej: 3001234567"
+                                    placeholderTextColor="#475569"
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
+                        )}
 
                         <TouchableOpacity
                             className={`bg-(--color-pos-primary) py-5 rounded-2xl items-center mt-4 shadow-amber-500/20 active:scale-[0.98] transition-all ${loading ? 'opacity-60' : ''}`}

@@ -2,8 +2,6 @@ import React, { useCallback, useState } from 'react';
 import { FlatList } from 'react-native';
 import { View, Text } from '../../tw';
 import { useFacturasRango } from '@monorepo/shared';
-import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
-import { exportFacturasPdf } from '../../utils/exportData';
 import { validateFlexibleDateRange } from '@monorepo/shared';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
 import {
@@ -56,24 +54,7 @@ export default function FacturasRangoScreen() {
     await updateFactura(facturaId, { total: newTotal });
   }, [updateFactura]);
 
-  const handleExportCsv = useCallback(async () => {
-    if (data.length === 0) return;
-    const csv = await buildFacturasBackupCsv(data);
-    const filename = `facturas_${from || 'inicio'}_${to || 'fin'}.csv`;
-    downloadCsv(csv, filename);
-  }, [data, from, to]);
 
-  const handleExportPdf = useCallback(() => {
-    if (data.length === 0) return;
-    exportFacturasPdf(data, `${from || 'inicio'} a ${to || 'fin'}`);
-  }, [data, from, to]);
-
-  const handleExportContabilidad = useCallback(async () => {
-    if (data.length === 0) return;
-    const csv = await buildCombinedBalanceCsv(data, []);
-    const filename = `contabilidad_${from || 'inicio'}_${to || 'fin'}.csv`;
-    downloadCsv(csv, filename);
-  }, [data, from, to]);
 
   const renderFacturaItem = useCallback(({ item }: { item: FacturaItem }) => (
     <View className="flex-1 pb-4">
@@ -115,32 +96,6 @@ export default function FacturasRangoScreen() {
             />
 
             {/* Actions Bar (Exports) */}
-            <View className="flex-row items-center mb-10 gap-4 flex-wrap">
-              <Button
-                title="PDF"
-                icon="chart-bar"
-                variant="outline"
-                size="sm"
-                onPress={handleExportPdf}
-                disabled={data.length === 0}
-              />
-              <Button
-                title="CSV Backup"
-                icon="download"
-                variant="outline"
-                size="sm"
-                onPress={handleExportCsv}
-                disabled={data.length === 0}
-              />
-              <Button
-                title="CSV Contabilidad"
-                icon="scale-balance"
-                variant="outline"
-                size="sm"
-                onPress={handleExportContabilidad}
-                disabled={data.length === 0}
-              />
-            </View>
 
             {/* Date filter */}
             <View className="flex-row gap-4 mb-8 flex-wrap items-end">
