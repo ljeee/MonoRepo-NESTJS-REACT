@@ -57,5 +57,15 @@
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"
   },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-musl": "4.0.0",
+    "@tailwindcss/oxide-linux-x64-gnu": "4.0.0",
+    "@tailwindcss/oxide-linux-arm64-musl": "4.0.0",
+    "@tailwindcss/oxide-linux-arm64-gnu": "4.0.0",
+    "lightningcss-linux-x64-musl": "1.28.2",
+    "lightningcss-linux-x64-gnu": "1.28.2",
+    "lightningcss-linux-arm64-musl": "1.28.2",
+    "lightningcss-linux-arm64-gnu": "1.28.2"
+  },
   "private": true
 }
