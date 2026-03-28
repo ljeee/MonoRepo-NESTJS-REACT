@@ -29,6 +29,7 @@ export default function RegistroUsuariosScreen() {
     }, [user, router, showToast]);
 
     const [loading, setLoading] = useState(false);
+    const [apiError, setApiError] = useState<string | null>(null);
 
     const [form, setForm] = useState<RegisterDto & { telefono?: string }>({
         username: '',
@@ -39,6 +40,7 @@ export default function RegistroUsuariosScreen() {
     });
 
     const handleRegister = async () => {
+        setApiError(null);
         if (!form.username || !form.password || !form.name) {
             showToast('Todos los campos son obligatorios', 'error');
             return;
@@ -65,8 +67,10 @@ export default function RegistroUsuariosScreen() {
                 roles: [Role.Cajero],
             });
         } catch (error: any) {
-            const msg = error.response?.data?.message || 'Error al registrar usuario';
-            showToast(Array.isArray(msg) ? msg[0] : msg, 'error');
+            const rawMsg = error.response?.data?.message || error.message || 'Error al registrar usuario';
+            const msg = Array.isArray(rawMsg) ? rawMsg.join(' • ') : rawMsg;
+            setApiError(msg);
+            showToast('Verifique los datos del formulario', 'error');
         } finally {
             setLoading(false);
         }
@@ -142,6 +146,13 @@ export default function RegistroUsuariosScreen() {
                                     placeholderTextColor="#475569"
                                     keyboardType="phone-pad"
                                 />
+                            </View>
+                        )}
+
+                        {apiError && (
+                            <View className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex-row items-center gap-3 mt-2">
+                                <Icon name="alert-circle-outline" size={24} color="#EF4444" />
+                                <Text className="flex-1 text-red-400 font-bold leading-tight" style={{ fontFamily: 'Outfit' }}>{apiError}</Text>
                             </View>
                         )}
 

@@ -233,15 +233,15 @@ const ProductItem = React.memo(({
         </TouchableOpacity>
 
         {isExpanded && (
-          <View className="bg-black/20 p-2 pt-0">
-            <View className="flex-row flex-wrap -mx-1">
+          <View className="bg-black/20 p-2">
+            <View className="flex-row flex-wrap gap-2">
               {sortedVariantes.length > 0 ? (
                 sortedVariantes
                 .filter((v) => v.activo)
                 .map((variante) => (
-                  <View key={variante.varianteId} className="w-full sm:w-1/2 p-1">
+                  <View key={variante.varianteId} style={{ flexGrow: 1, minWidth: 130, flexBasis: '48%' }}>
                     <TouchableOpacity
-                      className="flex-row items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 h-full active:bg-white/10"
+                      className="flex-row items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 h-full active:bg-(--color-pos-primary)/10 active:border-(--color-pos-primary)/30 transition-all"
                       onPress={() => {
                         if (producto.categoria === 'Pizzas') {
                           setSelectedProducto(producto);
@@ -253,13 +253,13 @@ const ProductItem = React.memo(({
                       }}
                     >
                       <View className="flex-1 mr-2">
-                        <Text className="text-slate-200 font-bold text-xs" numberOfLines={2}>{variante.nombre}</Text>
-                        <Text className="text-(--color-pos-primary) font-black text-[10px]" style={{ fontFamily: 'Space Grotesk' }}>
+                        <Text className="text-white font-black text-xs uppercase tracking-tight leading-tight" numberOfLines={2}>{variante.nombre}</Text>
+                        <Text className="text-(--color-pos-primary) font-black text-xs mt-1" style={{ fontFamily: 'Space Grotesk' }}>
                           ${formatCurrency(Number(variante.precio))}
                         </Text>
                       </View>
-                      <View className="w-7 h-7 bg-(--color-pos-primary) rounded-lg items-center justify-center shadow-lg shadow-amber-500/30">
-                        <Icon name="plus" size={16} color="#000" />
+                      <View className="w-8 h-8 bg-(--color-pos-primary) rounded-xl items-center justify-center shadow-lg shadow-amber-500/40">
+                        <Icon name="plus" size={18} color="#000" />
                       </View>
                     </TouchableOpacity>
                   </View>

@@ -21,6 +21,7 @@ export default function RegistroUsuariosScreen() {
     const { showToast } = useToast();
 
     const [loading, setLoading] = useState(false);
+    const [apiError, setApiError] = useState<string | null>(null);
     const [form, setForm] = useState<RegisterDto & { telefono?: string }>({
         username: '',
         password: '',
@@ -30,6 +31,7 @@ export default function RegistroUsuariosScreen() {
     });
 
     const handleRegister = async () => {
+        setApiError(null);
         if (!form.username || !form.password || !form.name) {
             showToast('Todos los campos son obligatorios', 'error');
             return;
@@ -46,7 +48,10 @@ export default function RegistroUsuariosScreen() {
             showToast('Usuario registrado exitosamente', 'success');
             router.back();
         } catch (error: any) {
-            showToast('Error al registrar usuario', 'error');
+            const rawMsg = error.response?.data?.message || error.message || 'Error al registrar usuario';
+            const msg = Array.isArray(rawMsg) ? rawMsg.join(' • ') : rawMsg;
+            setApiError(msg);
+            showToast('Verifique los datos del formulario', 'error');
         } finally {
             setLoading(false);
         }
@@ -125,6 +130,13 @@ export default function RegistroUsuariosScreen() {
                                 keyboardType="phone-pad"
                                 leftIcon={<Icon name="phone" size={16} color="#64748B" />}
                             />
+                        )}
+
+                        {apiError && (
+                            <View className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex-row items-center gap-3">
+                                <Icon name="alert-circle-outline" size={24} color="#EF4444" />
+                                <Text className="flex-1 text-red-400 font-bold leading-tight" style={{ fontFamily: 'Outfit' }}>{apiError}</Text>
+                            </View>
                         )}
 
                         <Button 

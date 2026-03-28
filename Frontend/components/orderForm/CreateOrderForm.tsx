@@ -329,7 +329,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       >
         <View className="flex-row flex-wrap -mx-3 items-start">
           {/* LEFT COLUMN: Header & Menu */}
-          <View className="w-full lg:w-[73%] px-3">
+          <View className="w-full lg:w-[65%] px-3">
             <View className={`bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl mb-6 ${isCompact ? 'p-3' : ''}`}>
               <View className="flex-row justify-between items-center mb-4">
                 <Text className={`text-2xl font-black text-white tracking-tighter ${isCompact ? 'text-xl' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>
@@ -510,7 +510,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
           </View>
 
           {/* RIGHT COLUMN: Cart & Observations */}
-          <View className="w-full lg:w-[25%] px-3 sticky lg:top-5 self-start lg:ml-[2%]">
+          <View className="w-full lg:w-[32%] px-3 sticky lg:top-5 self-start lg:ml-[3%]">
             <View className="bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl">
               {/* =============== CARRITO / BALANCE =============== */}
               <CartPanel

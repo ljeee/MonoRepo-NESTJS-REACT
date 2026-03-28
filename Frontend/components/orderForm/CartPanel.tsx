@@ -37,51 +37,58 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
 
       <ScrollView className="max-h-72" nestedScrollEnabled>
         {items.map((item) => (
-          <View key={item.id} className="flex-row items-center py-3 border-b border-white/5">
-            <View className="flex-1 mr-2">
-              <Text className="text-white font-bold text-base" numberOfLines={1}>
-                {item.productoNombre}
+          <View key={item.id} className="py-3.5 border-b border-white/10">
+            {/* Top Row: Name and Delete */}
+            <View className="flex-row justify-between items-start mb-1">
+              <View className="flex-1 mr-2">
+                 <Text className="text-white font-black text-sm uppercase tracking-tight" numberOfLines={2}>
+                   {item.productoNombre}
+                 </Text>
+                 <Text className="text-slate-500 text-[10px] uppercase font-bold italic">{item.varianteNombre}</Text>
+              </View>
+              <TouchableOpacity 
+                onPress={() => onRemove(item.id)} 
+                className="w-7 h-7 items-center justify-center rounded-lg bg-red-500/10 active:bg-red-500/20"
+              >
+                <Text className="text-red-500 font-bold text-xs">✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bottom Row: Controls and Price */}
+            <View className="flex-row items-center justify-between mt-2">
+              <View className="flex-row items-center bg-black/30 rounded-xl p-1 px-2 border border-white/5">
+                <TouchableOpacity
+                  onPress={() =>
+                    item.cantidad > 1
+                      ? onUpdateCantidad(item.id, item.cantidad - 1)
+                      : onRemove(item.id)
+                  }
+                  className="w-6 h-6 items-center justify-center rounded-lg bg-white/5 active:bg-white/10"
+                >
+                  <Text className="text-white font-black">−</Text>
+                </TouchableOpacity>
+
+                <Text className="text-white font-black mx-3 text-xs">{item.cantidad}</Text>
+
+                <TouchableOpacity
+                  onPress={() => onUpdateCantidad(item.id, item.cantidad + 1)}
+                  className="w-6 h-6 items-center justify-center rounded-lg bg-white/5 active:bg-white/10"
+                >
+                  <Text className="text-white font-black">+</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-(--color-pos-primary) font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>
+                ${formatCurrency(item.precioUnitario * item.cantidad)}
               </Text>
-              <Text className="text-slate-400 text-xs uppercase font-medium">{item.varianteNombre}</Text>
-              {item.sabores && item.sabores.length > 0 && (
-                <Text className="text-(--color-pos-primary) text-[10px] font-bold mt-0.5" numberOfLines={1}>
-                  SABORES: {item.sabores.join(', ')}
-                </Text>
-              )}
             </View>
 
-            <View className="flex-row items-center bg-black/20 rounded-lg p-1 mr-3">
-              <TouchableOpacity
-                onPress={() =>
-                  item.cantidad > 1
-                    ? onUpdateCantidad(item.id, item.cantidad - 1)
-                    : onRemove(item.id)
-                }
-                className="w-7 h-7 items-center justify-center rounded-md bg-white/5 active:bg-white/10"
-              >
-                <Text className="text-white font-bold">−</Text>
-              </TouchableOpacity>
-
-              <Text className="text-white font-black mx-3 text-sm">{item.cantidad}</Text>
-
-              <TouchableOpacity
-                onPress={() => onUpdateCantidad(item.id, item.cantidad + 1)}
-                className="w-7 h-7 items-center justify-center rounded-md bg-white/5 active:bg-white/10"
-              >
-                <Text className="text-white font-bold">+</Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text className="text-white font-black text-sm w-20 text-right">
-              ${formatCurrency(item.precioUnitario * item.cantidad)}
-            </Text>
-
-            <TouchableOpacity 
-              onPress={() => onRemove(item.id)} 
-              className="ml-3 w-8 h-8 items-center justify-center rounded-full bg-red-500/10 active:bg-red-500/20"
-            >
-              <Text className="text-red-500 font-bold text-xs">✕</Text>
-            </TouchableOpacity>
+            {/* Flavors (if any) */}
+            {item.sabores && item.sabores.length > 0 && (
+              <Text className="text-slate-400 text-[9px] font-bold mt-2 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-md" numberOfLines={1}>
+                {item.sabores.join(' — ')}
+              </Text>
+            )}
           </View>
         ))}
       </ScrollView>

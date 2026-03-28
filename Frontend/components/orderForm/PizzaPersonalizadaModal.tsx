@@ -7,9 +7,17 @@ import { formatCurrency } from '@monorepo/shared';
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getRecargo(sabor: PizzaSabor, varianteNombre: string): number {
-  if (varianteNombre === 'Pequeña') return Number(sabor.recargoPequena);
-  if (varianteNombre === 'Mediana') return Number(sabor.recargoMediana);
-  return Number(sabor.recargoGrande);
+  const v = (varianteNombre || '').toLowerCase().trim();
+  
+  if (v.includes('pequeña') || v.includes('pequena') || v.includes('personal')) {
+    return Number(sabor.recargoPequena) || 0;
+  }
+  if (v.includes('mediana') || v.includes('mediano')) {
+    return Number(sabor.recargoMediana) || 0;
+  }
+  
+  // Por defecto (Grande, Familiar, etc.)
+  return Number(sabor.recargoGrande) || 0;
 }
 
 function calcularPrecio(
