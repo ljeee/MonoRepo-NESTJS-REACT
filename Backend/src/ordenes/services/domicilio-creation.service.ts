@@ -102,4 +102,38 @@ export class DomicilioCreationService {
 			data.costoDomicilio,
 		);
 	}
+
+	async updateDomicilioPorOrden(ordenId: number, data: Partial<CreateOrdenesDto>, facturaId?: number): Promise<void> {
+		const domicilio = await this.domiciliosRepo.findOne({where: {ordenId}});
+		
+		if (!domicilio) {
+			// Si deciden cambiar a domicilio una orden existente o no se habia creado
+			if (data.telefonoCliente && data.telefonoDomiciliario && facturaId) {
+				await this.procesarDomicilio(data as CreateOrdenesDto, facturaId, ordenId);
+			}
+			return;
+		}
+
+		const updateData: Partial<Domicilios> = {};
+		if (data.direccionCliente !== undefined) updateData.direccionEntrega = data.direccionCliente;
+		if (data.telefonoCliente !== undefined) updateData.telefono = data.telefonoCliente;
+		if (data.telefonoDomiciliario !== undefined) updateData.telefonoDomiciliarioAsignado = data.telefonoDomiciliario;
+		if (data.costoDomicilio !== undefined) updateData.costoDomicilio = Number(data.costoDomicilio) || 0;
+
+		if (Object.keys(updateData).length > 0) {
+			await this.domiciliosRepo.update(domicilio.domicilioId, updateData);
+		}
+
+		if (data.telefonoCliente !== undefined || data.nombreCliente !== undefined || data.direccionCliente !== undefined) {
+			await this.upsertCliente(
+				data.telefonoCliente ?? domicilio.telefono,
+				data.nombreCliente,
+				data.direccionCliente ?? domicilio.direccionEntrega
+			);
+		}
+
+		if (data.telefonoDomiciliario !== undefined) {
+			await this.upsertDomiciliario(data.telefonoDomiciliario);
+		}
+	}
 }

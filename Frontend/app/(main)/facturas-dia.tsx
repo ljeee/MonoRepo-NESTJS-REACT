@@ -17,9 +17,9 @@ export default function FacturasDiaScreen() {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-        await updateFactura(facturaId, { estado: 'pagado', metodo });
+         await updateFactura(facturaId, { estado: 'pagado', metodo });
       } else {
-        await updateEstado(facturaId, nuevoEstado);
+         await updateEstado(facturaId, nuevoEstado);
       }
       setUpdating(null);
       return;
@@ -32,7 +32,30 @@ export default function FacturasDiaScreen() {
     await updateFactura(facturaId, { total: newTotal });
   };
 
+  const handleExportPdf = () => {
+    if (!data || data.length === 0) return;
+    exportFacturasPdf(data, 'Hoy');
+  };
 
+  const handleExportBackup = async () => {
+    if (!data || data.length === 0) return;
+    const csv = await buildFacturasBackupCsv(data);
+    const today = (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    })();
+    downloadCsv(csv, `facturas_${today}.csv`);
+  };
+
+  const handleExportContabilidad = async () => {
+    if (!data || data.length === 0) return;
+    const csv = await buildCombinedBalanceCsv(data, []);
+    const today = (() => {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    })();
+    downloadCsv(csv, `contabilidad_${today}.csv`);
+  };
 
   return (
     <PageContainer
@@ -59,7 +82,6 @@ export default function FacturasDiaScreen() {
           />
         }
       />
-
 
 
       {/* Stats */}

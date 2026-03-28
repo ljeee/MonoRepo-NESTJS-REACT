@@ -325,116 +325,129 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         className="flex-1"
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets={true}
-        contentContainerClassName="pt-2 px-5 pb-32 w-full self-stretch"
+        contentContainerClassName="pt-2 px-5 pb-32 max-w-7xl mx-auto w-full"
       >
-        <View className={`bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl ${isCompact ? 'p-3' : ''}`}>
-          <View className="flex-row justify-between items-center mb-4">
-            <Text className={`text-2xl font-black text-white tracking-tighter ${isCompact ? 'text-xl' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>
-              {mode === 'edit' ? 'Editar Orden' : 'Nueva Orden'}
-            </Text>
-            {isCompact && (
-               <Badge label={formState.tipoPedido} variant="info" size="sm" />
-            )}
-          </View>
-
-          <View className="flex-row flex-wrap -mx-1">
-            {/* TIPO DE PEDIDO */}
-            <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
-              <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Tipo</Text>
-              <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
-                <Picker
-                  selectedValue={formState.tipoPedido}
-                  enabled={mode === 'create'}
-                  onValueChange={(val) => {
-                    const tipoPedido = val as 'mesa' | 'domicilio' | 'llevar';
-                    updateForm({ 
-                        tipoPedido,
-                        selectedAddress: '',
-                        newAddress: '',
-                        telefonoCliente: '',
-                        telefonoDomiciliario: '',
-                        costoDomicilio: '',
-                    });
-                  }}
-                  style={{ color: 'white' }}
-                  itemStyle={{ color: 'white', fontSize: 14 }}
-                  dropdownIconColor="#94A3B8"
-                >
-                  <Picker.Item label="Domicilio" value="domicilio" />
-                  <Picker.Item label="Llevar" value="llevar" />
-                  <Picker.Item label="Mesa" value="mesa" />
-                </Picker>
+        <View className="flex-row flex-wrap -mx-3 items-start">
+          {/* LEFT COLUMN: Header & Menu */}
+          <View className="w-full lg:w-[73%] px-3">
+            <View className={`bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl mb-6 ${isCompact ? 'p-3' : ''}`}>
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className={`text-2xl font-black text-white tracking-tighter ${isCompact ? 'text-xl' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>
+                  {mode === 'edit' ? 'Editar Orden' : 'Nueva Orden'}
+                </Text>
+                {isCompact && (
+                  <Badge label={formState.tipoPedido} variant="info" size="sm" />
+                )}
               </View>
-            </View>
 
-            {/* TELEFONO (Solo Domicilio) */}
-            {formState.tipoPedido === 'domicilio' && (
-              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
-                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Teléfono</Text>
-                <TextInput
-                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                  value={formState.telefonoCliente}
-                  onChangeText={(val) => updateForm({ telefonoCliente: val.replace(/\s/g, '') })}
-                  placeholder="321..."
-                  placeholderTextColor="#475569"
-                  keyboardType="numeric"
-                />
-              </View>
-            )}
-
-            {/* NOMBRE / MESA */}
-            <View className={`px-1 mb-3 ${isCompact ? 'w-full' : (formState.tipoPedido === 'domicilio' ? 'w-2/4' : 'w-3/4')}`}>
-              <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">{formState.tipoPedido === 'mesa' ? 'Mesa' : 'Cliente'}</Text>
-              {formState.tipoPedido === 'mesa' ? (
-                <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
-                  <Picker
-                    selectedValue={formState.numeroMesa}
-                    onValueChange={(val) => {
-                      updateForm({ numeroMesa: val, nombreCliente: val });
-                    }}
-                    style={{ color: 'white' }}
-                    itemStyle={{ color: 'white', fontSize: 14 }}
-                    dropdownIconColor="#94A3B8"
-                  >
-                    <Picker.Item label="Seleccione mesa" value="" color="#64748B" />
-                    {[...Array(15)].map((_, i) => <Picker.Item key={`mesaPicker-${i + 1}`} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
-                  </Picker>
+              <View className="flex-row flex-wrap -mx-1">
+                {/* TIPO DE PEDIDO */}
+                <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+                  <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Tipo</Text>
+                  <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
+                    <Picker
+                      selectedValue={formState.tipoPedido}
+                      enabled={mode === 'create'}
+                      onValueChange={(val) => {
+                        const tipoPedido = val as 'mesa' | 'domicilio' | 'llevar';
+                        updateForm({ 
+                            tipoPedido,
+                            selectedAddress: '',
+                            newAddress: '',
+                            telefonoCliente: '',
+                            telefonoDomiciliario: '',
+                            costoDomicilio: '',
+                        });
+                      }}
+                      style={{ color: 'white' }}
+                      itemStyle={{ color: 'white', fontSize: 14 }}
+                      dropdownIconColor="#94A3B8"
+                    >
+                      <Picker.Item label="Domicilio" value="domicilio" />
+                      <Picker.Item label="Llevar" value="llevar" />
+                      <Picker.Item label="Mesa" value="mesa" />
+                    </Picker>
+                  </View>
                 </View>
-              ) : (
-                <TextInput
-                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                  value={resolvedNombreCliente}
-                  onChangeText={(val) => updateForm({ nombreCliente: val })}
-                  placeholder="Nombre"
-                  placeholderTextColor="#475569"
-                  editable={!client || !client.clienteNombre}
-                />
-              )}
-            </View>
-          </View>
 
-          {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
-          {formState.tipoPedido === 'domicilio' && (
-            <View className="flex-row flex-wrap -mx-1">
-              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
-                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
-                {hasClienteDirecciones ? (
-                  <View className="flex-col gap-1">
+                {/* TELEFONO (Solo Domicilio) */}
+                {formState.tipoPedido === 'domicilio' && (
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+                    <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Teléfono</Text>
+                    <TextInput
+                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                      value={formState.telefonoCliente}
+                      onChangeText={(val) => updateForm({ telefonoCliente: val.replace(/\s/g, '') })}
+                      placeholder="321..."
+                      placeholderTextColor="#475569"
+                      keyboardType="numeric"
+                    />
+                  </View>
+                )}
+
+                {/* NOMBRE / MESA */}
+                <View className={`px-1 mb-3 ${isCompact ? 'w-full' : (formState.tipoPedido === 'domicilio' ? 'w-2/4' : 'w-3/4')}`}>
+                  <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">{formState.tipoPedido === 'mesa' ? 'Mesa' : 'Cliente'}</Text>
+                  {formState.tipoPedido === 'mesa' ? (
                     <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
                       <Picker
-                        selectedValue={formState.selectedAddress}
-                        onValueChange={(val) => updateForm({ selectedAddress: val })}
+                        selectedValue={formState.numeroMesa}
+                        onValueChange={(val) => {
+                          updateForm({ numeroMesa: val, nombreCliente: val });
+                        }}
                         style={{ color: 'white' }}
                         itemStyle={{ color: 'white', fontSize: 14 }}
                         dropdownIconColor="#94A3B8"
                       >
-                        <Picker.Item label="Seleccionar Dirección" value="" color="#64748B" />
-                        {(client?.direcciones || [])
-                          .map((dir) => <Picker.Item key={dir.id} label={dir.direccion} value={dir.direccion} />)}
-                        <Picker.Item label="+ Nueva dirección..." value="__nueva__" />
+                        <Picker.Item label="Seleccione mesa" value="" color="#64748B" />
+                        {[...Array(15)].map((_, i) => <Picker.Item key={`mesaPicker-${i + 1}`} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
                       </Picker>
                     </View>
-                    {formState.selectedAddress === '__nueva__' && (
+                  ) : (
+                    <TextInput
+                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                      value={resolvedNombreCliente}
+                      onChangeText={(val) => updateForm({ nombreCliente: val })}
+                      placeholder="Nombre"
+                      placeholderTextColor="#475569"
+                      editable={!client || !client.clienteNombre}
+                    />
+                  )}
+                </View>
+              </View>
+
+              {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
+              {formState.tipoPedido === 'domicilio' && (
+                <View className="flex-row flex-wrap -mx-1">
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
+                    <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
+                    {hasClienteDirecciones ? (
+                      <View className="flex-col gap-1">
+                        <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
+                          <Picker
+                            selectedValue={formState.selectedAddress}
+                            onValueChange={(val) => updateForm({ selectedAddress: val })}
+                            style={{ color: 'white' }}
+                            itemStyle={{ color: 'white', fontSize: 14 }}
+                            dropdownIconColor="#94A3B8"
+                          >
+                            <Picker.Item label="Seleccionar Dirección" value="" color="#64748B" />
+                            {(client?.direcciones || [])
+                              .map((dir) => <Picker.Item key={dir.id} label={dir.direccion} value={dir.direccion} />)}
+                            <Picker.Item label="+ Nueva dirección..." value="__nueva__" />
+                          </Picker>
+                        </View>
+                        {formState.selectedAddress === '__nueva__' && (
+                          <TextInput
+                            className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                            value={formState.newAddress}
+                            onChangeText={(val) => updateForm({ newAddress: val })}
+                            placeholder="Calle..."
+                            placeholderTextColor="#475569"
+                          />
+                        )}
+                      </View>
+                    ) : (
                       <TextInput
                         className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
                         value={formState.newAddress}
@@ -444,99 +457,98 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                       />
                     )}
                   </View>
-                ) : (
-                  <TextInput
-                    className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                    value={formState.newAddress}
-                    onChangeText={(val) => updateForm({ newAddress: val })}
-                    placeholder="Calle..."
-                    placeholderTextColor="#475569"
-                  />
-                )}
-              </View>
 
-              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
-                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Domiciliario</Text>
-                <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
-                  <Picker
-                    selectedValue={formState.telefonoDomiciliario}
-                    onValueChange={(val) => updateForm({ telefonoDomiciliario: val })}
-                    style={{ color: 'white' }}
-                    itemStyle={{ color: 'white', fontSize: 14 }}
-                    dropdownIconColor="#94A3B8"
-                  >
-                    <Picker.Item label="Driver" value="" color="#64748B" />
-                    {domiciliarios.map(d => (
-                      <Picker.Item 
-                        key={d.telefono} 
-                        label={d.domiciliarioNombre || d.telefono.toString()} 
-                        value={d.telefono.toString()} 
-                      />
-                    ))}
-                  </Picker>
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+                    <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Domiciliario</Text>
+                    <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
+                      <Picker
+                        selectedValue={formState.telefonoDomiciliario}
+                        onValueChange={(val) => updateForm({ telefonoDomiciliario: val })}
+                        style={{ color: 'white' }}
+                        itemStyle={{ color: 'white', fontSize: 14 }}
+                        dropdownIconColor="#94A3B8"
+                      >
+                        <Picker.Item label={domiciliarios.length === 0 ? "No hay domiciliarios" : "Selecciona uno"} value="" color="#64748B" />
+                        {domiciliarios.map(d => (
+                          <Picker.Item 
+                            key={d.telefono} 
+                            label={d.domiciliarioNombre || d.telefono.toString()} 
+                            value={d.telefono.toString()} 
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
+                    <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Costo</Text>
+                    <TextInput
+                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                      value={formState.costoDomicilio ? Number(formState.costoDomicilio).toLocaleString('es-CO') : ''}
+                      onChangeText={(val) => {
+                        const numericValue = val.replace(/\D/g, '');
+                        updateForm({ costoDomicilio: numericValue });
+                      }}
+                      placeholder="2,000"
+                      placeholderTextColor="#475569"
+                      keyboardType="numeric"
+                    />
+                  </View>
                 </View>
-              </View>
+              )}
+            </View>
 
-              <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>
-                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Costo</Text>
+            {/* =============== PRODUCTOS (MENÚ) =============== */}
+            <View className="bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl mb-6">
+              <View className="flex-row items-center mt-2 mb-3">
+                 <View className="h-[1px] flex-1 bg-white/5" />
+                 <Text className="text-[10px] font-black text-(--color-pos-primary) px-3 uppercase tracking-[3px]">Menú</Text>
+                 <View className="h-[1px] flex-1 bg-white/5" />
+              </View>
+              <MenuPicker onAdd={addToCart} />
+            </View>
+          </View>
+
+          {/* RIGHT COLUMN: Cart & Observations */}
+          <View className="w-full lg:w-[25%] px-3 sticky lg:top-5 self-start lg:ml-[2%]">
+            <View className="bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl">
+              {/* =============== CARRITO / BALANCE =============== */}
+              <CartPanel
+                items={formState.cart}
+                onRemove={removeFromCart}
+                onUpdateCantidad={updateCartCantidad}
+                costoDomicilio={formState.tipoPedido === 'domicilio' && formState.costoDomicilio ? Number(formState.costoDomicilio) : 0}
+              />
+
+              {/* =============== OBSERVACIONES =============== */}
+              <View className="mt-4 mb-2">
+                <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Observaciones</Text>
                 <TextInput
-                  className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                  value={formState.costoDomicilio ? Number(formState.costoDomicilio).toLocaleString('es-CO') : ''}
-                  onChangeText={(val) => {
-                    const numericValue = val.replace(/\D/g, '');
-                    updateForm({ costoDomicilio: numericValue });
-                  }}
-                  placeholder="2,000"
+                  className="bg-black/10 rounded-lg border border-white/5 px-3 py-2 text-sm text-slate-300 h-16"
+                  style={{ textAlignVertical: 'top' }}
+                  value={formState.observaciones}
+                  onChangeText={(val) => updateForm({ observaciones: val })}
+                  placeholder="Algún detalle adicional..."
                   placeholderTextColor="#475569"
-                  keyboardType="numeric"
+                  multiline
+                  numberOfLines={2}
                 />
               </View>
+
+              {/* =============== ACCIONES =============== */}
+              <TouchableOpacity
+                className={`bg-(--color-pos-primary) py-4 rounded-xl items-center mt-4 w-full shadow-lg shadow-amber-500/20 ${loading ? 'opacity-60' : ''}`}
+                onPress={handleSubmit}
+                disabled={loading}
+              >
+                <Text className="text-white font-black text-lg tracking-[1px] uppercase">
+                  {loading ? (mode === 'edit' ? 'Guardando...' : 'Creando...') : (mode === 'edit' ? 'Actualizar Orden' : 'Confirmar Pedido')}
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
-
-          {/* =============== PRODUCTOS (MENÚ) =============== */}
-          <View className="flex-row items-center mt-2 mb-3">
-             <View className="h-[1px] flex-1 bg-white/5" />
-             <Text className="text-[10px] font-black text-(--color-pos-primary) px-3 uppercase tracking-[3px]">Menú</Text>
-             <View className="h-[1px] flex-1 bg-white/5" />
           </View>
-          <MenuPicker onAdd={addToCart} />
-
-          {/* =============== CARRITO / BALANCE =============== */}
-          <CartPanel
-            items={formState.cart}
-            onRemove={removeFromCart}
-            onUpdateCantidad={updateCartCantidad}
-            costoDomicilio={formState.tipoPedido === 'domicilio' && formState.costoDomicilio ? Number(formState.costoDomicilio) : 0}
-          />
-
-          {/* =============== OBSERVACIONES =============== */}
-          <View className="mt-4 mb-2">
-            <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Observaciones</Text>
-            <TextInput
-            className="bg-black/10 rounded-lg border border-white/5 px-3 py-2 text-sm text-slate-300 h-16"
-            style={{ textAlignVertical: 'top' }}
-            value={formState.observaciones}
-            onChangeText={(val) => updateForm({ observaciones: val })}
-            placeholder="Algún detalle adicional..."
-            placeholderTextColor="#475569"
-            multiline
-            numberOfLines={2}
-            />
-          </View>
-
-          {/* =============== ACCIONES =============== */}
-          <TouchableOpacity
-            className={`bg-(--color-pos-primary) py-4 rounded-xl items-center mt-4 w-full shadow-lg shadow-amber-500/20 active:scale-[0.95] transition-transform ${loading ? 'opacity-60' : ''}`}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <Text className="text-white font-black text-lg tracking-[1px] uppercase">
-              {loading ? (mode === 'edit' ? 'Guardando...' : 'Creando...') : (mode === 'edit' ? 'Actualizar Orden' : 'Confirmar Pedido')}
-            </Text>
-          </TouchableOpacity>
-
         </View>
+
         {/* Extra bottom space for system nav bar on mobile */}
         {isMobile && <View className="h-8" />}
       </ScrollView>

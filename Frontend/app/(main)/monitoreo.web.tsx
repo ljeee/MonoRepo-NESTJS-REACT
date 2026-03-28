@@ -49,7 +49,8 @@ export default function MonitoreoScreen() {
             });
 
             if (response.data.success) {
-                showToast(`Éxito: ${response.data.totalImported} facturas importadas.`, 'success');
+                const skippedMsg = response.data.totalSkipped > 0 ? ` (${response.data.totalSkipped} ya existían)` : '';
+                showToast(`Éxito: ${response.data.totalImported} facturas importadas${skippedMsg}.`, 'success');
             } else {
                 showToast('Error parcial en la importación', 'warning');
             }
@@ -104,10 +105,10 @@ export default function MonitoreoScreen() {
                                 <Icon name="sync" size={80} color="#F5A524" />
                             </View>
                             
-                            <View className="flex-row items-center justify-between mb-8">
-                                <View className="flex-row items-center gap-4">
-                                    <View className={`w-3 h-3 rounded-full ${hasItems ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500 shadow-lg shadow-emerald-500/50'}`} />
-                                    <Text className="text-white text-lg font-black uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>Estado Sincronización</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: hasItems ? '#F97316' : '#10B981', shadowColor: hasItems ? undefined : '#10B981', shadowOpacity: hasItems ? 0 : 0.5, shadowRadius: 10 }} />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', letterSpacing: -0.5 }}>Estado Sincronización</Text>
                                 </View>
                                 <Badge 
                                     label={hasItems ? `${queue.length} PENDIENTES` : 'AL DÍA'} 
@@ -140,12 +141,12 @@ export default function MonitoreoScreen() {
                                 <Icon name="database-import" size={80} color="#F5A524" />
                             </View>
 
-                            <View className="flex-row items-center justify-between mb-8">
-                                <View className="flex-row items-center gap-4">
-                                    <View className="w-8 h-8 rounded-xl bg-orange-500/20 items-center justify-center">
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                    <View style={{ width: 32, height: 32, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' }}>
                                          <Icon name="file-upload-outline" size={18} color="#F5A524" />
                                     </View>
-                                    <Text className="text-white text-lg font-black uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>Carga de Datos</Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', letterSpacing: -0.5 }}>Carga de Datos</Text>
                                 </View>
                                 <Badge label="CSV / BACKUP" variant="info" />
                             </View>
@@ -156,13 +157,13 @@ export default function MonitoreoScreen() {
 
                             <View className="gap-3">
                                 <Button 
-                                    title={exporting ? 'Generando...' : 'Exportar Copia de Seguridad'}
-                                    variant="outline"
-                                    icon="download-outline"
+                                    title={exporting ? 'Generando...' : 'Exportar Backup'}
+                                    variant="secondary"
+                                    icon="cloud-download-outline"
                                     onPress={handleExportBackup}
                                     loading={exporting}
                                     disabled={exporting || importing}
-                                    className="h-14 border-white/10"
+                                    className="h-14 bg-blue-600/20 border-[1px] border-blue-500/30"
                                 />
 
                                 <View className="h-4 flex-row items-center gap-2">
@@ -172,21 +173,15 @@ export default function MonitoreoScreen() {
                                 </View>
 
                                 <View>
-                                    <TouchableOpacity 
-                                        disabled={importing}
-                                        activeOpacity={0.7}
+                                    <Button 
+                                        title={importing ? 'Importando...' : 'Importar Backup'}
+                                        variant="secondary"
+                                        icon="cloud-upload-outline"
                                         onPress={() => document.getElementById('csv-upload')?.click()}
-                                        className={`w-full h-14 rounded-2xl border-2 border-dashed border-white/10 items-center justify-center flex-row gap-3 ${importing ? 'opacity-50' : 'active:bg-white/5'}`}
-                                    >
-                                        {importing ? (
-                                            <ActivityIndicator color="#F5A524" />
-                                        ) : (
-                                            <>
-                                                <Icon name="cloud-upload-outline" size={20} color="#F5A524" />
-                                                <Text className="text-white font-black text-sm uppercase tracking-widest">Seleccionar Archivo</Text>
-                                            </>
-                                        )}
-                                    </TouchableOpacity>
+                                        loading={importing}
+                                        disabled={exporting || importing}
+                                        className="h-14 bg-emerald-600/20 border-[1px] border-emerald-500/30"
+                                    />
                                     <input 
                                         id="csv-upload" 
                                         type="file" 
@@ -213,8 +208,8 @@ export default function MonitoreoScreen() {
                                 <Animated.View key={item.idempotencyKey} entering={FadeInUp.delay(idx * 50)}>
                                     <Card className="p-5 flex-row items-center justify-between border-white/5 bg-white/5">
                                         <View>
-                                            <View className="flex-row items-center gap-3">
-                                                <Text className="text-white font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>Orden #{item.ordenId}</Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 16 }}>Orden #{item.ordenId}</Text>
                                                 <Badge label={item.metodo} size="sm" variant="info" />
                                             </View>
                                             <View className="flex-row items-center gap-2 mt-2">

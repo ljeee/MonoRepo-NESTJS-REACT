@@ -282,8 +282,11 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Domicilios ───────────────────────────────────────────────────
   const domicilios = {
-    getMe: () =>
-      http.get<any[]>('/domicilios/me').then((r) => arr<any>(r.data)),
+    getMe: (all = false) =>
+      http.get<any[]>('/domicilios/me', { params: all ? { all: true } : {} }).then((r) => arr<any>(r.data)),
+
+    getAllDay: () =>
+      http.get<any[]>('/domicilios/dia').then((r) => arr<any>(r.data)),
 
     update: (id: number, data: any) =>
       http.patch<any>(`/domicilios/${id}`, data).then((r) => r.data),

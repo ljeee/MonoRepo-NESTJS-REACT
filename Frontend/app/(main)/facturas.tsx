@@ -2,6 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { FlatList } from 'react-native';
 import { View, Text } from '../../tw';
 import { useFacturasRango } from '@monorepo/shared';
+import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
+import { exportFacturasPdf } from '../../utils/exportData';
 import { validateFlexibleDateRange } from '@monorepo/shared';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
 import {
@@ -39,9 +41,9 @@ export default function FacturasRangoScreen() {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-        await updateFactura(facturaId, { estado: 'pagado', metodo });
+         await updateFactura(facturaId, { estado: 'pagado', metodo });
       } else {
-        await updateEstado(facturaId, nuevoEstado);
+         await updateEstado(facturaId, nuevoEstado);
       }
       setUpdating(null);
       return;
@@ -55,6 +57,18 @@ export default function FacturasRangoScreen() {
   }, [updateFactura]);
 
 
+
+  const handleExportPdf = useCallback(() => {
+    if (data.length === 0) return;
+    exportFacturasPdf(data, `${from || 'inicio'} a ${to || 'fin'}`);
+  }, [data, from, to]);
+
+  const handleExportContabilidad = useCallback(async () => {
+    if (data.length === 0) return;
+    const csv = await buildCombinedBalanceCsv(data, []);
+    const filename = `contabilidad_${from || 'inicio'}_${to || 'fin'}.csv`;
+    downloadCsv(csv, filename);
+  }, [data, from, to]);
 
   const renderFacturaItem = useCallback(({ item }: { item: FacturaItem }) => (
     <View className="flex-1 pb-4">
@@ -96,6 +110,26 @@ export default function FacturasRangoScreen() {
             />
 
             {/* Actions Bar (Exports) */}
+            <View className="flex-row items-center mb-10 gap-4 flex-wrap">
+              <Button
+                title="Exportar PDF"
+                icon="file-pdf-outline"
+                variant="secondary"
+                size="sm"
+                onPress={handleExportPdf}
+                disabled={data.length === 0}
+                className="bg-purple-600/20 border-purple-500/30"
+              />
+              <Button
+                title="CSV Contable"
+                icon="table-large"
+                variant="secondary"
+                size="sm"
+                onPress={handleExportContabilidad}
+                disabled={data.length === 0}
+                className="bg-emerald-600/20 border-emerald-500/30"
+              />
+            </View>
 
             {/* Date filter */}
             <View className="flex-row gap-4 mb-8 flex-wrap items-end">

@@ -39,8 +39,8 @@ export default function PageContainer({
     const paddingClasses = noPadding
         ? 'px-0'
         : isCompact
-            ? 'px-4 pb-10 pt-4'
-            : 'px-8 pb-16 pt-8';
+            ? 'px-4 pb-8 pt-3'
+            : 'px-6 pb-12 pt-6';
 
     const innerClasses = `flex-1 w-full self-center ${maxWidthClasses[maxWidthVariant]} ${paddingClasses}`;
 
@@ -54,7 +54,7 @@ export default function PageContainer({
         return (
             <KeyboardAvoidingView 
                 className={`flex-1 ${className}`}
-                style={[{ backgroundColor: '#0C0F1A' }, style]}
+                style={[{ backgroundColor: '#060E1A' }, style]}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             >

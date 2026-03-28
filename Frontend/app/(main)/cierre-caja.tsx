@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TextInput } from '../../tw';
 import { RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TextInput } from '../../tw';
 import { PageContainer, PageHeader, Button, Icon, Card, Badge, ConfirmModal, ListSkeleton } from '../../components/ui';
 import { api } from '../../services/api';
 import { useToast, formatCurrency, formatDate, Role } from '@monorepo/shared';
@@ -84,49 +84,55 @@ export default function CierreCajaScreen() {
             <PageHeader title="Cierre de Caja" icon="cash-register" />
 
             <ScrollView 
-                contentContainerClassName="pb-10 pt-4"
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} tintColor="#F5A524" />}
+                contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={() => { setRefreshing(true); fetchData(); }} 
+                        tintColor="#F5A524" 
+                    />
+                }
             >
                 {/* ── Dashboard Hoy ── */}
-                <View className="mb-8 px-2">
-                    <Text className="text-white font-black text-xl mb-4" style={{ fontFamily: 'Space Grotesk' }}>Estado Actual (Hoy)</Text>
+                <View style={{ marginBottom: 32, paddingHorizontal: 8 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, marginBottom: 16 }}>Estado Actual (Hoy)</Text>
                     
-                    <View className="flex-row gap-4 mb-4">
-                        <Card className="flex-1 p-5 border border-white/5 bg-emerald-500/10">
-                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Ventas Brutas</Text>
-                            <Text className="text-emerald-400 font-black text-2xl" style={{ fontFamily: 'Space Grotesk' }}>
+                    <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+                        <Card style={{ flex: 1, padding: 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(16,185,129,0.1)' }}>
+                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Ventas Brutas</Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 24 }}>
                                 ${formatCurrency(resumen?.totalVentas || 0)}
                             </Text>
                         </Card>
-                        <Card className="flex-1 p-5 border border-white/5 bg-rose-500/10">
-                            <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">Egresos/Gastos</Text>
-                            <Text className="text-rose-400 font-black text-2xl" style={{ fontFamily: 'Space Grotesk' }}>
+                        <Card style={{ flex: 1, padding: 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(244,63,94,0.1)' }}>
+                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Egresos/Gastos</Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#FB7185', fontSize: 24 }}>
                                 ${formatCurrency(resumen?.totalEgresos || 0)}
                             </Text>
                         </Card>
                     </View>
 
-                    <Card className="p-6 border border-white/5 bg-(--color-pos-surface) mb-6">
-                        <View className="flex-row justify-between items-center mb-6">
+                    <Card style={{ padding: 24, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(6,14,26,0.8)', marginBottom: 24 }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <View>
-                                <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1">Balance Neto</Text>
-                                <Text className="text-white font-black text-3xl" style={{ fontFamily: 'Space Grotesk' }}>
+                                <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Balance Neto</Text>
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 30 }}>
                                     ${formatCurrency(resumen?.balanceNeto || 0)}
                                 </Text>
                             </View>
                             <Icon name="finance" size={32} color="#F5A524" />
                         </View>
 
-                        <View className="h-[1px] bg-white/5 mb-6" />
+                        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 24 }} />
 
-                        <View className="flex-row justify-between mb-6">
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
                             <View>
-                                <Text className="text-slate-600 text-[10px] font-black uppercase mb-1">Órdenes</Text>
-                                <Text className="text-slate-300 font-bold">{resumen?.ordenes || 0}</Text>
+                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 4 }}>Órdenes</Text>
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 16 }}>{resumen?.ordenes || 0}</Text>
                             </View>
-                            <View className="items-end">
-                                <Text className="text-slate-600 text-[10px] font-black uppercase mb-1">Ticket Promedio</Text>
-                                <Text className="text-slate-300 font-bold">${formatCurrency(resumen?.ticketPromedio || 0)}</Text>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 4 }}>Ticket Promedio</Text>
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 16 }}>${formatCurrency(resumen?.ticketPromedio || 0)}</Text>
                             </View>
                         </View>
 
@@ -137,8 +143,7 @@ export default function CierreCajaScreen() {
                             numberOfLines={3}
                             value={observations}
                             onChangeText={setObservations}
-                            className="bg-black/20 rounded-2xl p-4 text-white font-bold border border-white/5 mb-6 text-sm"
-                            style={{ textAlignVertical: 'top' }}
+                            style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 16, padding: 16, color: '#F8FAFC', fontFamily: 'Outfit', borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, marginBottom: 24, fontSize: 14, textAlignVertical: 'top' }}
                         />
 
                         <Button 
@@ -151,8 +156,8 @@ export default function CierreCajaScreen() {
                 </View>
 
                 {/* ── Historial ── */}
-                <View className="px-2">
-                    <Text className="text-white font-black text-xl mb-4" style={{ fontFamily: 'Space Grotesk' }}>Últimos Cierres</Text>
+                <View style={{ paddingHorizontal: 8 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, marginBottom: 16 }}>Últimos Cierres</Text>
                     
                     {history.length > 0 ? (
                         history.map(h => {
@@ -162,18 +167,18 @@ export default function CierreCajaScreen() {
                                 : formatDate(h.fecha);
 
                             return (
-                                <Card key={h.id} className="mb-3 p-4 border border-white/5 bg-white/5 flex-row justify-between items-center">
-                                    <View className="flex-1">
-                                        <Text className="text-white font-bold">{displayDate}</Text>
-                                        <View className="flex-row items-center gap-2 mt-1">
-                                            <Text className="text-slate-500 text-xs">Ventas:</Text>
-                                            <Text className="text-emerald-400 text-xs font-bold">${formatCurrency(h.totalVentas)}</Text>
+                                <Card key={h.id} style={{ marginBottom: 12, padding: 16, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 15 }}>{displayDate}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                                            <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 12 }}>Ventas:</Text>
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 12 }}>${formatCurrency(h.totalVentas)}</Text>
                                         </View>
                                     </View>
-                                    <View className="flex-row items-center gap-4">
-                                        <View className="items-end">
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                        <View style={{ alignItems: 'flex-end' }}>
                                             <Badge label="Finalizado" variant="success" />
-                                            <Text className="text-slate-600 text-[10px] mt-1">ID: {h.id.slice(0, 8)}</Text>
+                                            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, marginTop: 4 }}>ID: {h.id.slice(0, 8)}</Text>
                                         </View>
                                         {isAdmin && (
                                             <Button 

@@ -67,7 +67,7 @@ export default function UsuariosScreen() {
                     <FlatList
                         data={usuarios}
                         className="flex-1"
-                        contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
+                        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
                         refreshControl={
                             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F5A524" />
                         }
@@ -92,23 +92,23 @@ export default function UsuariosScreen() {
                             </View>
                         }
                         renderItem={({ item: u }) => (
-                            <View className={`mb-4 flex-1 ${isMobile ? '' : 'px-2'}`}>
-                                <Card className="flex-row items-center justify-between p-4 bg-white/5 border-white/5">
-                                    <View className="flex-row items-center gap-4">
-                                        <View className="w-12 h-12 rounded-full bg-amber-500/10 items-center justify-center border border-amber-500/20">
-                                            <Text className="text-amber-500 font-black text-lg">
+                            <View style={{ marginBottom: 10, flex: 1, paddingHorizontal: isMobile ? 0 : 4 }}>
+                                <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(245,165,36,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245,165,36,0.2)' }}>
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 16 }}>
                                                 {(u.name || u.username)?.charAt(0).toUpperCase()}
                                             </Text>
                                         </View>
                                         <View>
-                                            <Text className="text-white font-black text-xs uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
                                                 {u.name || u.username}
                                             </Text>
-                                            <Text className="text-slate-500 text-[10px] font-bold">@{u.username}</Text>
+                                            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>@{u.username}</Text>
                                         </View>
                                     </View>
-                                    <View className="items-end gap-2">
-                                        <View className="flex-row gap-2">
+                                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                                        <View style={{ flexDirection: 'row', gap: 6 }}>
                                             {u.roles?.map((role: string) => (
                                                 <Badge 
                                                     key={role} 
@@ -118,7 +118,7 @@ export default function UsuariosScreen() {
                                                 />
                                             ))}
                                         </View>
-                                        <Text className="text-zinc-600 text-[8px] font-black uppercase">
+                                        <Text style={{ fontFamily: 'Outfit', color: '#334155', fontSize: 9, textTransform: 'uppercase' }}>
                                             {new Date(u.createdAt).toLocaleDateString()}
                                         </Text>
                                     </View>

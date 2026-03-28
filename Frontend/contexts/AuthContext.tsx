@@ -59,14 +59,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (isLoading) return;
 
-        const inAuthGroup = segments[0] === ('login' as any);
+        // login lives at (main)/login, so segments = ["(main)", "login"]
+        const onLoginScreen = segments.includes('login' as any);
+        const isDomiciliario = (user as any)?.roles?.includes('domiciliario');
 
-        if (!token && !inAuthGroup) {
+        if (!token && !onLoginScreen) {
             router.replace('/login' as any);
-        } else if (token && inAuthGroup) {
-            router.replace('/' as any);
+        } else if (token && onLoginScreen) {
+            // Just logged in — send to the right home screen
+            router.replace((isDomiciliario ? '/mis-domicilios' : '/') as any);
+        } else if (token && isDomiciliario) {
+            // Session restored from storage — keep domiciliarios off admin routes
+            const currentPath = '/' + segments.filter((s: string) => !s.startsWith('(')).join('/');
+            const allowedForDomiciliario = ['/mis-domicilios'];
+            if (!allowedForDomiciliario.some(p => currentPath.startsWith(p))) {
+                router.replace('/mis-domicilios' as any);
+            }
         }
-    }, [token, segments, isLoading, router]);
+    }, [token, user, segments, isLoading, router]);
+
 
     const login = async (usuario: string, contrasena: string) => {
         const response = await api.auth.login(usuario, contrasena);

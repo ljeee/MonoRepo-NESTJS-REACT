@@ -58,13 +58,13 @@ export default function RegistroUsuariosScreen() {
 
             <ScrollView contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}>
                 <Card className="p-8 border border-white/5 bg-(--color-pos-surface) max-w-2xl mx-auto w-full">
-                    <View className="flex-row items-center gap-3 mb-6">
-                        <View className="w-10 h-10 rounded-xl bg-orange-500/20 items-center justify-center">
-                            <Icon name="account-plus" size={20} color="#F5A524" />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon name="account-plus" size={18} color="#F5A524" />
                         </View>
                         <View>
-                            <Text className="text-white font-black text-xl leading-tight" style={{ fontFamily: 'Space Grotesk' }}>Nuevo Colaborador</Text>
-                            <Text className="text-slate-400 text-xs">Cree una cuenta para el personal de la pizzería.</Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, letterSpacing: -0.3 }}>Nuevo Colaborador</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11 }}>Cree una cuenta para el personal de la pizzería.</Text>
                         </View>
                     </View>
 
@@ -96,7 +96,7 @@ export default function RegistroUsuariosScreen() {
                         />
 
                         <View>
-                            <Text className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3 ml-1">Rol / Permisos</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 2 }}>Rol / Permisos</Text>
                             <View className="bg-black/20 rounded-2xl border-2 border-white/5 overflow-hidden">
                                 <Picker
                                     selectedValue={form.roles?.[0]}

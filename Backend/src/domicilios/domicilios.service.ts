@@ -12,10 +12,16 @@ export class DomiciliosService {
 	) {}
 
 	findAll(page = 1, limit = 500) {
-		return this.repo.find({
-			take: limit,
-			skip: (page - 1) * limit,
-		});
+		return this.repo.createQueryBuilder('d')
+			.leftJoinAndSelect('d.factura', 'factura')
+			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('orden.productos', 'productos')
+			.leftJoinAndSelect('d.cliente', 'cliente')
+			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
+			.orderBy('d.fechaCreado', 'DESC')
+			.take(limit)
+			.skip((page - 1) * limit)
+			.getMany();
 	}
 
 	findByDay() {
@@ -26,9 +32,11 @@ export class DomiciliosService {
 		return this.repo.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('orden.productos', 'productos')
 			.leftJoinAndSelect('d.cliente', 'cliente')
 			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
 			.where('d.fechaCreado BETWEEN :start AND :end', { start, end })
+			.orderBy('d.fechaCreado', 'DESC')
 			.getMany();
 	}
 
@@ -40,10 +48,12 @@ export class DomiciliosService {
 		return this.repo.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('orden.productos', 'productos')
 			.leftJoinAndSelect('d.cliente', 'cliente')
 			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
 			.where('(d.estadoDomicilio = :pendiente OR d.estadoDomicilio IS NULL)')
 			.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end, pendiente: 'pendiente' })
+			.orderBy('d.fechaCreado', 'DESC')
 			.getMany();
 	}
 
@@ -66,19 +76,24 @@ export class DomiciliosService {
 		return this.repo.update(id, data);
 	}
 
-	findByUser(userId: string) {
-		const start = new Date();
-		start.setHours(0, 0, 0, 0);
-		const end = new Date();
-		end.setHours(23, 59, 59, 999);
-		return this.repo.createQueryBuilder('d')
+	findByUser(telefono: string, all = false) {
+		const query = this.repo.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('orden.productos', 'productos')
 			.leftJoinAndSelect('d.cliente', 'cliente')
 			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
-			.where('d.assignedUserId = :userId', { userId })
-			.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end })
-			.getMany();
+			.where('d.telefonoDomiciliarioAsignado = :telefono', { telefono });
+
+		if (!all) {
+			const start = new Date();
+			start.setHours(0, 0, 0, 0);
+			const end = new Date();
+			end.setHours(23, 59, 59, 999);
+			query.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end });
+		}
+
+		return query.orderBy('d.fechaCreado', 'DESC').getMany();
 	}
 
 	remove(id: number) {

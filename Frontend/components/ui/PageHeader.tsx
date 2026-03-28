@@ -26,25 +26,31 @@ export default function PageHeader({
 
     return (
         <View 
-          className={`flex-row justify-between items-center mb-6 gap-4 ${isMobile ? 'flex-col items-start w-full' : ''} ${className}`} 
+          className={`flex-row justify-between items-center gap-3 ${isMobile ? 'mb-4' : 'mb-6'} ${className}`} 
           style={style}
         >
-            <View className={`flex-row items-center gap-4 ${isMobile ? 'w-full' : 'flex-1'}`}>
+            <View className="flex-row items-center gap-3 flex-1 min-w-0">
                 {icon && (
-                    <View className="w-12 h-12 rounded-2xl bg-(--color-pos-primary)/10 items-center justify-center flex-shrink-0">
-                        <Icon name={icon} size={isMobile ? 22 : 28} color="#F5A524" />
+                    <View style={{
+                        width: isMobile ? 38 : 44, height: isMobile ? 38 : 44,
+                        borderRadius: isMobile ? 12 : 14,
+                        backgroundColor: 'rgba(245,165,36,0.12)',
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                        borderWidth: 1, borderColor: 'rgba(245,165,36,0.25)',
+                    }}>
+                        <Icon name={icon} size={isMobile ? 20 : 22} color="#F5A524" />
                     </View>
                 )}
                 <View className="flex-1 min-w-0">
                     {subtitle && (
-                        <Text className="text-[10px] font-black text-(--color-pos-primary) uppercase tracking-[2px] mb-1 flex-shrink">
+                        <Text style={{ fontFamily: 'Outfit', fontSize: 10, color: '#F5A524', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>
                             {subtitle}
                         </Text>
                     )}
-                    <View className={`flex-row items-center ${isMobile ? 'flex-wrap' : ''} w-full`}>
+                    <View className="flex-row items-center flex-wrap">
                         <Text 
-                            className="text-white font-black text-3xl tracking-tighter flex-shrink" 
-                            style={{ fontFamily: 'Space Grotesk', flexBasis: 'auto' }}
+                            style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: isMobile ? 20 : 24, color: '#F8FAFC', letterSpacing: -0.5, flexShrink: 1 }}
+                            numberOfLines={1}
                         >
                             {title}
                         </Text>
@@ -53,8 +59,8 @@ export default function PageHeader({
                 </View>
             </View>
             
-            {(rightContent || (isMobile && !rightContent && false)) && (
-                <View className={`flex-row items-center gap-2 ${isMobile ? 'mt-4' : ''}`}>
+            {rightContent && (
+                <View className="flex-row items-center gap-2 flex-shrink-0">
                     {rightContent}
                 </View>
             )}

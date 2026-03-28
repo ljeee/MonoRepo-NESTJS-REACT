@@ -111,32 +111,30 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
           />
       </View>
 
-      {/* Category tabs */}
-      <View className="mb-8">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+      {/* Category tabs - Wrapping on desktop */}
+      <View className="mb-8 flex-row flex-wrap gap-2 items-center bg-black/10 p-3 rounded-2xl border border-white/5">
           {categoryNames.map((cat) => {
             const isActive = selectedCategory === cat;
             return (
               <TouchableOpacity
                 key={cat}
-                className={`flex-row items-center px-5 py-3 rounded-2xl mr-3 border transition-all ${isActive ? 'bg-(--color-pos-primary) border-(--color-pos-primary) shadow-lg shadow-amber-500/20' : 'bg-white/5 border-white/5 active:bg-white/10'}`}
+                className={`flex-row items-center px-4 py-2.5 rounded-xl border ${isActive ? 'bg-(--color-pos-primary) border-(--color-pos-primary) shadow-lg shadow-amber-500/20' : 'bg-white/5 border-white/5 active:bg-white/10'}`}
                 onPress={() => {
                   setActiveCategory(cat);
                   setExpandedProductId(null);
                 }}
               >
-                <Text className={`font-black text-xs uppercase tracking-widest ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                <Text className={`font-black text-[10px] uppercase tracking-widest ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
                   {cat}
                 </Text>
-                <View className={`ml-2 px-2 py-0.5 rounded-lg ${isActive ? 'bg-black/10' : 'bg-white/10'}`}>
-                  <Text className={`text-[10px] font-black ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
+                <View className={`ml-2 px-1.5 py-0.5 rounded-md ${isActive ? 'bg-black/10' : 'bg-white/10'}`}>
+                  <Text className={`text-[9px] font-black ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
                     {categories[cat].length}
                   </Text>
                 </View>
               </TouchableOpacity>
             )
           })}
-        </ScrollView>
       </View>
 
       {/* Products list */}
@@ -211,8 +209,8 @@ const ProductItem = React.memo(({
   );
 
   return (
-    <View className={`px-2 mb-4 w-full md:w-1/2 lg:w-1/3 xl:w-1/4`}>
-      <View className={`bg-(--color-pos-surface) rounded-3xl border transition-all overflow-hidden ${isExpanded ? 'border-(--color-pos-primary)/30 bg-(--color-pos-surface-hover)' : 'border-white/5'}`}>
+    <View className={`px-2 mb-4 w-full sm:w-1/2 md:w-1/2 lg:w-1/2 xl:w-1/3`}>
+      <View className={`bg-(--color-pos-surface) rounded-3xl border overflow-hidden ${isExpanded ? 'border-(--color-pos-primary)/30 bg-(--color-pos-surface-hover)' : 'border-white/5'}`}>
         <TouchableOpacity
           className={`flex-row items-center p-5 ${isExpanded ? 'bg-white/5' : ''}`}
           onPress={onToggle}
@@ -235,40 +233,43 @@ const ProductItem = React.memo(({
         </TouchableOpacity>
 
         {isExpanded && (
-          <View className="bg-black/20 p-3 pt-0">
-            {sortedVariantes.length > 0 ? (
-              sortedVariantes
-              .filter((v) => v.activo)
-              .map((variante) => (
-                <TouchableOpacity
-                  key={variante.varianteId}
-                  className="flex-row items-center justify-between p-4 rounded-2xl bg-white/5 active:bg-(--color-pos-primary) active:scale-[0.98] transition-all mb-2 border border-white/5"
-                  onPress={() => {
-                    if (producto.categoria === 'Pizzas') {
-                      setSelectedProducto(producto);
-                      setSelectedVariante(variante);
-                      setModalVisible(true);
-                    } else {
-                      onAdd(producto, variante);
-                    }
-                  }}
-                >
-                  <Text className="text-slate-200 font-bold">{variante.nombre}</Text>
-                  <View className="flex-row items-center">
-                    <Text className="text-(--color-pos-primary) font-black mr-4" style={{ fontFamily: 'Space Grotesk' }}>
-                      ${formatCurrency(Number(variante.precio))}
-                    </Text>
-                    <View className="w-8 h-8 bg-(--color-pos-primary) rounded-xl items-center justify-center shadow-lg shadow-amber-500/30">
-                      <Icon name="plus" size={20} color="#000" />
-                    </View>
+          <View className="bg-black/20 p-2 pt-0">
+            <View className="flex-row flex-wrap -mx-1">
+              {sortedVariantes.length > 0 ? (
+                sortedVariantes
+                .filter((v) => v.activo)
+                .map((variante) => (
+                  <View key={variante.varianteId} className="w-full sm:w-1/2 p-1">
+                    <TouchableOpacity
+                      className="flex-row items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 h-full active:bg-white/10"
+                      onPress={() => {
+                        if (producto.categoria === 'Pizzas') {
+                          setSelectedProducto(producto);
+                          setSelectedVariante(variante);
+                          setModalVisible(true);
+                        } else {
+                          onAdd(producto, variante);
+                        }
+                      }}
+                    >
+                      <View className="flex-1 mr-2">
+                        <Text className="text-slate-200 font-bold text-xs" numberOfLines={2}>{variante.nombre}</Text>
+                        <Text className="text-(--color-pos-primary) font-black text-[10px]" style={{ fontFamily: 'Space Grotesk' }}>
+                          ${formatCurrency(Number(variante.precio))}
+                        </Text>
+                      </View>
+                      <View className="w-7 h-7 bg-(--color-pos-primary) rounded-lg items-center justify-center shadow-lg shadow-amber-500/30">
+                        <Icon name="plus" size={16} color="#000" />
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                </TouchableOpacity>
-              ))
-            ) : (
-              <View className="p-4 items-center">
-                   <Text className="text-slate-500 text-xs italic">No hay variantes disponibles</Text>
-              </View>
-            )}
+                ))
+              ) : (
+                <View className="p-4 w-full items-center">
+                     <Text className="text-slate-500 text-xs italic">No hay variantes disponibles</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
       </View>

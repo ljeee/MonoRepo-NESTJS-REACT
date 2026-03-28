@@ -366,21 +366,25 @@ export class EstadisticasService {
 	// ─── Estadísticas por Domiciliario ───────────────────────────────────────────
 	async domiciliariosStats(from: string, to: string) {
 		const { start, end } = this.buildDayBounds(from, to);
-		
-		// Unimos con la tabla de usuarios para obtener el nombre real del domiciliario asignado
+
+		// Unimos domicilios con la tabla domiciliarios por teléfono asignado
 		const result = await this.facturasRepo.manager
 			.createQueryBuilder('domicilios', 'd')
-			.leftJoin('users', 'u', 'u.id::text = d.assigned_user_id')
-			.select('u.name', 'nombre')
+			.leftJoin('domiciliarios', 'dm', 'dm.telefono = d.telefono_domiciliario_asignado')
+			.select('COALESCE(dm.domiciliario_nombre, d.telefono_domiciliario_asignado)', 'nombre')
+			.addSelect('d.telefono_domiciliario_asignado', 'telefono')
 			.addSelect('COUNT(*)', 'entregas')
 			.addSelect('COALESCE(SUM(d.costo_domicilio), 0)', 'ganancia')
 			.where('d.fecha_creado BETWEEN :from AND :to', { from: start, to: end })
-			.andWhere("d.estado_domicilio = 'entregado'")
-			.groupBy('u.name')
+			.andWhere("d.telefono_domiciliario_asignado IS NOT NULL")
+			.groupBy('d.telefono_domiciliario_asignado')
+			.addGroupBy('dm.domiciliario_nombre')
+			.orderBy('"entregas"', 'DESC')
 			.getRawMany();
 
 		return result.map(r => ({
-			nombre: r.nombre || 'Sin asignar/Varios',
+			nombre: r.nombre || 'Sin nombre',
+			telefono: r.telefono || '',
 			entregas: Number(r.entregas),
 			ganancia: Number(r.ganancia) || 0,
 		}));

@@ -2,11 +2,18 @@ import {Controller, Post, UseInterceptors, UploadedFile, BadRequestException} fr
 import {FileInterceptor} from '@nestjs/platform-express';
 import {ApiTags, ApiOperation, ApiConsumes, ApiBody} from '@nestjs/swagger';
 import {FacturasVentasService} from '../facturas-ventas/facturas-ventas.service';
+import {InjectRepository} from '@nestjs/typeorm';
+import {FacturasVentas} from '../facturas-ventas/esquemas/facturas-ventas.entity';
+import {Repository} from 'typeorm';
 
 @ApiTags('Contabilidad')
 @Controller('contabilidad')
 export class ImportadorController {
-	constructor(private readonly facturasService: FacturasVentasService) {}
+	constructor(
+		private readonly facturasService: FacturasVentasService,
+		@InjectRepository(FacturasVentas)
+		private readonly facturaRepo: Repository<FacturasVentas>,
+	) {}
 
 	@Post('importar-csv')
 	@ApiOperation({summary: 'Importar facturas históricas desde CSV'})
@@ -69,34 +76,52 @@ export class ImportadorController {
 				const rawCliente = row['cliente'] || row['nombre/cliente'] || 'Importado';
 
 				// Parse currency format string ($20,000) or raw (20000)
-				const cleanTotal = rawTotal.replace(/[^0-9.-]+/g, "");
+				const cleanTotal = rawTotal.replace(/[^0-9.-]+/g, '');
+
+				// ── Fecha parsing ──────────────────────────────────────────────────────
+				// Priority 1: ISO format YYYY-MM-DD (exported by our backup)
+				// Priority 2: Colombian DD/MM/YYYY format
+				// Priority 3: fallback to today
+				let parsedFecha: Date;
+				if (/^\d{4}-\d{2}-\d{2}/.test(rawFecha)) {
+					// ISO format — parse directly (safe and unambiguous)
+					parsedFecha = new Date(rawFecha);
+				} else if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(rawFecha)) {
+					// DD/MM/YYYY — reverse to YYYY-MM-DD
+					const [d, m, y] = rawFecha.split('/');
+					parsedFecha = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+				} else {
+					parsedFecha = rawFecha ? new Date(rawFecha) : new Date();
+				}
+				if (isNaN(parsedFecha.getTime())) parsedFecha = new Date();
 
 				const factura = {
 					facturaId: id ? parseInt(id, 10) : undefined,
-					fechaFactura: rawFecha ? new Date(rawFecha.split('/').reverse().join('-')) : new Date(),
+					fechaFactura: parsedFecha,
 					clienteNombre: rawCliente,
 					descripcion: row['descripcion'] || row['notas'] || 'Importado desde CSV de Recuperación',
 					total: parseFloat(cleanTotal) || 0,
 					metodo: rawMetodo.toLowerCase() || 'efectivo',
 					estado: rawEstado.toLowerCase() || 'pagado',
-					ordenes: [], // Puedes expandir esto para construir la orden entera si se requiere
+					ordenes: [],
 				};
-
-				// Fallback to ISO parsing if standard Date breaks on Colombian ES formats
-				if (isNaN(factura.fechaFactura.getTime())) {
-					factura.fechaFactura = new Date(rawFecha); // Intentar ISO
-				}
-				if (isNaN(factura.fechaFactura.getTime())) {
-					factura.fechaFactura = new Date(); // Ultra fallback seguro
-				}
 
 				facturasMap.set(facturaKey, factura);
 			}
 		}
 
 		const imported: any[] = [];
+		let skipped = 0;
 		for (const [key, factura] of facturasMap.entries()) {
 			try {
+				// ── Avoid duplicates: skip if facturaId already exists in DB ─────────
+				if (factura.facturaId) {
+					const existing = await this.facturaRepo.findOne({where: {facturaId: factura.facturaId}});
+					if (existing) {
+						skipped++;
+						continue;
+					}
+				}
 				await this.facturasService.create(factura as any);
 				imported.push(factura);
 			} catch (err) {
@@ -107,6 +132,7 @@ export class ImportadorController {
 		return {
 			success: true,
 			totalImported: imported.length,
+			totalSkipped: skipped,
 			totalErrors: errors.length,
 			errors: errors.slice(0, 10),
 		};

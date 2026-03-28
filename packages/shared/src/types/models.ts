@@ -55,6 +55,7 @@ export interface OrdenProducto {
   sabor1?: string;
   sabor2?: string;
   sabor3?: string;
+  sabores?: string[];          // Added for frontend mapping and diff tracking
 }
 
 export interface Orden {

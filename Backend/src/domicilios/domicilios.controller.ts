@@ -1,4 +1,4 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/common";
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@nestjs/common";
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {DomiciliosService} from "./domicilios.service";
 import {CreateDomiciliosDto} from "./esquemas/domicilios.dto";
@@ -12,8 +12,8 @@ export class DomiciliosController {
 
 	@Get('me')
 	@ApiOperation({ summary: 'Obtener domicilios asignados al usuario actual' })
-	findMe(@GetUser() user: User) {
-		return this.service.findByUser(user.id);
+	findMe(@GetUser() user: User, @Query('all') all?: string) {
+		return this.service.findByUser(user.username, all === 'true');
 	}
 
 	@Get()

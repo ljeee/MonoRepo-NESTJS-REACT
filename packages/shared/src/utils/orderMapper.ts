@@ -15,8 +15,8 @@ export function mapOrdenToForm(orden: Orden): Partial<OrderFormState> {
 
   return {
     tipoPedido: (orden.tipoPedido as 'mesa' | 'domicilio' | 'llevar') || 'mesa',
-    nombreCliente: orden.nombreCliente || orden.factura?.clienteNombre || '',
-    numeroMesa: orden.tipoPedido === 'mesa' ? (orden.nombreCliente || '') : '',
+    nombreCliente: (orden as any).nombreCliente || orden.factura?.clienteNombre || '',
+    numeroMesa: orden.tipoPedido === 'mesa' ? ((orden as any).nombreCliente || orden.factura?.clienteNombre || '') : '',
     telefonoCliente: orden.telefonoCliente || (domicilio?.telefono as any) || '',
     selectedAddress: (domicilio?.direccionEntrega as any) || '',
     newAddress: (domicilio?.direccionEntrega as any) || '',

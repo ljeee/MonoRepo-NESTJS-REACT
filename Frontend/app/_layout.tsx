@@ -37,7 +37,12 @@ function AppShell() {
   const { showToast } = useToast();
 
   const pathname = usePathname();
+  // Close mobile menu on ANY navigation (including query-param changes from content taps)
+  const pathnameRef = React.useRef(pathname);
   useEffect(() => {
+    if (pathnameRef.current !== pathname) {
+      pathnameRef.current = pathname;
+    }
     setShowMobileMenu(false);
   }, [pathname]);
 
@@ -72,21 +77,14 @@ function AppShell() {
 
   if (isLoading || !fontsLoaded) return null;
 
-  if (!token) {
-    return (
-      <View className="flex-1 bg-(--color-pos-bg)">
-        <GlobalStyles />
-        <Stack screenOptions={{ headerShown: false }} />
-        <ToastContainer />
-      </View>
-    );
-  }
+  const isLoginScreen = pathname === '/login' || pathname?.includes('login');
+  const showAppShell = !!token && !isLoginScreen;
 
   return (
-    <View className={`flex-1 bg-(--color-pos-bg) ${isCompact ? 'flex-col' : 'flex-row'}`}>
+    <View className={`flex-1 bg-(--color-pos-bg) ${isCompact && showAppShell ? 'flex-col' : 'flex-row'}`}>
       <GlobalStyles />
       
-      {isCompact && (
+      {showAppShell && isCompact && (
         <>
           <View 
             style={{ paddingTop: insets.top + 16 }}
@@ -109,14 +107,15 @@ function AppShell() {
                  onPress={() => setShowMobileMenu(false)} 
                />
                <View className="w-72 h-full bg-(--color-pos-surface) shadow-2xl border-r border-white/5">
-                 <Navbar />
+                 <Navbar onClose={() => setShowMobileMenu(false)} />
                </View>
             </View>
           )}
         </>
       )}
 
-      {!isCompact && <Navbar />}
+      {showAppShell && !isCompact && <Navbar />}
+      
       <View className="flex-1 h-full overflow-hidden">
         <Stack screenOptions={{ headerShown: false }} />
       </View>

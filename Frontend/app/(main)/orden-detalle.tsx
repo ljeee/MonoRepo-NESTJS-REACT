@@ -299,7 +299,7 @@ export default function OrdenDetalleScreen() {
           </View>
 
           {/* ── Info Cards Split ── */}
-          <View className="flex-row gap-6 mb-6 flex-wrap">
+          <View className="flex-row gap-4 mb-4 flex-wrap">
               {/* Client Info */}
               <Card className="flex-1 min-w-[300px] p-6 border border-white/5 bg-white/5">
                   <View className="flex-row items-center gap-3 mb-6">
@@ -361,27 +361,31 @@ export default function OrdenDetalleScreen() {
                       const price = getUnitPrice(p);
                       const details = getProductDetails(p);
                       return (
-                          <View key={index} className="flex-row items-center mb-4 bg-white/5 p-4 rounded-3xl border border-white/5 shadow-sm active:scale-[0.99] transition-transform">
-                              <View className="w-14 h-14 rounded-2xl bg-white/5 items-center justify-center mr-5">
-                                  <Text className="text-2xl">🍕</Text>
+                          <View key={index} style={{
+                              flexDirection: 'row', alignItems: 'center',
+                              marginBottom: 10, backgroundColor: 'rgba(255,255,255,0.04)',
+                              padding: 12, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+                          }}>
+                              <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
+                                  <Text style={{ fontSize: 18 }}>🍕</Text>
                               </View>
                               
                               <View className="flex-1">
                                   <View className="flex-row justify-between items-start">
-                                      <Text className="text-white font-black text-sm uppercase tracking-tight flex-1" style={{ fontFamily: 'Space Grotesk' }}>{getProductName(p)}</Text>
-                                      <View className="bg-(--color-pos-primary-light) px-2.5 py-1 rounded-xl border border-(--color-pos-primary)/20 ml-3">
-                                          <Text className="text-(--color-pos-primary) font-black text-xs">x{p.cantidad || 1}</Text>
+                                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12, textTransform: 'uppercase', flex: 1 }} numberOfLines={1}>{getProductName(p)}</Text>
+                                      <View style={{ backgroundColor: 'rgba(245,165,36,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(245,165,36,0.2)', marginLeft: 8 }}>
+                                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 11 }}>x{p.cantidad || 1}</Text>
                                       </View>
                                   </View>
                                   
                                   {details && (
-                                      <Text className="text-slate-500 text-[10px] font-bold mt-1 italic uppercase tracking-wider">{details}</Text>
+                                      <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, marginTop: 2, fontStyle: 'italic', textTransform: 'uppercase' }}>{details}</Text>
                                   )}
                                   
                                   {price != null && (
-                                      <View className="flex-row justify-between items-end mt-3">
-                                          <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest">${formatCurrency(price)} c/u</Text>
-                                          <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(price * (p.cantidad || 1))}</Text>
+                                      <View className="flex-row justify-between items-end mt-1.5">
+                                          <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>${formatCurrency(price)} c/u</Text>
+                                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 13 }}>${formatCurrency(price * (p.cantidad || 1))}</Text>
                                       </View>
                                   )}
                               </View>
@@ -398,32 +402,32 @@ export default function OrdenDetalleScreen() {
 
           {/* ── Summary Card ── */}
           {orden.factura?.total != null && (
-              <Card className="p-8 border border-(--color-pos-primary)/20 bg-(--color-pos-primary)/5 relative overflow-hidden">
-                  <View className="absolute -right-10 -bottom-10 opacity-5">
-                      <Icon name="pizza" size={200} color="#F5A524" />
+              <Card style={{ borderColor: 'rgba(245,165,36,0.2)', backgroundColor: 'rgba(245,165,36,0.04)', position: 'relative', overflow: 'hidden', marginBottom: 8 }}>
+                  <View style={{ position: 'absolute', right: -20, bottom: -20, opacity: 0.05 }}>
+                      <Icon name="pizza" size={160} color="#F5A524" />
                   </View>
 
-                  <View className="gap-y-4 relative z-10">
-                      <View className="flex-row justify-between items-center opacity-70">
-                          <Text className="text-slate-400 font-bold uppercase tracking-widest text-xs">Subtotal</Text>
-                          <Text className="text-white font-black" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(Number(orden.factura.total) - (Number(orden.domicilios?.[0]?.costoDomicilio) || 0))}</Text>
+                  <View style={{ gap: 10, position: 'relative', zIndex: 1 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: 0.7 }}>
+                          <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Subtotal</Text>
+                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14 }}>${formatCurrency(Number(orden.factura.total) - (Number(orden.domicilios?.[0]?.costoDomicilio) || 0))}</Text>
                       </View>
                       
                       {orden.domicilios && orden.domicilios.length > 0 && Number(orden.domicilios[0].costoDomicilio) > 0 && (
-                          <View className="flex-row justify-between items-center opacity-70">
-                              <Text className="text-slate-400 font-bold uppercase tracking-widest text-xs">Costo de Domicilio</Text>
-                              <Text className="text-emerald-400 font-black" style={{ fontFamily: 'Space Grotesk' }}>+ ${formatCurrency(Number(orden.domicilios[0].costoDomicilio))}</Text>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: 0.7 }}>
+                              <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Costo de Domicilio</Text>
+                              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 14 }}>+ ${formatCurrency(Number(orden.domicilios[0].costoDomicilio))}</Text>
                           </View>
                       )}
                       
-                      <View className="h-[1px] bg-white/5 my-2" />
+                      <View style={{ height: 1, backgroundColor: 'rgba(245,165,36,0.15)' }} />
                       
-                      <View className="flex-row justify-between items-center">
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <View>
-                              <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Total Orden</Text>
-                              <Text className="text-(--color-pos-text-muted) text-[10px] uppercase font-bold tracking-widest mt-0.5">IVA Incluido (Exento)</Text>
+                              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Orden</Text>
+                              <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>IVA Incluido (Exento)</Text>
                           </View>
-                          <Text className="text-(--color-pos-primary) font-black text-4xl" style={{ fontFamily: 'Space Grotesk' }}>
+                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 30 }}>
                               ${formatCurrency(Number(orden.factura.total))}
                           </Text>
                       </View>

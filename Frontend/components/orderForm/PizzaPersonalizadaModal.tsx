@@ -171,7 +171,7 @@ export default function PizzaPersonalizadaModal({
             <TouchableOpacity
               onPress={handleAdd}
               disabled={selectedSabores.length === 0}
-              className={`flex-[2] mx-2 py-4 rounded-2xl items-center shadow-lg active:scale-[0.95] transition-transform ${selectedSabores.length === 0 ? 'bg-slate-700' : 'bg-(--color-pos-primary)'}`}
+              className={`flex-[2] mx-2 py-4 rounded-2xl items-center shadow-lg ${selectedSabores.length === 0 ? 'bg-slate-700' : 'bg-(--color-pos-primary)'}`}
             >
               <Text className={`font-black uppercase tracking-wider ${selectedSabores.length === 0 ? 'text-slate-500' : 'text-slate-900'}`}>
                 {selectedSabores.length === 0 ? 'Elige sabores' : `Agregar • $${formatCurrency(precioFinal)}`}

@@ -61,40 +61,49 @@ async function fetchClientesSafe(): Promise<Cliente[]> {
 
 export async function buildFacturasBackupCsv(facturas: FacturaItem[]): Promise<string> {
   const clientes = await fetchClientesSafe();
+  // ── Headers must match exactly what the backend controller reads ──────────
+  // Backend lookup keys (after normalize + lowercase):
+  //   id, cliente, tipo documento, no. documento, correo, fecha, total, estado, metodo, notas, productos
   const rows: string[] = [
-    'ID,Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total Factura,Estado,Método,Producto,Cantidad,Precio Unitario,Subtotal',
+    'ID,Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total,Estado,Metodo,Notas,Productos',
   ];
 
   for (const f of facturas) {
     const cliente = resolveCliente(f, clientes);
-    const id = String(f.facturaId ?? '');
-    const clienteNombre = escapeCsvValue(f.clienteNombre || '');
-    const tipoDoc = escapeCsvValue(cliente?.tipoDocumento || '');
-    const documento = escapeCsvValue(cliente?.documento || '');
-    const correo = escapeCsvValue(cliente?.correo || '');
-    const fecha = formatDateForCsv(f.fechaFactura);
-    const total = String(f.total ?? 0);
+
+    // ── One row per factura (NOT per product) to avoid duplicate imports ──
+    const id           = String(f.facturaId ?? '');
+    const clienteNom   = escapeCsvValue(f.clienteNombre || '');
+    const tipoDoc      = escapeCsvValue(cliente?.tipoDocumento || '');
+    const documento    = escapeCsvValue(cliente?.documento || '');
+    const correo       = escapeCsvValue(cliente?.correo || '');
+
+    // ISO date (YYYY-MM-DD) — backend can always parse this reliably
+    const rawFecha = f.fechaFactura ? new Date(f.fechaFactura) : null;
+    const fecha = rawFecha && !isNaN(rawFecha.getTime())
+      ? rawFecha.toISOString().split('T')[0]
+      : '';
+
+    // Plain number — backend strips non-numeric chars anyway, but let's be clean
+    const total  = String(Number(f.total ?? 0));
     const estado = f.estado || 'pendiente';
-    const metodo = f.metodo || '';
+    const metodo = f.metodo || 'efectivo';
+    const notas  = escapeCsvValue(f.descripcion || '');
 
-    const productos = (f.ordenes ?? []).flatMap((o) => o.productos ?? []);
+    // Compact product summary in a single quoted cell
+    const productos = (f.ordenes ?? [])
+      .flatMap((o) => o.productos ?? [])
+      .map((p) => `${p.cantidad ?? 1}x ${p.productoNombre || 'Producto'}`)
+      .join(' | ');
 
-    if (productos.length === 0) {
-      rows.push(`${id},${clienteNombre},${tipoDoc},${documento},${correo},${fecha},${total},${estado},${metodo},,,,`);
-      continue;
-    }
-
-    for (const p of productos) {
-      const nombre = escapeCsvValue(p.productoNombre || 'Producto');
-      const cant = p.cantidad ?? 1;
-      const precio = p.precioUnitario ?? 0;
-      const sub = cant * precio;
-      rows.push(`${id},${clienteNombre},${tipoDoc},${documento},${correo},${fecha},${total},${estado},${metodo},${nombre},${cant},${precio},${sub}`);
-    }
+    rows.push(
+      `${id},${clienteNom},${tipoDoc},${documento},${correo},${fecha},${total},${estado},${metodo},${notas},${escapeCsvValue(productos)}`,
+    );
   }
 
   return rows.join('\n');
 }
+
 
 export async function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: BalanceGastoItem[]): Promise<string> {
   const clientes = await fetchClientesSafe();

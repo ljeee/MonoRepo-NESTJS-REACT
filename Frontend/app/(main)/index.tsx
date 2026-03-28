@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Platform } from 'react-native';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
@@ -7,6 +7,7 @@ import type { VentaHora, ResumenPeriodo, Orden } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import Icon from '../../components/ui/Icon';
 import { useAuth } from '../../contexts/AuthContext';
+import { PageContainer, PageHeader, Card, Icon as UIIcon } from '../../components/ui';
 
 function formatCurrency(n: number) {
     return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
@@ -92,7 +93,7 @@ function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
     return Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
 }
 
-function DashboardPage() {
+export default function DashboardPage() {
     const router = useRouter();
     const { user } = useAuth();
     const { isMobile } = useBreakpoint();
@@ -128,14 +129,15 @@ function DashboardPage() {
         setDashboard((prev) => ({ ...prev, loading: true }));
         const hoy = todayStr();
         try {
-            const [r, vh, ords] = await Promise.allSettled([
+            const [r, vh, ords, facts] = await Promise.allSettled([
                 api.estadisticas.resumenPeriodo(hoy, hoy),
                 api.estadisticas.ventasPorHora(hoy),
                 api.ordenes.getDay(),
+                api.facturas.getDay(),
             ]);
 
             const ordData = ords.status === 'fulfilled' ? ords.value : [];
-            const factsData: any[] = [];
+            const factsData = facts.status === 'fulfilled' ? facts.value : [];
             const sorted = [...ordData].sort((a, b) => new Date(b.fechaOrden).getTime() - new Date(a.fechaOrden).getTime());
 
             const apiResumen = r.status === 'fulfilled' ? r.value : null;
@@ -148,7 +150,7 @@ function DashboardPage() {
                 ordenes: sorted.slice(0, 6),
                 pendientes: ordData.filter(o => o.estadoOrden === 'pendiente').length,
                 completadas: ordData.filter(o => isCompletedEstado(o.estadoOrden)).length,
-                sinPagar: 0,
+                sinPagar: factsData.filter(f => f.estado === 'pendiente').length,
             });
         } catch (err) {
             console.error('Dashboard fetch error', err);
@@ -171,160 +173,139 @@ function DashboardPage() {
     const maxHora = Math.max(...ventasHoraFull.map(v => v.cantidad), 1);
     const userName = user && (user as any).name ? String((user as any).name) : 'Cajero';
 
+    const [ready, setReady] = useState(Platform.OS !== 'web');
+
+    useEffect(() => {
+        if (Platform.OS === 'web') {
+            const timer = setTimeout(() => setReady(true), 50);
+            return () => clearTimeout(timer);
+        }
+    }, []);
+
+    if (!ready) return null;
+
     return (
-        <ScrollView className="flex-1 bg-(--color-pos-bg)" contentContainerClassName="p-4 md:p-6 lg:p-8">
+        <PageContainer>
             {/* Welcome */}
-            <View className={`flex-row items-center p-5 rounded-2xl bg-(--color-pos-surface) border border-white/5 shadow-sm mb-6 ${isMobile ? 'flex-col items-start gap-4' : ''}`}>
-                <View className="flex-1">
-                    <Text className="text-xl md:text-2xl font-black text-white tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>{getGreeting()}, {userName} 👋</Text>
-                    <Text className="text-sm text-(--color-pos-text-muted) mt-1 capitalize">
+            <View style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', padding: isMobile ? 16 : 20, borderRadius: 18, backgroundColor: 'rgba(245,165,36,0.04)', borderWidth: 1, borderColor: 'rgba(245,165,36,0.1)', marginBottom: 16, gap: isMobile ? 12 : 0 }}>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: isMobile ? 22 : 26, textTransform: 'uppercase', letterSpacing: -0.5 }}>{getGreeting()}, {userName} 👋</Text>
+                    <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 12, marginTop: 2, textTransform: 'capitalize' }}>
                         {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
                     </Text>
                 </View>
-                <Text className={`text-2xl font-black text-(--color-pos-primary) ${isMobile ? 'text-xl leading-6 self-start' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>{clock}</Text>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: isMobile ? 28 : 36, letterSpacing: -1 }}>{clock}</Text>
             </View>
 
             {/* Quick Actions */}
-            <View className="flex-row flex-wrap gap-3 mb-6">
-                <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 rounded-xl bg-(--color-pos-primary) shadow-amber-500/20 active:scale-[0.95] transition-transform" onPress={() => router.push('/crear-orden')}>
-                    <Icon name="plus-circle-outline" size={18} color="#ffffff" />
-                    <Text className="text-sm font-bold text-white">Crear Orden</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: '#F5A524' }} onPress={() => router.push('/crear-orden')}>
+                    <UIIcon name="plus-circle-outline" size={18} color="#000" />
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#000', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Crear Orden</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 rounded-xl bg-(--color-pos-surface) border border-white/5 active:scale-[0.95] transition-transform hover:bg-(--color-pos-surface-hover)" onPress={() => router.push('/ordenes')}>
-                    <Icon name="clipboard-list-outline" size={18} color="#F5A524" />
-                    <Text className="text-sm font-bold text-(--color-pos-text)">Pendientes</Text>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }} onPress={() => router.push('/ordenes')}>
+                    <UIIcon name="clipboard-list-outline" size={18} color="#F5A524" />
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Pendientes</Text>
                 </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 rounded-xl bg-(--color-pos-surface) border border-white/5 active:scale-[0.95] transition-transform hover:bg-(--color-pos-surface-hover)" onPress={() => router.push('/balance-fechas')}>
-                    <Icon name="scale-balance" size={18} color="#8B5CF6" />
-                    <Text className="text-sm font-bold text-(--color-pos-text)">Balance</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 rounded-xl bg-(--color-pos-surface) border border-white/5 active:scale-[0.95] transition-transform hover:bg-(--color-pos-surface-hover)" onPress={() => router.push('/gestion-sabores' as any)}>
-                    <Icon name="pizza" size={18} color="#a855f7" />
-                    <Text className="text-sm font-bold text-(--color-pos-text)">Sabores</Text>
-                </TouchableOpacity>
-                <TouchableOpacity className="flex-row items-center gap-2 px-5 py-3 rounded-xl bg-(--color-pos-surface) border border-white/5 active:scale-[0.95] transition-transform hover:bg-(--color-pos-surface-hover)" onPress={() => router.push('/ajustes-negocio' as any)}>
-                    <Icon name="storefront-edit-outline" size={18} color="#06b6d4" />
-                    <Text className="text-sm font-bold text-(--color-pos-text)">Negocio</Text>
+                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }} onPress={() => router.push('/balance-fechas')}>
+                    <UIIcon name="scale-balance" size={18} color="#8B5CF6" />
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Balance</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Status cards */}
-            <View className={`flex-row gap-4 mb-6 ${isMobile ? 'flex-wrap' : ''}`}>
-                <TouchableOpacity className={`flex-1 flex-row items-center gap-4 p-5 rounded-2xl bg-(--color-pos-surface) border border-white/5 active:scale-[0.98] transition-all hover:bg-(--color-pos-surface-hover) min-w-[140px] ${isMobile ? 'min-w-[48%] flex-auto' : ''}`} onPress={() => router.push('/ordenes')}>
-                    <View className={`w-3 h-3 rounded-full ${pendientes > 0 ? 'bg-rose-500 shadow-rose-500/50 shadow-sm' : 'bg-emerald-500'}`} />
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                <Card style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: isMobile ? '47%' : undefined }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: pendientes > 0 ? '#EF4444' : '#10B981' }} />
                     <View>
-                        <Text className="text-2xl font-black text-white" style={{ fontFamily: 'Space Grotesk' }}>{pendientes}</Text>
-                        <Text className="text-xs text-(--color-pos-text-muted) font-medium">Pendientes</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 26 }}>{pendientes}</Text>
+                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Pendientes</Text>
                     </View>
-                </TouchableOpacity>
-                <TouchableOpacity className={`flex-1 flex-row items-center gap-4 p-5 rounded-2xl bg-(--color-pos-surface) border border-white/5 active:scale-[0.98] transition-all hover:bg-(--color-pos-surface-hover) min-w-[140px] ${isMobile ? 'min-w-[48%] flex-auto' : ''}`} onPress={() => router.push('/facturas-dia' as any)}>
-                    <View className={`w-3 h-3 rounded-full ${sinPagar > 0 ? 'bg-amber-500 shadow-amber-500/50 shadow-sm' : 'bg-emerald-500'}`} />
+                </Card>
+                <Card style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: isMobile ? '47%' : undefined }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: sinPagar > 0 ? '#F5A524' : '#10B981' }} />
                     <View>
-                        <Text className="text-2xl font-black text-white" style={{ fontFamily: 'Space Grotesk' }}>{sinPagar}</Text>
-                        <Text className="text-xs text-(--color-pos-text-muted) font-medium">Sin Pagar</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 26 }}>{sinPagar}</Text>
+                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Sin Pagar</Text>
                     </View>
-                </TouchableOpacity>
-                <View className={`flex-1 flex-row items-center gap-4 p-5 rounded-2xl bg-(--color-pos-surface) border border-white/5 min-w-[140px] ${isMobile ? 'min-w-[48%] flex-auto' : ''}`}>
-                    <View className="w-3 h-3 rounded-full bg-emerald-500" />
+                </Card>
+                <Card style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: isMobile ? '47%' : undefined }}>
+                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#10B981' }} />
                     <View>
-                        <Text className="text-2xl font-black text-white" style={{ fontFamily: 'Space Grotesk' }}>{completadas}</Text>
-                        <Text className="text-xs text-(--color-pos-text-muted) font-medium">Completadas</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 26 }}>{completadas}</Text>
+                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Completadas</Text>
                     </View>
-                </View>
+                </Card>
             </View>
 
-            {loading && !resumen && (
-                <ActivityIndicator size="large" color="#F5A524" className="py-8" />
-            )}
+            {loading && !resumen && <ActivityIndicator size="large" color="#F5A524" className="py-20" />}
 
             {/* KPIs */}
             {resumen && (
-                <View className={`flex-row gap-4 mb-6 ${isMobile ? 'flex-wrap' : ''}`}>
-                    <View className={`flex-1 p-5 rounded-2xl bg-(--color-pos-surface) border border-white/5 items-center min-w-[140px] ${isMobile ? 'min-w-[48%] flex-auto' : ''}`}>
-                        <Text className="text-xs font-bold text-(--color-pos-text-muted) uppercase tracking-wider mb-2">Ventas Hoy</Text>
-                        <Text className="text-[22px] font-black text-emerald-400" style={{ fontFamily: 'Space Grotesk' }}>{formatCurrency(resumen.totalVentas)}</Text>
-                    </View>
-                    <View className={`flex-1 p-5 rounded-2xl bg-(--color-pos-surface) border border-white/5 items-center min-w-[140px] ${isMobile ? 'min-w-[48%] flex-auto' : ''}`}>
-                        <Text className="text-xs font-bold text-(--color-pos-text-muted) uppercase tracking-wider mb-2">Ticket Prom</Text>
-                        <Text className="text-[22px] font-black text-(--color-pos-secondary)" style={{ fontFamily: 'Space Grotesk' }}>{formatCurrency(resumen.ticketPromedio)}</Text>
-                    </View>
-                    <View className={`flex-1 p-5 rounded-2xl bg-(--color-pos-surface) border border-white/5 items-center min-w-[140px] ${isMobile ? 'min-w-[48%] flex-auto' : ''}`}>
-                        <Text className="text-xs font-bold text-(--color-pos-text-muted) uppercase tracking-wider mb-2">Órdenes</Text>
-                        <Text className="text-[22px] font-black text-(--color-pos-primary)" style={{ fontFamily: 'Space Grotesk' }}>{resumen.ordenes}</Text>
-                    </View>
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                    <Card style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.06)', borderColor: 'rgba(16,185,129,0.15)' }}>
+                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Ventas Hoy</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 22 }}>{formatCurrency(resumen.totalVentas)}</Text>
+                    </Card>
+                    <Card style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.15)' }}>
+                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Ticket Promedio</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#A78BFA', fontSize: 22 }}>{formatCurrency(resumen.ticketPromedio)}</Text>
+                    </Card>
+                    <Card style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(245,165,36,0.06)', borderColor: 'rgba(245,165,36,0.15)' }}>
+                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Órdenes</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 22 }}>{resumen.ordenes}</Text>
+                    </Card>
                 </View>
             )}
 
             {/* Hour Chart + Recent */}
-            <View className={`flex-row gap-6 flex-wrap ${isMobile ? 'flex-col' : ''}`}>
+            <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
                 {/* Hour chart */}
-                <View className="flex-1 bg-(--color-pos-surface) rounded-2xl border border-white/5 p-5 min-w-[280px] min-h-[260px] flex-col">
-                    <Text className="text-base font-bold text-white mb-4 pb-3 border-b border-white/5">📊 Actividad por Hora</Text>
+                <Card style={{ flex: 1, minHeight: 280 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>📊 Actividad por Hora</Text>
                     {ventasHora.length > 0 ? (
-                        <View className="flex-row items-end flex-1 min-h-[170px] gap-0.5 mt-auto">
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', flex: 1, minHeight: 180, gap: 2 }}>
                             {ventasHoraFull.map(v => {
                                 const pct = (v.cantidad / maxHora) * 100;
                                 return (
-                                    <View key={v.hora} className="flex-1 items-center h-full flex-col">
-                                        <View className="flex-1 w-full max-w-[20px] bg-black/20 rounded-t-sm justify-end overflow-hidden">
-                                            <View className={`w-full rounded-t-sm bg-(--color-pos-secondary) ${v.cantidad > 0 ? '' : 'min-h-0'}`} style={{ height: v.cantidad > 0 ? `${Math.max(pct, 2)}%` : '0%' }} />
+                                    <View key={v.hora} style={{ flex: 1, alignItems: 'center', height: '100%' }}>
+                                        <View style={{ flex: 1, width: '100%', maxWidth: 20, backgroundColor: 'rgba(0,0,0,0.3)', borderTopLeftRadius: 6, borderTopRightRadius: 6, justifyContent: 'flex-end', overflow: 'hidden' }}>
+                                            <View 
+                                                style={{ width: '100%', backgroundColor: '#F5A524', borderTopLeftRadius: 6, borderTopRightRadius: 6, height: v.cantidad > 0 ? `${Math.max(pct, 3)}%` : '0%' }} 
+                                            />
                                         </View>
-                                        <Text className="text-[9px] text-(--color-pos-text-muted) mt-1">{v.hora}h</Text>
+                                        <Text style={{ fontFamily: 'Outfit', fontSize: 8, color: '#475569', marginTop: 4 }}>{v.hora}h</Text>
                                     </View>
                                 );
                             })}
                         </View>
-                    ) : <Text className="text-center text-(--color-pos-text-muted) py-8">Sin actividad</Text>}
-                </View>
+                    ) : <Text style={{ fontFamily: 'Outfit', textAlign: 'center', color: '#475569', paddingVertical: 40, fontStyle: 'italic' }}>Sin actividad registrada hoy</Text>}
+                </Card>
 
                 {/* Recent orders */}
-                <View className="flex-1 bg-(--color-pos-surface) rounded-2xl border border-white/5 p-5 min-w-[280px]">
-                    <Text className="text-base font-bold text-white mb-4 pb-3 border-b border-white/5">📋 Recientes</Text>
+                <Card style={{ flex: 1, minHeight: 280 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 13, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>📋 Órdenes Recientes</Text>
                     {ordenes.map(o => (
                         <TouchableOpacity
                             key={o.ordenId}
-                            className="flex-row items-center gap-4 py-3 border-b border-white/5 active:opacity-70 transition-opacity"
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)' }}
                             onPress={() => router.push(`/orden-detalle?id=${o.ordenId}` as any)}
                         >
-                            <Text className="text-xs font-black text-(--color-pos-primary) min-w-[40px]" style={{ fontFamily: 'Space Grotesk' }}>#{o.ordenId}</Text>
-                            <View className="flex-1">
-                                <Text className="text-sm font-bold text-white" numberOfLines={1}>{getOrdenDisplayName(o)}</Text>
-                                <Text className="text-xs text-(--color-pos-text-muted)">{timeAgo(o.fechaOrden)}</Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 12, minWidth: 36 }}>#{o.ordenId}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 13 }} numberOfLines={1}>{getOrdenDisplayName(o)}</Text>
+                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, marginTop: 1 }}>{timeAgo(o.fechaOrden)}</Text>
                             </View>
-                            <Text className={`text-[10px] px-2.5 py-1 rounded-full font-bold overflow-hidden capitalize
-                                ${o.estadoOrden === 'pendiente' ? 'bg-amber-500/15 text-amber-500' :
-                                    isCompletedEstado(o.estadoOrden) ? 'bg-emerald-500/15 text-emerald-500' :
-                                        'bg-white/10 text-(--color-pos-text-muted)'}`}
-                            >
-                                {o.estadoOrden}
-                            </Text>
+                            <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20, backgroundColor: o.estadoOrden === 'pendiente' ? 'rgba(245,165,36,0.1)' : 'rgba(16,185,129,0.1)' }}>
+                                <Text style={{ fontFamily: 'Outfit', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, color: o.estadoOrden === 'pendiente' ? '#F5A524' : '#10B981' }}>{o.estadoOrden}</Text>
+                            </View>
                         </TouchableOpacity>
                     ))}
-                    {ordenes.length === 0 && <Text className="text-center text-(--color-pos-text-muted) py-8">Sin órdenes</Text>}
-                </View>
+                    {ordenes.length === 0 && <Text style={{ fontFamily: 'Outfit', textAlign: 'center', color: '#475569', paddingVertical: 40, fontStyle: 'italic' }}>Sin órdenes recientes</Text>}
+                </Card>
             </View>
 
             {isMobile && <View className="h-20" />}
-        </ScrollView>
+        </PageContainer>
     );
-}
-
-export default function SafeDashboardWrapper() {
-    const [ready, setReady] = useState(false);
-    useEffect(() => {
-        // Retrasamos el render 1 tick para que react-native-css 
-        // compile e inyecte los estilos globales antes de pintar la ruta inicial
-        const timer = setTimeout(() => setReady(true), 10);
-        return () => clearTimeout(timer);
-    }, []);
-
-    if (!ready) {
-        return (
-            <View className="flex-1 bg-[#0C0F1A] items-center justify-center">
-                <ActivityIndicator size="large" color="#F5A524" />
-            </View>
-        );
-    }
-
-    return <DashboardPage />;
 }

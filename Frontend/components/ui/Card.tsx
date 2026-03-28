@@ -54,15 +54,15 @@ export default function Card({
 
     const paddingClasses = {
         none: 'p-0',
-        sm: 'p-3',
-        md: 'p-5',
-        lg: 'p-8',
+        sm: 'p-2.5',
+        md: 'p-4',
+        lg: 'p-6',
     };
 
     const variantClasses = {
-        default: 'bg-(--color-pos-surface) border border-white/5',
-        elevated: 'bg-(--color-pos-surface) border border-white/5 shadow-2xl',
-        outlined: 'bg-transparent border-2 border-white/10',
+        default: 'bg-white/[0.04] border border-white/[0.07]',
+        elevated: 'bg-white/[0.05] border border-white/[0.08] shadow-xl',
+        outlined: 'bg-transparent border border-white/10',
     };
 
     const combinedClasses = `rounded-2xl ${paddingClasses[padding]} ${variantClasses[variant]} ${className}`;

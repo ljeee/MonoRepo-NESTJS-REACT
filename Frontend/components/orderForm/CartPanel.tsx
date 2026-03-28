@@ -25,14 +25,14 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
 
   if (items.length === 0) {
     return (
-      <View className="bg-(--color-pos-bg)/50 rounded-2xl p-8 items-center justify-center border border-white/5 border-dashed my-5">
+      <View className="bg-(--color-pos-bg)/50 rounded-2xl p-8 items-center justify-center border border-white/5 border-dashed mb-5">
         <Text className="text-slate-500 font-medium">Agrega productos desde el menú</Text>
       </View>
     );
   }
 
   return (
-    <View className="bg-(--color-pos-bg)/50 rounded-2xl p-5 border border-white/5 my-5">
+    <View className="bg-(--color-pos-bg)/50 rounded-2xl p-5 border border-white/5 mb-5">
       <Text className="text-white font-black uppercase tracking-widest text-base mb-4 opacity-80">🛒 Resumen del pedido</Text>
 
       <ScrollView className="max-h-72" nestedScrollEnabled>

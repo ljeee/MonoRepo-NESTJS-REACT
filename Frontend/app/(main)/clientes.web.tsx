@@ -223,15 +223,15 @@ export default function ClientesScreen() {
       {/* ── Create / Edit form ── */}
       {formMode !== 'closed' && (
         <Card className="mb-8 p-6">
-          <View className="flex-row items-center gap-3 mb-6">
-            <View className="w-10 h-10 rounded-xl bg-(--color-pos-primary)/10 items-center justify-center">
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.1)', alignItems: 'center', justifyContent: 'center' }}>
               <Icon
                 name={formMode === 'create' ? 'account-plus-outline' : 'account-edit-outline'}
-                size={22}
+                size={20}
                 color="#F5A524"
               />
             </View>
-            <Text className="text-white font-black text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 15, textTransform: 'uppercase', letterSpacing: 1 }}>
               {formMode === 'create' ? 'Nuevo Cliente' : 'Editar Cliente'}
             </Text>
           </View>
@@ -419,7 +419,7 @@ export default function ClientesScreen() {
             <Card key={item.telefono} className="overflow-hidden">
               <View className="flex-row justify-between items-start mb-4">
                 <View className="flex-1">
-                  <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>{item.clienteNombre || 'Sin nombre'}</Text>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 16 }}>{item.clienteNombre || 'Sin nombre'}</Text>
                   <View className="flex-row items-center gap-1.5 mt-1">
                     <Icon name="phone-outline" size={12} color="#F5A524" />
                     <Text className="text-slate-400 text-xs font-bold">{item.telefono}</Text>
@@ -444,18 +444,18 @@ export default function ClientesScreen() {
               {/* ── Stats Indicators ── */}
               {stats && (
                 <View className="bg-white/5 rounded-2xl p-4 mb-4 border border-white/5">
-                  <View className="flex-row justify-between mb-4">
-                    <View className="flex-1 items-center border-r border-white/5">
-                      <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>{stats.totalOrdenes}</Text>
-                      <Text className="text-slate-500 text-[9px] uppercase font-black tracking-widest">Órdenes</Text>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.05)' }}>
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 16 }}>{stats.totalOrdenes}</Text>
+                      <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>Órdenes</Text>
                     </View>
-                    <View className="flex-1 items-center border-r border-white/5">
-                      <Text className="text-green-400 font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(stats.gastoTotal).replace('$', '')}</Text>
-                      <Text className="text-slate-500 text-[9px] uppercase font-black tracking-widest">Gasto Total</Text>
+                    <View style={{ flex: 1, alignItems: 'center', borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.05)' }}>
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 16 }}>${formatCurrency(stats.gastoTotal).replace('$', '')}</Text>
+                      <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>Gasto Total</Text>
                     </View>
-                    <View className="flex-1 items-center">
-                      <Text className="text-blue-400 font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(Math.round(stats.gastoTotal / stats.totalOrdenes)).replace('$', '')}</Text>
-                      <Text className="text-slate-500 text-[9px] uppercase font-black tracking-widest">Ticket Prom.</Text>
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#60A5FA', fontSize: 16 }}>${formatCurrency(Math.round(stats.gastoTotal / stats.totalOrdenes)).replace('$', '')}</Text>
+                      <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>Ticket Prom.</Text>
                     </View>
                   </View>
                   

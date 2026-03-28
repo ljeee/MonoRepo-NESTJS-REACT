@@ -58,28 +58,28 @@ export function StatsHeader({
   periodLabel?: string;
 }) {
   return (
-    <View className="gap-y-4 mb-6">
+    <View style={{ gap: 10, marginBottom: 16 }}>
       {/* Main stat */}
-      <Card className="bg-slate-900 border-0 overflow-hidden relative p-6">
-         <View className="absolute inset-0 bg-(--color-pos-primary)/5" />
-         <Text className="text-white/60 font-black text-xs uppercase tracking-widest mb-1">{periodLabel}</Text>
-         <Text className="text-white font-black text-4xl" style={{ fontFamily: 'Space Grotesk' }}>
+      <Card style={{ overflow: 'hidden', position: 'relative', borderColor: 'rgba(245,165,36,0.15)', backgroundColor: 'rgba(6,14,26,0.8)' }}>
+         <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(245,165,36,0.04)' }} />
+         <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.5)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>{periodLabel}</Text>
+         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 32 }}>
             ${formatCurrency(stats.totalDia)}
          </Text>
-         <Text className="text-slate-500 font-bold text-xs mt-2 uppercase">{stats.count} facturas generadas</Text>
+         <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11, marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{stats.count} facturas generadas</Text>
       </Card>
       
       {/* Pagado / Pendiente */}
-      <View className="flex-row gap-4">
-        <Card className="flex-1 p-4 bg-emerald-500/10 border-emerald-500/20">
-          <Text className="text-emerald-500/60 font-black text-[10px] uppercase tracking-tighter mb-1">Pagado</Text>
-          <Text className="text-emerald-400 font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Card style={{ flex: 1, backgroundColor: 'rgba(16,185,129,0.07)', borderColor: 'rgba(16,185,129,0.2)' }}>
+          <Text style={{ fontFamily: 'Outfit', color: 'rgba(16,185,129,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Pagado</Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 20 }}>
             ${formatCurrency(stats.totalPagado)}
           </Text>
         </Card>
-        <Card className="flex-1 p-4 bg-orange-500/10 border-orange-500/20">
-          <Text className="text-orange-500/60 font-black text-[10px] uppercase tracking-tighter mb-1">Pendiente</Text>
-          <Text className="text-orange-400 font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>
+        <Card style={{ flex: 1, backgroundColor: 'rgba(245,165,36,0.07)', borderColor: 'rgba(245,165,36,0.2)' }}>
+          <Text style={{ fontFamily: 'Outfit', color: 'rgba(245,165,36,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Pendiente</Text>
+          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 20 }}>
             ${formatCurrency(stats.totalPendiente)}
           </Text>
         </Card>
@@ -191,23 +191,23 @@ export function FacturaCard({
   };
 
   return (
-    <Card className={`overflow-hidden border-0 bg-slate-900/40 p-0 mb-4`}>
+    <Card style={{ overflow: 'hidden', borderWidth: 0, backgroundColor: 'rgba(15,23,42,0.6)', padding: 0, marginBottom: 12 }}>
        {/* Left accent border equivalent */}
-       <View className={`absolute left-0 top-0 bottom-0 w-1.5 ${isCancelado ? 'bg-red-500' : isPagado ? 'bg-emerald-500' : 'bg-orange-500'}`} />
+       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: isCancelado ? '#F43F5E' : isPagado ? '#10B981' : '#F5A524' }} />
        
-       <View className="pl-5 p-5">
+       <View style={{ paddingLeft: 14, padding: 12 }}>
           {/* Header */}
-          <View className="flex-row justify-between items-start mb-4">
-             <View className="flex-1">
-                <Text className="text-white font-black text-lg uppercase leading-tight" style={{ fontFamily: 'Space Grotesk' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+             <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14, textTransform: 'uppercase', lineHeight: 18 }} numberOfLines={1}>
                     {item.clienteNombre || 'Cliente S/N'}
                 </Text>
-                <Text className="text-slate-500 text-[10px] font-bold uppercase mt-1">
+                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, marginTop: 2, textTransform: 'uppercase' }}>
                     {formatDate(item.fechaFactura)}
                 </Text>
              </View>
-             <View className="items-end">
-                <Text className="text-white font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>
+             <View style={{ alignItems: 'flex-end' }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>
                     ${formatCurrency(item.total ?? 0)}
                 </Text>
                 {item.metodo ? (
@@ -219,7 +219,7 @@ export function FacturaCard({
           </View>
 
           {/* Badges row */}
-          <View className="flex-row flex-wrap gap-2 mb-4">
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
              {esDomicilio && (
                  <View className="bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-md flex-row items-center gap-1">
                     <Text className="text-orange-400 text-[10px] font-black uppercase tracking-tighter">🛵 Domicilio</Text>
@@ -230,24 +230,24 @@ export function FacturaCard({
 
           {/* Notas */}
           {item.descripcion && (
-            <View className="bg-white/5 p-3 rounded-xl border border-white/5 mb-4">
-                <Text className="text-white/40 text-[9px] font-black uppercase mb-1">Notas del pedido</Text>
-                <Text className="text-slate-300 text-xs italic">"{item.descripcion}"</Text>
+            <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginBottom: 8 }}>
+                <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.35)', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>Notas</Text>
+                <Text style={{ fontFamily: 'Outfit', color: '#CBD5E1', fontSize: 11, fontStyle: 'italic' }}>'{item.descripcion}'</Text>
             </View>
           )}
 
           {/* Products summary */}
           {item.ordenes && item.ordenes.length > 0 && (
-             <View className="border-t border-white/5 pt-4 mb-4">
-                <Text className="text-slate-500 text-[9px] font-black uppercase mb-3">Resumen de productos</Text>
+             <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8, marginBottom: 8 }}>
+                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Productos</Text>
                 {item.ordenes.map((orden, oIdx) =>
                     orden.productos?.map((op, pIdx) => (
-                      <View key={`${oIdx}-${pIdx}`} className="flex-row justify-between items-center mb-2">
-                         <View className="flex-1 pr-4">
-                             <Text className="text-white/80 text-xs font-bold">{op.productoNombre}</Text>
-                             <Text className="text-slate-500 text-[10px] uppercase font-bold">{op.cantidad} x ${formatCurrency(op.precioUnitario ?? 0)}</Text>
+                      <View key={`${oIdx}-${pIdx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                         <View style={{ flex: 1, paddingRight: 12 }}>
+                             <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.75)', fontSize: 12 }} numberOfLines={1}>{op.productoNombre}</Text>
+                             <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase' }}>{op.cantidad} x ${formatCurrency(op.precioUnitario ?? 0)}</Text>
                          </View>
-                         <Text className="text-white font-black text-xs">${formatCurrency(op.subtotal ?? 0)}</Text>
+                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12 }}>${formatCurrency(op.subtotal ?? 0)}</Text>
                       </View>
                     ))
                 )}
@@ -255,7 +255,7 @@ export function FacturaCard({
           )}
 
           {/* Actions Footer */}
-          <View className="flex-row justify-between items-center mt-2 pt-4 border-t border-white/5">
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
              <View className="flex-row items-center gap-2">
                 <Badge label={item.estado || 'pendiente'} variant={variant} size="md" />
                 {showPrint && !isMobile && (

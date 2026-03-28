@@ -40,6 +40,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 					database: configService.get<string>('DATABASE_NAME', 'postgres'),
 					autoLoadEntities: true,
 					synchronize: true,
+					timezone: 'America/Bogota', // Zona horaria explícita para fechas
 				};
 				return config;
 			},

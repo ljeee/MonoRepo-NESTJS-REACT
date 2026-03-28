@@ -90,7 +90,7 @@ export default function Button({
         return '#94A3B8';
     };
 
-    const combinedClasses = `flex-row items-center justify-center rounded-xl transition-all ${variantClasses[variant].split(' ')[0]} ${sizeClasses[size].split(' ').slice(0, 2).join(' ')} ${fullWidth ? 'w-full' : ''} ${isDisabled ? 'opacity-50' : ''} ${className}`;
+    const combinedClasses = `flex-row items-center justify-center rounded-xl ${variantClasses[variant].split(' ')[0]} ${sizeClasses[size].split(' ').slice(0, 2).join(' ')} ${fullWidth ? 'w-full' : ''} ${isDisabled ? 'opacity-50' : ''} ${className}`;
 
     const textClasses = `font-black uppercase tracking-wider ${variantClasses[variant].split(' ').pop()} ${sizeClasses[size].split(' ').pop()}`;
 

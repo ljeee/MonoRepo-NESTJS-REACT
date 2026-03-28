@@ -1,5 +1,6 @@
 import React, { useReducer, useCallback } from 'react';
-import { FlatList, RefreshControl, ScrollView, Platform } from 'react-native';
+import { FlatList, RefreshControl } from 'react-native';
+import { ScrollView } from '../../tw';
 
 import { useFacturasRango } from '@monorepo/shared';
 import { useFacturasPagosRango } from '@monorepo/shared';
@@ -34,51 +35,51 @@ function BalanceCard({ ingresos, gastos }: { ingresos: number; gastos: number })
             <View className="absolute inset-0 bg-slate-900" />
             <View className={`absolute inset-0 ${isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'}`} />
             
-            <View className="p-6">
-                <View className="flex-row justify-between items-center mb-6">
-                    <Text className="text-white/60 font-black text-xs uppercase tracking-widest">Resumen del Período</Text>
-                    <View className={`px-3 py-1 rounded-full border ${isPositive ? 'bg-emerald-500/20 border-emerald-500/30' : 'bg-red-500/20 border-red-500/30'}`}>
-                         <Text className={`text-[10px] font-black uppercase ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
+            <View style={{ padding: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                    <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.6)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Resumen del Período</Text>
+                    <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 9999, borderWidth: 1, backgroundColor: isPositive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', borderColor: isPositive ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)' }}>
+                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 10, textTransform: 'uppercase', color: isPositive ? '#34D399' : '#F87171' }}>
                             {isPositive ? 'Superávit' : 'Déficit'}
                          </Text>
                     </View>
                 </View>
 
-                <View className="gap-y-4">
-                    <View className="flex-row justify-between items-center">
-                        <View className="flex-row items-center gap-3">
-                            <View className="w-8 h-8 rounded-full bg-emerald-500/20 items-center justify-center">
+                <View style={{ gap: 16 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(16,185,129,0.2)', alignItems: 'center', justifyContent: 'center' }}>
                                 <Icon name="arrow-down" size={16} color="#34D399" />
                             </View>
-                            <Text className="text-slate-400 text-sm font-bold">Ingresos Totales</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Ingresos Totales</Text>
                         </View>
-                        <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>
                              ${formatCurrency(ingresos)}
                         </Text>
                     </View>
 
-                    <View className="flex-row justify-between items-center">
-                        <View className="flex-row items-center gap-3">
-                            <View className="w-8 h-8 rounded-full bg-red-500/20 items-center justify-center">
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(239,68,68,0.2)', alignItems: 'center', justifyContent: 'center' }}>
                                 <Icon name="arrow-up" size={16} color="#F87171" />
                             </View>
-                            <Text className="text-slate-400 text-sm font-bold">Gastos Totales</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Gastos Totales</Text>
                         </View>
-                        <Text className="text-red-400 font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F87171', fontSize: 18 }}>
                              −${formatCurrency(gastos)}
                         </Text>
                     </View>
 
                     <View className="h-[1px] bg-white/5 my-2" />
 
-                    <View className="flex-row justify-between items-center">
-                         <View className="flex-row items-center gap-3">
-                            <View className="w-10 h-10 rounded-xl bg-orange-500/20 items-center justify-center">
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' }}>
                                 <Icon name="scale-balance" size={20} color="#F5A524" />
                             </View>
-                            <Text className="text-white font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>BALANCE NETO</Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 15, textTransform: 'uppercase' }}>BALANCE NETO</Text>
                         </View>
-                        <Text className={`font-black text-3xl ${isPositive ? 'text-(--color-pos-primary)' : 'text-red-500'}`} style={{ fontFamily: 'Space Grotesk' }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, color: isPositive ? '#F5A524' : '#EF4444' }}>
                              ${formatCurrency(Math.abs(neto))}
                         </Text>
                     </View>
@@ -183,7 +184,47 @@ export default function BalanceFechasScreen() {
         await updateFactura(facturaId, { total: newTotal });
     }, [updateFactura]);
 
+    const handleExportPdf = useCallback(() => {
+        const safeFrom = from || 'inicio';
+        const safeTo = to || 'fin';
+        const rows: (string | number)[][] = [
+            ...facturas.map((f) => [
+                'Ingreso',
+                f.facturaId ?? '',
+                f.clienteNombre || 'Sin nombre',
+                f.fechaFactura || '',
+                `$${formatCurrency(Number(f.total) || 0)}`,
+                f.estado || '',
+                f.metodo || '',
+            ]),
+            ...gastos.map((g) => [
+                'Gasto',
+                g.pagosId ?? '',
+                g.nombreGasto || 'Sin nombre',
+                g.fechaFactura || '',
+                `$${formatCurrency(Number(g.total) || 0)}`,
+                g.estado || '',
+                g.metodo || '',
+            ]),
+        ];
 
+        exportPdf({
+            title: `Balance por Fechas - ${safeFrom} a ${safeTo}`,
+            subtitle: `${rows.length} registros`,
+            headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Total', 'Estado', 'Metodo'],
+            rows,
+        });
+    }, [facturas, gastos, from, to]);
+
+
+
+
+    const handleExportContabilidad = useCallback(async () => {
+        const safeFrom = from || 'inicio';
+        const safeTo = to || 'fin';
+        const csv = await buildCombinedBalanceCsv(facturas, gastos);
+        downloadCsv(csv, `contabilidad_${safeFrom}_${safeTo}.csv`);
+    }, [facturas, gastos, from, to]);
 
     const loading = loadingFacturas || loadingGastos;
     const hasData = facturas.length > 0 || gastos.length > 0;
@@ -217,9 +258,26 @@ export default function BalanceFechasScreen() {
                         />
 
                         {/* Actions bar */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-0 overflow-visible">
-                            <View className="flex-row items-center gap-2 pr-4">
-                                {/* Exports removed for mobile */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8 overflow-visible">
+                            <View className="flex-row items-center gap-2 pr-4 pb-4">
+                                <Button
+                                    title="Exportar PDF"
+                                    icon="file-pdf-outline"
+                                    variant="secondary"
+                                    size="sm"
+                                    onPress={handleExportPdf}
+                                    disabled={!hasData}
+                                    className="bg-purple-600/20 border-purple-500/30"
+                                />
+                                <Button
+                                    title="CSV Contable"
+                                    icon="table-large"
+                                    variant="secondary"
+                                    size="sm"
+                                    onPress={handleExportContabilidad}
+                                    disabled={!hasData}
+                                    className="bg-emerald-600/20 border-emerald-500/30"
+                                />
                             </View>
                         </ScrollView>
 
@@ -270,11 +328,11 @@ export default function BalanceFechasScreen() {
 
                         {/* ── Facturas section header ─────────────────────────── */}
                         {!loading && (
-                            <View className="flex-row items-center gap-3 mb-6 mt-4">
-                                <View className="w-1.5 h-6 bg-(--color-pos-primary) rounded-full" />
-                                <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Facturación</Text>
-                                <View className="bg-white/5 px-2 py-0.5 rounded-md">
-                                    <Text className="text-slate-500 font-black text-xs">{facturas.length}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, marginTop: 16 }}>
+                                <View style={{ width: 6, height: 24, backgroundColor: '#F5A524', borderRadius: 999 }} />
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', letterSpacing: 1 }}>Facturación</Text>
+                                <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>{facturas.length}</Text>
                                 </View>
                             </View>
                         )}
@@ -309,11 +367,11 @@ export default function BalanceFechasScreen() {
                     !loading && gastos.length > 0 ? (
                         <View className="px-4 mt-8 pb-10">
                             {/* ── Gastos section ─────────────────────────────────── */}
-                            <View className="flex-row items-center gap-3 mb-6">
-                                <View className="w-1.5 h-6 bg-red-500 rounded-full" />
-                                <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Gastos Operativos</Text>
-                                <View className="bg-white/5 px-2 py-0.5 rounded-md">
-                                    <Text className="text-slate-500 font-black text-xs">{gastos.length}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                                <View style={{ width: 6, height: 24, backgroundColor: '#EF4444', borderRadius: 999 }} />
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', letterSpacing: 1 }}>Gastos Operativos</Text>
+                                <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>{gastos.length}</Text>
                                 </View>
                             </View>
 
@@ -336,13 +394,13 @@ export default function BalanceFechasScreen() {
                                                 />
                                             </View>
                                             <View className="flex-1">
-                                                <Text className="text-white font-black text-sm uppercase" style={{ fontFamily: 'Space Grotesk' }}>{item.nombreGasto || 'Sin nombre'}</Text>
+                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14, textTransform: 'uppercase' }}>{item.nombreGasto || 'Gasto General'}</Text>
                                                 <View className="flex-row items-center gap-2 mt-1">
-                                                    <Text className="text-slate-500 text-[10px] font-bold uppercase">{item.fechaFactura}</Text>
+                                                    <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold' }}>{item.fechaFactura}</Text>
                                                     <Badge label={item.metodo || '—'} variant="warning" size="sm" />
                                                 </View>
                                             </View>
-                                            <Text className="text-red-400 font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>−${formatCurrency(item.total ?? 0)}</Text>
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F87171', fontSize: 15 }}>−${formatCurrency(item.total ?? 0)}</Text>
                                         </Card>
                                     </View>
                                 ))}

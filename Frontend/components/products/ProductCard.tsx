@@ -33,27 +33,32 @@ export function ProductCard({
     return (
         <Card className="mb-6 bg-slate-900 border-white/5 overflow-hidden">
             {/* Product header */}
-            <View className="flex-row items-start justify-between p-5 bg-white/5">
-                <View className="flex-1 mr-4">
-                    <View className="flex-row items-center gap-2 mb-1">
-                        <Text className="text-white font-black text-lg uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
-                            {product.productoNombre}
-                        </Text>
-                        <Badge 
-                            label={product.categoria} 
+            <View className="flex-row items-center justify-between p-5 bg-white/5 border-b border-white/5">
+                <View className="flex-row items-center flex-1 mr-4">
+                    <View className="w-14 h-14 rounded-2xl bg-(--color-pos-primary)/10 items-center justify-center mr-4 border border-(--color-pos-primary)/20">
+                        <Text className="text-2xl">{product.emoji || (isPizza ? '🍕' : '🍔')}</Text>
+                    </View>
+                    <View className="flex-1">
+                        <View className="flex-row items-center gap-2 mb-1">
+                            <Text className="text-white font-black text-lg uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
+                                {product.productoNombre}
+                            </Text>
+                            <Badge 
+                                label={product.categoria} 
                             variant={isPizza ? 'secondary' : 'primary'} 
                             size="sm" 
                         />
+                        </View>
+                        {product.descripcion ? (
+                            <Text className="text-slate-400 text-xs italic leading-tight" numberOfLines={2}>
+                                {product.descripcion}
+                            </Text>
+                        ) : null}
                     </View>
-                    {product.descripcion ? (
-                        <Text className="text-slate-400 text-xs italic leading-tight" numberOfLines={2}>
-                            {product.descripcion}
-                        </Text>
-                    ) : null}
                 </View>
                 <TouchableOpacity 
                     onPress={onEdit} 
-                    className="w-12 h-12 rounded-full bg-orange-500/10 items-center justify-center active:bg-orange-500/20"
+                    className="w-12 h-12 rounded-2xl bg-orange-500/10 items-center justify-center active:bg-orange-500/20 shadow-lg border border-orange-500/20"
                 >
                     <Icon name="pencil" size={20} color="#F5A524" />
                 </TouchableOpacity>
@@ -109,7 +114,7 @@ export function ProductCard({
 
             {/* Pizza Flavors Section */}
             {isPizza && sabores && (
-                <View className="border-t border-white/5 p-5 bg-black/40">
+                <View className="border-t border-white/5 p-5 bg-purple-500/5">
                     <PizzaFlavorsSection sabores={sabores} onEditSabor={onEditSabor} />
                 </View>
             )}

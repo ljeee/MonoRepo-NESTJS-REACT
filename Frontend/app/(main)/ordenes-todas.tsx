@@ -138,16 +138,15 @@ export default function OrdenesTodasScreen() {
 
   // KDS Fullscreen Overlay
   if (isFullscreen) {
-    return (
-      <View className="absolute z-50 inset-0 bg-[#0F172A]">
-        {/* KDS Header */}
+      <View className="absolute z-[100] inset-0 bg-[#0F172A]">
+        {/* Fullscreen Header */}
         <View className="h-16 px-6 bg-[#000000] border-b border-white/10 flex-row justify-between items-center">
           <View className="flex-row items-center gap-3">
-            <Icon name="chef-hat" size={24} color="#F5A524" />
-            <Text className="text-xl font-black text-white uppercase tracking-wider">KDS • COCINA</Text>
-            <View className="hidden md:flex flex-row items-center ml-4 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+            <Icon name="format-list-bulleted" size={24} color="#F5A524" />
+            <Text className="text-xl font-black text-white uppercase tracking-wider">Historial • Expandido</Text>
+            <View className="flex-row items-center ml-4 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
               <View className="w-2 h-2 rounded-full bg-emerald-500 mr-2" />
-              <Text className="text-emerald-400 font-bold text-xs">ACTIVO • {result?.total || 0}</Text>
+              <Text className="text-emerald-400 font-bold text-xs">TOTAL • {result?.total || 0}</Text>
             </View>
           </View>
           <View className="flex-row items-center gap-6">
@@ -158,24 +157,50 @@ export default function OrdenesTodasScreen() {
           </View>
         </View>
 
-        {/* KDS Body */}
-        <ScrollView className="flex-1 p-4" contentContainerClassName="pb-20">
-          <View className="flex-row gap-4">
-            {masonryColumns.map((col, cIndex) => (
-              <View key={`col-${cIndex}`} className="flex-1 gap-4">
-                {col.map((orden) => (
-                  <OrderCardKDS 
-                    key={orden.ordenId} 
-                    orden={orden} 
+        <ScrollView className="flex-1 p-6" contentContainerClassName="pb-20">
+          <View className="flex-row gap-4 flex-wrap">
+            {ordenes.map((orden) => {
+              const ec = getEstadoColor(orden.estadoOrden);
+              const total = getOrdenTotal(orden);
+              return (
+                <View key={orden.ordenId} style={{ width: '32%', minWidth: 300, marginBottom: 12 }}>
+                  <Card
                     onPress={() => router.push(`/orden-detalle?ordenId=${orden.ordenId}`)}
-                  />
-                ))}
-              </View>
-            ))}
+                    className="h-full overflow-hidden"
+                  >
+                    <View className="flex-row justify-between items-center mb-2">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-white font-black text-base" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>#{orden.ordenId}</Text>
+                        <Badge label={orden.estadoOrden || 'N/A'} variant={orden.estadoOrden === 'cancelado' ? 'danger' : 'info'} icon={ec.icon} size="sm" />
+                      </View>
+                      <Text className="text-(--color-pos-primary) font-black text-lg" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>
+                         ${formatCurrency(total)}
+                      </Text>
+                    </View>
+                    <View className="flex-row gap-3 mb-2">
+                      <View className="flex-row items-center gap-1">
+                        <Icon name="tag-outline" size={12} color="#64748B" />
+                        <Text className="text-slate-400 text-[11px] font-bold uppercase">{orden.tipoPedido}</Text>
+                      </View>
+                    </View>
+                    {orden.productos && orden.productos.length > 0 && (
+                      <View className="bg-white/5 px-3 py-2 rounded-xl gap-1 border border-white/5 mt-auto">
+                        {orden.productos.slice(0, 4).map((p, idx) => (
+                          <View key={`${p.id ?? getProductoPreviewName(p)}-${idx}`} className="flex-row items-center gap-1.5">
+                             <View className="w-1 h-1 rounded-full bg-(--color-pos-primary)/40" />
+                             <Text className="text-slate-300 text-[11px] flex-1" numberOfLines={1}>{getProductoPreviewName(p)}</Text>
+                             <Text className="text-slate-500 text-[10px] font-black uppercase">x{p.cantidad}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </Card>
+                </View>
+              );
+            })}
           </View>
         </ScrollView>
       </View>
-    );
   }
 
   return (
@@ -186,13 +211,15 @@ export default function OrdenesTodasScreen() {
         icon="format-list-bulleted"
         rightContent={
           <View className="flex-row items-center gap-2">
-            <Button
-              title="KDS"
-              icon="chef-hat"
-              variant="outline"
-              size="sm"
-              onPress={() => setIsFullscreen(true)}
-            />
+            {!isMobile && (
+              <Button
+                title="Ampliar"
+                icon="fullscreen"
+                variant="outline"
+                size="sm"
+                onPress={() => setIsFullscreen(true)}
+              />
+            )}
             <Button
               title="Refrescar"
               icon="refresh"
@@ -210,8 +237,8 @@ export default function OrdenesTodasScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          className="mb-6"
-          contentContainerStyle={{ gap: 8 }}
+          className="mb-3"
+          contentContainerStyle={{ gap: 6 }}
         >
           {FILTER_ESTADOS.map((e) => {
             const ec = getEstadoColor(e || undefined);
@@ -219,11 +246,13 @@ export default function OrdenesTodasScreen() {
             return (
               <TouchableOpacity
                 key={e}
-                className={`flex-row items-center gap-2 px-4 py-2 rounded-full border transition-all ${
-                  active 
-                    ? 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)/40' 
-                    : 'bg-white/5 border-white/5'
-                }`}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
+                  borderWidth: 1,
+                  backgroundColor: active ? 'rgba(245,165,36,0.15)' : 'rgba(255,255,255,0.04)',
+                  borderColor: active ? 'rgba(245,165,36,0.35)' : 'rgba(255,255,255,0.06)',
+                }}
                 onPress={() => patchState({ estado: e })}
               >
                 {e !== '' && (
@@ -327,12 +356,12 @@ export default function OrdenesTodasScreen() {
               onPress={() =>
                 router.push(`/orden-detalle?ordenId=${orden.ordenId}`)
               }
-              className="mb-4 overflow-hidden"
+              className="mb-3 overflow-hidden"
             >
               {/* Header */}
-              <View className="flex-row justify-between items-start mb-3">
-                <View className="flex-row items-center gap-3">
-                  <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>#{orden.ordenId}</Text>
+              <View className="flex-row justify-between items-center mb-2">
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-white font-black text-base" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>#{orden.ordenId}</Text>
                   <Badge
                     label={orden.estadoOrden || 'N/A'}
                     variant={
@@ -348,20 +377,20 @@ export default function OrdenesTodasScreen() {
                     size="sm"
                   />
                 </View>
-                <Text className="text-(--color-pos-primary) font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>
+                <Text className="text-(--color-pos-primary) font-black text-lg" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>
                    ${formatCurrency(total)}
                 </Text>
               </View>
 
               {/* Meta */}
-              <View className="flex-row gap-4 mb-4">
-                <View className="flex-row items-center gap-1.5">
-                  <Icon name="tag-outline" size={14} color="#64748B" />
-                  <Text className="text-slate-400 text-xs font-bold uppercase">{orden.tipoPedido}</Text>
+              <View className="flex-row gap-3 mb-2">
+                <View className="flex-row items-center gap-1">
+                  <Icon name="tag-outline" size={12} color="#64748B" />
+                  <Text className="text-slate-400 text-[11px] font-bold uppercase">{orden.tipoPedido}</Text>
                 </View>
-                <View className="flex-row items-center gap-1.5">
-                  <Icon name="calendar-outline" size={14} color="#64748B" />
-                  <Text className="text-slate-400 text-xs font-bold uppercase">
+                <View className="flex-row items-center gap-1">
+                  <Icon name="calendar-outline" size={12} color="#64748B" />
+                  <Text className="text-slate-400 text-[11px] font-bold uppercase">
                     {formatDate(orden.fechaOrden)}
                   </Text>
                 </View>
@@ -369,19 +398,19 @@ export default function OrdenesTodasScreen() {
 
               {/* Products preview */}
               {orden.productos && orden.productos.length > 0 && (
-                <View className="bg-white/5 p-4 rounded-xl gap-2 border border-white/5">
+                <View className="bg-white/5 px-3 py-2 rounded-xl gap-1 border border-white/5">
                   {orden.productos.slice(0, 3).map((p, idx) => (
-                    <View key={`${p.id ?? getProductoPreviewName(p)}-${idx}`} className="flex-row items-center gap-2">
-                       <View className="w-1.5 h-1.5 rounded-full bg-(--color-pos-primary)/30" />
-                       <Text className="text-slate-300 text-xs flex-1">
+                    <View key={`${p.id ?? getProductoPreviewName(p)}-${idx}`} className="flex-row items-center gap-1.5">
+                       <View className="w-1 h-1 rounded-full bg-(--color-pos-primary)/40" />
+                       <Text className="text-slate-300 text-[11px] flex-1" numberOfLines={1}>
                           {getProductoPreviewName(p)}
                        </Text>
                        <Text className="text-slate-500 text-[10px] font-black uppercase">x{p.cantidad}</Text>
                     </View>
                   ))}
                   {orden.productos.length > 3 && (
-                    <Text className="text-slate-500 text-[10px] font-black italic mt-1 uppercase text-right">
-                      +{orden.productos.length - 3} productos más
+                    <Text className="text-slate-500 text-[10px] font-black italic uppercase text-right">
+                      +{orden.productos.length - 3} más
                     </Text>
                   )}
                 </View>

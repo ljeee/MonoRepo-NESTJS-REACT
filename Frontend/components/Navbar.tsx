@@ -19,6 +19,7 @@ const SECTIONS: NavSection[] = [
     icon: 'clipboard-text-outline',
     items: [
       { label: 'Dashboard', route: '/', icon: 'home-variant-outline' },
+      { label: 'Mis Domicilios', route: '/mis-domicilios', icon: 'truck-delivery-outline' },
       { label: 'Crear Orden', route: '/crear-orden', icon: 'plus-circle-outline' },
       { label: 'Órdenes Activas', route: '/ordenes', icon: 'clock-outline' },
       { label: 'Historial Local', route: '/ordenes-todas', icon: 'history' },
@@ -41,6 +42,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Balance Global', route: '/balance-fechas', icon: 'chart-timeline-variant' },
       { label: 'Consultar Facturas', route: '/facturas', icon: 'database-search-outline' },
       { label: 'Analíticas', route: '/estadisticas', icon: 'chart-areaspline' },
+      { label: 'Analytics Domicilios', route: '/estadisticas-domiciliarios', icon: 'chart-bar' },
     ],
   },
   {
@@ -63,6 +65,7 @@ const SECTIONS: NavSection[] = [
     ],
   },
 ];
+
 
 // ── Accordion section ──
 function AccordionSection({
@@ -118,7 +121,7 @@ function AccordionSection({
             return (
               <Pressable
                 key={item.route}
-                className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl transition-all active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
+                className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
                 onPress={() => onNavigate(item.route)}
               >
                 <View className={`w-1 h-3 rounded-full mr-4 ${active ? 'bg-orange-500' : 'bg-transparent'}`} />
@@ -144,62 +147,96 @@ function AccordionSection({
 }
 
 // ── Shared Sidebar Content ──
-function SidebarContent({ compact }: { compact?: boolean }) {
+function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
+  const isDomiciliario = (user as any)?.roles?.includes('domiciliario');
+
+  // ── Hooks siempre al tope (Rules of Hooks) ───────────────────────────────────
   const activeIdx = SECTIONS.findIndex((s) =>
     s.items.some((i) => pathname === i.route),
   );
   const [expanded, setExpanded] = useState<Record<number, boolean>>(
     activeIdx >= 0 ? { [activeIdx]: true } : { 0: true },
   );
-
   const toggle = useCallback((idx: number) => {
-    setExpanded((prev) => ({ ...prev, [idx]: !prev[idx] }));
+    setExpanded((prev: Record<number, boolean>) => ({ ...prev, [idx]: !prev[idx] }));
   }, []);
-
   const navigate = useCallback((route: string) => {
     router.push(route as any);
-  }, [router]);
+    if (onClose) onClose();
+  }, [router, onClose]);
 
+  // ── Footer de logout (shared) ─────────────────────────────────────────────────
+  const LogoutButton = (
+    <View className="p-6 border-t border-white/5">
+      <Pressable
+        className={`flex-row items-center py-4 rounded-2xl bg-red-500/10 border border-red-500/20 ${compact ? 'px-0 justify-center' : 'px-5'}`}
+        onPress={logout}
+      >
+        <Icon name="logout-variant" size={20} color="#F43F5E" />
+        {!compact && <Text className="ml-4 text-xs font-black uppercase tracking-widest text-red-500">Cerrar Sesión</Text>}
+      </Pressable>
+    </View>
+  );
+
+  // ── Vista exclusiva para domiciliarios ───────────────────────────────────────
+  if (isDomiciliario) {
+    return (
+      <>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
+          <Pressable
+            className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${pathname === '/mis-domicilios' ? 'bg-orange-500/10' : ''}`}
+            onPress={() => {
+              router.push('/mis-domicilios' as any);
+              if (onClose) onClose();
+            }}
+          >
+            <View className={`w-1 h-3 rounded-full mr-4 ${pathname === '/mis-domicilios' ? 'bg-orange-500' : 'bg-transparent'}`} />
+            <Icon name="truck-delivery-outline" size={18} color={pathname === '/mis-domicilios' ? '#F5A524' : '#64748B'} />
+            {!compact && (
+              <Text className={`ml-4 text-[13px] flex-1 ${pathname === '/mis-domicilios' ? 'text-white font-black' : 'text-slate-400 font-medium'}`}>
+                Mis Domicilios
+              </Text>
+            )}
+          </Pressable>
+        </ScrollView>
+        {LogoutButton}
+      </>
+    );
+  }
+
+  // ── Menú completo para otros roles ───────────────────────────────────────────
   return (
     <>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
         {SECTIONS.map((section, idx) => {
-          // Si es mobile/tablet, filtramos el ítem de Configuración POS de la sección 'Sistema'
           const filteredItems = compact ? section.items.filter(i => i.route !== '/ajustes-negocio') : section.items;
-          
+          const sectionWithFilter: NavSection = { ...section, items: filteredItems };
           return (
-            <AccordionSection
-              key={section.title}
-              section={{ ...section, items: filteredItems }}
-              expanded={compact ? false : !!expanded[idx]}
-              onToggle={() => !compact && toggle(idx)}
-              pathname={pathname}
-              onNavigate={navigate}
-              compact={compact}
-            />
+            <React.Fragment key={section.title}>
+              <AccordionSection
+                section={sectionWithFilter}
+                expanded={compact ? false : !!expanded[idx]}
+                onToggle={() => !compact && toggle(idx)}
+                pathname={pathname}
+                onNavigate={navigate}
+                compact={compact}
+              />
+            </React.Fragment>
           );
         })}
       </ScrollView>
-
-      <View className="p-6 border-t border-white/5">
-        <Pressable 
-          className={`flex-row items-center py-4 rounded-2xl bg-red-500/10 border border-red-500/20 active:scale-[0.98] transition-all ${compact ? 'px-0 justify-center' : 'px-5'}`}
-          onPress={logout}
-        >
-          <Icon name="logout-variant" size={20} color="#F43F5E" />
-          {!compact && <Text className="ml-4 text-xs font-black uppercase tracking-widest text-red-500">Cerrar Sesión</Text>}
-        </Pressable>
-      </View>
+      {LogoutButton}
     </>
   );
 }
 
+
 // ── Main Export (Web Sidebar with Collapse) ──
-export default function Navbar() {
+export default function Navbar({ onClose }: { onClose?: () => void } = {}) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const width = useSharedValue(280); 
   const insets = useSafeAreaInsets();
@@ -212,7 +249,7 @@ export default function Navbar() {
       width.value = 280;
       return;
     }
-    AsyncStorage.getItem('@Auth:sidebarCollapsed').then((val) => {
+    AsyncStorage.getItem('@Auth:sidebarCollapsed').then((val: string | null) => {
       if (val === 'true') {
         setIsCollapsed(true);
         width.value = 88; 
@@ -266,7 +303,7 @@ export default function Navbar() {
         {!isCompact && !isCollapsed && (
             <Pressable 
                 onPress={toggleCollapse}
-                className="w-8 h-8 rounded-xl bg-white/5 items-center justify-center hover:bg-white/10 active:scale-[0.9] transition-all border border-white/5"
+                className="w-8 h-8 rounded-xl bg-white/5 items-center justify-center border border-white/5"
             >
                 <Icon name="chevron-left" size={16} color="#94A3B8" />
             </Pressable>
@@ -282,7 +319,7 @@ export default function Navbar() {
           </Pressable>
       )}
 
-      <SidebarContent compact={isCollapsed} />
+      <SidebarContent compact={isCollapsed} onClose={onClose} />
     </Animated.View>
   );
 }

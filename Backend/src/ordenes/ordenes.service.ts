@@ -160,11 +160,26 @@ export class OrdenesService {
 		const { productos, ...basicData } = data;
 
 		// 1. Update basic order data
-		if (Object.keys(basicData).length > 0) {
-			await this.repo.update(id, basicData);
+		const allowedFields = ['tipoPedido', 'estadoOrden', 'fechaOrden', 'observaciones', 'usuarioCancelacionId', 'fechaCancelacion'];
+		const updateData: any = {};
+		for (const key of allowedFields) {
+			if (key in basicData) {
+				updateData[key] = (basicData as any)[key];
+			}
 		}
 
-		const orden = await this.findOne(id);
+		if (Object.keys(updateData).length > 0) {
+			await this.repo.update(id, updateData);
+		}
+
+		let orden = await this.findOne(id);
+
+		// 1.5 Update Domicilio Delivery Data (if is domicilio)
+		if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
+			await this.domicilioCreationService.updateDomicilioPorOrden(id, data, orden.facturaId);
+			// Refresh orden after domicilio update
+			orden = await this.findOne(id);
+		}
 
 		// 2. If products are included, re-process everything
 		if (productos && Array.isArray(productos)) {
