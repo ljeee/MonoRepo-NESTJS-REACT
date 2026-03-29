@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { CreateOrdenItemDto } from '../esquemas/ordenes.dto';
 import { ProductoVariantes } from '../../productos/esquemas/producto-variantes.entity';
 import { OrdenesProductos } from '../../ordenes-productos/esquemas/ordenes-productos.entity';
+import { PizzaSabor } from '../../pizza-sabores/esquemas/pizza-sabores.entity';
 
 @Injectable()
 export class ProductProcessingService {
 	constructor(
 		@InjectRepository(ProductoVariantes) private readonly variantesRepo: Repository<ProductoVariantes>,
 		@InjectRepository(OrdenesProductos) private readonly ordenesProductosRepo: Repository<OrdenesProductos>,
+		@InjectRepository(PizzaSabor) private readonly saboresRepo: Repository<PizzaSabor>,
 	) {}
 
 	construirNombreProducto(item: CreateOrdenItemDto): string {
@@ -56,8 +58,6 @@ export class ProductProcessingService {
 		const items: {nombre: string; cantidad: number; precioUnitario: number}[] = [];
 
 		for (const item of productos) {
-			let nombre = this.construirNombreProducto(item);
-			
 			const variante = await this.variantesRepo.findOne({
 				where: {varianteId: item.varianteId},
 				relations: ['producto'],
@@ -66,21 +66,52 @@ export class ProductProcessingService {
 				throw new BadRequestException(`Variante no encontrada: ${item.varianteId}`);
 			}
 			
-			const precio = Number(variante.precio);
-			const varianteId = item.varianteId;
-			if (variante.producto) {
-				nombre = `${variante.producto.productoNombre} - ${variante.nombre}`;
-				const sabores = [item.sabor1, item.sabor2, item.sabor3].filter(Boolean);
-				if (sabores.length > 0) {
-					nombre += ` (${sabores.join(' + ')})`;
+			let precioBase = Number(variante.precio);
+			let nombre = (variante.producto?.productoNombre || item.tipo || 'Producto').trim();
+			nombre = `${nombre} - ${variante.nombre}`;
+
+			// --- Lógica de Recargos para Pizzas ---
+			let recargoTotal = 0;
+			const saboresNames = [item.sabor1, item.sabor2, item.sabor3].filter(Boolean) as string[];
+
+			if (saboresNames.length > 0) {
+				nombre += ` (${saboresNames.join(' + ')})`;
+				
+				// Buscamos los detalles de los sabores en la DB
+				const saboresInfo = await this.saboresRepo.createQueryBuilder('s')
+					.where('s.nombre IN (:...names)', { names: saboresNames })
+					.getMany();
+
+				// Identificar columna de recargo basada en el nombre de la variante
+				const vName = (variante.nombre || '').toLowerCase();
+				let sizeKey: 'recargoPequena' | 'recargoMediana' | 'recargoGrande' = 'recargoGrande';
+				if (vName.includes('pequeña') || vName.includes('pequena') || vName.includes('personal')) {
+					sizeKey = 'recargoPequena';
+				} else if (vName.includes('mediana')) {
+					sizeKey = 'recargoMediana';
+				}
+
+				// 1. Recargo por Sabor Especial (Tomar el máximo)
+				const maxRecargoEspecial = saboresInfo
+					.filter(s => s.tipo === 'especial')
+					.reduce((max, s) => Math.max(max, Number(s[sizeKey]) || 0), 0);
+				
+				recargoTotal += maxRecargoEspecial;
+
+				// 2. Recargo por 3 Sabores (Si hay exactamente 3 nombres)
+				if (saboresNames.length >= 3) {
+					const config3 = await this.saboresRepo.findOne({ where: { nombre: 'RECARGO_3_SABORES', tipo: 'configuracion' } });
+					const extra3 = config3 ? (Number(config3[sizeKey]) || 3000) : 3000;
+					recargoTotal += extra3;
 				}
 			}
 
+			const precioFinalItem = precioBase + recargoTotal;
 			const cantidad = Number(item.cantidad) || 1;
-			total += precio * cantidad;
+			total += precioFinalItem * cantidad;
 
-			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precio, varianteId);
-			items.push({nombre, cantidad, precioUnitario: precio});
+			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precioFinalItem, item.varianteId);
+			items.push({nombre, cantidad, precioUnitario: precioFinalItem});
 		}
 
 		return {total, items};

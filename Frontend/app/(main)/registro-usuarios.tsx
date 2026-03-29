@@ -157,7 +157,7 @@ export default function RegistroUsuariosScreen() {
                         )}
 
                         <TouchableOpacity
-                            className={`bg-(--color-pos-primary) py-5 rounded-2xl items-center mt-4 shadow-amber-500/20 ${loading ? 'opacity-60' : ''}`}
+                            className={`bg-(--color-pos-primary) py-5 rounded-2xl items-center mt-4 ${loading ? 'opacity-60' : ''}`}
                             onPress={handleRegister}
                             disabled={loading}
                         >

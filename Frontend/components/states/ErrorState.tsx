@@ -27,7 +27,7 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
 
             {onRetry && (
                 <TouchableOpacity 
-                    className="bg-(--color-pos-primary) py-3 px-8 rounded-xl shadow-lg shadow-amber-500/20" 
+                    className="bg-(--color-pos-primary) py-3 px-8 rounded-xl" 
                     onPress={onRetry}
                 >
                     <Text className="text-black font-black uppercase tracking-wider text-sm">Intentar de nuevo</Text>

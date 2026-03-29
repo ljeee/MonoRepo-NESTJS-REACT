@@ -42,7 +42,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Balance Global', route: '/balance-fechas', icon: 'chart-timeline-variant' },
       { label: 'Consultar Facturas', route: '/facturas', icon: 'database-search-outline' },
       { label: 'Analíticas', route: '/estadisticas', icon: 'chart-areaspline' },
-      { label: 'Analytics Domicilios', route: '/estadisticas-domiciliarios', icon: 'chart-bar' },
+      { label: 'Analíticas Domiciliarios', route: '/estadisticas-domiciliarios', icon: 'chart-bar' },
     ],
   },
   {
@@ -281,7 +281,7 @@ export default function Navbar({ onClose }: { onClose?: () => void } = {}) {
       {/* Brand Header */}
       <View className="h-24 px-6 flex-row items-center justify-between border-b border-white/5 bg-black/10">
         <View className="flex-row items-center">
-          <View className="w-12 h-12 rounded-2xl bg-orange-500/20 items-center justify-center mr-4 border border-orange-500/30 shadow-2xl shadow-orange-500/20">
+          <View className="w-12 h-12 rounded-2xl bg-orange-500/20 items-center justify-center mr-4 border border-orange-500/30">
             <Icon name="pizza" size={24} color="#F5A524" />
           </View>
           <Animated.View style={logoOpacity}>

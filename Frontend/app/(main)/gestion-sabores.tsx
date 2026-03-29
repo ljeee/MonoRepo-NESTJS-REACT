@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity } from '../../tw';
+import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
 import { api as apiService } from '../../services/api';
 import { PizzaSabor, useToast } from '@monorepo/shared';
 import { FadeInUp } from 'react-native-reanimated';
@@ -191,89 +191,90 @@ export default function GestionSaboresScreen() {
                 ))}
             </View>
 
-            {/* Modal de Edición */}
-            <Modal visible={isModalVisible && !!editingSabor} transparent animationType="fade">
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
-                    <Card style={{ width: '100%', maxWidth: 512, padding: 32, backgroundColor: '#18181B', borderColor: 'rgba(255,255,255,0.1)' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-                            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icon name="pizza" size={20} color="#F5A524" />
+            <Modal visible={isModalVisible && !!editingSabor} transparent animationType="fade" statusBarTranslucent>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                    <Card style={{ width: '100%', maxWidth: 512, backgroundColor: '#18181B', borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden', maxHeight: '90%' }}>
+                        <ScrollView contentContainerStyle={{ padding: 32 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 32 }}>
+                                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Icon name="pizza" size={20} color="#F5A524" />
+                                </View>
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#FFFFFF', fontSize: 24, textTransform: 'uppercase', letterSpacing: -0.5 }}>
+                                    {editingSabor?.saborId ? 'Editar Sabor' : 'Nuevo Sabor'}
+                                </Text>
                             </View>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#FFFFFF', fontSize: 24, textTransform: 'uppercase', letterSpacing: -0.5 }}>
-                                {editingSabor?.saborId ? 'Editar Sabor' : 'Nuevo Sabor'}
-                            </Text>
-                        </View>
-                        
-                        <View style={{ marginBottom: 24 }}>
-                            <Input
-                                label="Nombre del Sabor"
-                                value={editingSabor?.nombre || ''}
-                                onChangeText={(t) => setEditingSabor({...editingSabor, nombre: t})}
-                                placeholder="Ej: Paisa, Mexicana... o RECARGO_3_SABORES"
-                                leftIcon={<Icon name="tag-outline" size={16} color="#64748B" />}
-                            />
-                        </View>
-
-                        <Text style={{ fontFamily: 'Outfit', color: '#71717A', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Clasificación</Text>
-                        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 32 }}>
-                            <TouchableOpacity 
-                                onPress={() => setEditingSabor({...editingSabor, tipo: 'tradicional'})}
-                                style={{ flex: 1, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: editingSabor?.tipo === 'tradicional' ? 'rgba(245,165,36,0.5)' : 'rgba(255,255,255,0.05)', backgroundColor: editingSabor?.tipo === 'tradicional' ? 'rgba(245,165,36,0.2)' : 'rgba(0,0,0,0.2)' }}
-                            >
-                                <Text style={{ textAlign: 'center', fontFamily: 'Outfit', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 11, letterSpacing: 1, color: editingSabor?.tipo === 'tradicional' ? '#F5A524' : '#71717A' }}>Tradicional</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                onPress={() => setEditingSabor({...editingSabor, tipo: 'especial'})}
-                                style={{ flex: 1, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: editingSabor?.tipo === 'especial' ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.05)', backgroundColor: editingSabor?.tipo === 'especial' ? 'rgba(245,158,11,0.2)' : 'rgba(0,0,0,0.2)' }}
-                            >
-                                <Text style={{ textAlign: 'center', fontFamily: 'Outfit', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 11, letterSpacing: 1, color: editingSabor?.tipo === 'especial' ? '#F59E0B' : '#71717A' }}>Especial</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                onPress={() => setEditingSabor({...editingSabor, tipo: 'configuracion'})}
-                                style={{ flex: 1, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: editingSabor?.tipo === 'configuracion' ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.05)', backgroundColor: editingSabor?.tipo === 'configuracion' ? 'rgba(168,85,247,0.2)' : 'rgba(0,0,0,0.2)' }}
-                            >
-                                <Text style={{ textAlign: 'center', fontFamily: 'Outfit', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 11, letterSpacing: 1, color: editingSabor?.tipo === 'configuracion' ? '#A855F7' : '#71717A' }}>Config</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={{ fontFamily: 'Outfit', color: '#71717A', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Recargos por Tamaño</Text>
-                        <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
-                            <View style={{ flex: 1 }}>
-                                <Input 
-                                    label="S ($)" 
-                                    keyboardType="numeric" 
-                                    value={editingSabor?.recargoPequena?.toString()} 
-                                    onChangeText={(v) => setEditingSabor({...editingSabor, recargoPequena: parseInt(v) || 0})} 
+                            
+                            <View style={{ marginBottom: 24 }}>
+                                <Input
+                                    label="Nombre del Sabor"
+                                    value={editingSabor?.nombre || ''}
+                                    onChangeText={(t) => setEditingSabor({...editingSabor, nombre: t})}
+                                    placeholder="Ej: Paisa, Mexicana... o RECARGO_3_SABORES"
+                                    leftIcon={<Icon name="tag-outline" size={16} color="#64748B" />}
                                 />
                             </View>
-                            <View style={{ flex: 1 }}>
-                                <Input 
-                                    label="M ($)" 
-                                    keyboardType="numeric" 
-                                    value={editingSabor?.recargoMediana?.toString()} 
-                                    onChangeText={(v) => setEditingSabor({...editingSabor, recargoMediana: parseInt(v) || 0})} 
-                                />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Input 
-                                    label="L ($)" 
-                                    keyboardType="numeric" 
-                                    value={editingSabor?.recargoGrande?.toString()} 
-                                    onChangeText={(v) => setEditingSabor({...editingSabor, recargoGrande: parseInt(v) || 0})} 
-                                />
-                            </View>
-                        </View>
 
-                        <View style={{ flexDirection: 'row', gap: 16, marginTop: 32 }}>
-                            <Button title="Cancelar" variant="ghost" style={{ flex: 1 }} onPress={() => setIsModalVisible(false)} />
-                            <Button 
-                                title={saving ? 'Guardando...' : 'Guardar'} 
-                                variant="primary" 
-                                style={{ flex: 1 }} 
-                                onPress={handleSave} 
-                                loading={saving}
-                            />
-                        </View>
+                            <Text style={{ fontFamily: 'Outfit', color: '#71717A', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Clasificación</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 32 }}>
+                                <TouchableOpacity 
+                                    onPress={() => setEditingSabor({...editingSabor, tipo: 'tradicional'})}
+                                    style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 16, borderWidth: 1, borderColor: editingSabor?.tipo === 'tradicional' ? 'rgba(245,165,36,0.5)' : 'rgba(255,255,255,0.05)', backgroundColor: editingSabor?.tipo === 'tradicional' ? 'rgba(245,165,36,0.2)' : 'rgba(0,0,0,0.2)' }}
+                                >
+                                    <Text numberOfLines={1} style={{ textAlign: 'center', fontFamily: 'Outfit', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5, color: editingSabor?.tipo === 'tradicional' ? '#F5A524' : '#71717A' }}>Tradicional</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    onPress={() => setEditingSabor({...editingSabor, tipo: 'especial'})}
+                                    style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 16, borderWidth: 1, borderColor: editingSabor?.tipo === 'especial' ? 'rgba(245,158,11,0.5)' : 'rgba(255,255,255,0.05)', backgroundColor: editingSabor?.tipo === 'especial' ? 'rgba(245,158,11,0.2)' : 'rgba(0,0,0,0.2)' }}
+                                >
+                                    <Text numberOfLines={1} style={{ textAlign: 'center', fontFamily: 'Outfit', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5, color: editingSabor?.tipo === 'especial' ? '#F59E0B' : '#71717A' }}>Especial</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    onPress={() => setEditingSabor({...editingSabor, tipo: 'configuracion'})}
+                                    style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 4, borderRadius: 16, borderWidth: 1, borderColor: editingSabor?.tipo === 'configuracion' ? 'rgba(168,85,247,0.5)' : 'rgba(255,255,255,0.05)', backgroundColor: editingSabor?.tipo === 'configuracion' ? 'rgba(168,85,247,0.2)' : 'rgba(0,0,0,0.2)' }}
+                                >
+                                    <Text numberOfLines={1} style={{ textAlign: 'center', fontFamily: 'Outfit', fontWeight: 'bold', textTransform: 'uppercase', fontSize: 10, letterSpacing: 0.5, color: editingSabor?.tipo === 'configuracion' ? '#A855F7' : '#71717A' }}>Config</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={{ fontFamily: 'Outfit', color: '#71717A', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Recargos por Tamaño</Text>
+                            <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
+                                <View style={{ flex: 1 }}>
+                                    <Input 
+                                        label="S ($)" 
+                                        keyboardType="numeric" 
+                                        value={editingSabor?.recargoPequena?.toString()} 
+                                        onChangeText={(v) => setEditingSabor({...editingSabor, recargoPequena: parseInt(v) || 0})} 
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Input 
+                                        label="M ($)" 
+                                        keyboardType="numeric" 
+                                        value={editingSabor?.recargoMediana?.toString()} 
+                                        onChangeText={(v) => setEditingSabor({...editingSabor, recargoMediana: parseInt(v) || 0})} 
+                                    />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Input 
+                                        label="L ($)" 
+                                        keyboardType="numeric" 
+                                        value={editingSabor?.recargoGrande?.toString()} 
+                                        onChangeText={(v) => setEditingSabor({...editingSabor, recargoGrande: parseInt(v) || 0})} 
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={{ flexDirection: 'row', gap: 16, marginTop: 32 }}>
+                                <Button title="Cancelar" variant="ghost" style={{ flex: 1 }} onPress={() => setIsModalVisible(false)} />
+                                <Button 
+                                    title={saving ? 'Guardando...' : 'Guardar'} 
+                                    variant="primary" 
+                                    style={{ flex: 1 }} 
+                                    onPress={handleSave} 
+                                    loading={saving}
+                                />
+                            </View>
+                        </ScrollView>
                     </Card>
                 </View>
             </Modal>

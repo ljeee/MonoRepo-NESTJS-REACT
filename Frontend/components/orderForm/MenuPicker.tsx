@@ -16,7 +16,6 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
   const { isMobile, isTablet } = useBreakpoint();
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
@@ -27,49 +26,25 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
     fetchProductos(undefined, true);
   }, [fetchProductos]);
 
-  const categories = useMemo(
-    () =>
-      productos.reduce<Record<string, Producto[]>>((acc, p) => {
-        const cat = p.categoria || 'Otros';
-        if (!acc[cat]) {
-          acc[cat] = [];
-        }
-        acc[cat].push(p);
-        return acc;
-      }, {}),
-    [productos],
-  );
-
-  const CATEGORY_ORDER: Record<string, number> = {
-    'Pizzas': 0, 'Hamburguesas': 1, 'Chuzos': 2,
-    'Pizza Burguer': 3, 'Tortiburger': 4, 'Calzones': 5, 'Adiciones': 99,
-  };
-  const categoryNames = Object.keys(categories).sort(
-    (a, b) => (CATEGORY_ORDER[a] ?? 50) - (CATEGORY_ORDER[b] ?? 50),
-  );
+  const sortedProducts = useMemo(() => {
+    return [...productos].sort((a, b) => a.productoNombre.localeCompare(b.productoNombre));
+  }, [productos]);
 
   const SIZE_ORDER: Record<string, number> = { 'Pequeña': 0, 'Mediana': 1, 'Grande': 2 };
   const sortVariantes = (vs: ProductoVariante[]) =>
     [...vs].sort((a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50));
 
-  const selectedCategory = useMemo(() => {
-    if (activeCategory && categories[activeCategory]) {
-      return activeCategory;
-    }
-    return categoryNames[0] ?? null;
-  }, [activeCategory, categories, categoryNames]);
+  // No longer using selectedCategory
 
   const filteredProducts = useMemo(() => {
-    if (!selectedCategory) return [];
-    const products = categories[selectedCategory] || [];
-    if (!searchQuery.trim()) return products;
+    if (!searchQuery.trim()) return sortedProducts;
 
     const query = searchQuery.toLowerCase();
-    return products.filter(p =>
+    return sortedProducts.filter(p =>
       p.productoNombre.toLowerCase().includes(query) ||
       p.descripcion?.toLowerCase().includes(query)
     );
-  }, [selectedCategory, categories, searchQuery]);
+  }, [sortedProducts, searchQuery]);
 
   if (loading) {
     return (
@@ -111,52 +86,28 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
           />
       </View>
 
-      {/* Category tabs - Wrapping on desktop */}
-      <View className="mb-8 flex-row flex-wrap gap-2 items-center bg-black/10 p-3 rounded-2xl border border-white/5">
-          {categoryNames.map((cat) => {
-            const isActive = selectedCategory === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                className={`flex-row items-center px-4 py-2.5 rounded-xl border ${isActive ? 'bg-(--color-pos-primary) border-(--color-pos-primary) shadow-lg shadow-amber-500/20' : 'bg-white/5 border-white/5 active:bg-white/10'}`}
-                onPress={() => {
-                  setActiveCategory(cat);
-                  setExpandedProductId(null);
-                }}
-              >
-                <Text className={`font-black text-[10px] uppercase tracking-widest ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
-                  {cat}
-                </Text>
-                <View className={`ml-2 px-1.5 py-0.5 rounded-md ${isActive ? 'bg-black/10' : 'bg-white/10'}`}>
-                  <Text className={`text-[9px] font-black ${isActive ? 'text-slate-900' : 'text-slate-400'}`}>
-                    {categories[cat].length}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )
-          })}
-      </View>
+      {/* No Category Filters - Direct Search Only */}
 
-      {/* Products list */}
       <View className="flex-row flex-wrap -mx-2">
-        {filteredProducts.length === 0 && searchQuery ? (
+        {filteredProducts.length === 0 ? (
           <View className="w-full py-20 items-center opacity-50">
             <Icon name="tag-off-outline" size={64} color="#64748B" />
             <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-xs">Sin resultados</Text>
           </View>
         ) : (
           filteredProducts.map((producto) => (
-            <ProductItem 
-              key={producto.productoId}
-              producto={producto}
-              isExpanded={expandedProductId === producto.productoId}
-              onToggle={() => setExpandedProductId(expandedProductId === producto.productoId ? null : producto.productoId)}
-              onAdd={onAdd}
-              isMobile={isMobile}
-              setSelectedProducto={setSelectedProducto}
-              setSelectedVariante={setSelectedVariante}
-              setModalVisible={setModalVisible}
-            />
+            <View key={producto.productoId} className="p-2 w-full sm:w-[48%] md:w-[32%] lg:flex-1 lg:min-w-[320px]">
+              <ProductItem 
+                producto={producto}
+                isExpanded={expandedProductId === producto.productoId}
+                onToggle={() => setExpandedProductId(expandedProductId === producto.productoId ? null : producto.productoId)}
+                onAdd={onAdd}
+                isMobile={isMobile}
+                setSelectedProducto={setSelectedProducto}
+                setSelectedVariante={setSelectedVariante}
+                setModalVisible={setModalVisible}
+              />
+            </View>
           ))
         )}
       </View>
@@ -239,30 +190,30 @@ const ProductItem = React.memo(({
                 sortedVariantes
                 .filter((v) => v.activo)
                 .map((variante) => (
-                  <View key={variante.varianteId} style={{ flexGrow: 1, minWidth: 130, flexBasis: '48%' }}>
-                    <TouchableOpacity
-                      className="flex-row items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 h-full active:bg-(--color-pos-primary)/10 active:border-(--color-pos-primary)/30 transition-all"
-                      onPress={() => {
-                        if (producto.categoria === 'Pizzas') {
-                          setSelectedProducto(producto);
-                          setSelectedVariante(variante);
-                          setModalVisible(true);
-                        } else {
-                          onAdd(producto, variante);
-                        }
-                      }}
-                    >
-                      <View className="flex-1 mr-2">
-                        <Text className="text-white font-black text-xs uppercase tracking-tight leading-tight" numberOfLines={2}>{variante.nombre}</Text>
-                        <Text className="text-(--color-pos-primary) font-black text-xs mt-1" style={{ fontFamily: 'Space Grotesk' }}>
-                          ${formatCurrency(Number(variante.precio))}
-                        </Text>
-                      </View>
-                      <View className="w-8 h-8 bg-(--color-pos-primary) rounded-xl items-center justify-center shadow-lg shadow-amber-500/40">
-                        <Icon name="plus" size={18} color="#000" />
-                      </View>
-                    </TouchableOpacity>
-                  </View>
+                    <View key={variante.varianteId} className="flex-1 min-w-[140px] max-w-[200px]">
+                      <TouchableOpacity
+                        className="flex-row items-center justify-between p-3 rounded-2xl bg-white/5 border border-white/10 h-full active:bg-(--color-pos-primary)/10 active:border-(--color-pos-primary)/30 transition-all"
+                        onPress={() => {
+                          if (producto.productoNombre.toLowerCase().includes('pizza')) {
+                            setSelectedProducto(producto);
+                            setSelectedVariante(variante);
+                            setModalVisible(true);
+                          } else {
+                            onAdd(producto, variante);
+                          }
+                        }}
+                      >
+                        <View className="flex-1 mr-2">
+                          <Text className="text-white font-black text-[11px] uppercase tracking-tight leading-tight" numberOfLines={2}>{variante.nombre}</Text>
+                          <Text className="text-(--color-pos-primary) font-black text-xs mt-1" style={{ fontFamily: 'Space Grotesk' }}>
+                            ${formatCurrency(Number(variante.precio))}
+                          </Text>
+                        </View>
+                        <View className="w-7 h-7 bg-(--color-pos-primary) rounded-lg items-center justify-center">
+                          <Icon name="plus" size={16} color="#000" />
+                        </View>
+                      </TouchableOpacity>
+                    </View>
                 ))
               ) : (
                 <View className="p-4 w-full items-center">

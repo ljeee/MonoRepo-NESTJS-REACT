@@ -337,7 +337,7 @@ export default function OrdersOfDayPending() {
                 <View key={`rem-${idx}`} className="flex-row items-center mb-0.5">
                   <View className="w-1.5 h-1.5 rounded-full bg-red-500 mr-1.5" />
                   <Text className="text-red-400 font-bold text-xs flex-1 line-through" numberOfLines={1}>{remName}</Text>
-                  <View className="bg-red-500 px-2 py-0.5 rounded border border-red-500 shadow-sm shadow-red-500/40">
+                  <View className="bg-red-500 px-2 py-0.5 rounded border border-red-500">
                     <Text className="text-black text-[9px] font-black uppercase">Eliminado</Text>
                   </View>
                 </View>
@@ -352,7 +352,7 @@ export default function OrdersOfDayPending() {
           <View className="flex-row justify-end items-center border-t border-white/5 pt-2">
             {!fullscreen && item.estadoOrden !== 'completada' && item.estadoOrden !== 'cancelado' && (
               <TouchableOpacity
-                className={`w-10 h-10 rounded-full bg-(--color-pos-success) items-center justify-center shadow-lg shadow-green-500/20 ${patchLoading === item.ordenId ? 'opacity-50' : ''}`}
+                className={`w-10 h-10 rounded-full bg-(--color-pos-success) items-center justify-center ${patchLoading === item.ordenId ? 'opacity-50' : ''}`}
                 onPress={() => markAsCompleted(item)}
                 disabled={patchLoading === item.ordenId}
               >
@@ -418,7 +418,7 @@ export default function OrdersOfDayPending() {
                 </Text>
               </TouchableOpacity>
             )}
-            <View className={`w-3 h-3 rounded-full will-change-variable ${isConnected ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-red-500'} mr-2`} />
+            <View className={`w-3 h-3 rounded-full will-change-variable ${isConnected ? 'bg-green-500' : 'bg-red-500'} mr-2`} />
           </View>
         </PageHeader>
       </View>

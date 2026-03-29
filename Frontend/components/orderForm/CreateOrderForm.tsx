@@ -537,7 +537,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
 
               {/* =============== ACCIONES =============== */}
               <TouchableOpacity
-                className={`bg-(--color-pos-primary) py-4 rounded-xl items-center mt-4 w-full shadow-lg shadow-amber-500/20 ${loading ? 'opacity-60' : ''}`}
+                className={`bg-(--color-pos-primary) py-4 rounded-xl items-center mt-4 w-full ${loading ? 'opacity-60' : ''}`}
                 onPress={handleSubmit}
                 disabled={loading}
               >
