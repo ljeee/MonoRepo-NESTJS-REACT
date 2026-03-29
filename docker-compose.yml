@@ -141,15 +141,15 @@ services:
     <<: *default-logging
 
  # ── Cloudflare Tunnel ──────────────────────────────────────────────────────
-#  cloudflared:
- #   image: cloudflare/cloudflared:latest
-  #  container_name: pizzeria-cloudflared
-   # restart: unless-stopped
-    #command: tunnel run
-    #environment:
-     # - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
-    #networks: [pizzeria-network]
-    #<<: *default-logging
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: pizzeria-cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    networks: [pizzeria-network]
+    <<: *default-logging
 
 networks:
   pizzeria-network:
