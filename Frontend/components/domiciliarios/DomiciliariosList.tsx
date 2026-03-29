@@ -15,71 +15,18 @@ import {
   ListSkeleton,
 } from '../ui';
 
-type FormMode = 'closed' | 'create' | 'edit';
+import { useRouter } from 'expo-router';
 
 export default function DomiciliariosList() {
+  const router = useRouter();
   const { isMobile } = useBreakpoint();
   const { data, loading, error, refetch } = useDomiciliariosList();
   const [telefonoBusqueda, setTelefonoBusqueda] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
-  // ── Form state ──
-  const [formMode, setFormMode] = useState<FormMode>('closed');
-  const [formData, setFormData] = useState({ telefono: '', domiciliarioNombre: '' });
-  const [formLoading, setFormLoading] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [editingPhone, setEditingPhone] = useState('');
-
   // ── Delete modal state ──
   const [deleteTarget, setDeleteTarget] = useState<{ telefono: string; domiciliarioNombre?: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const resetForm = () => {
-    setFormMode('closed');
-    setFormData({ telefono: '', domiciliarioNombre: '' });
-    setFormError('');
-    setEditingPhone('');
-  };
-
-  const openCreate = () => {
-    setFormMode('create');
-    setFormData({ telefono: '', domiciliarioNombre: '' });
-    setFormError('');
-  };
-
-  const openEdit = (d: { telefono: string; domiciliarioNombre?: string }) => {
-    setFormMode('edit');
-    setEditingPhone(d.telefono);
-    setFormData({
-      telefono: d.telefono,
-      domiciliarioNombre: d.domiciliarioNombre || '',
-    });
-    setFormError('');
-  };
-
-  const handleSave = async () => {
-    if (!formData.telefono) {
-      setFormError('El teléfono es obligatorio');
-      return;
-    }
-    setFormLoading(true);
-    setFormError('');
-    try {
-      if (formMode === 'create') {
-        await api.domiciliarios.create(formData);
-      } else {
-        await api.domiciliarios.update(editingPhone, formData);
-      }
-      resetForm();
-      refetch();
-    } catch (err: any) {
-      setFormError(err.response?.data?.message || 'Error al guardar');
-      setFormLoading(false);
-      return;
-    }
-
-    setFormLoading(false);
-  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -126,7 +73,7 @@ export default function DomiciliariosList() {
 
 
 
-      {/* ── Search ── */}
+      {/* ── Search & Actions ── */}
       <View className="flex-row items-end gap-3 mb-8">
         <Input
           label="Filtrar por nombre o teléfono"
@@ -136,6 +83,14 @@ export default function DomiciliariosList() {
           keyboardType="default"
           className="flex-1"
           leftIcon={<Icon name="magnify" size={18} color="#64748B" />}
+        />
+        <Button
+          title="Alta Domiciliarios"
+          icon="account-plus"
+          onPress={() => router.push('/(main)/registro-usuarios')}
+          variant="primary"
+          size="md"
+          className="h-11 px-4"
         />
         <Button
           title="Recargar"
@@ -185,10 +140,10 @@ export default function DomiciliariosList() {
 
                     <View className="flex-row gap-2">
                         <TouchableOpacity
-                            onPress={() => openEdit(item)}
+                            onPress={() => router.push('/(main)/registro-usuarios')}
                             className="w-10 h-10 rounded-full bg-white/5 items-center justify-center active:bg-white/10"
                         >
-                            <Icon name="pencil" size={18} color="#94A3B8" />
+                            <Icon name="account-cog" size={18} color="#94A3B8" />
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={() => setDeleteTarget(item)}
@@ -215,71 +170,6 @@ export default function DomiciliariosList() {
         onCancel={() => setDeleteTarget(null)}
       />
       
-      {/* ── Create / Edit Modal ── */}
-      {formMode !== 'closed' && (
-        <View className="absolute inset-0 bg-black/60 backdrop-blur-md items-center justify-center p-6 z-[100]">
-          <Card className="w-full max-w-md bg-slate-900 border-orange-500/20 shadow-2xl">
-            <View className="p-6">
-              <View className="flex-row items-center gap-3 mb-6">
-                <View className="w-10 h-10 rounded-xl bg-orange-500/20 items-center justify-center border border-orange-500/30">
-                  <Icon name={formMode === 'create' ? 'account-plus' : 'account-edit'} size={20} color="#F5A524" />
-                </View>
-                <View>
-                  <Text className="text-white font-black text-lg uppercase leading-tight" style={{ fontFamily: 'Space Grotesk' }}>
-                    {formMode === 'create' ? 'Nuevo Domiciliario' : 'Editar Domiciliario'}
-                  </Text>
-                  <Text className="text-slate-500 text-xs font-bold uppercase tracking-wider">
-                    {formMode === 'create' ? 'Registrar en sistema' : 'Actualizar información'}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="gap-y-4">
-                <Input
-                  label="Nombre Completo"
-                  placeholder="Ej: Juan Pérez"
-                  value={formData.domiciliarioNombre}
-                  onChangeText={(val) => setFormData(prev => ({ ...prev, domiciliarioNombre: val }))}
-                  leftIcon={<Icon name="account" size={18} color="#64748B" />}
-                />
-                
-                <Input
-                  label="Número de Teléfono"
-                  placeholder="300 000 0000"
-                  value={formData.telefono}
-                  onChangeText={(val) => setFormData(prev => ({ ...prev, telefono: val }))}
-                  keyboardType="phone-pad"
-                  editable={formMode === 'create'} 
-                  leftIcon={<Icon name="phone" size={18} color="#64748B" />}
-                />
-
-                {formError ? (
-                  <View className="flex-row items-center gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                    <Icon name="alert-circle" size={14} color="#EF4444" />
-                    <Text className="text-red-400 text-xs font-bold">{formError}</Text>
-                  </View>
-                ) : null}
-
-                <View className="flex-row gap-3 mt-4">
-                  <Button
-                    title="Cancelar"
-                    variant="secondary"
-                    className="flex-1"
-                    onPress={resetForm}
-                  />
-                  <Button
-                    title={formMode === 'create' ? "Crear" : "Guardar"}
-                    variant="primary"
-                    className="flex-1"
-                    loading={formLoading}
-                    onPress={handleSave}
-                  />
-                </View>
-              </View>
-            </View>
-          </Card>
-        </View>
-      )}
     </PageContainer>
   );
 }

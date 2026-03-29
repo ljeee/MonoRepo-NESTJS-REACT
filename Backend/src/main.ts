@@ -7,10 +7,16 @@ import {DocumentBuilder, SwaggerModule} from '@nestjs/swagger';
 import {LoggingInterceptor} from './common/interceptors/logging.interceptor';
 import {RedisIoAdapter} from './common/redis/redis.adapter';
 import {AllExceptionsFilter} from './common/filters/all-exceptions.filter';
+import helmet from 'helmet';
 
 async function bootstrap() {
 	process.env.TZ = 'America/Bogota';
 	const app = await NestFactory.create(AppModule);
+
+	// Security Headers
+	app.use(helmet({
+		contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+	}));
 
 	// Global exceptions filter
 	const httpAdapterHost = app.get(HttpAdapterHost);

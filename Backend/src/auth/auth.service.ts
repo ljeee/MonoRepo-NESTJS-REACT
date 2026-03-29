@@ -29,49 +29,55 @@ export class AuthService {
 	}
 
 	async register(dto: RegisterDto): Promise<AuthResponseDto> {
-		const isDomiciliario = dto.roles?.some(role => role === Role.Domiciliario);
+		return this.usersRepository.manager.transaction(async (manager) => {
+			const uRepo = manager.getRepository(User);
+			const dRepo = manager.getRepository(Domiciliarios);
 
-		if (isDomiciliario && !dto.telefono) {
-			throw new BadRequestException('El número de teléfono es obligatorio para registrar un domiciliario.');
-		}
+			const isDomiciliario = dto.roles?.some(role => role === Role.Domiciliario);
 
-		if (isDomiciliario && dto.telefono) {
-			const existingDom = await this.domiciliariosRepository.findOne({where: {telefono: dto.telefono}});
-			if (existingDom) {
-				throw new BadRequestException('Este número de teléfono ya pertenece a un domiciliario registrado.');
+			if (isDomiciliario && !dto.telefono) {
+				throw new BadRequestException('El número de teléfono es obligatorio para registrar un domiciliario.');
 			}
-		}
 
-		const existing = await this.usersRepository.findOne({where: {username: dto.username}});
-		if (existing) {
-			throw new BadRequestException('Username ya registrado');
-		}
+			if (isDomiciliario && dto.telefono) {
+				const existingDom = await dRepo.findOne({where: {telefono: dto.telefono}});
+				if (existingDom) {
+					throw new BadRequestException('Este número de teléfono ya pertenece a un domiciliario registrado.');
+				}
+			}
 
-		const hash = await bcrypt.hash(dto.password, 15);
-		// Reforzar que NADIE puede crear un admin vía registro público
-		if (dto.roles?.some(role => role === Role.Admin)) {
-			throw new BadRequestException('No se permite la creación de usuarios con rol Administrador desde este endpoint.');
-		}
+			const existing = await uRepo.findOne({where: {username: dto.username}});
+			if (existing) {
+				throw new BadRequestException('Username ya registrado');
+			}
 
-		const roles = dto.roles && dto.roles.length > 0 ? dto.roles : [Role.Mesero];
+			const hash = await bcrypt.hash(dto.password, 12); // Factor 12 es más balanceado
+			
+			if (dto.roles?.some(role => role === Role.Admin)) {
+				throw new BadRequestException('No se permite la creación de usuarios con rol Administrador desde este endpoint.');
+			}
 
-		const user = this.usersRepository.create({
-			username: dto.username,
-			name: dto.name,
-			passwordHash: hash,
-			roles,
-		});
-		const saved = await this.usersRepository.save(user);
+			const roles = dto.roles && dto.roles.length > 0 ? dto.roles : [Role.Mesero];
 
-		if (isDomiciliario && dto.telefono) {
-			const domiciliario = this.domiciliariosRepository.create({
-				telefono: dto.telefono,
-				domiciliarioNombre: dto.name || dto.username,
+			const user = uRepo.create({
+				username: dto.username,
+				name: dto.name,
+				passwordHash: hash,
+				roles,
 			});
-			await this.domiciliariosRepository.save(domiciliario);
-		}
+			const saved = await uRepo.save(user);
 
-		return this.toAuthResponse(saved);
+			if (isDomiciliario && dto.telefono) {
+				const domiciliario = dRepo.create({
+					telefono: dto.telefono,
+					domiciliarioNombre: dto.name || dto.username,
+					userId: saved.id,
+				});
+				await dRepo.save(domiciliario);
+			}
+
+			return this.toAuthResponse(saved);
+		});
 	}
 
 	async login(dto: LoginDto): Promise<AuthResponseDto> {

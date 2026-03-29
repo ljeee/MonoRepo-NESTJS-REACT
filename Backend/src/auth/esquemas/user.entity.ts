@@ -4,8 +4,10 @@ import {
 	Entity,
 	PrimaryGeneratedColumn,
 	UpdateDateColumn,
+	OneToOne,
 } from 'typeorm';
 import {Role} from '../roles.enum';
+import {Domiciliarios} from '../../domiciliarios/esquemas/domiciliarios.entity';
 
 @Entity({name: 'users'})
 export class User {
@@ -23,6 +25,12 @@ export class User {
 
 	@Column({type: 'text', array: true, default: '{}'})
 	roles: Role[];
+
+	@Column({nullable: true, select: false})
+	refreshTokenHash?: string;
+
+	@OneToOne(() => Domiciliarios, (domiciliario) => domiciliario.user)
+	domiciliario: Domiciliarios;
 
 	@CreateDateColumn()
 	createdAt: Date;

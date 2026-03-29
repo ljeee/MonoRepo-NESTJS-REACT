@@ -3,7 +3,7 @@ import { Observable, catchError, tap, throwError } from 'rxjs';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): any {
     const now = Date.now();
     const ctx = context.switchToHttp();
     const req = ctx.getRequest<Request & { ip?: string }>() as any;
@@ -40,7 +40,7 @@ export class LoggingInterceptor implements NestInterceptor {
       missingFields: missingFields.length ? missingFields : undefined,
     });
 
-    return next.handle().pipe(
+    return (next.handle() as any).pipe(
       tap(() => {
         const ms = Date.now() - now;
         console.log('[RES]', { method, url, tookMs: ms });

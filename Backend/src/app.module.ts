@@ -21,11 +21,27 @@ import { ContabilidadModule } from './contabilidad/contabilidad.module';
 import { SocketGateway } from './common/gateways/socket.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
 
+import * as Joi from 'joi';
+
 @Module({
 	imports: [
 		ConfigModule.forRoot({
 			isGlobal: true,
 			envFilePath: '.env',
+			validationSchema: Joi.object({
+				NODE_ENV: Joi.string()
+					.valid('development', 'production', 'test')
+					.default('development'),
+				PORT: Joi.number().default(3000),
+				DATABASE_HOST: Joi.string().required(),
+				DATABASE_PORT: Joi.number().default(5432),
+				DATABASE_USER: Joi.string().required(),
+				DATABASE_PASSWORD: Joi.string().required(),
+				DATABASE_NAME: Joi.string().required(),
+				JWT_SECRET: Joi.string().required(),
+				REDIS_HOST: Joi.string().default('localhost'),
+				REDIS_PORT: Joi.number().default(6379),
+			}),
 		}),
 		TypeOrmModule.forRootAsync({
 			imports: [ConfigModule],
