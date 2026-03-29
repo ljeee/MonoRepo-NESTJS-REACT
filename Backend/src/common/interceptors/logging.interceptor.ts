@@ -29,21 +29,19 @@ export class LoggingInterceptor implements NestInterceptor {
       }
     };
 
-    // Log request details
-    console.log('[REQ]', {
-      method,
-      url,
-      ip: (req.ip || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress) ?? undefined,
-      params: safe(params),
-      query: safe(query),
-      body: safe(body),
-      missingFields: missingFields.length ? missingFields : undefined,
-    });
-
     return (next.handle() as any).pipe(
       tap(() => {
         const ms = Date.now() - now;
-        console.log('[RES]', { method, url, tookMs: ms });
+        console.log('[DONE]', { 
+          method, 
+          url, 
+          tookMs: ms,
+          ip: (req.ip || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress) ?? undefined,
+          status: 200,
+          params: safe(params),
+          query: safe(query),
+          body: safe(body),
+        });
       }),
       catchError((err) => {
         const ms = Date.now() - now;
@@ -57,6 +55,7 @@ export class LoggingInterceptor implements NestInterceptor {
           status,
           message,
           details: safe(resp),
+          ip: (req.ip || req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress) ?? undefined,
         });
         return throwError(() => err);
       }),

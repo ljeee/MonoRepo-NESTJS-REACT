@@ -179,25 +179,54 @@ export default function EstadisticasDomiciliariosScreen() {
     const { user } = useAuth();
 
     const [stats, setStats] = useState<DomiciliarioStat[]>([]);
+    const [pendingOrders, setPendingOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeRange, setActiveRange] = useState(0); // index into DATE_RANGES
+    const [confirmingId, setConfirmingId] = useState<number | null>(null);
+    const [completingId, setCompletingId] = useState<number | null>(null);
 
     const fetchStats = useCallback(async (rangeIdx: number) => {
         try {
             const { from, to } = getRangeDates(DATE_RANGES[rangeIdx].days);
+            
+            // 1. Fetch Stats
             const data = await api.estadisticas.domiciliariosStats(from, to);
-            // Sort by entregas descending
             const sorted = [...data].sort((a: DomiciliarioStat, b: DomiciliarioStat) => b.entregas - a.entregas);
             setStats(sorted);
+
+            // 2. Fetch Pending (only for "Hoy")
+            if (DATE_RANGES[rangeIdx].days === 0) {
+                const allToday = await api.domicilios.getAllDay();
+                setPendingOrders(allToday.filter(d => d.estado === 'pendiente'));
+            } else {
+                setPendingOrders([]);
+            }
         } catch (error) {
             console.error(error);
-            showToast('Error al cargar estadísticas', 'error');
+            showToast('Error al cargar datos', 'error');
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
     }, [showToast]);
+
+    const handleComplete = async (domicilioId: number) => {
+        try {
+            setCompletingId(domicilioId);
+            await api.domicilios.update(domicilioId, { 
+                estado: 'entregado',
+                fechaEntrega: new Date().toISOString()
+            });
+            showToast('Domicilio completado correctamente', 'success');
+            setConfirmingId(null);
+            fetchStats(activeRange);
+        } catch (error) {
+            showToast('Error al completar domicilio', 'error');
+        } finally {
+            setCompletingId(null);
+        }
+    };
 
     useEffect(() => {
         fetchStats(activeRange);
@@ -309,6 +338,65 @@ export default function EstadisticasDomiciliariosScreen() {
                         </Text>
                     </View>
                 </Card>
+
+                {/* ── Pending Deliveries (Today Only) ── */}
+                {activeRange === 0 && pendingOrders.length > 0 && (
+                    <View className="mb-8">
+                        <View className="flex-row items-center gap-2 mb-4 px-1">
+                            <View className="w-8 h-8 rounded-xl bg-orange-500/15 items-center justify-center">
+                                <Icon name="clock-alert-outline" size={16} color="#F59E0B" />
+                            </View>
+                            <View className="flex-1">
+                                <Text className="text-white font-black text-sm uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>
+                                    Entregas Pendientes
+                                </Text>
+                                <Text className="text-slate-500 text-[10px] uppercase font-bold">Activas en este momento</Text>
+                            </View>
+                            <View className="bg-orange-500/20 px-2 py-0.5 rounded-full">
+                                <Text className="text-orange-400 font-bold text-[10px]">{pendingOrders.length}</Text>
+                            </View>
+                        </View>
+
+                        {pendingOrders.map((dom) => (
+                            <Card key={dom.domicilioId} className="mb-3 p-4 border border-orange-500/10 bg-orange-500/5 flex-row items-center gap-4">
+                                <View className="flex-1">
+                                    <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>
+                                        {dom.direccion}
+                                    </Text>
+                                    <Text className="text-slate-400 text-[10px] mt-0.5">
+                                        Asignado a: <Text className="text-orange-400 font-bold capitalize">{dom.domiciliario?.nombre || 'Sin asignar'}</Text>
+                                    </Text>
+                                </View>
+
+                                {confirmingId === dom.domicilioId ? (
+                                    <View className="flex-row gap-2">
+                                        <Button 
+                                            title="No" 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            onPress={() => setConfirmingId(null)} 
+                                        />
+                                        <Button 
+                                            title="Confirmar" 
+                                            variant="secondary" 
+                                            size="sm" 
+                                            loading={completingId === dom.domicilioId}
+                                            onPress={() => handleComplete(dom.domicilioId)} 
+                                        />
+                                    </View>
+                                ) : (
+                                    <Button 
+                                        title="Completar" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        icon="check-circle-outline"
+                                        onPress={() => setConfirmingId(dom.domicilioId)} 
+                                    />
+                                )}
+                            </Card>
+                        ))}
+                    </View>
+                )}
 
                 {/* ── Ranking ── */}
                 <View className="flex-row items-center gap-2 mb-4 px-1">

@@ -7,6 +7,7 @@ import {FacturaCreationService} from './services/factura-creation.service';
 import {DomicilioCreationService} from './services/domicilio-creation.service';
 import {ProductProcessingService} from './services/product-processing.service';
 import {OrdenesGateway} from './ordenes.gateway';
+import {CierresService} from '../cierres/cierres.service';
 
 @Injectable()
 export class OrdenesService {
@@ -15,7 +16,8 @@ export class OrdenesService {
 		private readonly ordenesGateway: OrdenesGateway,
 		private readonly facturaCreationService: FacturaCreationService,
 		private readonly domicilioCreationService: DomicilioCreationService,
-		private readonly productProcessingService: ProductProcessingService
+		private readonly productProcessingService: ProductProcessingService,
+		private readonly cierresService: CierresService
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
@@ -155,6 +157,10 @@ export class OrdenesService {
 			const fullOrden = await this.findOne(orden.ordenId); // Note: findOne is read-only, optionally use manager here too
 			this.ordenesGateway.emitirNuevaOrden(fullOrden);
 
+			// Actualizar cierre si existe para la fecha de la orden
+			const fechaStr = new Date(fullOrden.fechaOrden).toISOString().split('T')[0];
+			await this.cierresService.updateCierreIfExists(fechaStr);
+
 			return fullOrden;
 		});
 	}
@@ -218,6 +224,11 @@ export class OrdenesService {
 
 			const updated = await this.findOne(id);
 			this.ordenesGateway.emitirOrdenActualizada(updated);
+
+			// Actualizar cierre si existe para la fecha de la orden
+			const fechaStr = new Date(updated.fechaOrden).toISOString().split('T')[0];
+			await this.cierresService.updateCierreIfExists(fechaStr);
+
 			return updated;
 		});
 	}
@@ -263,6 +274,10 @@ export class OrdenesService {
 
 			const fullUpdated = await this.findOne(id);
 			this.ordenesGateway.emitirOrdenActualizada(fullUpdated);
+
+			// Actualizar cierre si existe para la fecha de la orden
+			const fechaStr = new Date(fullUpdated.fechaOrden).toISOString().split('T')[0];
+			await this.cierresService.updateCierreIfExists(fechaStr);
 
 			return fullUpdated;
 		});
@@ -313,6 +328,11 @@ export class OrdenesService {
 
 			const updated = await this.findOne(id);
 			this.ordenesGateway.emitirOrdenActualizada(updated);
+
+			// Actualizar cierre si existe para la fecha de la orden
+			const fechaStr = new Date(updated.fechaOrden).toISOString().split('T')[0];
+			await this.cierresService.updateCierreIfExists(fechaStr);
+
 			return updated;
 		});
 	}

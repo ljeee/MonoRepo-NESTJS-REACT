@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from '@/src/tw';
-import { useProductos, usePizzaSabores, formatCurrency } from '@monorepo/shared';
+import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@monorepo/shared';
 import type { Producto, ProductoVariante } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import PizzaPersonalizadaModal from './PizzaPersonalizadaModal';
@@ -160,27 +160,27 @@ const ProductItem = React.memo(({
     (a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50)
   );
 
+  const emoji = getProductEmoji(producto.productoNombre, producto.categoria, producto.emoji);
+
   return (
-    <View className={`px-2 mb-4 w-full sm:w-1/2 md:w-1/2 lg:w-1/2 xl:w-1/3`}>
-      <View className={`bg-(--color-pos-surface) rounded-3xl border overflow-hidden ${isExpanded ? 'border-(--color-pos-primary)/30 bg-(--color-pos-surface-hover)' : 'border-white/5'}`}>
+    <View className={`px-1 mb-2 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 xl:w-[12.5%]`}>
+      <View className={`bg-(--color-pos-surface) rounded-2xl border overflow-hidden ${isExpanded ? 'border-(--color-pos-primary)/40 bg-(--color-pos-surface-hover)' : 'border-white/5'}`}>
         <TouchableOpacity
-          className={`flex-row items-center p-5 ${isExpanded ? 'bg-white/5' : ''}`}
+          className={`items-center p-3 ${isExpanded ? 'bg-white/5' : ''}`}
           onPress={onToggle}
           activeOpacity={0.7}
         >
-          <View className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center mr-4">
-              <Text className="text-2xl">{producto.emoji || '🍕'}</Text>
+          {/* Pequeño nombre arriba */}
+          <Text className="text-white font-black text-[9px] uppercase tracking-tighter text-center mb-1 h-3" numberOfLines={1} style={{ fontFamily: 'Space Grotesk' }}>
+            {producto.productoNombre}
+          </Text>
+
+          <View className="w-14 h-14 rounded-2xl bg-white/5 items-center justify-center mb-1">
+              <Text className="text-3xl">{emoji}</Text>
           </View>
-          <View className="flex-1">
-            <Text className="text-white font-black text-base uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>{producto.productoNombre}</Text>
-            {producto.descripcion ? (
-              <Text className="text-(--color-pos-text-muted) text-xs mt-0.5 italic" numberOfLines={1}>
-                {producto.descripcion}
-              </Text>
-            ) : null}
-          </View>
-          <View className={`w-8 h-8 rounded-full items-center justify-center bg-white/5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>
-               <Icon name="chevron-down" size={20} color={isExpanded ? '#F5A524' : '#64748B'} />
+
+          <View className={`w-6 h-6 rounded-full items-center justify-center bg-white/5 ${isExpanded ? 'rotate-180' : ''}`}>
+               <Icon name="chevron-down" size={14} color={isExpanded ? '#F5A524' : '#64748B'} />
           </View>
         </TouchableOpacity>
 
@@ -204,14 +204,14 @@ const ProductItem = React.memo(({
                           }
                         }}
                       >
-                        <View className="flex-1 mr-2">
-                          <Text className="text-white font-black text-[11px] uppercase tracking-tight leading-tight" numberOfLines={2}>{variante.nombre}</Text>
-                          <Text className="text-(--color-pos-primary) font-black text-xs mt-1" style={{ fontFamily: 'Space Grotesk' }}>
+                        <View className="flex-1 mr-1">
+                          <Text className="text-white font-black text-[9px] uppercase tracking-tight leading-tight" numberOfLines={2}>{variante.nombre}</Text>
+                          <Text className="text-(--color-pos-primary) font-black text-[10px] mt-0.5" style={{ fontFamily: 'Space Grotesk' }}>
                             ${formatCurrency(Number(variante.precio))}
                           </Text>
                         </View>
-                        <View className="w-7 h-7 bg-(--color-pos-primary) rounded-lg items-center justify-center">
-                          <Icon name="plus" size={16} color="#000" />
+                        <View className="w-6 h-6 bg-(--color-pos-primary) rounded-lg items-center justify-center">
+                          <Icon name="plus" size={14} color="#000" />
                         </View>
                       </TouchableOpacity>
                     </View>

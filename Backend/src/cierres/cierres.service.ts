@@ -18,11 +18,11 @@ export class CierresService {
         private readonly empresaService: EmpresaService,
     ) {}
 
-    async generalCierre(fecha: string, userId: string, observations?: string) {
+    async generalCierre(fecha: string, userId: string, observations?: string, force = false) {
         const empresa = await this.empresaService.getConfig();
         // Verificar si ya existe un cierre
         const existing = await this.cierreRepo.findOne({ where: { fecha } });
-        if (existing) {
+        if (existing && !force) {
             throw new BadRequestException(`Ya existe un cierre para la fecha ${fecha}`);
         }
 
@@ -33,6 +33,7 @@ export class CierresService {
         const facturas = await this.statsService.facturasDetalle(fecha, fecha);
  
         const cierre = this.cierreRepo.create({
+            ...(existing || {}),
             fecha,
             totalVentas: resumen.totalVentas,
             totalEgresos: resumen.totalEgresos,
@@ -42,7 +43,7 @@ export class CierresService {
             ticketPromedio: resumen.ticketPromedio,
             metodosPago,
             productosTop,
-            observaciones: observations,
+            observaciones: observations || (existing ? existing.observaciones : undefined),
             createdById: userId,
         });
 
@@ -65,6 +66,17 @@ export class CierresService {
         }
 
         return saved;
+    }
+
+    async updateCierreIfExists(fecha: string) {
+        const existing = await this.cierreRepo.findOne({ where: { fecha } });
+        if (existing) {
+            console.log(`[CierresService] Actualizando cierre existente para la fecha: ${fecha}`);
+            // El ID del sistema o del robot para actualizaciones automáticas
+            const systemId = '00000000-0000-0000-0000-000000000000';
+            return this.generalCierre(fecha, systemId, 'Actualización automática tras edición de orden.', true);
+        }
+        return null; // No hace nada si no existe el cierre
     }
 
     async getHistory() {

@@ -177,7 +177,13 @@ function StatsRow({ domicilios }: { domicilios: Domicilio[] }) {
 
 // ─── DomicilioCard (Hoy) ─────────────────────────────────────────────────────
 
-function DomicilioCard({ item, index, onComplete }: { item: Domicilio; index: number; onComplete?: () => void }) {
+function DomicilioCard({ 
+    item, index, onComplete, confirming = false, onConfirm = () => {}, onCancel = () => {}, loading = false 
+}: { 
+    item: Domicilio; index: number; onComplete?: () => void; 
+    confirming?: boolean; onConfirm?: () => void; onCancel?: () => void;
+    loading?: boolean;
+}) {
     const badge      = getEstadoBadge(item.estadoDomicilio);
     const done       = isCompleted(item.estadoDomicilio);
     const clienteNombre = item.cliente?.clienteNombre || item.orden?.factura?.clienteNombre || 'Cliente';
@@ -276,16 +282,51 @@ function DomicilioCard({ item, index, onComplete }: { item: Domicilio; index: nu
 
                 {/* Acción completar */}
                 {!done && onComplete && (
-                    <TouchableOpacity onPress={onComplete} style={{
-                        height: 48, borderRadius: 14, backgroundColor: '#10B981',
-                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        shadowColor: '#10B981', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
-                    }}>
-                        <Icon name="check-circle-outline" size={20} color="#000" />
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#000', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            Marcar como Entregado
-                        </Text>
-                    </TouchableOpacity>
+                    <View>
+                        {confirming ? (
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <TouchableOpacity 
+                                    onPress={onCancel} 
+                                    style={{
+                                        flex: 1, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)',
+                                        borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+                                        alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                >
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 13, textTransform: 'uppercase' }}>No</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity 
+                                    onPress={onConfirm} 
+                                    disabled={loading}
+                                    style={{
+                                        flex: 2, height: 48, borderRadius: 14, backgroundColor: '#F5A524',
+                                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                        opacity: loading ? 0.7 : 1
+                                    }}
+                                >
+                                    {loading ? (
+                                        <ActivityIndicator size="small" color="#000" />
+                                    ) : (
+                                        <>
+                                            <Icon name="check-bold" size={18} color="#000" />
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#000', fontSize: 13, textTransform: 'uppercase' }}>Sí, Entregado</Text>
+                                        </>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity onPress={onComplete} style={{
+                                height: 48, borderRadius: 14, backgroundColor: '#10B981',
+                                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                shadowColor: '#10B981', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
+                            }}>
+                                <Icon name="check-circle-outline" size={20} color="#000" />
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#000', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Marcar como Entregado
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 )}
 
                 {done && (
@@ -349,6 +390,8 @@ export default function MisDomiciliosScreen() {
     const [loadingAll, setLoadingAll]     = useState(false);
     const [refreshing, setRefreshing]     = useState(false);
     const [historialLoaded, setHistorialLoaded] = useState(false);
+    const [confirmingId, setConfirmingId] = useState<number | null>(null);
+    const [completingId, setCompletingId] = useState<number | null>(null);
 
     const userName = user && (user as any).name ? String((user as any).name) : 'Domiciliario';
     const isWeb = Platform.OS === 'web';
@@ -405,11 +448,18 @@ export default function MisDomiciliosScreen() {
 
     const handleComplete = async (id: number) => {
         try {
-            await api.domicilios.update(id, { estadoDomicilio: 'entregado' });
+            setCompletingId(id);
+            await api.domicilios.update(id, { 
+                estadoDomicilio: 'entregado',
+                fechaEntrega: new Date().toISOString()
+            });
             showToast('¡Domicilio marcado como entregado! 🎉', 'success');
+            setConfirmingId(null);
             fetchHoy();
         } catch {
             showToast('Error al actualizar estado', 'error');
+        } finally {
+            setCompletingId(null);
         }
     };
 
@@ -487,7 +537,16 @@ export default function MisDomiciliosScreen() {
                                         </Text>
                                     </View>
                                     {pendientes.map((d, idx) => (
-                                        <DomicilioCard key={d.domicilioId} item={d} index={idx} onComplete={() => handleComplete(d.domicilioId)} />
+                                        <DomicilioCard 
+                                            key={d.domicilioId} 
+                                            item={d} 
+                                            index={idx} 
+                                            onComplete={() => setConfirmingId(d.domicilioId)}
+                                            confirming={confirmingId === d.domicilioId}
+                                            onConfirm={() => handleComplete(d.domicilioId)}
+                                            onCancel={() => setConfirmingId(null)}
+                                            loading={completingId === d.domicilioId}
+                                        />
                                     ))}
                                 </>
                             ) : (
