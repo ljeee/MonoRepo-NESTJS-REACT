@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { CreateOrdenItemDto } from '../esquemas/ordenes.dto';
 import { ProductoVariantes } from '../../productos/esquemas/producto-variantes.entity';
 import { OrdenesProductos } from '../../ordenes-productos/esquemas/ordenes-productos.entity';
@@ -36,29 +36,36 @@ export class ProductProcessingService {
 		cantidad: number,
 		precioUnitario?: number,
 		varianteId?: number,
+		manager?: EntityManager,
 	): Promise<void> {
+		const repo = manager ? manager.getRepository(OrdenesProductos) : this.ordenesProductosRepo;
 		const item = new OrdenesProductos();
 		item.ordenId = ordenId;
 		item.producto = nombre;
 		item.cantidad = cantidad;
 		item.precioUnitario = precioUnitario ?? null;
 		item.varianteId = varianteId ?? null;
-		await this.ordenesProductosRepo.save(item);
+		await repo.save(item);
 	}
 
-	async eliminarProductosDeOrden(ordenId: number): Promise<void> {
-		await this.ordenesProductosRepo.delete({ordenId});
+	async eliminarProductosDeOrden(ordenId: number, manager?: EntityManager): Promise<void> {
+		const repo = manager ? manager.getRepository(OrdenesProductos) : this.ordenesProductosRepo;
+		await repo.delete({ordenId});
 	}
 
 	async procesarProductos(
 		ordenId: number,
 		productos: CreateOrdenItemDto[],
+		manager?: EntityManager,
 	): Promise<{total: number; items: {nombre: string; cantidad: number; precioUnitario: number}[]}> {
 		let total = 0;
 		const items: {nombre: string; cantidad: number; precioUnitario: number}[] = [];
 
+		const vRepo = manager ? manager.getRepository(ProductoVariantes) : this.variantesRepo;
+		const sRepo = manager ? manager.getRepository(PizzaSabor) : this.saboresRepo;
+
 		for (const item of productos) {
-			const variante = await this.variantesRepo.findOne({
+			const variante = await vRepo.findOne({
 				where: {varianteId: item.varianteId},
 				relations: ['producto'],
 			});
@@ -78,7 +85,7 @@ export class ProductProcessingService {
 				nombre += ` (${saboresNames.join(' + ')})`;
 				
 				// Buscamos los detalles de los sabores en la DB
-				const saboresInfo = await this.saboresRepo.createQueryBuilder('s')
+				const saboresInfo = await sRepo.createQueryBuilder('s')
 					.where('s.nombre IN (:...names)', { names: saboresNames })
 					.getMany();
 
@@ -100,7 +107,7 @@ export class ProductProcessingService {
 
 				// 2. Recargo por 3 Sabores (Si hay exactamente 3 nombres)
 				if (saboresNames.length >= 3) {
-					const config3 = await this.saboresRepo.findOne({ where: { nombre: 'RECARGO_3_SABORES', tipo: 'configuracion' } });
+					const config3 = await sRepo.findOne({ where: { nombre: 'RECARGO_3_SABORES', tipo: 'configuracion' } });
 					const extra3 = config3 ? (Number(config3[sizeKey]) || 3000) : 3000;
 					recargoTotal += extra3;
 				}
@@ -110,7 +117,7 @@ export class ProductProcessingService {
 			const cantidad = Number(item.cantidad) || 1;
 			total += precioFinalItem * cantidad;
 
-			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precioFinalItem, item.varianteId);
+			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precioFinalItem, item.varianteId, manager);
 			items.push({nombre, cantidad, precioUnitario: precioFinalItem});
 		}
 

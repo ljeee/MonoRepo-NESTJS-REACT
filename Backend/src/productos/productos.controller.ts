@@ -9,14 +9,6 @@ import {Public} from "../auth/decorators/public.decorator";
 export class ProductosController {
 	constructor(private readonly service: ProductosService) {}
 
-	@Get('categorias')
-	@Public()
-	@ApiOperation({ summary: 'Obtener todas las categorías de productos' })
-	@ApiResponse({ status: 200, description: 'Lista de categorías.' })
-	getCategories() {
-		return this.service.getCategories();
-	}
-
 	@Get()
 	@Public()
 	@ApiOperation({ summary: 'Obtener todos los productos con variantes' })

@@ -18,11 +18,6 @@ export class CreateProductoVarianteDto {
 }
 
 export class FindProductosDto {
-	@ApiProperty({example: 'Pizzas', required: false})
-	@IsOptional()
-	@IsString()
-	categoria?: string;
-
 	@ApiProperty({example: true, required: false})
 	@IsOptional()
 	@IsBoolean()
@@ -33,10 +28,6 @@ export class CreateProductosDto {
 	@ApiProperty({example: 'Pizza Hawaiana'})
 	@IsString()
 	productoNombre: string;
-
-	@ApiProperty({example: 'Pizzas', description: 'Categoría del producto'})
-	@IsString()
-	categoria: string;
 
 	@ApiProperty({example: 'Deliciosa pizza con piña y jamón', required: false})
 	@IsOptional()

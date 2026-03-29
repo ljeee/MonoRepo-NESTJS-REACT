@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { FacturasVentas } from '../../facturas-ventas/esquemas/facturas-ventas.entity';
 import { CreateOrdenItemDto } from '../esquemas/ordenes.dto';
 
@@ -14,9 +14,10 @@ export class FacturaCreationService {
 		return productos.map((p) => `${p.cantidad ?? 1} ${construirNombreProducto(p)}`).join(', ');
 	}
 
-	async crearFactura(clienteNombre: string, metodo?: string, descripcion?: string): Promise<FacturasVentas> {
-		return this.facturasRepo.save(
-			this.facturasRepo.create({
+	async crearFactura(clienteNombre: string, metodo?: string, descripcion?: string, manager?: EntityManager): Promise<FacturasVentas> {
+		const repo = manager ? manager.getRepository(FacturasVentas) : this.facturasRepo;
+		return repo.save(
+			repo.create({
 				clienteNombre,
 				metodo: metodo ?? undefined,
 				descripcion: descripcion || undefined,
@@ -37,15 +38,18 @@ export class FacturaCreationService {
 		fechaCobro?: Date;
 		ipDispositivo?: string;
 		idempotencyKey?: string;
-	}) {
-        return this.facturasRepo.update(facturaId, updates);
+	}, manager?: EntityManager) {
+		const repo = manager ? manager.getRepository(FacturasVentas) : this.facturasRepo;
+        return repo.update(facturaId, updates);
     }
 
-    async updateFacturaTotal(facturaId: number, total: number) {
-        return this.facturasRepo.update(facturaId, {total});
+    async updateFacturaTotal(facturaId: number, total: number, manager?: EntityManager) {
+		const repo = manager ? manager.getRepository(FacturasVentas) : this.facturasRepo;
+        return repo.update(facturaId, {total});
     }
 
-    async cancelarFactura(facturaId: number) {
-        return this.facturasRepo.update(facturaId, {estado: 'cancelado'});
+    async cancelarFactura(facturaId: number, manager?: EntityManager) {
+		const repo = manager ? manager.getRepository(FacturasVentas) : this.facturasRepo;
+        return repo.update(facturaId, {estado: 'cancelado'});
     }
 }

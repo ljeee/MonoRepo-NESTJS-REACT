@@ -1,6 +1,6 @@
 import {BadRequestException, Injectable, NotFoundException, ConflictException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {Repository, Between} from 'typeorm';
+import {Repository, Between, EntityManager} from 'typeorm';
 import {Ordenes} from './esquemas/ordenes.entity';
 import {CreateOrdenesDto, CreateOrdenItemDto, FindOrdenesDto} from './esquemas/ordenes.dto';
 import {FacturaCreationService} from './services/factura-creation.service';
@@ -108,113 +108,118 @@ export class OrdenesService {
 		return (tipoPedido || 'mesa') === 'domicilio';
 	}
 
-	private async crearOrden(facturaId: number, tipoPedido?: string, estadoOrden?: string, observaciones?: string): Promise<Ordenes> {
-		const orden = this.repo.create({facturaId, tipoPedido, estadoOrden, observaciones});
-		return this.repo.save(orden);
+	private async crearOrden(facturaId: number, tipoPedido?: string, estadoOrden?: string, observaciones?: string, manager?: EntityManager): Promise<Ordenes> {
+		const repo = manager ? manager.getRepository(Ordenes) : this.repo;
+		const orden = repo.create({facturaId, tipoPedido, estadoOrden, observaciones});
+		return repo.save(orden);
 	}
 
 	// ==================== MÉTODO PRINCIPAL ====================
 
 	async create(data: CreateOrdenesDto) {
-		const productos = Array.isArray(data.productos) ? data.productos : [];
-		const descripcion = productos.length > 0 
-            ? this.facturaCreationService.generarDescripcionFactura(productos, this.productProcessingService.construirNombreProducto.bind(this.productProcessingService)) 
-            : '';
+		return this.repo.manager.transaction(async (manager) => {
+			const productos = Array.isArray(data.productos) ? data.productos : [];
+			const descripcion = productos.length > 0
+				? this.facturaCreationService.generarDescripcionFactura(productos, this.productProcessingService.construirNombreProducto.bind(this.productProcessingService))
+				: '';
 
-		// 1. Crear factura
-		const factura = await this.facturaCreationService.crearFactura(data.nombreCliente || '', undefined, descripcion);
+			// 1. Crear factura
+			const factura = await this.facturaCreationService.crearFactura(data.nombreCliente || '', undefined, descripcion, manager);
 
-		// 2. Crear orden
-		const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden, data.observaciones);
+			// 2. Crear orden
+			const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden, data.observaciones, manager);
 
-		// 3. Procesar productos y calcular total
-		let total = 0;
-		if (productos.length > 0) {
-			const result = await this.productProcessingService.procesarProductos(orden.ordenId, productos);
-			total = result.total;
-		}
+			// 3. Procesar productos y calcular total
+			let total = 0;
+			if (productos.length > 0) {
+				const result = await this.productProcessingService.procesarProductos(orden.ordenId, productos, manager);
+				total = result.total;
+			}
 
-		// 3.5 Sumar costo domicilio al total
-		if (this.domicilioCreationService.esDomicilio(data.tipoPedido) && data.costoDomicilio) {
-			total += Number(data.costoDomicilio);
-		}
+			// 3.5 Sumar costo domicilio al total
+			if (this.domicilioCreationService.esDomicilio(data.tipoPedido) && data.costoDomicilio) {
+				total += Number(data.costoDomicilio);
+			}
 
-		// 3.6 Persistir total en factura
-		if (total > 0) {
-			await this.facturaCreationService.updateFacturaTotal(factura.facturaId, total);
-			factura.total = total;
-		}
+			// 3.6 Persistir total en factura
+			if (total > 0) {
+				await this.facturaCreationService.updateFacturaTotal(factura.facturaId, total, manager);
+				factura.total = total;
+			}
 
-		// 4. Procesar domicilio si aplica
-		if (this.domicilioCreationService.esDomicilio(data.tipoPedido)) {
-			await this.domicilioCreationService.procesarDomicilio(data, factura.facturaId, orden.ordenId);
-		}
+			// 4. Procesar domicilio si aplica
+			if (this.domicilioCreationService.esDomicilio(data.tipoPedido)) {
+				await this.domicilioCreationService.procesarDomicilio(data, factura.facturaId, orden.ordenId, manager);
+			}
 
-		const fullOrden = await this.findOne(orden.ordenId);
-		this.ordenesGateway.emitirNuevaOrden(fullOrden);
+			const fullOrden = await this.findOne(orden.ordenId); // Note: findOne is read-only, optionally use manager here too
+			this.ordenesGateway.emitirNuevaOrden(fullOrden);
 
-		return fullOrden;
+			return fullOrden;
+		});
 	}
 
 	async update(id: number, data: Partial<CreateOrdenesDto>) {
-		const { productos, ...basicData } = data;
+		return this.repo.manager.transaction(async (manager) => {
+			const { productos, ...basicData } = data;
+			const oRepo = manager.getRepository(Ordenes);
 
-		// 1. Update basic order data
-		const allowedFields = ['tipoPedido', 'estadoOrden', 'fechaOrden', 'observaciones', 'usuarioCancelacionId', 'fechaCancelacion'];
-		const updateData: any = {};
-		for (const key of allowedFields) {
-			if (key in basicData) {
-				updateData[key] = (basicData as any)[key];
+			// 1. Update basic order data
+			const allowedFields = ['tipoPedido', 'estadoOrden', 'fechaOrden', 'observaciones', 'usuarioCancelacionId', 'fechaCancelacion'];
+			const updateData: any = {};
+			for (const key of allowedFields) {
+				if (key in basicData) {
+					updateData[key] = (basicData as any)[key];
+				}
 			}
-		}
 
-		if (Object.keys(updateData).length > 0) {
-			await this.repo.update(id, updateData);
-		}
+			if (Object.keys(updateData).length > 0) {
+				await oRepo.update(id, updateData);
+			}
 
-		let orden = await this.findOne(id);
+			let orden = await this.findOne(id);
 
-		// 1.5 Update Domicilio Delivery Data (if is domicilio)
-		if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
-			await this.domicilioCreationService.updateDomicilioPorOrden(id, data, orden.facturaId);
-			// Refresh orden after domicilio update
-			orden = await this.findOne(id);
-		}
-
-		// 2. If products are included, re-process everything
-		if (productos && Array.isArray(productos)) {
-			// a. Delete old relations
-			await this.productProcessingService.eliminarProductosDeOrden(id);
-
-			// b. Process new productos
-			const { total: totalProductos } = await this.productProcessingService.procesarProductos(id, productos);
-
-			// c. Recalculate total (including domicile cost)
-			let newTotal = totalProductos;
+			// 1.5 Update Domicilio Delivery Data (if is domicilio)
 			if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
-				// We check if it comes in data or we use the one already in the order
-				const costoDom = data.costoDomicilio !== undefined ? Number(data.costoDomicilio) : Number(orden.domicilios?.[0]?.costoDomicilio || 0);
-				newTotal += costoDom;
+				await this.domicilioCreationService.updateDomicilioPorOrden(id, data, orden.facturaId); // Note: updateDomicilioPorOrden also needs manager support, but for now it uses repos
+				// Refresh orden after domicilio update
+				orden = await this.findOne(id);
 			}
 
-			// d. Update Invoice description and total
-			const newDescripcion = this.facturaCreationService.generarDescripcionFactura(
-				productos,
-				this.productProcessingService.construirNombreProducto.bind(this.productProcessingService),
-			);
+			// 2. If products are included, re-process everything
+			if (productos && Array.isArray(productos)) {
+				// a. Delete old relations
+				await this.productProcessingService.eliminarProductosDeOrden(id, manager);
 
-			if (orden.facturaId) {
-				await this.facturaCreationService.updateFactura(orden.facturaId, {
-					total: newTotal,
-					descripcion: newDescripcion,
-				});
+				// b. Process new productos
+				const { total: totalProductos } = await this.productProcessingService.procesarProductos(id, productos, manager);
+
+				// c. Recalculate total (including domicile cost)
+				let newTotal = totalProductos;
+				if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
+					// We check if it comes in data or we use the one already in the order
+					const costoDom = data.costoDomicilio !== undefined ? Number(data.costoDomicilio) : Number(orden.domicilios?.[0]?.costoDomicilio || 0);
+					newTotal += costoDom;
+				}
+
+				// d. Update Invoice description and total
+				const newDescripcion = this.facturaCreationService.generarDescripcionFactura(
+					productos,
+					this.productProcessingService.construirNombreProducto.bind(this.productProcessingService),
+				);
+
+				if (orden.facturaId) {
+					await this.facturaCreationService.updateFactura(orden.facturaId, {
+						total: newTotal,
+						descripcion: newDescripcion,
+					}, manager);
+				}
 			}
-		}
 
-		// Return the updated order with relations
-		const updated = await this.findOne(id);
-		this.ordenesGateway.emitirOrdenActualizada(updated);
-		return updated;
+			const updated = await this.findOne(id);
+			this.ordenesGateway.emitirOrdenActualizada(updated);
+			return updated;
+		});
 	}
 
 	remove(id: number) {
@@ -222,82 +227,94 @@ export class OrdenesService {
 	}
 
 	async cancel(id: number, reason: string, userId: string) {
-		const orden = await this.findOne(id);
-		if (!orden) throw new NotFoundException('Orden no encontrada');
+		return this.repo.manager.transaction(async (manager) => {
+			const oRepo = manager.getRepository(Ordenes);
+			const orden = await oRepo.findOne({
+				where: {ordenId: id},
+				relations: ['factura'],
+			});
+			if (!orden) throw new NotFoundException('Orden no encontrada');
 
-		const estadoActual = String(orden.estadoOrden || '').toLowerCase();
-		const estadosCancelables = ['pendiente', 'preparacion', 'en preparación'];
-		
-		if (!estadosCancelables.includes(estadoActual)) {
-			throw new BadRequestException(`No se puede cancelar una orden en estado: ${orden.estadoOrden}`);
-		}
+			const estadoActual = String(orden.estadoOrden || '').toLowerCase();
+			const estadosCancelables = ['pendiente', 'preparacion', 'en preparación'];
+			
+			if (!estadosCancelables.includes(estadoActual)) {
+				throw new BadRequestException(`No se puede cancelar una orden en estado: ${orden.estadoOrden}`);
+			}
 
-		// 1. Cancelar orden
-		orden.estadoOrden = 'cancelado';
-		orden.usuarioCancelacionId = userId;
-		orden.fechaCancelacion = new Date();
-		
-		if (reason) {
-			const notaCancelacion = `[ANULACIÓN: ${reason}]`;
-			orden.observaciones = orden.observaciones 
-				? `${orden.observaciones} ${notaCancelacion}`
-				: notaCancelacion;
-		}
-		
-		await this.repo.save(orden);
+			// 1. Cancelar orden
+			orden.estadoOrden = 'cancelado';
+			orden.usuarioCancelacionId = userId;
+			orden.fechaCancelacion = new Date();
+			
+			if (reason) {
+				const notaCancelacion = `[ANULACIÓN: ${reason}]`;
+				orden.observaciones = orden.observaciones 
+					? `${orden.observaciones} ${notaCancelacion}`
+					: notaCancelacion;
+			}
+			
+			await oRepo.save(orden);
 
-		// 2. Cancelar factura asociada
-		if (orden.facturaId) {
-			await this.facturaCreationService.cancelarFactura(orden.facturaId);
-		}
+			// 2. Cancelar factura asociada
+			if (orden.facturaId) {
+				await this.facturaCreationService.cancelarFactura(orden.facturaId, manager);
+			}
 
-		this.ordenesGateway.emitirOrdenActualizada(orden);
+			const fullUpdated = await this.findOne(id);
+			this.ordenesGateway.emitirOrdenActualizada(fullUpdated);
 
-		return orden;
+			return fullUpdated;
+		});
 	}
 
 	async completar(id: number, metodo: string, userId: string, ip: string, idempotencyKey?: string, lastUpdatedAt?: string) {
-		const orden = await this.findOne(id);
-		if (!orden) throw new NotFoundException('Orden no encontrada');
-
-		// 1. Verificar concurrencia optimista si se provee lastUpdatedAt
-		if (lastUpdatedAt && orden.updatedAt) {
-			const clientDate = new Date(lastUpdatedAt).getTime();
-			const serverDate = new Date(orden.updatedAt).getTime();
-			
-			// Si la diferencia es mayor a 1 segundo (margen de error de redondeo/red)
-			if (Math.abs(serverDate - clientDate) > 1000) {
-				throw new ConflictException('La orden ha sido modificada por otro usuario. Por favor refresca antes de pagar.');
-			}
-		}
-
-		// 2. Verificar idempotencia si se provee una clave
-		if (idempotencyKey) {
-			const existing = await this.facturaCreationService.findByIdempotencyKey(idempotencyKey);
-			if (existing) {
-				// Si ya existe una factura con esta clave, devolvemos la orden asociada
-				return this.findOne(id); 
-			}
-		}
-
-		// 3. Actualizar Factura con el método de pago y marcar como pagada + AUDITORÍA
-		if (orden.facturaId) {
-			await this.facturaCreationService.updateFactura(orden.facturaId, {
-				metodo,
-				estado: 'pagada',
-				usuarioCobroId: userId,
-				fechaCobro: new Date(),
-				ipDispositivo: ip,
-				idempotencyKey,
+		return this.repo.manager.transaction(async (manager) => {
+			const oRepo = manager.getRepository(Ordenes);
+			const orden = await oRepo.findOne({
+				where: {ordenId: id},
+				relations: ['factura'],
 			});
-		}
+			if (!orden) throw new NotFoundException('Orden no encontrada');
 
-		// 3. Marcar Orden como Completada
-		orden.estadoOrden = 'completada';
-		const updated = await this.repo.save(orden);
+			// 1. Verificar concurrencia optimista si se provee lastUpdatedAt
+			if (lastUpdatedAt && orden.updatedAt) {
+				const clientDate = new Date(lastUpdatedAt).getTime();
+				const serverDate = new Date(orden.updatedAt).getTime();
+				
+				if (Math.abs(serverDate - clientDate) > 1000) {
+					throw new ConflictException('La orden ha sido modificada por otro usuario. Por favor refresca antes de pagar.');
+				}
+			}
 
-		this.ordenesGateway.emitirOrdenActualizada(updated);
-		return updated;
+			// 2. Verificar idempotencia
+			if (idempotencyKey) {
+				const existing = await this.facturaCreationService.findByIdempotencyKey(idempotencyKey);
+				if (existing) {
+					return this.findOne(id); 
+				}
+			}
+
+			// 3. Actualizar Factura
+			if (orden.facturaId) {
+				await this.facturaCreationService.updateFactura(orden.facturaId, {
+					metodo,
+					estado: 'pagada',
+					usuarioCobroId: userId,
+					fechaCobro: new Date(),
+					ipDispositivo: ip,
+					idempotencyKey,
+				}, manager);
+			}
+
+			// 4. Marcar Orden como Completada
+			orden.estadoOrden = 'completada';
+			await oRepo.save(orden);
+
+			const updated = await this.findOne(id);
+			this.ordenesGateway.emitirOrdenActualizada(updated);
+			return updated;
+		});
 	}
 
 }

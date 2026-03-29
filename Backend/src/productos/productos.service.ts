@@ -15,17 +15,13 @@ export class ProductosService {
 	) {}
 
 	async findAll(query: FindProductosDto = {}, page = 1, limit = 500) {
-		const {categoria, activo} = query;
+		const {activo} = query;
 		const qb = this.repo.createQueryBuilder('p')
 			.leftJoinAndSelect('p.variantes', 'variantes')
-			.orderBy('p.categoria', 'ASC')
-			.addOrderBy('p.productoNombre', 'ASC')
+			.orderBy('p.productoNombre', 'ASC')
 			.take(limit)
 			.skip((page - 1) * limit);
 
-		if (categoria) {
-			qb.andWhere('p.categoria = :categoria', {categoria});
-		}
 		if (activo !== undefined) {
 			qb.andWhere('p.activo = :activo', {activo});
 		}
@@ -58,12 +54,11 @@ export class ProductosService {
 	async create(data: CreateProductosDto) {
 		const producto = this.repo.create({
 			productoNombre: data.productoNombre,
-			categoria: data.categoria,
 			descripcion: data.descripcion,
 			activo: data.activo ?? true,
 			emoji: data.emoji,
 		});
-		const savedProducto = await this.repo.save(producto);
+		const savedProducto = await this.repo.save(producto) as Productos;
 
 		if (data.variantes && data.variantes.length > 0) {
 			const variantes = data.variantes.map(v => this.variantesRepo.create({
@@ -83,7 +78,6 @@ export class ProductosService {
 	async update(productoId: number, data: Partial<CreateProductosDto>) {
 		await this.repo.update(productoId, {
 			productoNombre: data.productoNombre,
-			categoria: data.categoria,
 			descripcion: data.descripcion,
 			activo: data.activo,
 			emoji: data.emoji,
@@ -111,15 +105,6 @@ export class ProductosService {
 			where: {productoId, activo: true},
 			order: {nombre: 'ASC'},
 		});
-	}
-
-	async getCategories() {
-		const result = await this.repo.createQueryBuilder('p')
-			.select('DISTINCT p.categoria', 'categoria')
-			.where('p.activo = :activo', {activo: true})
-			.orderBy('p.categoria', 'ASC')
-			.getRawMany();
-		return result.map(r => r.categoria);
 	}
 
 	async updateVariante(varianteId: number, nombre?: string, precio?: number, descripcion?: string, activo?: boolean) {

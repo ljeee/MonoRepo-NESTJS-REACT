@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from '@/src/tw';
 import { useProductos, usePizzaSabores, formatCurrency } from '@monorepo/shared';
 import type { Producto, ProductoVariante } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -88,16 +88,17 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
 
       {/* No Category Filters - Direct Search Only */}
 
-      <View className="flex-row flex-wrap -mx-2">
-        {filteredProducts.length === 0 ? (
-          <View className="w-full py-20 items-center opacity-50">
-            <Icon name="tag-off-outline" size={64} color="#64748B" />
-            <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-xs">Sin resultados</Text>
-          </View>
-        ) : (
-          filteredProducts.map((producto) => (
-            <View key={producto.productoId} className="p-2 w-full sm:w-[48%] md:w-[32%] lg:flex-1 lg:min-w-[320px]">
+      <ScrollView className="flex-1" contentContainerClassName="p-4 pb-20">
+        <View className="flex-row flex-wrap -mx-2">
+          {filteredProducts.length === 0 ? (
+            <View className="w-full py-20 items-center opacity-50">
+              <Icon name="tag-off-outline" size={64} color="#64748B" />
+              <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-xs">Sin resultados</Text>
+            </View>
+          ) : (
+            filteredProducts.map((producto) => (
               <ProductItem 
+                key={producto.productoId}
                 producto={producto}
                 isExpanded={expandedProductId === producto.productoId}
                 onToggle={() => setExpandedProductId(expandedProductId === producto.productoId ? null : producto.productoId)}
@@ -107,10 +108,10 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                 setSelectedVariante={setSelectedVariante}
                 setModalVisible={setModalVisible}
               />
-            </View>
-          ))
-        )}
-      </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
 
       {selectedProducto && selectedVariante && (
         <PizzaPersonalizadaModal
