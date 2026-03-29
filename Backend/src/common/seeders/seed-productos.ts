@@ -12,7 +12,6 @@ import { ProductoVariantes } from '../../productos/esquemas/producto-variantes.e
 
 type ProductoSeed = {
 	productoNombre: string;
-	categoria: string;
 	descripcion: string;
 	variantes: { nombre: string; precio: number; descripcion?: string }[];
 };
@@ -28,7 +27,6 @@ export async function seedProductos() {
 		const productos: ProductoSeed[] = [
 			{
 				productoNombre: 'Pizza',
-				categoria: 'Pizzas',
 				descripcion: 'Elige 1-3 sabores. Tradicionales y Especiales disponibles.',
 				variantes: [
 					{ nombre: 'Pequeña', precio: 16000 },
@@ -38,7 +36,6 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Hamburguesa',
-				categoria: 'Hamburguesas',
 				descripcion: 'Hamburguesa clásica con carne de res',
 				variantes: [
 					{ nombre: 'Sencilla',    precio: 17000 },
@@ -48,7 +45,6 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Chuzo',
-				categoria: 'Chuzos',
 				descripcion: 'Incluye: Papitas a la francesa, Arepa con queso, Ensalada',
 				variantes: [
 					{ nombre: 'Mixto Jamon, Cerdo, Pollo', precio: 27000 },
@@ -57,7 +53,6 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Pizza Burguer',
-				categoria: 'Pizza Burguer',
 				descripcion: 'Pizza en formato hamburguesa',
 				variantes: [
 					{ nombre: 'Original', precio: 20000 },
@@ -69,13 +64,11 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Torti Burger',
-				categoria: 'Tortiburger',
 				descripcion: 'Tortilla con hamburguesa',
 				variantes: [{ nombre: 'Unidad', precio: 18000 }],
 			},
 			{
 				productoNombre: 'Calzone',
-				categoria: 'Calzones',
 				descripcion: 'Pizza cerrada estilo calzone',
 				variantes: [
 					{ nombre: 'De Casa',           precio: 16000 },
@@ -91,7 +84,6 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Adición de Queso',
-				categoria: 'Adiciones',
 				descripcion: 'Queso extra para pizza',
 				variantes: [
 					{ nombre: 'Pequeña', precio:  5000 },
@@ -101,9 +93,33 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Combo Papas Hamburguesa',
-				categoria: 'Adiciones',
 				descripcion: 'Papas a la francesa para combo con hamburguesa',
 				variantes: [{ nombre: 'Unidad', precio: 5000 }],
+			},
+			{
+				productoNombre: 'Jugo',
+				descripcion: '',
+				variantes: [
+					{ nombre: 'AGUA',  precio: 6000 },
+					{ nombre: 'AGUA',  precio: 7000 },
+					{ nombre: 'LECHE', precio: 8000 },
+				],
+			},
+			{
+				productoNombre: 'GASEOSA',
+				descripcion: '',
+				variantes: [
+					{ nombre: 'PERSONAL',         precio:  4000 },
+					{ nombre: '1,5L',             precio:  8000 },
+					{ nombre: 'MEGA',             precio: 14000 },
+					{ nombre: '2,25L',            precio: 10000 },
+					{ nombre: 'LITRO DEL VALLE',  precio:  7000 },
+				],
+			},
+			{
+				productoNombre: 'pasteles',
+				descripcion: '',
+				variantes: [{ nombre: 'pasteles dulces', precio: 4000 }],
 			},
 		];
 
@@ -115,7 +131,6 @@ export async function seedProductos() {
 			}
 			const producto = await productoRepo.save(productoRepo.create({
 				productoNombre: prodData.productoNombre,
-				categoria: prodData.categoria,
 				descripcion: prodData.descripcion,
 			}));
 			for (const v of prodData.variantes) {

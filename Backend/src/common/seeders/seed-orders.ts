@@ -89,7 +89,7 @@ export async function seedOrders() {
             const numProds = Math.random() > 0.7 ? 2 : 1;
             const items = Array.from({ length: numProds }).map(() => {
                 const v = randomFrom(dbVariantes);
-                const isPizza = v.producto?.categoria?.toLowerCase() === 'pizzas';
+                const isPizza = v.producto?.productoNombre?.toLowerCase().includes('pizza');
                 const s1 = isPizza ? randomFrom(SABORES) : undefined;
                 const s2 = isPizza && Math.random() > 0.5 ? randomFrom(SABORES) : undefined;
                 

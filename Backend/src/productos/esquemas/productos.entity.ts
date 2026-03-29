@@ -11,10 +11,6 @@ export class Productos {
 	@Index()
 	productoNombre: string;
 
-	@Column({name: 'categoria', type: 'text', default: 'Otros'})
-	@Index()
-	categoria: string;
-
 	@Column({name: 'descripcion', type: 'text', nullable: true})
 	descripcion: string;
 

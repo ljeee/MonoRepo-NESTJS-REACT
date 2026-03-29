@@ -28,8 +28,11 @@ BEGIN
   -- 3 sabores: +$3.000
   -- =====================================================================
 
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Pizza', 'Pizzas', 'Elige 1-3 sabores. Tradicionales y Especiales disponibles.', true)
+  -- =====================================================================
+  -- PIZZA
+  -- =====================================================================
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Pizza', 'Elige 1-3 sabores. Tradicionales y Especiales disponibles.', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'Pequeña', 16000, true),
@@ -39,9 +42,8 @@ BEGIN
   -- =====================================================================
   -- HAMBURGUESAS
   -- =====================================================================
-
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Hamburguesa', 'Hamburguesas', 'Hamburguesa clásica con carne de res', true)
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Hamburguesa', 'Hamburguesa clásica con carne de res', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'Sencilla',    17000, true),
@@ -50,11 +52,9 @@ BEGIN
 
   -- =====================================================================
   -- CHUZOS
-  -- Incluye: Papitas a la francesa, Arepa con queso, Ensalada
   -- =====================================================================
-
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Chuzo', 'Chuzos', 'Incluye: Papitas a la francesa, Arepa con queso, Ensalada', true)
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Chuzo', 'Incluye: Papitas a la francesa, Arepa con queso, Ensalada', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'Mixto Jamon, Cerdo, Pollo', 27000, true),
@@ -62,11 +62,9 @@ BEGIN
 
   -- =====================================================================
   -- PIZZA BURGUER
-  -- TODO: Verificar precios exactos de la carta
   -- =====================================================================
-
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Pizza Burguer', 'Pizza Burguer', 'Pizza en formato hamburguesa', true)
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Pizza Burguer', 'Pizza en formato hamburguesa', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'Original',  20000, true),
@@ -78,20 +76,17 @@ BEGIN
   -- =====================================================================
   -- TORTI BURGER
   -- =====================================================================
-
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Torti Burger', 'Tortiburger', 'Tortilla con hamburguesa', true)
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Torti Burger', 'Tortilla con hamburguesa', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'Unidad', 18000, true);
 
   -- =====================================================================
   -- CALZONES
-  -- TODO: Verificar precios exactos de la carta (página 3)
   -- =====================================================================
-
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Calzone', 'Calzones', 'Pizza cerrada estilo calzone', true)
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Calzone', 'Pizza cerrada estilo calzone', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'De Casa',            16000, true),
@@ -107,20 +102,49 @@ BEGIN
   -- =====================================================================
   -- ADICIONES / EXTRAS
   -- =====================================================================
-
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Adición de Queso', 'Adiciones', 'Queso extra para pizza', true)
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Adición de Queso', 'Queso extra para pizza', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'Pequeña',  5000, true),
     (pid, 'Mediana',  8000, true),
     (pid, 'Grande',  12000, true);
 
-  INSERT INTO productos (producto_nombre, categoria, descripcion, activo)
-  VALUES ('Combo Papas Hamburguesa', 'Adiciones', 'Papas a la francesa para combo con hamburguesa', true)
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Combo Papas Hamburguesa', 'Papas a la francesa para combo con hamburguesa', true)
   RETURNING producto_id INTO pid;
   INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
     (pid, 'Unidad', 5000, true);
+
+  -- =====================================================================
+  -- BEBIDAS Y JUGOS
+  -- =====================================================================
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('Jugo', '', true)
+  RETURNING producto_id INTO pid;
+  INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
+    (pid, 'AGUA', 6000, true),
+    (pid, 'AGUA', 7000, true),
+    (pid, 'LECHE', 8000, true);
+
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('GASEOSA', '', true)
+  RETURNING producto_id INTO pid;
+  INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
+    (pid, 'PERSONAL', 4000, true),
+    (pid, '1,5L', 8000, true),
+    (pid, 'MEGA', 14000, true),
+    (pid, '2,25L', 10000, true),
+    (pid, 'LITRO DEL VALLE', 7000, true);
+
+  -- =====================================================================
+  -- PASTELES
+  -- =====================================================================
+  INSERT INTO productos (producto_nombre, descripcion, activo)
+  VALUES ('pasteles', '', true)
+  RETURNING producto_id INTO pid;
+  INSERT INTO producto_variantes (producto_id, nombre, precio, activo) VALUES
+    (pid, 'pasteles dulces', 4000, true);
 
   RAISE NOTICE '✅ Seed de menú completado: % productos insertados',
     (SELECT COUNT(*) FROM productos);
