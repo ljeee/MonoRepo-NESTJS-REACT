@@ -52,7 +52,7 @@ function AppShell() {
     const checkStalePayments = () => {
       const fifteenMinutesAgo = Date.now() - 15 * 60 * 1000;
       const staleItems = queue.filter(p => p.timestamp < fifteenMinutesAgo);
-      
+
       if (staleItems.length > 0) {
         showToast(
           `Hay ${staleItems.length} pagos sin sincronizar hace más de 15 minutos.`,
@@ -61,7 +61,7 @@ function AppShell() {
       }
     };
 
-    const interval = setInterval(checkStalePayments, 5 * 60 * 1000); 
+    const interval = setInterval(checkStalePayments, 5 * 60 * 1000);
     checkStalePayments();
 
     return () => clearInterval(interval);
@@ -83,39 +83,39 @@ function AppShell() {
   return (
     <View className={`flex-1 bg-(--color-pos-bg) ${isCompact && showAppShell ? 'flex-col' : 'flex-row'}`}>
       <GlobalStyles />
-      
+
       {showAppShell && isCompact && (
         <>
-          <View 
+          <View
             style={{ paddingTop: insets.top + 16 }}
             className="px-6 pb-4 flex-row items-center justify-between border-b border-white/5 bg-(--color-pos-surface) z-50 min-h-[80px] shadow-sm shadow-black/30"
           >
             <View className="flex-row items-center">
-               <View className="w-12 h-12 rounded-2xl bg-orange-500/20 items-center justify-center border border-orange-500/30">
-                 <Icon name="pizza" size={26} color="#F5A524" />
-               </View>
+              <View className="w-12 h-12 rounded-2xl bg-orange-500/20 items-center justify-center border border-orange-500/30">
+                <Icon name="pizza" size={26} color="#F5A524" />
+              </View>
             </View>
             <Pressable onPress={() => setShowMobileMenu(!showMobileMenu)} className="p-3 bg-white/5 active:bg-white/10 rounded-xl transition-colors">
-               <Icon name={showMobileMenu ? "close" : "menu"} size={28} color="#94A3B8" />
+              <Icon name={showMobileMenu ? "close" : "menu"} size={28} color="#94A3B8" />
             </Pressable>
           </View>
 
           {showMobileMenu && (
             <View className="absolute top-0 left-0 right-0 bottom-0 z-[100] flex-row">
-               <Pressable 
-                 className="absolute inset-0 bg-black/60 backdrop-blur-sm" 
-                 onPress={() => setShowMobileMenu(false)} 
-               />
-               <View className="w-72 h-full bg-(--color-pos-surface) shadow-2xl border-r border-white/5">
-                 <Navbar onClose={() => setShowMobileMenu(false)} />
-               </View>
+              <Pressable
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onPress={() => setShowMobileMenu(false)}
+              />
+              <View className="w-72 h-full bg-(--color-pos-surface) shadow-2xl border-r border-white/5">
+                <Navbar onClose={() => setShowMobileMenu(false)} />
+              </View>
             </View>
           )}
         </>
       )}
 
       {showAppShell && !isCompact && <Navbar />}
-      
+
       <View className="flex-1 h-full overflow-hidden">
         <Stack screenOptions={{ headerShown: false }} />
       </View>
@@ -128,18 +128,18 @@ export default function RootLayout() {
   const [ready, setReady] = useState(Platform.OS !== 'web');
 
   useEffect(() => {
-      if (Platform.OS === 'web') {
-        const timer = setTimeout(() => setReady(true), 50);
-        return () => clearTimeout(timer);
+    if (Platform.OS === 'web') {
+      const timer = setTimeout(() => setReady(true), 50);
+      return () => clearTimeout(timer);
     }
   }, []);
 
   if (!ready) {
-      return (
-          <View style={{ flex: 1, backgroundColor: '#0C0F1A', alignItems: 'center', justifyContent: 'center' }}>
-              <ActivityIndicator size="large" color="#F5A524" />
-          </View>
-      );
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0C0F1A', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color="#F5A524" />
+      </View>
+    );
   }
 
   return (
@@ -148,7 +148,7 @@ export default function RootLayout() {
         <ApiProvider api={api}>
           <AuthProvider>
             <ToastProvider>
-              <OfflineQueueProvider 
+              <OfflineQueueProvider
                 storage={asyncStorageAdapter}
                 onSyncPayment={async (p: OfflinePayment) => {
                   await api.ordenes.completar(p.ordenId, p.metodo, p.idempotencyKey);
