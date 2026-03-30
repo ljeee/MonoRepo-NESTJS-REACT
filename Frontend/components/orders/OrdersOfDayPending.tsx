@@ -311,11 +311,28 @@ export default function OrdersOfDayPending() {
                 const textColor = isNew ? 'text-green-400 font-bold' : modType ? 'text-amber-400 font-bold' : 'text-slate-300';
 
                 return (
-                  <View key={prod.id} className={`flex-row items-center ${fullscreen ? 'mb-1.5' : 'mb-0.5'}`}>
-                    <View className={`w-1.5 h-1.5 rounded-full ${dotColor} ${fullscreen ? 'mr-3' : 'mr-1.5'}`} />
-                    <Text className={`flex-1 ${fullscreen ? 'text-sm' : 'text-xs'} ${textColor}`} numberOfLines={1}>
-                      {prod.producto}
-                    </Text>
+                  <View key={prod.id} className={`flex-row items-start ${fullscreen ? 'mb-2' : 'mb-1'}`}>
+                    <View className={`w-1.5 h-1.5 rounded-full ${dotColor} ${fullscreen ? 'mt-2 mr-3' : 'mt-1.5 mr-1.5'}`} />
+                    <View className="flex-1">
+                      {(() => {
+                        const parts = prod.producto.split('(');
+                        const baseName = parts[0].trim();
+                        const details = parts[1] ? `(${parts[1]}` : null;
+                        
+                        return (
+                          <>
+                            <Text className={`${fullscreen ? 'text-sm' : 'text-[12px]'} ${textColor} font-bold leading-tight`}>
+                              {baseName}
+                            </Text>
+                            {details && (
+                              <Text className="text-slate-500 text-[10px] leading-tight mt-0.5 italic">
+                                {details}
+                              </Text>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </View>
                     {isNew && (
                       <View className="bg-green-500/20 px-1.5 py-0.5 rounded mr-1.5 border border-green-500/30">
                         <Text className="text-green-400 text-[8px] font-black uppercase">Nuevo</Text>

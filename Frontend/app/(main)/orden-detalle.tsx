@@ -372,7 +372,7 @@ export default function OrdenDetalleScreen() {
                               
                               <View className="flex-1">
                                   <View className="flex-row justify-between items-start">
-                                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12, textTransform: 'uppercase', flex: 1 }} numberOfLines={1}>{getProductName(p)}</Text>
+                                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 13, textTransform: 'uppercase', flex: 1 }}>{getProductName(p)}</Text>
                                       <View style={{ backgroundColor: 'rgba(245,165,36,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(245,165,36,0.2)', marginLeft: 8 }}>
                                           <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 11 }}>x{p.cantidad || 1}</Text>
                                       </View>

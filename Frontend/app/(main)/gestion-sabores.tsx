@@ -177,7 +177,7 @@ export default function GestionSaboresScreen() {
             </View>
 
             <Modal visible={isModalVisible && !!editingSabor} transparent animationType="fade" statusBarTranslucent>
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(5, 9, 20, 1)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
                     <Card className="w-full max-w-[500px] bg-[#0F172A] border border-white/10 overflow-hidden rounded-[40px]">
                         <ScrollView contentContainerStyle={{ padding: 32 }}>
                             <View className="flex-row items-center gap-4 mb-8">

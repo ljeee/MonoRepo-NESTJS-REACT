@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from '@/src/tw';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
 import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@monorepo/shared';
 import type { Producto, ProductoVariante } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -71,7 +71,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   }
 
   return (
-    <View className="pb-4">
+    <View className="flex-1 pb-4">
       {/* Search bar */}
       <View className="mb-6 relative">
           <View className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
@@ -86,7 +86,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
           />
       </View>
 
-      <ScrollView contentContainerClassName="p-4 pb-6">
+      <ScrollView className="flex-1" contentContainerClassName="p-4 pb-6">
         <View className="flex-row flex-wrap -mx-2">
           {filteredProducts.length === 0 ? (
             <View className="w-full py-20 items-center opacity-50">
@@ -134,7 +134,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
               </TouchableOpacity>
             </View>
 
-            <View className="flex-row flex-wrap p-4 gap-2 justify-between">
+            <View className="flex-row flex-wrap p-4 gap-3">
               {(() => {
                 const producto = productos.find(p => p.productoId === expandedProductId);
                 if (!producto) return null;
@@ -150,9 +150,12 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                 return vs.map((variante) => (
                   <TouchableOpacity
                     key={variante.varianteId}
-                    className="bg-white/5 border border-white/10 p-4 rounded-2xl w-[48.5%] md:w-[32%] flex-row items-center justify-between active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40 mb-1"
+                    className="bg-[#1E293B] border border-white/10 p-4 rounded-2xl w-[48%] md:w-[31%] flex-col items-start active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40 mb-1"
                     onPress={() => {
-                      if (producto.productoNombre.toLowerCase().includes('pizza')) {
+                      const nameLower = producto.productoNombre.toLowerCase();
+                      const isPizza = nameLower.includes('pizza') && !nameLower.includes('burguer');
+                      
+                      if (isPizza) {
                         setSelectedProducto(producto);
                         setSelectedVariante(variante);
                         setModalVisible(true);
@@ -161,16 +164,18 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                       }
                     }}
                   >
-                    <View className="flex-1 mr-3">
-                      <Text className="text-white font-black text-[11px] uppercase tracking-tight leading-snug">
+                    <View className="w-full mb-3">
+                      <Text className="text-slate-100 font-bold text-[13px] uppercase tracking-tight leading-tight mb-1">
                         {variante.nombre}
                       </Text>
-                      <Text className="text-(--color-pos-primary) font-black text-xs mt-1">
+                      <Text className="text-(--color-pos-primary) font-black text-sm">
                         ${formatCurrency(Number(variante.precio))}
                       </Text>
                     </View>
-                    <View className="w-8 h-8 bg-(--color-pos-primary) rounded-xl items-center justify-center shadow-lg transform active:scale-95">
-                      <Icon name="plus" size={18} color="#000" />
+                    <View className="w-full flex-row justify-end">
+                      <View className="w-8 h-8 bg-(--color-pos-primary) rounded-xl items-center justify-center shadow-lg">
+                        <Icon name="plus" size={18} color="#000" />
+                      </View>
                     </View>
                   </TouchableOpacity>
                 ));
