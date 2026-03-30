@@ -208,13 +208,25 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
     );
   }
 
+  const isAdmin = (user as any)?.role?.toLowerCase() === 'admin' || (user as any)?.roles?.includes('admin');
+
   // ── Menú completo para otros roles ───────────────────────────────────────────
   return (
     <>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
         {SECTIONS.map((section, idx) => {
-          const filteredItems = compact ? section.items.filter(i => i.route !== '/ajustes-negocio') : section.items;
+          let items = section.items;
+          
+          // Filtrar Mis Domicilios para Admins
+          if (isAdmin) {
+            items = items.filter(i => i.label !== 'Mis Domicilios');
+          }
+
+          const filteredItems = compact ? items.filter(i => i.route !== '/ajustes-negocio') : items;
           const sectionWithFilter: NavSection = { ...section, items: filteredItems };
+          
+          if (sectionWithFilter.items.length === 0) return null;
+
           return (
             <React.Fragment key={section.title}>
               <AccordionSection

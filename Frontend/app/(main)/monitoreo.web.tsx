@@ -88,145 +88,116 @@ export default function MonitoreoScreen() {
     return (
         <PageContainer scrollable>
             <PageHeader 
-                title="Monitoreo de Sistema" 
-                subtitle="Salud y Herramientas de Base de Datos"
+                title="Sistema" 
+                subtitle="Salud y Herramientas"
                 icon="shield-check-outline" 
             />
 
-            <Animated.View entering={FadeInUp.duration(600)} className="px-2 max-w-5xl mx-auto w-full pb-20">
+            <Animated.View entering={FadeInUp.duration(600)} className="px-1 max-w-7xl mx-auto w-full pb-20">
                 
-                {/* GRID LAYOUT FOR MONITORING CARDS */}
-                <View className="flex-row flex-wrap gap-6 mb-12">
+                {/* TOOL GRID */}
+                <View className="flex-row flex-wrap gap-4 mb-10">
                     
-                    {/* CARD 1: SYNC STATUS */}
-                    <View className="flex-1 min-w-[320px]">
-                        <Card className="h-full p-8 border-white/5 bg-pos-surface overflow-hidden relative">
-                            <View className="absolute top-0 right-0 p-4 opacity-10">
-                                <Icon name="sync" size={80} color="#F5A524" />
-                            </View>
-                            
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                                    <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: hasItems ? '#F97316' : '#10B981', shadowColor: hasItems ? undefined : '#10B981', shadowOpacity: hasItems ? 0 : 0.5, shadowRadius: 10 }} />
-                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', letterSpacing: -0.5 }}>Estado Sincronización</Text>
+                    {/* CARD 1: SYNC */}
+                    <View className="flex-1 min-w-[340px]">
+                        <Card className="h-full p-6 border-white/5 bg-white/5 overflow-hidden relative">
+                            <View className="flex-row items-center justify-between mb-8">
+                                <View className="flex-row items-center gap-3">
+                                    <View className={`w-3 h-3 rounded-full ${hasItems ? 'bg-orange-500 animate-pulse' : 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]'}`} />
+                                    <Text className="text-white font-black text-xs uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Sincronización</Text>
                                 </View>
                                 <Badge 
-                                    label={hasItems ? `${queue.length} PENDIENTES` : 'AL DÍA'} 
+                                    label={hasItems ? `${queue.length} PEND` : 'OK'} 
                                     variant={hasItems ? 'warning' : 'success'} 
                                 />
                             </View>
 
-                            <Text className="text-slate-400 text-sm mb-10 leading-6 font-medium">
+                            <Text className="text-slate-500 text-[11px] mb-8 leading-relaxed font-bold uppercase tracking-tight">
                                 {hasItems 
-                                    ? 'Transacciones locales pendientes de envío. El sistema reintentará automáticamente.' 
-                                    : 'Todas las operaciones locales están sincronizadas con el servidor central.'}
+                                    ? 'Transacciones locales pendientes de envío. Reintento automático activo.' 
+                                    : 'Estado óptimo. Todas las operaciones están en la nube.'}
                             </Text>
 
                             <Button
-                                title={isSyncing ? 'Sincronizando...' : 'Sincronizar Ahora'}
+                                title={isSyncing ? 'Sincronizando...' : 'Enviar Ahora'}
                                 icon="sync"
                                 variant={hasItems ? 'primary' : 'outline'}
                                 onPress={handleSyncManual}
                                 disabled={isSyncing || !hasItems}
                                 loading={isSyncing}
-                                className="py-4"
+                                className="h-12"
                             />
                         </Card>
                     </View>
 
-                    {/* CARD 2: DATA BACKUP / IMPORT */}
-                    <View className="flex-1 min-w-[320px]">
-                        <Card className="h-full p-8 border-white/5 bg-pos-surface overflow-hidden relative">
-                             <View className="absolute top-0 right-0 p-4 opacity-10">
-                                <Icon name="database-import" size={80} color="#F5A524" />
-                            </View>
-
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 32 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                                    <View style={{ width: 32, height: 32, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                         <Icon name="file-upload-outline" size={18} color="#F5A524" />
+                    {/* CARD 2: BACKUP */}
+                    <View className="flex-1 min-w-[340px]">
+                        <Card className="h-full p-6 border-white/5 bg-white/5 overflow-hidden relative">
+                            <View className="flex-row items-center justify-between mb-8">
+                                <View className="flex-row items-center gap-3">
+                                    <View className="w-8 h-8 rounded-xl bg-blue-500/20 items-center justify-center">
+                                         <Icon name="database" size={16} color="#3B82F6" />
                                     </View>
-                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', letterSpacing: -0.5 }}>Carga de Datos</Text>
+                                    <Text className="text-white font-black text-xs uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Base de Datos</Text>
                                 </View>
-                                <Badge label="CSV / BACKUP" variant="info" />
+                                <Badge label="CSV" variant="info" />
                             </View>
 
-                            <Text className="text-slate-400 text-sm mb-10 leading-6 font-medium">
-                                Gestione sus facturas históricas mediante archivos CSV. Puede exportar un backup completo o cargar datos previos.
-                            </Text>
-
-                            <View className="gap-3">
-                                <Button 
-                                    title={exporting ? 'Generando...' : 'Exportar Backup'}
-                                    variant="secondary"
-                                    icon="cloud-download-outline"
+                            <View className="flex-row gap-2">
+                                <TouchableOpacity 
                                     onPress={handleExportBackup}
-                                    loading={exporting}
                                     disabled={exporting || importing}
-                                    className="h-14 bg-blue-600/20 border-[1px] border-blue-500/30"
-                                />
+                                    className="flex-1 h-12 bg-white/5 border border-white/10 rounded-2xl items-center justify-center flex-row gap-2 active:bg-white/10"
+                                >
+                                    <Icon name="cloud-download-outline" size={16} color="#64748B" />
+                                    <Text className="text-white font-black text-[10px] uppercase tracking-widest">{exporting ? '...' : 'Backup'}</Text>
+                                </TouchableOpacity>
 
-                                <View className="h-4 flex-row items-center gap-2">
-                                    <View className="flex-1 h-[1px] bg-white/5" />
-                                    <Text className="text-slate-600 text-[10px] uppercase font-black">O</Text>
-                                    <View className="flex-1 h-[1px] bg-white/5" />
-                                </View>
-
-                                <View>
-                                    <Button 
-                                        title={importing ? 'Importando...' : 'Importar Backup'}
-                                        variant="secondary"
-                                        icon="cloud-upload-outline"
-                                        onPress={() => document.getElementById('csv-upload')?.click()}
-                                        loading={importing}
-                                        disabled={exporting || importing}
-                                        className="h-14 bg-emerald-600/20 border-[1px] border-emerald-500/30"
-                                    />
-                                    <input 
-                                        id="csv-upload" 
-                                        type="file" 
-                                        accept=".csv" 
-                                        style={{ display: 'none' }} 
-                                        onChange={handleFileUpload}
-                                    />
-                                </View>
+                                <TouchableOpacity 
+                                    onPress={() => document.getElementById('csv-upload')?.click()}
+                                    disabled={exporting || importing}
+                                    className="flex-1 h-12 bg-emerald-500/20 border border-emerald-500/30 rounded-2xl items-center justify-center flex-row gap-2 active:bg-emerald-500/40"
+                                >
+                                    <Icon name="cloud-upload-outline" size={16} color="#10B981" />
+                                    <Text className="text-emerald-400 font-black text-[10px] uppercase tracking-widest">{importing ? '...' : 'Cargar'}</Text>
+                                </TouchableOpacity>
+                                <input id="csv-upload" type="file" accept=".csv" style={{ display: 'none' }} onChange={handleFileUpload} />
                             </View>
                         </Card>
                     </View>
                 </View>
 
-                {/* QUEUE DETAILS SECTION */}
+                {/* QUEUE DETAILS */}
                 {hasItems && (
                     <Animated.View entering={FadeInDown.delay(200)}>
-                        <View className="flex-row items-center gap-3 mb-6 ml-1">
-                            <View className="w-1 h-6 bg-orange-500 rounded-full" />
-                            <Text className="text-white text-lg font-black uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Cola en Espera</Text>
+                        <View className="flex-row items-center gap-3 mb-4 ml-1">
+                            <View className="w-1.5 h-4 bg-orange-500 rounded-full" />
+                            <Text className="text-white font-black text-xs uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Cola de Procesamiento</Text>
                         </View>
                         
-                        <View className="gap-3">
+                        <View className="flex-row flex-wrap gap-2">
                             {queue.map((item, idx) => (
-                                <Animated.View key={item.idempotencyKey} entering={FadeInUp.delay(idx * 50)}>
-                                    <Card className="p-5 flex-row items-center justify-between border-white/5 bg-white/5">
+                                <Animated.View key={item.idempotencyKey} entering={FadeInUp.delay(idx * 40)} className="w-full md:w-[49.3%]">
+                                    <View className="p-4 flex-row items-center justify-between border border-white/5 bg-white/5 rounded-2xl">
                                         <View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 16 }}>Orden #{item.ordenId}</Text>
-                                                <Badge label={item.metodo} size="sm" variant="info" />
+                                            <View className="flex-row items-center gap-2">
+                                                <Text className="text-white font-black text-sm uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>Orden #{item.ordenId}</Text>
+                                                <View className="px-2 py-0.5 bg-white/5 rounded-md">
+                                                    <Text className="text-slate-500 text-[8px] font-black uppercase tracking-widest">{item.metodo}</Text>
+                                                </View>
                                             </View>
-                                            <View className="flex-row items-center gap-2 mt-2">
-                                                <Icon name="clock-outline" size={12} color="#64748B" />
-                                                <Text className="text-slate-500 text-[10px] font-bold">
-                                                    {new Date(item.timestamp).toLocaleTimeString()}
-                                                </Text>
+                                            <Text className="text-slate-600 text-[9px] mt-1 font-bold uppercase tracking-widest">
+                                                ID: {item.idempotencyKey.slice(0, 12)}...
+                                            </Text>
+                                        </View>
+                                        
+                                        <View className="items-end">
+                                            <View className="flex-row items-center gap-1.5 bg-orange-500/10 px-2 py-1 rounded-lg border border-orange-500/20">
+                                                <Icon name="history" size={12} color="#F5A524" />
+                                                <Text className="text-orange-500 text-[9px] font-black uppercase">Reintentando</Text>
                                             </View>
                                         </View>
-                                        <View className="items-end gap-2">
-                                            <View className="flex-row items-center gap-1.5 bg-orange-500/10 px-2 py-1 rounded-full border border-orange-500/20">
-                                                <Icon name="refresh" size={12} color="#F5A524" />
-                                                <Text className="text-orange-500 text-[9px] font-black uppercase">Falla Temporal</Text>
-                                            </View>
-                                            <Text className="text-slate-600 text-[8px] font-mono tracking-tighter">{item.idempotencyKey.slice(0, 32)}</Text>
-                                        </View>
-                                    </Card>
+                                    </View>
                                 </Animated.View>
                             ))}
                         </View>

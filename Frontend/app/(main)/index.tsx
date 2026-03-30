@@ -187,73 +187,99 @@ export default function DashboardPage() {
     return (
         <PageContainer>
             {/* Welcome */}
-            <View style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', padding: isMobile ? 16 : 20, borderRadius: 18, backgroundColor: 'rgba(245,165,36,0.04)', borderWidth: 1, borderColor: 'rgba(245,165,36,0.1)', marginBottom: 16, gap: isMobile ? 12 : 0 }}>
-                <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: isMobile ? 22 : 26, textTransform: 'uppercase', letterSpacing: -0.5 }}>{getGreeting()}, {userName} 👋</Text>
-                    <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 12, marginTop: 2, textTransform: 'capitalize' }}>
-                        {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+    return (
+        <PageContainer>
+            {/* Welcome Compact */}
+            <View className={`flex-row items-center border border-white/5 bg-white/5 overflow-hidden ${isMobile ? 'px-4 py-3 rounded-2xl mb-4' : 'px-6 py-4 rounded-3xl mb-6'}`}>
+                <View className="flex-1">
+                    <Text className="text-white font-black text-xs uppercase tracking-widest opacity-50 mb-0.5" style={{ fontFamily: 'Space Grotesk' }}>{getGreeting()}</Text>
+                    <Text className="text-white font-black text-lg uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{userName} 👋</Text>
+                </View>
+                <View className="items-end">
+                    <Text className="text-(--color-pos-primary) font-black text-2xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{clock}</Text>
+                    <Text className="text-slate-500 font-bold text-[9px] uppercase tracking-widest">
+                       {new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
                     </Text>
                 </View>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: isMobile ? 28 : 36, letterSpacing: -1 }}>{clock}</Text>
             </View>
 
-            {/* Quick Actions */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: '#F5A524' }} onPress={() => router.push('/crear-orden')}>
-                    <UIIcon name="plus-circle-outline" size={18} color="#000" />
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#000', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Crear Orden</Text>
+            {/* Quick Actions - High Density */}
+            <View className="flex-row flex-wrap gap-2 mb-6">
+                <TouchableOpacity 
+                    className="flex-row items-center gap-2 px-6 py-3 rounded-2xl bg-(--color-pos-primary) shadow-lg shadow-(--color-pos-primary)/20" 
+                    onPress={() => router.push('/crear-orden')}
+                >
+                    <UIIcon name="plus" size={18} color="#000" />
+                    <Text className="text-black font-black text-[10px] uppercase tracking-widest">Nueva Orden</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }} onPress={() => router.push('/ordenes')}>
-                    <UIIcon name="clipboard-list-outline" size={18} color="#F5A524" />
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Pendientes</Text>
+                
+                <TouchableOpacity 
+                    className="flex-row items-center gap-2 px-5 py-3 rounded-2xl bg-white/5 border border-white/10" 
+                    onPress={() => router.push('/ordenes')}
+                >
+                    <UIIcon name="clipboard-list-outline" size={16} color="#64748B" />
+                    <Text className="text-slate-300 font-black text-[10px] uppercase tracking-widest">Pendientes</Text>
+                    {pendientes > 0 && (
+                        <View className="bg-red-500 px-1.5 rounded-md min-w-[1.2rem] items-center">
+                            <Text className="text-white text-[9px] font-black">{pendientes}</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
-                <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }} onPress={() => router.push('/balance-fechas')}>
-                    <UIIcon name="scale-balance" size={18} color="#8B5CF6" />
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Balance</Text>
+
+                <TouchableOpacity 
+                    className="flex-row items-center gap-2 px-5 py-3 rounded-2xl bg-white/5 border border-white/10" 
+                    onPress={() => router.push('/balance-fechas')}
+                >
+                    <UIIcon name="scale-balance" size={16} color="#64748B" />
+                    <Text className="text-slate-300 font-black text-[10px] uppercase tracking-widest">Balance</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Status cards */}
-            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-                <Card style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: isMobile ? '47%' : undefined }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: pendientes > 0 ? '#EF4444' : '#10B981' }} />
+            {/* Operative Stats Grid */}
+            <View className="flex-row flex-wrap gap-3 mb-6">
+                <Card className="flex-1 min-w-[140px] p-4 flex-row items-center gap-4 bg-white/5 border-white/10">
+                    <View className={`w-2 h-10 rounded-full ${pendientes > 0 ? 'bg-red-500' : 'bg-emerald-500'}`} />
                     <View>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 26 }}>{pendientes}</Text>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Pendientes</Text>
+                        <Text className="text-white font-black text-2xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{pendientes}</Text>
+                        <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest">Pendientes</Text>
                     </View>
                 </Card>
-                <Card style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: isMobile ? '47%' : undefined }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: sinPagar > 0 ? '#F5A524' : '#10B981' }} />
+                
+                <Card className="flex-1 min-w-[140px] p-4 flex-row items-center gap-4 bg-white/5 border-white/10">
+                    <View className={`w-2 h-10 rounded-full ${sinPagar > 0 ? 'bg-(--color-pos-primary)' : 'bg-emerald-500'}`} />
                     <View>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 26 }}>{sinPagar}</Text>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Sin Pagar</Text>
+                        <Text className="text-white font-black text-2xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{sinPagar}</Text>
+                        <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest">Por Pagar</Text>
                     </View>
                 </Card>
-                <Card style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, minWidth: isMobile ? '47%' : undefined }}>
-                    <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#10B981' }} />
+
+                <Card className="flex-1 min-w-[140px] p-4 flex-row items-center gap-4 bg-white/5 border-white/10">
+                    <View className="w-2 h-10 rounded-full bg-emerald-500" />
                     <View>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 26 }}>{completadas}</Text>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 }}>Completadas</Text>
+                        <Text className="text-white font-black text-2xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>{completadas}</Text>
+                        <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest">Entregadas</Text>
                     </View>
                 </Card>
             </View>
 
             {loading && !resumen && <ActivityIndicator size="large" color="#F5A524" className="py-20" />}
 
-            {/* KPIs */}
+            {/* Main KPIs Row */}
             {resumen && (
-                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
-                    <Card style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.06)', borderColor: 'rgba(16,185,129,0.15)' }}>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Ventas Hoy</Text>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 22 }}>{formatCurrency(resumen.totalVentas)}</Text>
+                <View className="flex-row flex-wrap gap-3 mb-8">
+                    <Card className="flex-1 min-w-[160px] p-5 items-center bg-emerald-500/10 border-emerald-500/20">
+                        <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest mb-1.5">Ventas Hoy</Text>
+                        <Text className="text-emerald-400 font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>{formatCurrency(resumen.totalVentas)}</Text>
                     </Card>
-                    <Card style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(139,92,246,0.06)', borderColor: 'rgba(139,92,246,0.15)' }}>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Ticket Promedio</Text>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#A78BFA', fontSize: 22 }}>{formatCurrency(resumen.ticketPromedio)}</Text>
+                    
+                    <Card className="flex-1 min-w-[160px] p-5 items-center bg-violet-500/10 border-violet-500/20">
+                        <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest mb-1.5">Ticket Promedio</Text>
+                        <Text className="text-violet-400 font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>{formatCurrency(resumen.ticketPromedio)}</Text>
                     </Card>
-                    <Card style={{ flex: 1, alignItems: 'center', backgroundColor: 'rgba(245,165,36,0.06)', borderColor: 'rgba(245,165,36,0.15)' }}>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Órdenes</Text>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 22 }}>{resumen.ordenes}</Text>
+
+                    <Card className="flex-1 min-w-[160px] p-5 items-center bg-(--color-pos-primary)/10 border-(--color-pos-primary)/20">
+                        <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest mb-1.5">Órdenes Totales</Text>
+                        <Text className="text-(--color-pos-primary) font-black text-xl" style={{ fontFamily: 'Space Grotesk' }}>{resumen.ordenes}</Text>
                     </Card>
                 </View>
             )}

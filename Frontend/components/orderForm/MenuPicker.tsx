@@ -111,9 +111,9 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
         </View>
       </ScrollView>
 
-      {/* ─── BARRA DE VARIANTES (HORIZONTAL CASCADA) ─── */}
+      {/* ─── BARRA DE VARIANTES (DOCKABLE / NO OVERLAP) ─── */}
       {expandedProductId && (
-        <View className="absolute bottom-4 left-0 right-0 px-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <View className="mt-2 px-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <View className="bg-(--color-pos-surface) rounded-3xl border border-(--color-pos-primary)/30 shadow-2xl overflow-hidden backdrop-blur-md">
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-white/5 bg-white/5">
               <View className="flex-row items-center">

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { FlatList, RefreshControl } from 'react-native';
+import { FlatList, RefreshControl, Platform } from 'react-native';
 import { View, Text } from '../../tw';
-import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../services/api';
 import { useRouter } from 'expo-router';
 import { Badge, Icon, PageContainer, PageHeader, Card, ListSkeleton, Button } from '../../components/ui';
@@ -16,6 +15,8 @@ export default function UsuariosScreen() {
     const [usuarios, setUsuarios] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const { isMobile } = useBreakpoint();
+    const isWeb = Platform.OS === 'web';
 
     const loadUsuarios = useCallback(async () => {
         setLoading(true);
@@ -35,23 +36,21 @@ export default function UsuariosScreen() {
     }, [loadUsuarios]);
 
     const onRefresh = () => {
-        setRefreshing(true);
+        setRefreshing(refreshing);
         loadUsuarios();
     };
-
-    const { isMobile } = useBreakpoint();
 
     return (
         <PageContainer scrollable={false} maxWidthVariant="full">
             <View className="flex-1">
                 <PageHeader
-                    title="Usuarios del Sistema"
-                    subtitle="Gestión de acceso y personal"
-                    icon="account-group"
+                    title="Gestión de Equipo"
+                    subtitle="Administración de permisos y acceso al sistema"
+                    icon="account-settings-outline"
                     rightContent={isAdmin ? (
                         <Button
-                            title="Nuevo"
-                            icon="account-plus"
+                            title="Nuevo Usuario"
+                            icon="account-plus-outline"
                             variant="primary"
                             size="sm"
                             onPress={() => router.push('/registro-usuarios' as any)}
@@ -61,7 +60,7 @@ export default function UsuariosScreen() {
 
                 {loading && !refreshing ? (
                     <View className="px-6">
-                        <ListSkeleton count={5} />
+                        <ListSkeleton count={6} />
                     </View>
                 ) : (
                     <FlatList
@@ -75,15 +74,15 @@ export default function UsuariosScreen() {
                         key={isMobile ? 'v' : 'h'}
                         numColumns={isMobile ? 1 : 2}
                         ListEmptyComponent={
-                            <View className="items-center justify-center py-24">
-                                <View className="w-16 h-16 rounded-full bg-slate-900 items-center justify-center mb-6">
-                                    <Icon name="account-group-outline" size={32} color="#475569" />
+                            <View className="items-center justify-center py-24 bg-white/5 m-4 rounded-[40px] border border-white/5">
+                                <View className="w-20 h-20 rounded-[28px] bg-slate-900 items-center justify-center mb-6 border border-white/5">
+                                    <Icon name="account-group-outline" size={36} color="#475569" />
                                 </View>
-                                <Text className="text-slate-400 font-black mb-6 uppercase tracking-widest text-[10px] text-center">
-                                    No hay usuarios registrados o no se pudieron cargar
+                                <Text className="text-slate-400 font-black mb-6 uppercase tracking-widest text-[10px] text-center max-w-[200px] leading-relaxed">
+                                    No se encontraron usuarios activos en la plataforma
                                 </Text>
                                 <Button 
-                                    title="Reintentar Carga" 
+                                    title="Consultar de nuevo" 
                                     onPress={loadUsuarios} 
                                     variant="secondary" 
                                     size="sm"
@@ -92,35 +91,39 @@ export default function UsuariosScreen() {
                             </View>
                         }
                         renderItem={({ item: u }) => (
-                            <View style={{ marginBottom: 10, flex: 1, paddingHorizontal: isMobile ? 0 : 4 }}>
-                                <Card style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                                        <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(245,165,36,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245,165,36,0.2)' }}>
-                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 16 }}>
+                            <View style={{ marginBottom: 12, flex: 1, paddingHorizontal: isWeb ? 6 : 0 }}>
+                                <Card className="flex-row items-center justify-between p-5 bg-white/5 border border-white/5 rounded-[28px]">
+                                    <View className="flex-row items-center flex-1 mr-4 gap-4">
+                                        <View className="w-12 h-12 rounded-2xl bg-orange-500/10 items-center justify-center border border-orange-500/20">
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 18 }}>
                                                 {(u.name || u.username)?.charAt(0).toUpperCase()}
                                             </Text>
                                         </View>
-                                        <View>
-                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        <View className="flex-1">
+                                            <Text className="text-white font-black text-xs uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>
                                                 {u.name || u.username}
                                             </Text>
-                                            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>@{u.username}</Text>
+                                            <Text className="text-slate-500 font-bold text-[10px] mt-1" numberOfLines={1}>@{u.username}</Text>
                                         </View>
                                     </View>
-                                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                                        <View style={{ flexDirection: 'row', gap: 6 }}>
+                                    
+                                    <View className="items-end gap-2">
+                                        <View className="flex-row gap-1.5 flex-wrap justify-end">
                                             {u.roles?.map((role: string) => (
                                                 <Badge 
                                                     key={role} 
                                                     label={role} 
-                                                    variant={role === 'Admin' ? 'danger' : 'info'} 
-                                                    size="sm" 
+                                                    variant={role.toLowerCase() === 'admin' ? 'danger' : 'info'} 
+                                                    size="xs" 
                                                 />
                                             ))}
                                         </View>
-                                        <Text style={{ fontFamily: 'Outfit', color: '#334155', fontSize: 9, textTransform: 'uppercase' }}>
-                                            {new Date(u.createdAt).toLocaleDateString()}
-                                        </Text>
+                                        <View className="flex-row items-center gap-1 opacity-40">
+                                            <Icon name="clock-outline" size={10} color="#64748B" />
+                                            <Text className="text-slate-500 font-bold text-[8px] uppercase tracking-tighter">
+                                                {new Date(u.createdAt).toLocaleDateString()}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </Card>
                             </View>

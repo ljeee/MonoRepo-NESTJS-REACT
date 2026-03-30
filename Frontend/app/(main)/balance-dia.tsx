@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl } from 'react-native';
+import { RefreshControl, Platform } from 'react-native';
 import { ScrollView } from '../../tw';
-import { useFacturasDia } from '@monorepo/shared';
-import { useFacturasPagosDia, useDeleteFacturaPago } from '@monorepo/shared';
+import { useFacturasDia, useFacturasPagosDia, useDeleteFacturaPago } from '@monorepo/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportPdf } from '../../utils/exportData';
 import type { FacturaPago } from '@monorepo/shared';
@@ -29,58 +28,58 @@ function BalanceCard({ ingresos, gastos }: { ingresos: number; gastos: number })
     const isPositive = neto >= 0;
 
     return (
-        <Card className="mb-8 overflow-hidden relative border-0 p-0 bg-transparent">
+        <Card className="mb-8 overflow-hidden relative border-0 p-0 bg-transparent rounded-[32px] shadow-2xl shadow-black/40">
             {/* Background Gradient & Pattern */}
-            <View className="absolute inset-0 bg-slate-900" />
+            <View className="absolute inset-0 bg-[#0F172A]" />
             <View className={`absolute inset-0 ${isPositive ? 'bg-emerald-500/10' : 'bg-red-500/10'}`} />
             
-            <View style={{ padding: 20 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                    <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.6)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Resumen Financiero Hoy</Text>
-                    <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 9999, borderWidth: 1, backgroundColor: isPositive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', borderColor: isPositive ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)' }}>
-                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 10, textTransform: 'uppercase', color: isPositive ? '#34D399' : '#F87171' }}>
-                            {isPositive ? 'Superávit' : 'Déficit'}
+            <View style={{ padding: 24 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                    <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.4)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, fontWeight: 'bold' }}>Caja Diaria</Text>
+                    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, backgroundColor: isPositive ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', borderColor: isPositive ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)' }}>
+                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 9, textTransform: 'uppercase', color: isPositive ? '#10B981' : '#EF4444', letterSpacing: 1 }}>
+                            {isPositive ? 'Balance Positivo' : 'Déficit Detectado'}
                          </Text>
                     </View>
                 </View>
 
-                <View style={{ gap: 16 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(16,185,129,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icon name="arrow-down" size={16} color="#34D399" />
+                <View style={{ gap: 20 }}>
+                    <View className="flex-row justify-between items-center">
+                        <View className="flex-row items-center gap-3">
+                            <View className="w-10 h-10 rounded-2xl bg-emerald-500/10 items-center justify-center border border-emerald-500/20">
+                                <Icon name="chart-line" size={18} color="#10B981" />
                             </View>
-                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Ingresos</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Ventas Totales</Text>
                         </View>
                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>
                              ${formatCurrency(ingresos)}
                         </Text>
                     </View>
 
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(239,68,68,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icon name="arrow-up" size={16} color="#F87171" />
+                    <View className="flex-row justify-between items-center">
+                        <View className="flex-row items-center gap-3">
+                            <View className="w-10 h-10 rounded-2xl bg-red-500/10 items-center justify-center border border-red-500/20">
+                                <Icon name="chart-line-variant" size={18} color="#EF4444" />
                             </View>
-                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Gastos</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Gastos Operativos</Text>
                         </View>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F87171', fontSize: 18 }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 18 }}>
                              −${formatCurrency(gastos)}
                         </Text>
                     </View>
 
-                    <View className="h-[1px] bg-white/5 my-2" />
+                    <View className="h-[1px] bg-white/5 my-1" />
 
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                <Icon name="scale-balance" size={20} color="#F5A524" />
-                            </View>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 15, textTransform: 'uppercase' }}>BALANCE NETO</Text>
+                    <View className="flex-row justify-between items-end">
+                         <View className="gap-1">
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Efectivo Neto</Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 32, color: isPositive ? '#F5A524' : '#EF4444', letterSpacing: -1 }}>
+                                 ${formatCurrency(Math.abs(neto))}
+                            </Text>
                         </View>
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, color: isPositive ? '#F5A524' : '#EF4444' }}>
-                             ${formatCurrency(Math.abs(neto))}
-                        </Text>
+                        <View className={`w-14 h-14 rounded-2xl ${isPositive ? 'bg-orange-500/20' : 'bg-red-500/20'} items-center justify-center border ${isPositive ? 'border-orange-500/30' : 'border-red-500/30'}`}>
+                            <Icon name="scale-balance" size={28} color={isPositive ? '#F5A524' : '#EF4444'} />
+                        </View>
                     </View>
                 </View>
             </View>
@@ -88,7 +87,7 @@ function BalanceCard({ ingresos, gastos }: { ingresos: number; gastos: number })
     );
 }
 
-// ─── Gasto item row ───────────────────────────────────────────────────────────
+// ─── Gasto item row (Modernizado) ─────────────────────────────────────────────
 
 function GastoRow({ item, onDelete, deleting }: {
     item: FacturaPago;
@@ -96,25 +95,29 @@ function GastoRow({ item, onDelete, deleting }: {
     deleting: boolean;
 }) {
     return (
-        <Card className="flex-row items-center gap-4 p-4 border border-white/5">
-            <View className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center">
+        <Card className="flex-row items-center gap-4 p-5 bg-white/5 border border-white/5 rounded-[24px]">
+            <View className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center border border-white/10">
                 <Icon
-                    name={item.metodo === 'efectivo' ? 'cash' : 'qrcode'}
-                    size={20}
+                    name={item.metodo === 'efectivo' ? 'cash-multiple' : 'bank-transfer'}
+                    size={22}
                     color="#F5A524"
                 />
             </View>
 
             <View className="flex-1">
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14, textTransform: 'uppercase' }}>{item.nombreGasto || 'Gasto General'}</Text>
+                <Text className="text-white font-black text-sm uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>
+                    {item.nombreGasto || 'Gasto General'}
+                </Text>
                 <View className="flex-row items-center gap-2 mt-1">
-                    <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold' }}>{item.fechaFactura}</Text>
-                    <Badge label={item.metodo || '—'} variant="warning" size="sm" />
+                    <Text className="text-slate-500 font-bold text-[9px] uppercase tracking-widest">{item.fechaFactura}</Text>
+                    <View className="bg-(--color-pos-primary)/10 px-2 py-0.5 rounded-md border border-(--color-pos-primary)/20">
+                        <Text className="text-(--color-pos-primary) font-black text-[8px] uppercase">{item.metodo || '—'}</Text>
+                    </View>
                 </View>
             </View>
 
             <View className="items-end mr-2">
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F87171', fontSize: 15 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 16 }}>
                     −${formatCurrency(item.total ?? 0)}
                 </Text>
             </View>
@@ -122,7 +125,7 @@ function GastoRow({ item, onDelete, deleting }: {
             <TouchableOpacity
                 onPress={onDelete}
                 disabled={deleting}
-                className="w-10 h-10 items-center justify-center rounded-xl bg-red-500/10 active:bg-red-500/20"
+                className="w-10 h-10 items-center justify-center rounded-xl bg-red-500/10 active:bg-red-500/20 border border-red-500/20"
             >
                 <Icon name="trash-can-outline" size={18} color="#EF4444" />
             </TouchableOpacity>
@@ -134,6 +137,7 @@ function GastoRow({ item, onDelete, deleting }: {
 
 export default function BalanceDiaScreen() {
     const { isMobile } = useBreakpoint();
+    const isWeb = Platform.OS === 'web';
 
     const {
         data: facturas,
@@ -161,9 +165,8 @@ export default function BalanceDiaScreen() {
     useEffect(() => { fetchGastos(); }, [fetchGastos]);
 
     const handleRefresh = async () => {
-        setRefreshing(true);
+        setRefreshing(refreshing);
         await Promise.all([refetchFacturas(), fetchGastos()]);
-        setRefreshing(false);
     };
 
     const handleToggleEstado = async (facturaId: number, nuevoEstado: string, metodo?: string) => {
@@ -195,8 +198,6 @@ export default function BalanceDiaScreen() {
     const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
     const loading = loadingFacturas || loadingGastos;
 
-
-
     return (
         <PageContainer
             refreshControl={
@@ -209,8 +210,8 @@ export default function BalanceDiaScreen() {
             }
         >
             <PageHeader
-                title="Balance Diario"
-                subtitle="Estado de caja hoy"
+                title="Finanzas"
+                subtitle="Seguimiento de caja y gastos hoy"
                 icon="scale-balance"
                 rightContent={
                     <View className="flex-row items-center gap-2">
@@ -230,33 +231,35 @@ export default function BalanceDiaScreen() {
             <BalanceCard ingresos={ingresos} gastos={totalGastos} />
 
             {/* ── FACTURAS ───────────────────────────────────────────────────────── */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, marginTop: 16 }}>
-                <View style={{ width: 6, height: 24, backgroundColor: '#F5A524', borderRadius: 999 }} />
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', letterSpacing: 1 }}>Facturación</Text>
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>{facturas.length}</Text>
+            <View className="flex-row items-center justify-between mb-6 mt-4">
+                <View className="flex-row items-center gap-3">
+                    <View className="w-1.5 h-6 bg-orange-500 rounded-full" />
+                    <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Ventas Facturadas</Text>
+                </View>
+                <View className="bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                    <Text className="text-slate-500 font-bold text-xs">{facturas.length} docs</Text>
                 </View>
             </View>
 
             {errorFacturas && (
-                <View className="flex-row items-center gap-3 bg-red-500/10 p-4 rounded-xl mb-6">
-                    <Icon name="alert-circle-outline" size={18} color="#EF4444" />
-                    <Text className="text-red-400 text-xs font-bold">{errorFacturas}</Text>
+                <View className="flex-row items-center gap-3 bg-red-500/10 p-5 rounded-3xl mb-8 border border-red-500/20">
+                    <Icon name="alert-circle-outline" size={20} color="#EF4444" />
+                    <Text className="text-red-400 text-xs font-bold leading-tight">{errorFacturas}</Text>
                 </View>
             )}
 
-            {loadingFacturas && !facturas.length && <ListSkeleton count={3} />}
+            {loadingFacturas && !facturas.length && <ListSkeleton count={4} />}
 
             {!loadingFacturas && facturas.length === 0 && !errorFacturas && (
-                <View className="items-center py-10 opacity-30">
-                    <Icon name="receipt-outline" size={48} color="#64748B" />
-                    <Text className="text-slate-400 font-bold mt-4 uppercase text-xs">Sin facturas hoy</Text>
+                <View className="items-center py-16 bg-white/5 rounded-[40px] border border-white/5 mb-10">
+                    <Icon name="receipt-outline" size={56} color="#1E293B" />
+                    <Text className="text-slate-600 font-black mt-4 uppercase text-[10px] tracking-widest">Sin facturas registradas hoy</Text>
                 </View>
             )}
 
-            <View className="flex-row flex-wrap gap-4 mb-10">
+            <View className="flex-row flex-wrap gap-4 mb-12">
                 {facturas.map((item, idx) => (
-                    <View key={item.facturaId?.toString() || idx.toString()} className={`${isMobile ? 'w-full' : 'w-[48.5%]'}`}>
+                    <View key={item.facturaId?.toString() || idx.toString()} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'}`}>
                         <FacturaCard
                             item={item}
                             isUpdating={updatingId === item.facturaId}
@@ -269,33 +272,35 @@ export default function BalanceDiaScreen() {
             </View>
 
             {/* ── GASTOS ─────────────────────────────────────────────────────────── */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                <View style={{ width: 6, height: 24, backgroundColor: '#EF4444', borderRadius: 999 }} />
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', letterSpacing: 1 }}>Gastos Operativos</Text>
-                <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>{gastos.length}</Text>
+             <View className="flex-row items-center justify-between mb-6">
+                <View className="flex-row items-center gap-3">
+                    <View className="w-1.5 h-6 bg-red-500 rounded-full" />
+                    <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Gastos de Operación</Text>
+                </View>
+                <View className="bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                    <Text className="text-slate-500 font-bold text-xs">{gastos.length} items</Text>
                 </View>
             </View>
 
             {errorGastos && (
-                <View className="flex-row items-center gap-3 bg-red-500/10 p-4 rounded-xl mb-6">
-                    <Icon name="alert-circle-outline" size={18} color="#EF4444" />
-                    <Text className="text-red-400 text-xs font-bold">{errorGastos}</Text>
+                <View className="flex-row items-center gap-3 bg-red-500/10 p-5 rounded-3xl mb-8 border border-red-500/20">
+                    <Icon name="alert-circle-outline" size={20} color="#EF4444" />
+                    <Text className="text-red-400 text-xs font-bold leading-tight">{errorGastos}</Text>
                 </View>
             )}
 
-            {loadingGastos && !gastos.length && <ListSkeleton count={2} />}
+            {loadingGastos && !gastos.length && <ListSkeleton count={3} />}
 
             {!loadingGastos && gastos.length === 0 && !errorGastos && (
-                <View className="items-center py-10 opacity-30">
-                    <Icon name="cash-remove" size={48} color="#64748B" />
-                    <Text className="text-slate-400 font-bold mt-4 uppercase text-xs">Sin gastos hoy</Text>
+                <View className="items-center py-16 bg-white/5 rounded-[40px] border border-white/5 mb-10">
+                    <Icon name="cash-remove" size={56} color="#1E293B" />
+                    <Text className="text-slate-600 font-black mt-4 uppercase text-[10px] tracking-widest">No hay gastos reportados</Text>
                 </View>
             )}
 
-            <View className="flex-direction-column gap-y-4 pb-20">
+            <View className="flex-row flex-wrap gap-4 pb-20">
                 {gastos.map((item, idx) => (
-                    <View key={item.pagosId?.toString() || idx.toString()} className="w-full">
+                    <View key={item.pagosId?.toString() || idx.toString()} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'}`}>
                         <GastoRow
                             item={item}
                             onDelete={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })}
@@ -308,11 +313,11 @@ export default function BalanceDiaScreen() {
             {/* Delete confirmation */}
             <ConfirmModal
                 visible={!!deleteTarget}
-                title="Eliminar gasto"
-                message={`¿Realmente deseas eliminar "${deleteTarget?.name}"? Esta acción será irreversible.`}
+                title="¿Eliminar registro de gasto?"
+                message={`Estás a punto de borrar "${deleteTarget?.name}". Esta acción actualizará los balances diarios de forma permanente.`}
                 icon="trash-can-outline"
                 variant="danger"
-                confirmText="Eliminar"
+                confirmText="Eliminar permanentemente"
                 loading={deleting}
                 onConfirm={handleDeleteGasto}
                 onCancel={() => setDeleteTarget(null)}

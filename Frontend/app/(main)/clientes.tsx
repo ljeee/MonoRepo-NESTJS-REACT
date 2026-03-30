@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { RefreshControl } from 'react-native';
+import { RefreshControl, Platform } from 'react-native';
+import { useBreakpoint } from '../../styles/responsive';
 import { api } from '../../services/api';
 import type { Cliente, CreateClienteDto } from '@monorepo/shared';
 import { useClientByPhone } from '@monorepo/shared';
@@ -44,6 +45,8 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function ClientesScreen() {
+  const { isMobile } = useBreakpoint();
+  const isWeb = Platform.OS === 'web';
   const { data, loading, error, refetch } = useClientesList();
   const { client, loading: searching, error: searchError, fetchClient } = useClientByPhone();
   const [telefono, setTelefono] = useState('');
@@ -412,14 +415,14 @@ export default function ClientesScreen() {
         </View>
       )}
 
-      <View className="gap-y-4 pb-10">
+      <View className="flex-row flex-wrap gap-4 pb-10">
         {!loading && data.map((item) => {
           const stats = getStats(item);
           return (
-            <Card key={item.telefono} className="overflow-hidden">
+            <Card key={item.telefono} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'} overflow-hidden`}>
               <View className="flex-row justify-between items-start mb-4">
-                <View className="flex-1">
-                  <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>{item.clienteNombre || 'Sin nombre'}</Text>
+                <View className="flex-1 mr-4">
+                  <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>{item.clienteNombre || 'Sin nombre'}</Text>
                   <View className="flex-row items-center gap-1.5 mt-1">
                     <Icon name="phone-outline" size={12} color="#F5A524" />
                     <Text className="text-slate-400 text-xs font-bold">{item.telefono}</Text>
