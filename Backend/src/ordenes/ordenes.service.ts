@@ -93,8 +93,9 @@ export class OrdenesService {
 			.getMany();
 	}
 
-	async findOne(id: number) {
-		const orden = await this.repo.findOne({
+	async findOne(id: number, manager?: EntityManager) {
+		const repo = manager ? manager.getRepository(Ordenes) : this.repo;
+		const orden = await repo.findOne({
 			where: {ordenId: id},
 			relations: ['factura', 'productos', 'productos.productoObj', 'productos.variante', 'domicilios'],
 		});
@@ -154,7 +155,7 @@ export class OrdenesService {
 				await this.domicilioCreationService.procesarDomicilio(data, factura.facturaId, orden.ordenId, manager);
 			}
 
-			const fullOrden = await this.findOne(orden.ordenId); // Note: findOne is read-only, optionally use manager here too
+			const fullOrden = await this.findOne(orden.ordenId, manager); 
 			this.ordenesGateway.emitirNuevaOrden(fullOrden);
 
 			// Actualizar cierre si existe para la fecha de la orden
@@ -183,13 +184,13 @@ export class OrdenesService {
 				await oRepo.update(id, updateData);
 			}
 
-			let orden = await this.findOne(id);
+			let orden = await this.findOne(id, manager);
 
 			// 1.5 Update Domicilio Delivery Data (if is domicilio)
 			if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
-				await this.domicilioCreationService.updateDomicilioPorOrden(id, data, orden.facturaId); // Note: updateDomicilioPorOrden also needs manager support, but for now it uses repos
+				await this.domicilioCreationService.updateDomicilioPorOrden(id, data, orden.facturaId, manager);
 				// Refresh orden after domicilio update
-				orden = await this.findOne(id);
+				orden = await this.findOne(id, manager);
 			}
 
 			// 2. If products are included, re-process everything
@@ -222,7 +223,7 @@ export class OrdenesService {
 				}
 			}
 
-			const updated = await this.findOne(id);
+			const updated = await this.findOne(id, manager);
 			this.ordenesGateway.emitirOrdenActualizada(updated);
 
 			// Actualizar cierre si existe para la fecha de la orden
@@ -272,7 +273,7 @@ export class OrdenesService {
 				await this.facturaCreationService.cancelarFactura(orden.facturaId, manager);
 			}
 
-			const fullUpdated = await this.findOne(id);
+			const fullUpdated = await this.findOne(id, manager);
 			this.ordenesGateway.emitirOrdenActualizada(fullUpdated);
 
 			// Actualizar cierre si existe para la fecha de la orden
@@ -326,7 +327,7 @@ export class OrdenesService {
 			orden.estadoOrden = 'completada';
 			await oRepo.save(orden);
 
-			const updated = await this.findOne(id);
+			const updated = await this.findOne(id, manager);
 			this.ordenesGateway.emitirOrdenActualizada(updated);
 
 			// Actualizar cierre si existe para la fecha de la orden
