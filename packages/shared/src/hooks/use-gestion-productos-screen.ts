@@ -17,7 +17,6 @@ type UiState = {
   deleteLoading: boolean;
   editingSabor: Partial<PizzaSabor> | null;
   prodName: string;
-  prodCategory: string;
   prodDesc: string;
   prodActive: boolean;
   prodError: string;
@@ -39,7 +38,6 @@ const initialUiState: UiState = {
   deleteLoading: false,
   editingSabor: null,
   prodName: '',
-  prodCategory: '',
   prodDesc: '',
   prodActive: true,
   prodError: '',
@@ -84,7 +82,6 @@ export function useGestionProductosScreen() {
     deleteLoading,
     editingSabor,
     prodName,
-    prodCategory,
     prodDesc,
     prodActive,
     prodError,
@@ -105,15 +102,13 @@ export function useGestionProductosScreen() {
     const lower = search.toLowerCase();
     return productos.filter(
       (p) =>
-        p.productoNombre.toLowerCase().includes(lower) ||
-        p.categoria.toLowerCase().includes(lower),
+        p.productoNombre.toLowerCase().includes(lower)
     );
   }, [search, productos]);
 
   const resetProductForm = () => {
     patchUi({
       prodName: '',
-      prodCategory: '',
       prodDesc: '',
       prodActive: true,
       editingProduct: null,
@@ -143,7 +138,6 @@ export function useGestionProductosScreen() {
       patchUi({
         editingProduct: product,
         prodName: product.productoNombre,
-        prodCategory: product.categoria,
         prodDesc: product.descripcion || '',
         prodActive: product.activo,
       });
@@ -170,14 +164,13 @@ export function useGestionProductosScreen() {
   };
 
   const handleSaveProduct = async () => {
-    if (!prodName || !prodCategory) {
-      patchUi({ prodError: 'Nombre y Categoria son obligatorios' });
+    if (!prodName) {
+      patchUi({ prodError: 'El nombre es obligatorio' });
       return;
     }
 
     const payload = {
       productoNombre: prodName,
-      categoria: prodCategory,
       descripcion: prodDesc,
       activo: prodActive,
     };
@@ -283,7 +276,6 @@ export function useGestionProductosScreen() {
     deleteLoading,
     editingSabor,
     prodName,
-    prodCategory,
     prodDesc,
     prodError,
     varName,

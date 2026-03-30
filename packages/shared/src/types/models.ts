@@ -11,7 +11,6 @@ export interface ProductoVariante {
 export interface Producto {
   productoId: number;
   productoNombre: string;
-  categoria: string;
   descripcion?: string;
   activo: boolean;
   emoji?: string;

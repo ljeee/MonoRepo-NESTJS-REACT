@@ -15,7 +15,6 @@ interface GestionProductosModalsProps {
     showProductModal: boolean;
     editingProduct: Producto | null;
     prodName: string;
-    prodCategory: string;
     prodDesc: string;
     prodError: string;
     showVariantModal: boolean;
@@ -35,7 +34,6 @@ interface GestionProductosModalsProps {
     onSaveVariant: () => void;
     onAskDeleteProduct: (product: Producto) => void;
     onProdNameChange: (name: string) => void;
-    onProdCategoryChange: (category: string) => void;
     onProdDescriptionChange: (description: string) => void;
     onVarNameChange: (name: string) => void;
     onVarPriceChange: (price: string) => void;
@@ -50,7 +48,6 @@ export function GestionProductosModals({
     showProductModal,
     editingProduct,
     prodName,
-    prodCategory,
     prodDesc,
     prodError,
     showVariantModal,
@@ -70,7 +67,6 @@ export function GestionProductosModals({
     onSaveVariant,
     onAskDeleteProduct,
     onProdNameChange,
-    onProdCategoryChange,
     onProdDescriptionChange,
     onVarNameChange,
     onVarPriceChange,
@@ -86,7 +82,6 @@ export function GestionProductosModals({
                 visible={showProductModal}
                 editing={!!editingProduct}
                 name={prodName}
-                category={prodCategory}
                 description={prodDesc}
                 error={prodError}
                 loading={opLoading}
@@ -94,7 +89,6 @@ export function GestionProductosModals({
                 onSave={onSaveProduct}
                 onDelete={editingProduct ? () => onAskDeleteProduct(editingProduct) : undefined}
                 onNameChange={onProdNameChange}
-                onCategoryChange={onProdCategoryChange}
                 onDescriptionChange={onProdDescriptionChange}
             />
 

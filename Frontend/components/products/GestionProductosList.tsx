@@ -48,7 +48,7 @@ export function GestionProductosList({
                 <Input
                     value={search}
                     onChangeText={onSearchChange}
-                    placeholder="Búsqueda rápida por nombre o categoría..."
+                    placeholder="Búsqueda rápida por nombre..."
                     leftIcon={<Icon name="magnify" size={20} color="#64748B" />}
                     className="bg-white/5 border-white/5 rounded-[24px]"
                 />

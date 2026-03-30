@@ -397,11 +397,7 @@ textarea {
     margin: 0;
 }
 
-.producto-categoria {
-    font-size: 13px;
-    color: var(--text-muted);
-    margin: 2px 0 0;
-}
+/* Category name removed */
 
 .producto-desc {
     font-size: 13px;

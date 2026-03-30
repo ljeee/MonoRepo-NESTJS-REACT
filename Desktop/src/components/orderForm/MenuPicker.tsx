@@ -8,16 +8,6 @@ interface MenuPickerProps {
   onAdd: (producto: Producto, variante: ProductoVariante, sabores?: string[]) => void;
 }
 
-const CATEGORY_ORDER: Record<string, number> = {
-  Pizzas: 0,
-  Hamburguesas: 1,
-  Chuzos: 2,
-  'Pizza Burguer': 3,
-  Tortiburger: 4,
-  Calzones: 5,
-  Adiciones: 99,
-};
-
 const SIZE_ORDER: Record<string, number> = { Pequeña: 0, Mediana: 1, Grande: 2 };
 
 function sortVariantes(variantes: ProductoVariante[]) {
@@ -27,7 +17,6 @@ function sortVariantes(variantes: ProductoVariante[]) {
 export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -35,49 +24,26 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const [selectedVariante, setSelectedVariante] = useState<ProductoVariante | null>(null);
 
   useEffect(() => {
-    fetchProductos(undefined, true);
+    fetchProductos(true);
   }, [fetchProductos]);
 
-  const categories = useMemo(
-    () =>
-      productos.reduce<Record<string, Producto[]>>((acc, producto) => {
-        const cat = producto.categoria || 'Otros';
-        (acc[cat] ??= []).push(producto);
-        return acc;
-      }, {}),
-    [productos],
-  );
-
-  const categoryNames = useMemo(
-    () => Object.keys(categories).sort((left, right) => (CATEGORY_ORDER[left] ?? 50) - (CATEGORY_ORDER[right] ?? 50)),
-    [categories],
-  );
-
-  useEffect(() => {
-    if (categoryNames.length > 0 && !activeCategory) {
-      setActiveCategory(categoryNames[0]);
-    }
-  }, [categoryNames, activeCategory]);
-
   const filteredProducts = useMemo(() => {
-    if (!activeCategory) return [];
-    const products = categories[activeCategory] || [];
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return products;
-    return products.filter(
+    if (!query) return productos;
+    return productos.filter(
       (product: Producto) =>
         product.productoNombre.toLowerCase().includes(query) ||
         product.descripcion?.toLowerCase().includes(query),
     );
-  }, [activeCategory, categories, searchQuery]);
+  }, [productos, searchQuery]);
 
-  if (loading) return <p>Cargando menú...</p>;
+  if (loading) return <p className="p-4 text-center text-muted">Cargando menú...</p>;
 
   if (error) {
     return (
-      <div>
-        <p>{error}</p>
-        <button type="button" className="btn-secondary" onClick={() => fetchProductos(undefined, true)}>
+      <div className="p-4 text-center">
+        <p className="text-danger mb-4">{error}</p>
+        <button type="button" className="btn-secondary" onClick={() => fetchProductos(true)}>
           Reintentar
         </button>
       </div>
@@ -85,59 +51,57 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   }
 
   return (
-    <div>
-      <input
-        value={searchQuery}
-        onChange={(event) => setSearchQuery(event.target.value)}
-        placeholder="Buscar producto..."
-        aria-label="Buscar producto en el menú"
-      />
-
-      <div className="menu-tabs">
-        {categoryNames.map((categoryName) => (
-          <button
-            key={categoryName}
-            type="button"
-            className={`menu-tab ${activeCategory === categoryName ? 'active' : ''}`}
-            onClick={() => {
-              setActiveCategory(categoryName);
-              setExpandedProductId(null);
-            }}
-          >
-            {categoryName} ({categories[categoryName].length})
-          </button>
-        ))}
+    <div className="menu-container">
+      <div className="search-bar mb-6">
+        <input
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Buscar producto por nombre o descripción..."
+          className="w-full p-3 rounded-xl border border-border bg-surface focus:border-primary outline-none transition-all"
+          aria-label="Buscar producto en el menú"
+        />
       </div>
 
-      <div className="menu-products">
+      <div className="menu-products grid grid-cols-1 gap-3">
         {filteredProducts.length === 0 ? (
-          <div className="cart-empty">No se encontraron productos</div>
+          <div className="cart-empty py-10 text-center text-muted border border-dashed border-border rounded-2xl">
+            No se encontraron productos que coincidan con la búsqueda
+          </div>
         ) : (
           filteredProducts.map((producto: Producto) => {
             const isExpanded = expandedProductId === producto.productoId;
+            const isPizza = producto.productoNombre.toLowerCase().includes('pizza');
+
             return (
-              <div key={producto.productoId} className="menu-product">
+              <div key={producto.productoId} className="menu-product bg-surface border border-border rounded-2xl overflow-hidden transition-all hover:border-primary/30">
                 <button
                   type="button"
-                  className="menu-product-header"
+                  className={`menu-product-header w-full flex justify-between items-center p-4 text-left transition-colors ${isExpanded ? 'bg-primary/5' : ''}`}
                   aria-expanded={isExpanded}
                   onClick={() => setExpandedProductId(isExpanded ? null : producto.productoId)}
                 >
-                  <span>{producto.productoNombre}</span>
-                  <span>{isExpanded ? '▾' : '▸'}</span>
+                  <div className="flex flex-col">
+                    <span className="font-bold text-text text-lg">{producto.productoNombre}</span>
+                    {producto.descripcion && (
+                        <span className="text-xs text-muted mt-1">{producto.descripcion}</span>
+                    )}
+                  </div>
+                  <span className={`text-primary transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
                 </button>
- 
+
                 {isExpanded && (
-                  <div className="menu-variants">
+                  <div className="menu-variants p-3 pt-0 bg-surface-dark/30 grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {sortVariantes(producto.variantes)
                       .filter((variante: ProductoVariante) => variante.activo)
                       .map((variante: ProductoVariante) => (
                         <button
                           key={variante.varianteId}
                           type="button"
-                          className="menu-variant"
+                          className="menu-variant flex justify-between items-center p-3 rounded-xl bg-surface border border-border hover:border-primary hover:bg-primary/5 transition-all text-sm group"
                           onClick={() => {
-                            if (producto.categoria === 'Pizzas') {
+                            if (isPizza) {
                               setSelectedProducto(producto);
                               setSelectedVariante(variante);
                               setModalVisible(true);
@@ -146,8 +110,8 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                             onAdd(producto, variante);
                           }}
                         >
-                          <span>{variante.nombre}</span>
-                          <strong>${formatCurrency(Number(variante.precio))}</strong>
+                          <span className="font-medium text-text-secondary group-hover:text-text">{variante.nombre}</span>
+                          <strong className="text-primary">${formatCurrency(Number(variante.precio))}</strong>
                         </button>
                       ))}
                   </div>

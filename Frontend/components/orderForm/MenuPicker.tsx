@@ -23,7 +23,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    fetchProductos(undefined, true);
+    fetchProductos(true);
   }, [fetchProductos]);
 
   const sortedProducts = useMemo(() => {
@@ -63,7 +63,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
         <Button 
           title="Reintentar" 
           icon="refresh"
-          onPress={() => fetchProductos(undefined, true)}
+          onPress={() => fetchProductos(true)}
           variant="danger"
         />
       </View>
@@ -121,7 +121,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                   <Text className="text-lg">
                     {(() => {
                         const p = productos.find(p => p.productoId === expandedProductId);
-                        return p ? getProductEmoji(p.productoNombre, p.categoria, p.emoji) : '🍕';
+                        return p ? getProductEmoji(p.productoNombre, p.emoji) : '🍕';
                     })()}
                   </Text>
                 </View>
@@ -227,7 +227,7 @@ const ProductItem = React.memo(({
   setSelectedProducto, setSelectedVariante, setModalVisible 
 }: ProductItemProps) => {
   
-  const emoji = getProductEmoji(producto.productoNombre, producto.categoria, producto.emoji);
+  const emoji = getProductEmoji(producto.productoNombre, producto.emoji);
 
   return (
     <View className={`px-1 mb-2 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 xl:w-[12.5%]`}>

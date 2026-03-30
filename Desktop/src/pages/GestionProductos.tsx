@@ -154,7 +154,6 @@ export function GestionProductosPage() {
         deleteLoading,
         editingSabor,
         prodName,
-        prodCategory,
         prodDesc,
         prodError,
         varName,
@@ -198,7 +197,7 @@ export function GestionProductosPage() {
                         <Search size={18} />
                         <input
                             type="text"
-                            placeholder="Buscar producto o categoría..."
+                            placeholder="Buscar producto..."
                             value={search}
                             onChange={(e) => patchUi({ search: e.target.value })}
                         />
@@ -246,7 +245,6 @@ export function GestionProductosPage() {
                             <div className="producto-header">
                                 <div>
                                     <h3 className="producto-name">{p.productoNombre}</h3>
-                                    <p className="producto-categoria">Categoría: {p.categoria}</p>
                                     {p.descripcion && <p className="producto-desc mt-1">{p.descripcion}</p>}
                                 </div>
                                 <div className="producto-actions">
@@ -294,7 +292,7 @@ export function GestionProductosPage() {
                             </div>
 
                             {/* Sabores Section (Only for Pizzas) */}
-                            {p.categoria.toLowerCase() === 'pizzas' && sabores.length > 0 && (
+                            {p.productoNombre.toLowerCase().includes('pizza') && sabores.length > 0 && (
                                 <div className="sabores-section">
                                     <div className="sabores-header">
                                         <Pizza size={16} className="mr-2 inline text-orange-500" />
@@ -366,18 +364,6 @@ export function GestionProductosPage() {
                                     className="w-full form-input"
                                     value={prodName}
                                     onChange={(e) => patchUi({ prodName: e.target.value })}
-                                    required
-                                />
-                            </div>
-                            <div className="form-group mb-3">
-                                <label htmlFor="prod-categoria">Categoría *</label>
-                                <input
-                                    id="prod-categoria"
-                                    type="text"
-                                    className="w-full form-input"
-                                    value={prodCategory}
-                                    onChange={(e) => patchUi({ prodCategory: e.target.value })}
-                                    placeholder="Ej: Pizzas, Bebidas..."
                                     required
                                 />
                             </div>

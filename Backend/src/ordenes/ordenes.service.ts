@@ -171,6 +171,13 @@ export class OrdenesService {
 			const { productos, ...basicData } = data;
 			const oRepo = manager.getRepository(Ordenes);
 
+			let orden = await this.findOne(id, manager);
+
+			// 0. Bloquear edición si ya está pagada
+			if (orden.factura?.estado === 'pagada') {
+				throw new BadRequestException('No se puede modificar una orden que ya ha sido pagada');
+			}
+
 			// 1. Update basic order data
 			const allowedFields = ['tipoPedido', 'estadoOrden', 'fechaOrden', 'observaciones', 'usuarioCancelacionId', 'fechaCancelacion'];
 			const updateData: any = {};
@@ -183,8 +190,6 @@ export class OrdenesService {
 			if (Object.keys(updateData).length > 0) {
 				await oRepo.update(id, updateData);
 			}
-
-			let orden = await this.findOne(id, manager);
 
 			// 1.5 Update Domicilio Delivery Data (if is domicilio)
 			if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
@@ -234,7 +239,11 @@ export class OrdenesService {
 		});
 	}
 
-	remove(id: number) {
+	async remove(id: number) {
+		const orden = await this.findOne(id);
+		if (orden.factura?.estado === 'pagada') {
+			throw new BadRequestException('No se puede eliminar una orden que ya ha sido pagada');
+		}
 		return this.repo.delete(id);
 	}
 

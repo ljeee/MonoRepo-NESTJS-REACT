@@ -10,7 +10,7 @@ interface ProductCardProps {
     onEditVariant: (variantId: number) => void;
     onDeleteVariant: (variantId: number, variantName: string) => void;
     onAddVariant: () => void;
-    /** Only relevant if product.categoria === 'Pizzas' */
+    /** Custom product styling or handling could go here */
     sabores?: PizzaSabor[];
     onEditSabor?: (sabor: PizzaSabor) => void;
     onAddSabor?: () => void;

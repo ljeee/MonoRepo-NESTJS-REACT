@@ -192,14 +192,12 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Productos ──────────────────────────────────────────────────────
   const productos = {
-    getAll: (params?: { categoria?: string; activo?: boolean }) =>
+    getAll: (params?: { activo?: boolean }) =>
       http.get<Producto[]>('/productos', { params }).then((r) => arr<Producto>(r.data)),
 
     getById: (id: number) =>
       http.get<Producto>(`/productos/${id}`).then((r) => r.data),
 
-    getCategorias: () =>
-      http.get<string[]>('/productos/categorias').then((r) => arr<string>(r.data)),
 
     getVariantes: (productoId: number) =>
       http.get<ProductoVariante[]>(`/productos/${productoId}/variantes`).then((r) => arr<ProductoVariante>(r.data)),

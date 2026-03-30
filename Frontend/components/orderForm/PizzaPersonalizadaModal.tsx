@@ -38,7 +38,7 @@ function calcularPrecio(
 
   if (saboresSeleccionados.length >= 3) {
     const config3Sabores = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
-    const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
+    const extra3SaboresAmount = config3Sabores ? getRecargo(config3Sabores, variante.nombre) : 3000;
     precio += extra3SaboresAmount;
   }
 
@@ -74,7 +74,7 @@ export default function PizzaPersonalizadaModal({
   const precioFinal = calcularPrecio(variante, selectedSabores, saboresCatalogo);
 
   const config3Sabores = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
-  const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
+  const extra3SaboresAmount = config3Sabores ? getRecargo(config3Sabores, variante?.nombre ?? '') : 3000;
 
   const recargoEspecial = saboresCatalogo
     .filter(s => s.tipo === 'especial' && selectedSabores.includes(s.nombre))

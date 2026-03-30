@@ -38,11 +38,10 @@ const DEFAULT_EMOJI = '🍽️';
 
 /**
  * Get the emoji for a product.
- * Priority: custom emoji > name match > category match > default
+ * Priority: custom emoji > name match > default
  */
 export function getProductEmoji(
   productoNombre: string,
-  categoria?: string,
   customEmoji?: string | null,
 ): string {
   // 1. Custom emoji (set by user in admin)
@@ -53,17 +52,5 @@ export function getProductEmoji(
     if (regex.test(productoNombre)) return emoji;
   }
 
-  // 3. Match by category
-  if (categoria && CATEGORY_EMOJIS[categoria]) {
-    return CATEGORY_EMOJIS[categoria];
-  }
-
   return DEFAULT_EMOJI;
-}
-
-/**
- * Get the emoji for a category.
- */
-export function getCategoryEmoji(categoria: string): string {
-  return CATEGORY_EMOJIS[categoria] || DEFAULT_EMOJI;
 }

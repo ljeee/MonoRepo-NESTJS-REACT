@@ -13,10 +13,10 @@ export function useProductos() {
   });
   const { productos, loading, error } = state;
 
-  const fetchProductos = useCallback(async (categoria?: string, activo?: boolean) => {
+  const fetchProductos = useCallback(async (activo?: boolean) => {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
-      const productosData = await api.productos.getAll({ categoria, activo });
+      const productosData = await api.productos.getAll({ activo });
       setState({ productos: productosData, loading: false, error: null });
     } catch (e: any) {
       setState((prev) => ({

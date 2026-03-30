@@ -7,7 +7,6 @@ interface ProductModalProps {
     visible: boolean;
     editing: boolean;
     name: string;
-    category: string;
     description: string;
     error: string;
     loading: boolean;
@@ -15,7 +14,6 @@ interface ProductModalProps {
     onSave: () => void;
     onDelete?: () => void;
     onNameChange: (value: string) => void;
-    onCategoryChange: (value: string) => void;
     onDescriptionChange: (value: string) => void;
 }
 
@@ -23,7 +21,6 @@ export function ProductModal({
     visible,
     editing,
     name,
-    category,
     description,
     error,
     loading,
@@ -31,7 +28,6 @@ export function ProductModal({
     onSave,
     onDelete,
     onNameChange,
-    onCategoryChange,
     onDescriptionChange,
 }: ProductModalProps) {
     return (
@@ -59,13 +55,6 @@ export function ProductModal({
                                 onChangeText={onNameChange}
                                 placeholder="Ej: Pizza Hawaiana"
                                 leftIcon={<Icon name="tag-outline" size={16} color="#64748B" />}
-                            />
-                            <Input
-                                label="Categoría"
-                                value={category}
-                                onChangeText={onCategoryChange}
-                                placeholder="Ej: Pizzas, Bebidas"
-                                leftIcon={<Icon name="folder-outline" size={16} color="#64748B" />}
                             />
                             <Input
                                 label="Descripción"
