@@ -99,6 +99,7 @@ services:
       COMPANY_PHONE: ${COMPANY_PHONE:-}
       COMPANY_TAX_REGIMEN: ${COMPANY_TAX_REGIMEN:-}
       COMPANY_TAX_PERCENT: ${COMPANY_TAX_PERCENT:-}
+      NODE_OPTIONS: --max-old-space-size=1024
     depends_on:
       db:
         condition: service_healthy
@@ -119,7 +120,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512m
+          memory: 1024m
     <<: *default-logging
 
   # ── Frontend (Expo Web) ────────────────────────────────────────────────────
