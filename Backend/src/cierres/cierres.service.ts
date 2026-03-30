@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CierreCaja } from './esquemas/cierre.entity';
@@ -6,9 +6,12 @@ import { EstadisticasService } from '../estadisticas/estadisticas.service';
 import { MailService } from '../common/services/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { EmpresaService } from '../empresa/empresa.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class CierresService {
+    private readonly logger = new Logger(CierresService.name);
+
     constructor(
         @InjectRepository(CierreCaja)
         private readonly cierreRepo: Repository<CierreCaja>,
@@ -18,7 +21,11 @@ export class CierresService {
         private readonly empresaService: EmpresaService,
     ) {}
 
-    async generalCierre(fecha: string, userId: string, observations?: string, force = false) {
+    /**
+     * Realiza el cierre de caja.
+     * @param enviarEmail Por defecto false para evitar spam en actualizaciones automáticas.
+     */
+    async generalCierre(fecha: string, userId: string, observations?: string, force = false, enviarEmail = false) {
         const empresa = await this.empresaService.getConfig();
         // Verificar si ya existe un cierre
         const existing = await this.cierreRepo.findOne({ where: { fecha } });
@@ -48,35 +55,54 @@ export class CierresService {
         });
 
         const saved = await this.cierreRepo.save(cierre);
+        this.logger.log(`Cierre ${existing ? 'actualizado' : 'creado'} para la fecha: ${fecha}`);
 
-        // Enviar por correo si está configurado
+        // Enviar por correo solo si se solicita explícitamente y está configurado
         const reportEmail = this.config.get('REPORT_EMAIL');
-        if (reportEmail) {
+        if (enviarEmail && reportEmail) {
             try {
                 await this.mailService.sendCierreReport(reportEmail, {
                     ...saved,
                     empresa, 
-                    facturas, // Send details for the table
+                    facturas, 
                 });
+                this.logger.log(`Reporte de cierre enviado a: ${reportEmail}`);
             } catch (error) {
-                console.error('Error enviando reporte por correo:', error);
+                this.logger.error('Error enviando reporte por correo:', error);
             }
-        } else {
-            console.warn('Cierre realizado satisfactoriamente, pero REPORT_EMAIL no está configurado.');
+        } else if (enviarEmail && !reportEmail) {
+            this.logger.warn('Se solicitó envío de correo, pero REPORT_EMAIL no está configurado.');
         }
 
         return saved;
     }
 
+    /**
+     * Tarea programada para el cierre automático a las 11:59 PM.
+     * Esto asegura que recibas un solo correo al día con el consolidado final.
+     */
+    @Cron('59 23 * * *')
+    async handleAutomaticDailyClosing() {
+        const hoy = new Date().toISOString().split('T')[0];
+        this.logger.log(`Iniciando cierre automático programado para: ${hoy}`);
+        
+        const systemId = '00000000-0000-0000-0000-000000000000';
+        try {
+            await this.generalCierre(hoy, systemId, 'Cierre automático programado de fin de día.', true, true);
+        } catch (error) {
+            this.logger.error(`Error en el cierre automático de ${hoy}:`, error);
+        }
+    }
+
     async updateCierreIfExists(fecha: string) {
         const existing = await this.cierreRepo.findOne({ where: { fecha } });
         if (existing) {
-            console.log(`[CierresService] Actualizando cierre existente para la fecha: ${fecha}`);
             // El ID del sistema o del robot para actualizaciones automáticas
             const systemId = '00000000-0000-0000-0000-000000000000';
-            return this.generalCierre(fecha, systemId, 'Actualización automática tras edición de orden.', true);
+            // Pasamos enviarEmail = false para que no mande correos en cada edición de orden
+            return this.generalCierre(fecha, systemId, 'Actualización automática tras edición de orden.', true, false);
         }
-        return null; // No hace nada si no existe el cierre
+        return null;
     }
 
     async getHistory() {

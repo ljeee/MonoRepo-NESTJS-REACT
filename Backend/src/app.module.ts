@@ -76,6 +76,7 @@ import * as Joi from 'joi';
 			}),
 		}),
 		RedisModule,
+		ScheduleModule.forRoot(),
 		FacturasVentasModule,
 		OrdenesModule,
 		DomiciliosModule,

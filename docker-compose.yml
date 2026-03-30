@@ -103,6 +103,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    volumes:
+      - ./Backend:/app
+      - /app/node_modules
+    command: npm run start:dev
     networks: [pizzeria-network]
     # Healthcheck del backend para que el frontend espere a que esté listo
     healthcheck:
@@ -128,6 +132,9 @@ services:
       <<: *common-env
       EXPO_OFFLINE: "1"
       EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL}
+    volumes:
+      - ./Frontend:/app/Frontend
+      - /app/Frontend/node_modules
     ports:
       - "8081:8081"
     depends_on:
