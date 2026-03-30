@@ -114,7 +114,7 @@ export default function UsuariosScreen() {
                                                     key={role} 
                                                     label={role} 
                                                     variant={role.toLowerCase() === 'admin' ? 'danger' : 'info'} 
-                                                    size="xs" 
+                                                    size="sm" 
                                                 />
                                             ))}
                                         </View>

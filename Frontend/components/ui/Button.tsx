@@ -1,8 +1,8 @@
 import React from 'react';
-import { ActivityIndicator, Pressable } from 'react-native';
+import { ActivityIndicator } from 'react-native';
 import { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
-import { View, Text } from '../../tw';
+import { View, Text, Pressable } from '../../tw';
 import Icon, { IconName } from './Icon';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';

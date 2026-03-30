@@ -1,8 +1,7 @@
 import React, { ReactNode, useEffect } from 'react';
-import { Pressable } from 'react-native';
 import { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
-import { View } from '../../tw';
+import { View, Pressable } from '../../tw';
 
 interface CardProps {
     children: ReactNode;

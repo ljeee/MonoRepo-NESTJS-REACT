@@ -186,9 +186,6 @@ export default function DashboardPage() {
 
     return (
         <PageContainer>
-            {/* Welcome */}
-    return (
-        <PageContainer>
             {/* Welcome Compact */}
             <View className={`flex-row items-center border border-white/5 bg-white/5 overflow-hidden ${isMobile ? 'px-4 py-3 rounded-2xl mb-4' : 'px-6 py-4 rounded-3xl mb-6'}`}>
                 <View className="flex-1">

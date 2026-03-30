@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
 import { api as apiService } from '../../services/api';
 import { PizzaSabor, useToast } from '@monorepo/shared';
 import { FadeInUp } from 'react-native-reanimated';

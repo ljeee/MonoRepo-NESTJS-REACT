@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshControl, ActivityIndicator, Platform, View, Text, TouchableOpacity, Pressable } from 'react-native';
+import { RefreshControl, ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ScrollView } from '../../tw';
+import { ScrollView, View, Text, TouchableOpacity, Pressable } from '../../tw';
 import { Button, Icon, ListSkeleton, Badge, PageContainer } from '../../components/ui';
 import { api } from '../../services/api';
 import { useToast } from '@monorepo/shared';
