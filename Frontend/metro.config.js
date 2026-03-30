@@ -15,6 +15,25 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
+
+// 3. Forzar la resolución de semver usando resolveRequest (El método más potente)
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === 'semver/functions/satisfies') {
+    return {
+      filePath: path.resolve(projectRoot, 'shims/semver/functions/satisfies.js'),
+      type: 'sourceFile',
+    };
+  }
+  if (moduleName === 'semver/functions/prerelease') {
+    return {
+      filePath: path.resolve(projectRoot, 'shims/semver/functions/prerelease.js'),
+      type: 'sourceFile',
+    };
+  }
+  // Dejar que el resolver por defecto maneje el resto
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 config.resolver.disableHierarchicalLookup = true;
 
 // Add support for .app.tsx and .app.ts extensions

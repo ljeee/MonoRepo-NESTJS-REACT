@@ -6,6 +6,11 @@
       "sourceType": "github",
       "computedHash": "9c6b5115e79c8247103841778b494815c8dae3dbca4e18c4b66c598dd546aadf"
     },
+    "expo-dev-client": {
+      "source": "expo/skills",
+      "sourceType": "github",
+      "computedHash": "ea568acdc9036b82b969159757456e9a4cdfae7f645ac2fad5fdf0f734f53568"
+    },
     "expo-tailwind-setup": {
       "source": "expo/skills",
       "sourceType": "github",
