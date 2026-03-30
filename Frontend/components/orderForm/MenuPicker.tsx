@@ -134,11 +134,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerClassName="p-4 gap-3"
-            >
+            <View className="flex-row flex-wrap p-4 gap-2 justify-between">
               {(() => {
                 const producto = productos.find(p => p.productoId === expandedProductId);
                 if (!producto) return null;
@@ -154,7 +150,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                 return vs.map((variante) => (
                   <TouchableOpacity
                     key={variante.varianteId}
-                    className="bg-white/5 border border-white/10 p-4 rounded-2xl min-w-[160px] max-w-[240px] flex-row items-center justify-between active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40"
+                    className="bg-white/5 border border-white/10 p-4 rounded-2xl w-[48.5%] md:w-[32%] flex-row items-center justify-between active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40 mb-1"
                     onPress={() => {
                       if (producto.productoNombre.toLowerCase().includes('pizza')) {
                         setSelectedProducto(producto);
@@ -179,7 +175,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                   </TouchableOpacity>
                 ));
               })()}
-            </ScrollView>
+            </View>
           </View>
         </View>
       )}
@@ -235,7 +231,7 @@ const ProductItem = React.memo(({
         onPress={onSelect}
         activeOpacity={0.7}
       >
-        <Text className={`text-white font-black text-[9px] uppercase tracking-tighter text-center mb-1 h-3 ${isSelected ? 'text-(--color-pos-primary)' : ''}`} numberOfLines={1} style={{ fontFamily: 'Space Grotesk' }}>
+        <Text className={`text-white font-black text-[10px] uppercase tracking-tighter text-center mb-1 min-h-[2.5rem] flex items-center justify-center ${isSelected ? 'text-(--color-pos-primary)' : ''}`} numberOfLines={2} style={{ fontFamily: 'Space Grotesk' }}>
           {producto.productoNombre}
         </Text>
 
