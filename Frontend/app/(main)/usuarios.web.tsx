@@ -113,7 +113,7 @@ export default function UsuariosScreen() {
                                                 <Badge 
                                                     key={role} 
                                                     label={role} 
-                                                    variant={role.toLowerCase() === 'admin' ? 'danger' : 'info'} 
+                                                    variant={role?.toLowerCase() === 'admin' ? 'danger' : 'info'} 
                                                     size="sm" 
                                                 />
                                             ))}

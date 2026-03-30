@@ -28,8 +28,8 @@ export function ProductCard({
     onAddSabor,
     onDeleteSabor,
 }: ProductCardProps) {
-    const isPizza = product.categoria.toLowerCase() === 'pizzas';
-
+    const isPizza = product.productoNombre.toLowerCase().includes('pizza');
+ 
     return (
         <Card className="bg-white/5 border border-white/5 overflow-hidden rounded-[40px]">
             {/* Product header */}
@@ -43,11 +43,6 @@ export function ProductCard({
                             <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>
                                 {product.productoNombre}
                             </Text>
-                            <Badge 
-                                label={product.categoria} 
-                                variant={isPizza ? 'warning' : 'primary'} 
-                                size="sm" 
-                            />
                         </View>
                         {product.descripcion ? (
                             <Text className="text-slate-500 text-[10px] font-bold italic leading-tight uppercase tracking-tighter" numberOfLines={1}>

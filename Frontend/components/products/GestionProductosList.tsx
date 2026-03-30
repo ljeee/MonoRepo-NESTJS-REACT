@@ -73,10 +73,10 @@ export function GestionProductosList({
                                 onEditVariant={(variantId) => onEditVariant(p.productoId, variantId)}
                                 onDeleteVariant={onDeleteVariant}
                                 onAddVariant={() => onAddVariant(p.productoId)}
-                                sabores={p.categoria.toLowerCase() === 'pizzas' ? sabores : undefined}
-                                onEditSabor={p.categoria.toLowerCase() === 'pizzas' ? onEditSabor : undefined}
-                                onAddSabor={p.categoria.toLowerCase() === 'pizzas' ? onAddSabor : undefined}
-                                onDeleteSabor={p.categoria.toLowerCase() === 'pizzas' ? onDeleteSabor : undefined}
+                                sabores={p.productoNombre?.toLowerCase().includes('pizza') ? sabores : undefined}
+                                onEditSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onEditSabor : undefined}
+                                onAddSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onAddSabor : undefined}
+                                onDeleteSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onDeleteSabor : undefined}
                             />
                         </View>
                     ))}
