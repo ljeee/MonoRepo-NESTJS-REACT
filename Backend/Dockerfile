@@ -1,7 +1,7 @@
 # ============================================
 # STAGE 1: Build
 # ============================================
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS development
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN apk add --no-cache python3 build-base linux-headers eudev-dev
 # Copiar archivos de dependencias
 COPY package*.json ./
 
-# Instalar dependencias
+# Instalar dependencias (incluye devDependencies)
 RUN npm install
 
 # Copiar código fuente

@@ -1,42 +1,9 @@
-# Monorepo Root EAS Ignore
-# Evita que eas-cli suba archivos innecesarios al construir en la nube.
-
-# Excluir otros proyectos para ahorrar peso si se lanza desde la raíz
+# Ignorar carpetas pesadas del monorepo para EAS Build
 Backend/
 Desktop/
-Docs/
-docker-compose.yml
-start-pos.bat
-README.md
-.git/
-
-# Node
+packages/
 node_modules/
-**/node_modules/
-
-# Environment & Secrets
-.env*
-!.env.example
-*.log
-
-# Expo & Build Artifacts
+.git/
 .expo/
-**/dist/
-**/web-build/
-**/build/
-
-# Mobile Credentials & Certificates
-*.jks
-*.p12
-*.p8
-*.keystore
-*.key
-*.mobileprovision
-google-services.json
-GoogleService-Info.plist
-eas-credentials.json
-
-# Tooling
-.agent/
-.agents/
-.vscode/
+*.apk
+*.aab

@@ -1,0 +1,8 @@
+# Ignorar carpetas pesadas para EAS Build (Frontend local)
+node_modules/
+android/
+ios/
+web-build/
+.expo/
+*.apk
+*.aab

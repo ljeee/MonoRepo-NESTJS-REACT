@@ -68,6 +68,7 @@ services:
     build:
       context: ./Backend
       dockerfile: Dockerfile
+      target: development
     container_name: pizzeria-backend
     restart: unless-stopped
     ports:
