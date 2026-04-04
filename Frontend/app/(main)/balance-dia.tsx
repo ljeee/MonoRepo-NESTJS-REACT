@@ -7,7 +7,7 @@ import { exportPdf } from '../../utils/exportData';
 import type { FacturaPago } from '@monorepo/shared';
 import { formatCurrency } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
-import { View, Text, TouchableOpacity } from '../../tw';
+import { View, Text, TouchableOpacity, TextInput } from '../../tw';
 
 import { FacturaCard } from '../../components/facturas/FacturaShared';
 import {
@@ -161,6 +161,7 @@ export default function BalanceDiaScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => { fetchGastos(); }, [fetchGastos]);
 
@@ -198,6 +199,11 @@ export default function BalanceDiaScreen() {
     const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
     const loading = loadingFacturas || loadingGastos;
 
+    const filteredFacturas = facturas.filter(f => 
+        !searchQuery || 
+        (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+
     return (
         <PageContainer
             refreshControl={
@@ -231,13 +237,30 @@ export default function BalanceDiaScreen() {
             <BalanceCard ingresos={ingresos} gastos={totalGastos} />
 
             {/* ── FACTURAS ───────────────────────────────────────────────────────── */}
-            <View className="flex-row items-center justify-between mb-6 mt-4">
+            <View className="flex-row items-center justify-between mb-6 mt-4 flex-wrap gap-4">
                 <View className="flex-row items-center gap-3">
                     <View className="w-1.5 h-6 bg-orange-500 rounded-full" />
                     <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Ventas Facturadas</Text>
+                    <View className="bg-white/5 px-3 py-1 rounded-full border border-white/5 ml-2">
+                        <Text className="text-slate-500 font-bold text-xs">{filteredFacturas.length} docs</Text>
+                    </View>
                 </View>
-                <View className="bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                    <Text className="text-slate-500 font-bold text-xs">{facturas.length} docs</Text>
+
+                {/* Buscador */}
+                <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 min-w-[250px] border border-white/10 max-w-sm">
+                    <Icon name="magnify" size={20} color="#94A3B8" />
+                    <TextInput
+                        className="text-white ml-3 flex-1 h-8 outline-none font-bold text-sm"
+                        placeholder="Buscar por cliente..."
+                        placeholderTextColor="#64748B"
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                    />
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <Icon name="close-circle" size={18} color="#64748B" />
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
 
@@ -250,15 +273,17 @@ export default function BalanceDiaScreen() {
 
             {loadingFacturas && !facturas.length && <ListSkeleton count={4} />}
 
-            {!loadingFacturas && facturas.length === 0 && !errorFacturas && (
+            {!loadingFacturas && filteredFacturas.length === 0 && !errorFacturas && (
                 <View className="items-center py-16 bg-white/5 rounded-[40px] border border-white/5 mb-10">
-                    <Icon name="receipt-outline" size={56} color="#1E293B" />
-                    <Text className="text-slate-600 font-black mt-4 uppercase text-[10px] tracking-widest">Sin facturas registradas hoy</Text>
+                    <Icon name={searchQuery ? "account-search-outline" : "receipt-outline"} size={56} color="#1E293B" />
+                    <Text className="text-slate-600 font-black mt-4 uppercase text-[10px] tracking-widest">
+                        {searchQuery ? "No se encontraron facturas" : "Sin facturas registradas hoy"}
+                    </Text>
                 </View>
             )}
 
             <View className="flex-row flex-wrap gap-4 mb-12">
-                {facturas.map((item, idx) => (
+                {filteredFacturas.map((item, idx) => (
                     <View key={item.facturaId?.toString() || idx.toString()} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'}`}>
                         <FacturaCard
                             item={item}

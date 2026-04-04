@@ -2,11 +2,13 @@ import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput } from '../../tw';
+import { ActivityIndicator, Modal, TouchableOpacity } from 'react-native';
 import { api } from '../../services/api';
 import { formatCurrency, formatDate } from '@monorepo/shared';
 import { getEstadoColor } from '../../constants/estados';
 import { useToast } from '@monorepo/shared';
 import type { IconName } from '../../components/ui';
+import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
 import {
   PageContainer,
   PageHeader,
@@ -105,6 +107,12 @@ export default function OrdenDetalleScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [canceling, setCanceling] = useState(false);
+
+  // ── Domiciliario assignment state ──
+  const [showDomModal, setShowDomModal] = useState(false);
+  const [domiciliarios, setDomiciliarios] = useState<any[]>([]);
+  const [loadingDoms, setLoadingDoms] = useState(false);
+  const [sendingWa, setSendingWa] = useState(false);
 
   useEffect(() => {
     if (!ordenId) {
@@ -222,6 +230,60 @@ export default function OrdenDetalleScreen() {
     return estado === 'pendiente' || estado === 'preparacion' || estado === 'en preparación';
   };
 
+  // ── Domiciliario modal handlers ──
+  const handleOpenDomModal = async () => {
+    setShowDomModal(true);
+    setLoadingDoms(true);
+    try {
+      const list = await api.domiciliarios.getAll();
+      setDomiciliarios(list);
+    } catch {
+      showToast('Error cargando domiciliarios', 'error');
+    } finally {
+      setLoadingDoms(false);
+    }
+  };
+
+  const handleSendToDomiciliario = async (dom: any) => {
+    if (!orden) return;
+    setSendingWa(true);
+    try {
+      // 1. Assign the domiciliario to the domicilio
+      if (orden.domicilios?.[0]?.domicilioId) {
+        await api.domicilios.update(orden.domicilios[0].domicilioId, {
+          telefonoDomiciliarioAsignado: dom.telefono,
+        });
+      }
+
+      // 2. Send WhatsApp
+      const productos = (orden.productos || []).map((p) => ({
+        nombre: getProductName(p),
+        cantidad: p.cantidad || 1,
+        precioUnitario: getUnitPrice(p) ?? 0,
+      }));
+      sendWhatsAppDomicilio(dom.telefono, {
+        clienteNombre: orden.factura?.clienteNombre || 'Cliente',
+        direccion: orden.domicilios?.[0]?.direccionEntrega || 'Sin dirección',
+        telefonoCliente: orden.domicilios?.[0]?.telefono ? String(orden.domicilios[0].telefono) : undefined,
+        productos,
+        total: Number(orden.factura?.total || 0),
+        costoDomicilio: Number(orden.domicilios?.[0]?.costoDomicilio || 0),
+        metodo: orden.factura?.metodo || 'N/A',
+      });
+
+      showToast(`WhatsApp enviado a ${dom.domiciliarioNombre || dom.telefono}`, 'success', 3000);
+      setShowDomModal(false);
+
+      // Refresh order
+      const refreshed = await api.ordenes.getById(Number(ordenId));
+      setViewState({ orden: normalizeOrdenDetalle(refreshed), loading: false, error: null });
+    } catch {
+      showToast('Error al asignar domiciliario', 'error');
+    } finally {
+      setSendingWa(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageContainer>
@@ -259,6 +321,16 @@ export default function OrdenDetalleScreen() {
                 variant="danger"
                 size="sm"
                 onPress={() => setShowCancelModal(true)}
+              />
+            )}
+            {/* Asignar Domiciliario button — only for domicilio orders */}
+            {orden.tipoPedido === 'domicilio' && (
+              <Button
+                title="Domiciliario"
+                icon="moped-outline"
+                variant="secondary"
+                size="sm"
+                onPress={handleOpenDomModal}
               />
             )}
             <Button
@@ -460,6 +532,72 @@ export default function OrdenDetalleScreen() {
             autoFocus
         />
       </ConfirmModal>
+
+      {/* ── Domiciliario Selection Modal ── */}
+      {showDomModal && (
+        <Modal transparent animationType="fade" onRequestClose={() => setShowDomModal(false)}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setShowDomModal(false)}
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
+          >
+            <TouchableOpacity activeOpacity={1} style={{ width: '100%', maxWidth: 420 }}>
+              <View style={{ backgroundColor: '#0F172A', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                {/* Header */}
+                <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)', flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="moped-outline" size={20} color="#F5A524" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: '#F8FAFC', fontWeight: '900', fontSize: 15, textTransform: 'uppercase', letterSpacing: 0.5 }}>Seleccionar Domiciliario</Text>
+                    <Text style={{ color: '#475569', fontSize: 11, marginTop: 2 }}>Asignar y enviar WhatsApp</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setShowDomModal(false)} style={{ padding: 4 }}>
+                    <Icon name="close" size={20} color="#64748B" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* List */}
+                <View style={{ padding: 12, maxHeight: 400 }}>
+                  {loadingDoms ? (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                      <ActivityIndicator color="#F5A524" />
+                    </View>
+                  ) : domiciliarios.length === 0 ? (
+                    <Text style={{ color: '#475569', textAlign: 'center', padding: 24, fontStyle: 'italic' }}>Sin domiciliarios registrados</Text>
+                  ) : (
+                    domiciliarios.map((dom) => (
+                      <TouchableOpacity
+                        key={dom.telefono}
+                        onPress={() => !sendingWa && handleSendToDomiciliario(dom)}
+                        disabled={sendingWa}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 12,
+                          padding: 14, marginBottom: 6, borderRadius: 14,
+                          backgroundColor: 'rgba(255,255,255,0.04)',
+                          borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+                          opacity: sendingWa ? 0.5 : 1,
+                        }}
+                      >
+                        <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+                          <Icon name="account" size={18} color="#F5A524" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: '#F8FAFC', fontWeight: '700', fontSize: 14 }}>{dom.domiciliarioNombre || 'Sin nombre'}</Text>
+                          <Text style={{ color: '#475569', fontSize: 11, marginTop: 2 }}>📱 {dom.telefono}</Text>
+                        </View>
+                        <View style={{ backgroundColor: 'rgba(37,211,102,0.15)', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(37,211,102,0.2)' }}>
+                          <Icon name="whatsapp" size={18} color="#25D366" />
+                        </View>
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </PageContainer>
   );
 }

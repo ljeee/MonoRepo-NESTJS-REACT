@@ -12,7 +12,8 @@ import type {
   MetodoPago, ResumenPeriodo, ClienteFrecuente,
   VarianteTop, ClienteHistorial,
   RegisterDto,
-  EmpresaConfig, UpdateEmpresaDto
+  EmpresaConfig, UpdateEmpresaDto,
+  InventarioCajasEstado, InventarioCajasMovimiento as InventarioCajasMovimientoModel, AjustarCajasDto as AjustarCajasDtoModel,
 } from '../types/models';
 
 // ─── Factory: crea instancia configurada ──────────────────────────────────────
@@ -302,6 +303,21 @@ export function createApi(http: AxiosInstance) {
       http.delete(`/cierres/${id}`).then((r) => r.data),
   };
 
+  // ─── Inventario Cajas ──────────────────────────────────────────────
+  const inventarioCajas = {
+    getEstado: () =>
+      http.get<InventarioCajasEstado>('/inventario-cajas').then((r) => r.data),
+
+    ajustar: (data: AjustarCajasDtoModel) =>
+      http.post<InventarioCajasEstado>('/inventario-cajas/ajustar', data).then((r) => r.data),
+
+    configurarAlerta: (alertaMinimo: number) =>
+      http.patch<{ alertaMinimo: number }>('/inventario-cajas/alerta', { alertaMinimo }).then((r) => r.data),
+
+    getMovimientos: (limit = 20) =>
+      http.get<InventarioCajasMovimientoModel[]>('/inventario-cajas/movimientos', { params: { limit } }).then((r) => arr<InventarioCajasMovimientoModel>(r.data)),
+  };
+
   return {
     auth,
     ordenes,
@@ -315,6 +331,7 @@ export function createApi(http: AxiosInstance) {
     pizzaSabores,
     estadisticas,
     empresa,
+    inventarioCajas,
     http,
   };
 }

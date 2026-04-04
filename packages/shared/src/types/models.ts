@@ -367,3 +367,26 @@ export interface UpdateEmpresaDto {
   departamento?: string;
   tarifaIva?: number;
 }
+
+// ─── Inventario Cajas ─────────────────────────────────────────────────────────
+
+export interface InventarioCajasEstado {
+  cantidad: number;
+  alertaMinimo: number | null;
+  enAlerta: boolean;
+}
+
+export interface InventarioCajasMovimiento {
+  id: number;
+  delta: number;
+  cantidadResultante: number;
+  tipo: 'entrada' | 'salida' | 'ajuste';
+  nota: string | null;
+  creadoEn: string;
+}
+
+export interface AjustarCajasDto {
+  delta: number;
+  tipo?: 'entrada' | 'salida' | 'ajuste';
+  nota?: string;
+}

@@ -60,6 +60,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Usuarios', route: '/usuarios', icon: 'account-cog-outline' },
       { label: 'Catálogo Productos', route: '/gestion-productos', icon: 'food-variant' },
       { label: 'Gestión Sabores', route: '/gestion-sabores', icon: 'pizza' },
+      { label: 'Inventario Cajas', route: '/inventario-cajas', icon: 'package-variant' },
       { label: 'Configuración POS', route: '/ajustes-negocio', icon: 'storefront-outline' },
       { label: 'Monitoreo de Sistema', route: '/monitoreo', icon: 'pulse' },
     ],

@@ -198,11 +198,11 @@ export function FacturaCard({
        <View style={{ paddingLeft: 14, padding: 12 }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-             <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14, textTransform: 'uppercase', lineHeight: 18 }} numberOfLines={1}>
+             <View style={{ flex: 1, paddingTop: 4 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', lineHeight: 22 }} numberOfLines={1}>
                     {item.clienteNombre || 'Cliente S/N'}
                 </Text>
-                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, marginTop: 2, textTransform: 'uppercase' }}>
+                <Text style={{ fontFamily: 'Outfit', color: '#F8FAFC', fontSize: 10, marginTop: 2, textTransform: 'uppercase', opacity: 0.9 }}>
                     {formatDate(item.fechaFactura)}
                 </Text>
              </View>

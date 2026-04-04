@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RefreshControl, StyleSheet } from 'react-native';
-import { Text, View } from '../../tw';
+import { Text, View, TextInput, TouchableOpacity } from '../../tw';
 import { useFacturasDia } from '@monorepo/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
@@ -12,6 +12,7 @@ export default function FacturasDiaScreen() {
   const { isMobile } = useBreakpoint();
   const { data, loading, error, refetch, stats, updateEstado, updateFactura } = useFacturasDia();
   const [updating, setUpdating] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleChangeEstado = async (facturaId: number, nuevoEstado: string, metodo?: string) => {
     setUpdating(facturaId);
@@ -57,6 +58,11 @@ export default function FacturasDiaScreen() {
     downloadCsv(csv, `contabilidad_${today}.csv`);
   };
 
+  const filteredData = (data || []).filter(f => 
+    !searchQuery || 
+    (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
     <PageContainer
       refreshControl={
@@ -87,6 +93,23 @@ export default function FacturasDiaScreen() {
       {/* Stats */}
       {stats && <StatsHeader stats={stats} periodLabel="Total del Día" />}
 
+      {/* Buscador */}
+      <View className="mb-6 flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10">
+          <Icon name="magnify" size={22} color="#94A3B8" />
+          <TextInput
+              className="text-white ml-3 flex-1 h-full outline-none font-bold"
+              placeholder="Buscar factura por nombre de cliente..."
+              placeholderTextColor="#64748B"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} className="bg-white/10 rounded-full p-1 border border-white/20">
+                  <Icon name="close" size={14} color="#CBD5E1" />
+              </TouchableOpacity>
+          )}
+      </View>
+
       {/* Error */}
       {error && (
         <View className="flex-row items-center gap-3 bg-(--color-pos-danger)/10 p-5 rounded-2xl mb-8 border border-(--color-pos-danger)/20">
@@ -96,20 +119,22 @@ export default function FacturasDiaScreen() {
       )}
 
       {/* Content */}
-      {loading && !data ? (
+      {loading && (!data || data.length === 0) ? (
         <ListSkeleton count={4} />
-      ) : data?.length === 0 ? (
+      ) : filteredData.length === 0 ? (
         <View className="items-center justify-center p-20 gap-4">
-          <Icon name="receipt" size={48} color="#64748B" />
-          <Text className="text-white font-black text-xl">Sin facturas hoy</Text>
+          <Icon name={searchQuery ? "account-search" : "receipt"} size={48} color="#64748B" />
+          <Text className="text-white font-black text-xl">
+            {searchQuery ? "No se encontraron facturas" : "Sin facturas hoy"}
+          </Text>
           <Text className="text-(--color-pos-text-muted) text-center">
-            No se han registrado facturas en el día de hoy
+            {searchQuery ? `No hay resultados para "${searchQuery}"` : "No se han registrado facturas en el día de hoy"}
           </Text>
         </View>
       ) : (
         <View className="flex-row flex-wrap justify-between gap-y-4 pb-8">
-          {data?.map((item, idx) => {
-            const isLastOddDesktop = !isMobile && !!data && data.length % 2 === 1 && idx === data.length - 1;
+          {filteredData.map((item, idx) => {
+            const isLastOddDesktop = !isMobile && filteredData.length % 2 === 1 && idx === filteredData.length - 1;
             return (
             <View
               key={item.facturaId?.toString() || idx.toString()}

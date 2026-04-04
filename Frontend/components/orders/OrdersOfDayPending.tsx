@@ -12,6 +12,7 @@ import { getBaseUrl } from '../../services/api';
 import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
 import { useAuth } from '../../contexts/AuthContext';
 import type { Orden, OrdenProducto } from '@monorepo/shared';
+import { printOrderReceipt } from '../../utils/printReceipt';
 
 function getErrorStatusCode(error: unknown): number | undefined {
   if (
@@ -266,6 +267,29 @@ export default function OrdersOfDayPending() {
               >
                 <Icon name="pencil" size={14} color="#F5A524" />
               </TouchableOpacity>
+              {typeof window !== 'undefined' && (
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    printOrderReceipt({
+                      ordenId: item.ordenId,
+                      clienteNombre: getClientName(item),
+                      tipoPedido: item.tipoPedido,
+                      observaciones: item.observaciones,
+                      direccion: item.domicilios?.[0]?.direccionEntrega,
+                      fecha: item.fechaOrden,
+                      productos: (item.productos || []).map((p) => ({
+                        nombre: p.producto,
+                        cantidad: p.cantidad ?? 1,
+                        sabores: getProductFlavors(p).filter(Boolean),
+                      })),
+                    });
+                  }}
+                  className="w-8 h-8 rounded-xl bg-blue-500/10 items-center justify-center border border-blue-500/20"
+                >
+                  <Icon name="printer" size={14} color="#3B82F6" />
+                </TouchableOpacity>
+              )}
               <Badge
                 label={item.estadoOrden}
                 variant={

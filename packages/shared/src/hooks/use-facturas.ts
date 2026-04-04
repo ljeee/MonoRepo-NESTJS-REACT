@@ -53,15 +53,37 @@ function mapFactura(rawFactura: unknown): FacturaVenta {
 
       return {
         ordenId: typeof orden.ordenId === 'number' ? orden.ordenId : undefined,
+        tipoPedido: typeof orden.tipoPedido === 'string' ? orden.tipoPedido : undefined,
         productos: rawProductos.map((rawProducto) => {
           const producto = asRecord(rawProducto);
           const productoRaw = producto.producto;
           const productoObj = asRecord(productoRaw);
 
+          const cantidad = numberOrZero(producto.cantidad) || 1;
+          let subtotal = numberOrZero(producto.subtotal);
+          let precioUnitario = numberOrZero(producto.precioUnitario);
+
+          // Fallback: calculate from subtotal if precioUnitario is missing
+          if (precioUnitario === 0 && subtotal > 0) {
+            precioUnitario = subtotal / cantidad;
+          }
+
+          // Also check nested variante.precio
+          if (precioUnitario === 0) {
+            const variante = asRecord(producto.variante);
+            const variantePrecio = numberOrZero(variante.precio);
+            if (variantePrecio > 0) precioUnitario = variantePrecio;
+          }
+
+          // Important: if subtotal is 0 but we have precioUnitario, calculate it
+          if (subtotal === 0 && precioUnitario > 0) {
+            subtotal = precioUnitario * cantidad;
+          }
+
           return {
-            cantidad: numberOrZero(producto.cantidad),
-            precioUnitario: numberOrZero(producto.precioUnitario),
-            subtotal: numberOrZero(producto.subtotal),
+            cantidad,
+            precioUnitario,
+            subtotal,
             productoNombre:
               typeof productoRaw === 'string'
                 ? productoRaw
