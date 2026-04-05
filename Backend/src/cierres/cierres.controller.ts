@@ -19,10 +19,10 @@ export class CierresController {
     @Roles(Role.Admin)
     @ApiOperation({ summary: 'Realizar el cierre de caja diario' })
     ejecutarCierre(
-        @Body() body: { fecha: string; observaciones?: string },
+        @Body() body: { fecha: string; observaciones?: string; enviarEmail?: boolean },
         @GetUser() user: User,
     ) {
-        return this.service.generalCierre(body.fecha, user.id, body.observaciones);
+        return this.service.generalCierre(body.fecha, user.id, body.observaciones, false, !!body.enviarEmail);
     }
 
     @Get()
