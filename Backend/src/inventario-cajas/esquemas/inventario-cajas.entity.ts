@@ -5,7 +5,7 @@ export class InventarioCajas {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column({ type: 'varchar', length: 150 })
+	@Column({ type: 'varchar', length: 150, default: '' })
 	nombre: string;
 
 	@Column({ type: 'int', default: 0 })
