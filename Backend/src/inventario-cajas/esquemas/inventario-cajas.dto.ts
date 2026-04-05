@@ -1,8 +1,27 @@
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsInt, IsOptional, IsString, Min, IsNotEmpty } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+
+export class CrearCajaDto {
+	@ApiProperty({ description: 'Nombre del tipo de caja' })
+	@IsString()
+	@IsNotEmpty()
+	nombre: string;
+
+	@ApiPropertyOptional({ description: 'Cantidad inicial', default: 0 })
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	cantidad?: number;
+
+	@ApiPropertyOptional({ description: 'Cantidad mínima para alerta' })
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	alertaMinimo?: number;
+}
 
 export class AjustarCajasDto {
-	@ApiPropertyOptional({ description: 'Delta positivo o negativo de cajas' })
+	@ApiProperty({ description: 'Delta positivo o negativo de cajas. Ej: -5' })
 	@IsInt()
 	delta: number;
 

@@ -370,7 +370,9 @@ export interface UpdateEmpresaDto {
 
 // ─── Inventario Cajas ─────────────────────────────────────────────────────────
 
-export interface InventarioCajasEstado {
+export interface InventarioCaja {
+  id: number;
+  nombre: string;
   cantidad: number;
   alertaMinimo: number | null;
   enAlerta: boolean;
@@ -378,11 +380,19 @@ export interface InventarioCajasEstado {
 
 export interface InventarioCajasMovimiento {
   id: number;
+  cajaId: number;
+  cajaNombre: string;
   delta: number;
   cantidadResultante: number;
   tipo: 'entrada' | 'salida' | 'ajuste';
   nota: string | null;
   creadoEn: string;
+}
+
+export interface CrearCajaDto {
+  nombre: string;
+  cantidad?: number;
+  alertaMinimo?: number;
 }
 
 export interface AjustarCajasDto {

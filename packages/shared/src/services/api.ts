@@ -13,7 +13,7 @@ import type {
   VarianteTop, ClienteHistorial,
   RegisterDto,
   EmpresaConfig, UpdateEmpresaDto,
-  InventarioCajasEstado, InventarioCajasMovimiento as InventarioCajasMovimientoModel, AjustarCajasDto as AjustarCajasDtoModel,
+  InventarioCaja, InventarioCajasMovimiento as InventarioCajasMovimientoModel, AjustarCajasDto as AjustarCajasDtoModel, CrearCajaDto as CrearCajaDtoModel,
 } from '../types/models';
 
 // ─── Factory: crea instancia configurada ──────────────────────────────────────
@@ -306,13 +306,19 @@ export function createApi(http: AxiosInstance) {
   // ─── Inventario Cajas ──────────────────────────────────────────────
   const inventarioCajas = {
     getEstado: () =>
-      http.get<InventarioCajasEstado>('/inventario-cajas').then((r) => r.data),
+      http.get<InventarioCaja[]>('/inventario-cajas').then((r) => arr<InventarioCaja>(r.data)),
 
-    ajustar: (data: AjustarCajasDtoModel) =>
-      http.post<InventarioCajasEstado>('/inventario-cajas/ajustar', data).then((r) => r.data),
+    crear: (data: CrearCajaDtoModel) =>
+      http.post<InventarioCaja>('/inventario-cajas', data).then((r) => r.data),
 
-    configurarAlerta: (alertaMinimo: number) =>
-      http.patch<{ alertaMinimo: number }>('/inventario-cajas/alerta', { alertaMinimo }).then((r) => r.data),
+    eliminar: (id: number) =>
+      http.delete(`/inventario-cajas/${id}`).then((r) => r.data),
+
+    ajustar: (id: number, data: AjustarCajasDtoModel) =>
+      http.post<InventarioCaja>(`/inventario-cajas/${id}/ajustar`, data).then((r) => r.data),
+
+    configurarAlerta: (id: number, alertaMinimo: number) =>
+      http.patch<{ alertaMinimo: number }>(`/inventario-cajas/${id}/alerta`, { alertaMinimo }).then((r) => r.data),
 
     getMovimientos: (limit = 20) =>
       http.get<InventarioCajasMovimientoModel[]>('/inventario-cajas/movimientos', { params: { limit } }).then((r) => arr<InventarioCajasMovimientoModel>(r.data)),

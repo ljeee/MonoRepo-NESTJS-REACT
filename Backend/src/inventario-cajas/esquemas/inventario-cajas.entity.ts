@@ -1,9 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 
 @Entity('inventario_cajas')
 export class InventarioCajas {
 	@PrimaryGeneratedColumn()
 	id: number;
+
+	@Column({ type: 'varchar', length: 150 })
+	nombre: string;
 
 	@Column({ type: 'int', default: 0 })
 	cantidad: number;
@@ -19,6 +22,13 @@ export class InventarioCajas {
 export class InventarioCajasMovimiento {
 	@PrimaryGeneratedColumn()
 	id: number;
+
+	@Column({ type: 'int' })
+	cajaId: number;
+
+	@ManyToOne(() => InventarioCajas, { onDelete: 'CASCADE' })
+	@JoinColumn({ name: 'cajaId' })
+	caja: InventarioCajas;
 
 	@Column({ type: 'int' })
 	delta: number;
