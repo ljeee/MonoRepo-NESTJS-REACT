@@ -8,6 +8,7 @@ import {DomicilioCreationService} from './services/domicilio-creation.service';
 import {ProductProcessingService} from './services/product-processing.service';
 import {OrdenesGateway} from './ordenes.gateway';
 import {CierresService} from '../cierres/cierres.service';
+import {InventarioCajasService} from '../inventario-cajas/inventario-cajas.service';
 
 @Injectable()
 export class OrdenesService {
@@ -17,7 +18,8 @@ export class OrdenesService {
 		private readonly facturaCreationService: FacturaCreationService,
 		private readonly domicilioCreationService: DomicilioCreationService,
 		private readonly productProcessingService: ProductProcessingService,
-		private readonly cierresService: CierresService
+		private readonly cierresService: CierresService,
+		private readonly inventarioCajasService: InventarioCajasService,
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
@@ -151,6 +153,7 @@ export class OrdenesService {
 			}
 
 			// 4. Procesar domicilio si aplica
+			const necesitaCaja = ['domicilio', 'para llevar', 'para_llevar', 'paraLlevar'].includes((data.tipoPedido || '').toLowerCase());
 			if (this.domicilioCreationService.esDomicilio(data.tipoPedido)) {
 				await this.domicilioCreationService.procesarDomicilio(data, factura.facturaId, orden.ordenId, manager);
 			}
@@ -161,6 +164,19 @@ export class OrdenesService {
 			// Actualizar cierre si existe para la fecha de la orden
 			const fechaStr = new Date(fullOrden.fechaOrden).toISOString().split('T')[0];
 			await this.cierresService.updateCierreIfExists(fechaStr);
+
+			// 5. Descontar cajas (domicilio o para llevar) — fuera de TX para no bloquear
+			if (necesitaCaja && productos.length > 0) {
+				const itemsToCajas = fullOrden.productos?.map(p => ({
+					varianteNombre: (p as any).variante?.nombre || '',
+					tipoProducto: (p as any).productoObj?.productoNombre || p.producto || '',
+					cantidad: Number(p.cantidad) || 1,
+				})) ?? [];
+				// fire-and-forget: no queremos que un error de inventario revierta la orden
+				this.inventarioCajasService
+					.descontarCajasParaOrden(itemsToCajas, orden.ordenId)
+					.catch(err => console.warn('[InventarioCajas] Error al descontar cajas:', err?.message));
+			}
 
 			return fullOrden;
 		});

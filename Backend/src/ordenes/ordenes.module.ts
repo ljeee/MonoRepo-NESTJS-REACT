@@ -15,6 +15,7 @@ import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.
 import {PizzaSabor} from '../pizza-sabores/esquemas/pizza-sabores.entity';
 import {PizzaSaboresModule} from '../pizza-sabores/pizza-sabores.module';
 import {CierresModule} from '../cierres/cierres.module';
+import {InventarioCajasModule} from '../inventario-cajas/inventario-cajas.module';
 import {FacturaCreationService} from './services/factura-creation.service';
 import {DomicilioCreationService} from './services/domicilio-creation.service';
 import {ProductProcessingService} from './services/product-processing.service';
@@ -23,7 +24,8 @@ import {ProductProcessingService} from './services/product-processing.service';
 	imports: [
 		TypeOrmModule.forFeature([Ordenes, FacturasVentas, Domicilios, Clientes, ClienteDirecciones, Domiciliarios, Productos, ProductoVariantes, OrdenesProductos, PizzaSabor]),
 		PizzaSaboresModule,
-		CierresModule
+		CierresModule,
+		InventarioCajasModule,
 	],
 	providers: [
 		OrdenesService, 

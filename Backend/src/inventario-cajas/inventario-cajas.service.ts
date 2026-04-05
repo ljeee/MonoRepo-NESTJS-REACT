@@ -101,4 +101,70 @@ export class InventarioCajasService {
 			creadoEn: m.creadoEn,
 		}));
 	}
+
+	/**
+	 * Descuenta cajas automáticamente al crear una orden de domicilio/para llevar.
+	 * Mapeo:
+	 *   - variante con "pequeña" / "personal"  → "Caja Pizza Pequeña"
+	 *   - variante con "mediana"               → "Caja Pizza Mediana"
+	 *   - variante con "grande"                → "Caja Pizza Grande"
+	 *   - tipo "calzone" (cualquier tamaño)    → "Caja Calzone"
+	 * Si la caja no existe en la BD se omite silenciosamente.
+	 */
+	async descontarCajasParaOrden(
+		items: { varianteNombre: string; tipoProducto: string; cantidad: number }[],
+		notaOrdenId: number,
+	): Promise<void> {
+		// Agrupar por nombre de caja para hacer una sola llamada por tipo
+		const acumulado = new Map<string, number>();
+
+		for (const item of items) {
+			const nombreCaja = this.resolverNombreCaja(item.varianteNombre, item.tipoProducto);
+			if (!nombreCaja) continue;
+			acumulado.set(nombreCaja, (acumulado.get(nombreCaja) ?? 0) + item.cantidad);
+		}
+
+		for (const [nombreCaja, qty] of acumulado) {
+			const caja = await this.inventarioRepo.findOne({
+				where: { nombre: nombreCaja },
+			});
+			if (!caja) continue; // caja no registrada → ignorar
+
+			const nuevaCantidad = Math.max(0, caja.cantidad - qty);
+			await this.movimientosRepo.save(
+				this.movimientosRepo.create({
+					cajaId: caja.id,
+					delta: -qty,
+					cantidadResultante: nuevaCantidad,
+					tipo: 'salida',
+					nota: `Orden #${notaOrdenId}`,
+				}),
+			);
+			caja.cantidad = nuevaCantidad;
+			await this.inventarioRepo.save(caja);
+		}
+	}
+
+	private resolverNombreCaja(varianteNombre: string, tipoProducto: string): string | null {
+		const tipo = (tipoProducto || '').toLowerCase();
+		const variante = (varianteNombre || '').toLowerCase();
+
+		if (tipo.includes('calzone')) return 'Caja Calzone';
+
+		if (
+			variante.includes('pequeña') ||
+			variante.includes('pequena') ||
+			variante.includes('personal')
+		) return 'Caja Pizza Pequeña';
+
+		if (variante.includes('mediana')) return 'Caja Pizza Mediana';
+
+		if (variante.includes('grande')) return 'Caja Pizza Grande';
+
+		// fallback: si es pizza pero no reconocemos tamaño
+		if (tipo.includes('pizza')) return 'Caja Pizza Grande';
+
+		return null; // productos que no llevan caja (bebidas, adiciones, etc.)
+	}
 }
+
