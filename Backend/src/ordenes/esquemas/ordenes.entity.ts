@@ -31,7 +31,7 @@ export class Ordenes {
 	@Column({name: 'fecha_cancelacion', type: 'timestamptz', nullable: true})
 	fechaCancelacion: Date;
 
-	@ManyToOne(() => FacturasVentas, (factura) => factura.ordenes, {nullable: true})
+	@ManyToOne(() => FacturasVentas, (factura) => factura.ordenes, {nullable: true, onDelete: 'CASCADE'})
     @JoinColumn({name: 'factura_id'})
 	factura: FacturasVentas;
 

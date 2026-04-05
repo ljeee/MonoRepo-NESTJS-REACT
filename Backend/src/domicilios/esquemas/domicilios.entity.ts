@@ -39,11 +39,11 @@ export class Domicilios {
 	@Column({name: 'estado_domicilio', type: 'text', default: () => "'pendiente'"})
 	estadoDomicilio: string;
 
-	@ManyToOne(() => FacturasVentas, (factura) => factura.domicilios)
+	@ManyToOne(() => FacturasVentas, (factura) => factura.domicilios, {onDelete: 'CASCADE'})
 	@JoinColumn({name: 'factura_id'})
 	factura: FacturasVentas;
 
-	@ManyToOne(() => Ordenes, (orden) => orden.domicilios)
+	@ManyToOne(() => Ordenes, (orden) => orden.domicilios, {onDelete: 'CASCADE'})
 	@JoinColumn({name: 'orden_id'})
 	orden: Ordenes;
 
