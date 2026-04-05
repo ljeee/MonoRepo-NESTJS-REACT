@@ -11,17 +11,30 @@ export class FacturasVentasService {
 		private readonly repo: Repository<FacturasVentas>,
 	) {}
 
-	async findAll(page = 1, limit = 500) {
-		const result = await this.repo
+	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number } = {}) {
+		const { from, to, page = 1, limit = 50 } = opts;
+		const qb = this.repo
 			.createQueryBuilder('f')
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
 			.leftJoinAndSelect('ordenes.productos', 'op')
 			.leftJoinAndSelect('f.domicilios', 'domicilios')
-			.orderBy('f.fechaFactura', 'DESC')
-			.take(limit)
-			.skip((page - 1) * limit)
-			.getMany();
-		return result;
+			.orderBy('f.fechaFactura', 'DESC');
+
+		if (from && to) {
+			qb.where('f.fechaFactura BETWEEN :from AND :to', {
+				from: new Date(from + 'T00:00:00'),
+				to: new Date(to + 'T23:59:59'),
+			});
+		} else if (from) {
+			qb.where('f.fechaFactura >= :from', { from: new Date(from + 'T00:00:00') });
+		} else if (to) {
+			qb.where('f.fechaFactura <= :to', { to: new Date(to + 'T23:59:59') });
+		}
+
+		const total = await qb.getCount();
+		const data = await qb.take(limit).skip((page - 1) * limit).getMany();
+
+		return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
 	}
 
 	async findByDay() {

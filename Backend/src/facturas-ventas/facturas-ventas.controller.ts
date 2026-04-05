@@ -1,5 +1,5 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from "@nestjs/common";
-import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@nestjs/common";
+import {ApiTags, ApiOperation, ApiResponse, ApiQuery} from '@nestjs/swagger';
 import {FacturasVentasService} from "./facturas-ventas.service";
 import {CreateFacturasVentasDto} from "./esquemas/facturas-ventas.dto";
 
@@ -9,10 +9,23 @@ export class FacturasVentasController {
 	constructor(private readonly service: FacturasVentasService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Obtener todas las facturas de ventas' })
-	@ApiResponse({ status: 200, description: 'Lista de facturas de ventas.' })
-	async findAll() {
-		return this.service.findAll();
+	@ApiOperation({ summary: 'Obtener facturas de ventas con paginación y filtro por fechas' })
+	@ApiQuery({ name: 'from', required: false })
+	@ApiQuery({ name: 'to', required: false })
+	@ApiQuery({ name: 'page', required: false, type: Number })
+	@ApiQuery({ name: 'limit', required: false, type: Number })
+	async findAll(
+		@Query('from') from?: string,
+		@Query('to') to?: string,
+		@Query('page') page?: string,
+		@Query('limit') limit?: string,
+	) {
+		return this.service.findAll({
+			from,
+			to,
+			page: page ? Number(page) : undefined,
+			limit: limit ? Number(limit) : undefined,
+		});
 	}
 
 	@Get('dia')

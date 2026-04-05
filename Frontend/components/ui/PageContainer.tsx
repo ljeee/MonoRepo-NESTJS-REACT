@@ -4,7 +4,7 @@ import { ScrollView, View, KeyboardAvoidingView } from '../../tw';
 import { useBreakpoint } from '../../styles/responsive';
 
 interface PageContainerProps {
-    children: ReactNode;
+    children?: ReactNode;
     scrollable?: boolean;
     maxWidthVariant?: 'default' | 'narrow' | 'wide' | 'full';
     noPadding?: boolean;

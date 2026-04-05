@@ -1,4 +1,4 @@
-  import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { useApi } from '../contexts/ApiContext';
 import type { FacturaVenta, FacturaStats } from '../types/models';
@@ -168,25 +168,33 @@ export function useFacturasRango() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<FacturaStats>({ totalDia: 0, totalPagado: 0, totalPendiente: 0, count: 0 });
 
-  // Keep a ref to always-current from/to so fetchData closure never goes stale
   const fromRef = useRef(from);
   const toRef = useRef(to);
+  const pageRef = useRef(page);
   useEffect(() => { fromRef.current = from; }, [from]);
   useEffect(() => { toRef.current = to; }, [to]);
+  useEffect(() => { pageRef.current = page; }, [page]);
 
-  const fetchData = useCallback(async (f?: string, t?: string) => {
+  const fetchData = useCallback(async (f?: string, t?: string, p?: number) => {
     const finalFrom = f ?? fromRef.current;
-    const finalTo   = t ?? toRef.current;
+    const finalTo = t ?? toRef.current;
+    const finalPage = p ?? pageRef.current;
     if (!finalFrom || !finalTo) return;
     
     setLoading(true);
     setError(null);
     try {
-      const raw = await api.facturas.getAll({ from: finalFrom, to: finalTo });
-      const mapped = raw.map(mapFactura);
+      const response = await api.facturas.getAll({ from: finalFrom, to: finalTo, page: finalPage });
+      const mapped = response.data.map(mapFactura);
       setData(mapped);
+      setTotalPages(response.totalPages);
+      setTotalCount(response.total);
+      setPage(response.page);
       setStats(calcStats(mapped));
       setLoading(false);
     } catch (error: unknown) {
@@ -224,5 +232,18 @@ export function useFacturasRango() {
     }
   }, [api, fetchData]);
 
-  return { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura, deleteFactura };
+  const goToPage = useCallback((p: number) => {
+    setPage(p);
+    pageRef.current = p;
+    fetchData(undefined, undefined, p);
+  }, [fetchData]);
+
+  // Reset page to 1 when doing a brand-new search
+  const search = useCallback((f: string, t: string) => {
+    setPage(1);
+    pageRef.current = 1;
+    fetchData(f, t, 1);
+  }, [fetchData]);
+
+  return { data, loading, error, from, to, setFrom, setTo, fetchData, search, stats, updateEstado, updateFactura, deleteFactura, page, totalPages, total: totalCount, goToPage, limit: 50 };
 }

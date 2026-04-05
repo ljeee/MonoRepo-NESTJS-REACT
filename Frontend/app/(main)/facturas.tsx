@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { FlatList } from 'react-native';
+import { FlatList, TouchableOpacity } from 'react-native';
 import { View, Text } from '../../tw';
 import { useFacturasRango } from '@monorepo/shared';
-import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
+import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { validateFlexibleDateRange } from '@monorepo/shared';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
@@ -20,7 +20,13 @@ import { useBreakpoint } from '../../styles/responsive';
 
 export default function FacturasRangoScreen() {
   const { isMobile } = useBreakpoint();
-  const { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura, deleteFactura } = useFacturasRango();
+  const {
+    data, loading, error,
+    from, to, setFrom, setTo,
+    fetchData, search,
+    stats, updateEstado, updateFactura, deleteFactura,
+    page, totalPages, total, goToPage,
+  } = useFacturasRango();
   const [updating, setUpdating] = useState<number | null>(null);
   const [filterError, setFilterError] = useState('');
 
@@ -30,12 +36,11 @@ export default function FacturasRangoScreen() {
       setFilterError(error);
       return;
     }
-
     setFilterError('');
     setFrom(fromParsed);
     setTo(toParsed);
-    fetchData(fromParsed, toParsed);
-  }, [from, to, setFrom, setTo, fetchData]);
+    search(fromParsed, toParsed); // resets to page 1
+  }, [from, to, setFrom, setTo, search]);
 
   const handleChangeEstado = useCallback(async (facturaId: number, nuevoEstado: string, metodo?: string) => {
     setUpdating(facturaId);
@@ -46,7 +51,6 @@ export default function FacturasRangoScreen() {
          await updateEstado(facturaId, nuevoEstado);
       }
       setUpdating(null);
-      return;
     } catch {
       setUpdating(null);
     }
@@ -56,8 +60,6 @@ export default function FacturasRangoScreen() {
     await updateFactura(facturaId, { total: newTotal });
   }, [updateFactura]);
 
-
-
   const handleExportPdf = useCallback(() => {
     if (data.length === 0) return;
     exportFacturasPdf(data, `${from || 'inicio'} a ${to || 'fin'}`);
@@ -66,8 +68,7 @@ export default function FacturasRangoScreen() {
   const handleExportContabilidad = useCallback(async () => {
     if (data.length === 0) return;
     const csv = await buildCombinedBalanceCsv(data, []);
-    const filename = `contabilidad_${from || 'inicio'}_${to || 'fin'}.csv`;
-    downloadCsv(csv, filename);
+    downloadCsv(csv, `contabilidad_${from || 'inicio'}_${to || 'fin'}.csv`);
   }, [data, from, to]);
 
   const handleDeleteFactura = useCallback(async (facturaId: number): Promise<boolean> => {
@@ -87,12 +88,56 @@ export default function FacturasRangoScreen() {
     </View>
   ), [handleChangeEstado, handleUpdateTotal, handleDeleteFactura, updating]);
 
+  // ── Pagination bar ──────────────────────────────────────────────────────────
+  const PaginationBar = totalPages > 1 ? (
+    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingVertical: 20 }}>
+      <TouchableOpacity
+        onPress={() => goToPage(page - 1)}
+        disabled={page <= 1 || loading}
+        style={{
+          paddingHorizontal: 16, paddingVertical: 8,
+          borderRadius: 12,
+          backgroundColor: page <= 1 ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)',
+          borderWidth: 1,
+          borderColor: page <= 1 ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)',
+          opacity: page <= 1 ? 0.4 : 1,
+        }}
+      >
+        <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>← Anterior</Text>
+      </TouchableOpacity>
+
+      <View style={{ alignItems: 'center' }}>
+        <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 14 }}>
+          Página {page} de {totalPages}
+        </Text>
+        <Text style={{ color: '#64748B', fontFamily: 'Outfit', fontSize: 11, marginTop: 2 }}>
+          {total} facturas en total
+        </Text>
+      </View>
+
+      <TouchableOpacity
+        onPress={() => goToPage(page + 1)}
+        disabled={page >= totalPages || loading}
+        style={{
+          paddingHorizontal: 16, paddingVertical: 8,
+          borderRadius: 12,
+          backgroundColor: page >= totalPages ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)',
+          borderWidth: 1,
+          borderColor: page >= totalPages ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)',
+          opacity: page >= totalPages ? 0.4 : 1,
+        }}
+      >
+        <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>Siguiente →</Text>
+      </TouchableOpacity>
+    </View>
+  ) : null;
+
   return (
     <PageContainer scrollable={false} contentContainerClassName="flex-1">
       <FlatList
         data={data}
         className="flex-1"
-        keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
+        keyExtractor={(item: FacturaItem, idx: number) => item.facturaId?.toString() || idx.toString()}
         key={isMobile ? 'col_1' : 'col_2'}
         numColumns={isMobile ? 1 : 2}
         contentContainerClassName="pb-4"
@@ -176,8 +221,13 @@ export default function FacturasRangoScreen() {
               </View>
             ) : null}
 
-            {/* Stats */}
-            {data.length > 0 && <StatsHeader stats={stats} periodLabel="Total del Período" />}
+            {/* Stats — muestra info de paginación cuando hay muchas facturas */}
+            {data.length > 0 && (
+              <StatsHeader
+                stats={stats}
+                periodLabel={total > 50 ? `Página ${page} de ${totalPages} · ${total} facturas total` : 'Total del Período'}
+              />
+            )}
 
             {/* Error */}
             {error && (
@@ -191,6 +241,7 @@ export default function FacturasRangoScreen() {
             {loading && <ListSkeleton count={4} />}
           </>
         }
+        ListFooterComponent={PaginationBar}
         ListEmptyComponent={
           !loading && !error ? (
             <View className="items-center justify-center py-20 gap-4">

@@ -108,8 +108,8 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Facturas Ventas ────────────────────────────────────────────────
   const facturas = {
-    getAll: (params?: { from?: string; to?: string }) =>
-      http.get<FacturaVenta[]>('/facturas-ventas', { params }).then((r) => arr<FacturaVenta>(r.data)),
+    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number }) =>
+      http.get<{ data: FacturaVenta[]; total: number; page: number; limit: number; totalPages: number }>('/facturas-ventas', { params }).then((r) => r.data),
 
     getDay: () =>
       http.get<FacturaVenta[]>('/facturas-ventas/dia').then((r) => arr<FacturaVenta>(r.data)),
