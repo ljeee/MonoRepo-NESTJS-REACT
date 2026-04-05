@@ -223,3 +223,4 @@ REDIS_PORT=6379
 - El Frontend detecta la API desde `window.location.hostname` por defecto
 - El Desktop permite configurar la URL del backend en la pantalla de ajustes
 - Para desarrollo local usar `npm run dev` desde la raíz
+- docker exec pizzeria-db psql -U appuser -d appdb -c "INSERT INTO inventario_cajas (nombre, cantidad, \"alertaMinimo\") VALUES ('Caja Pizza Pequeña', 0, 10), ('Caja Pizza Mediana', 0, 10), ('Caja Pizza Grande', 0, 10), ('Caja Calzone', 0, 10);"
