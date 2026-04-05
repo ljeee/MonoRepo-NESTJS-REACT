@@ -20,7 +20,7 @@ import { useBreakpoint } from '../../styles/responsive';
 
 export default function FacturasRangoScreen() {
   const { isMobile } = useBreakpoint();
-  const { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura } = useFacturasRango();
+  const { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura, deleteFactura } = useFacturasRango();
   const [updating, setUpdating] = useState<number | null>(null);
   const [filterError, setFilterError] = useState('');
 
@@ -70,6 +70,10 @@ export default function FacturasRangoScreen() {
     downloadCsv(csv, filename);
   }, [data, from, to]);
 
+  const handleDeleteFactura = useCallback(async (facturaId: number): Promise<boolean> => {
+    return deleteFactura(facturaId);
+  }, [deleteFactura]);
+
   const renderFacturaItem = useCallback(({ item }: { item: FacturaItem }) => (
     <View className="flex-1 pb-4">
       <FacturaCard
@@ -78,9 +82,10 @@ export default function FacturasRangoScreen() {
         onToggleEstado={handleChangeEstado}
         onUpdateTotal={handleUpdateTotal}
         onUpdate={updateFactura}
+        onDelete={handleDeleteFactura}
       />
     </View>
-  ), [handleChangeEstado, handleUpdateTotal, updating]);
+  ), [handleChangeEstado, handleUpdateTotal, handleDeleteFactura, updating]);
 
   return (
     <PageContainer scrollable={false} contentContainerClassName="flex-1">

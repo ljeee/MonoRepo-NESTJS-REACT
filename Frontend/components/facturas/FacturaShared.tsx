@@ -135,6 +135,7 @@ export function FacturaCard({
   onToggleEstado,
   onUpdateTotal,
   onUpdate,
+  onDelete,
   showPrint = false,
 }: {
   item: FacturaItem;
@@ -142,12 +143,15 @@ export function FacturaCard({
   onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string) => void;
   onUpdateTotal?: (facturaId: number, newTotal: number) => Promise<void>;
   onUpdate?: (facturaId: number, data: Partial<FacturaItem>) => Promise<void>;
+  onDelete?: (facturaId: number) => Promise<boolean>;
   showPrint?: boolean;
 }) {
   const { isMobile } = useBreakpoint();
   const [editing, setEditing] = React.useState(false);
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [updateLoading, setUpdateLoading] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
 
   const handleUpdateTotal = async (newTotal: number) => {
     if (item.facturaId && onUpdateTotal) {
@@ -266,6 +270,33 @@ export function FacturaCard({
              </View>
 
               <View className="flex-row items-center gap-2">
+                {onDelete && item.facturaId && (
+                  confirmDelete ? (
+                    <TouchableOpacity
+                      onPress={async () => {
+                        setDeleting(true);
+                        await onDelete(item.facturaId!);
+                        setDeleting(false);
+                        setConfirmDelete(false);
+                      }}
+                      disabled={deleting}
+                      className="px-3 py-2 rounded-xl bg-red-500/20 border border-red-500/40 flex-row items-center gap-1"
+                    >
+                      {deleting
+                        ? <ActivityIndicator size="small" color="#F43F5E" />
+                        : <Text className="font-black text-[11px] uppercase tracking-tight text-red-400">¿Eliminar?</Text>
+                      }
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setConfirmDelete(true)}
+                      className="w-9 h-9 items-center justify-center bg-red-500/10 rounded-xl border border-red-500/20"
+                    >
+                      <Icon name="trash-can-outline" size={16} color="#F43F5E" />
+                    </TouchableOpacity>
+                  )
+                )}
+
                 {!isCancelado && (
                      <TouchableOpacity
                         onPress={() => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+  import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { useApi } from '../contexts/ApiContext';
 import type { FacturaVenta, FacturaStats } from '../types/models';
@@ -170,9 +170,15 @@ export function useFacturasRango() {
   const [to, setTo] = useState('');
   const [stats, setStats] = useState<FacturaStats>({ totalDia: 0, totalPagado: 0, totalPendiente: 0, count: 0 });
 
+  // Keep a ref to always-current from/to so fetchData closure never goes stale
+  const fromRef = useRef(from);
+  const toRef = useRef(to);
+  useEffect(() => { fromRef.current = from; }, [from]);
+  useEffect(() => { toRef.current = to; }, [to]);
+
   const fetchData = useCallback(async (f?: string, t?: string) => {
-    const finalFrom = f || from;
-    const finalTo = t || to;
+    const finalFrom = f ?? fromRef.current;
+    const finalTo   = t ?? toRef.current;
     if (!finalFrom || !finalTo) return;
     
     setLoading(true);
@@ -187,7 +193,7 @@ export function useFacturasRango() {
       setError(getErrorMessage(error, 'Error al cargar facturas'));
       setLoading(false);
     }
-  }, [api, from, to]);
+  }, [api]);
 
   const updateEstado = useCallback(async (facturaId: number, nuevoEstado: string) => {
     try {
@@ -207,5 +213,16 @@ export function useFacturasRango() {
     }
   }, [api, fetchData]);
 
-  return { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura };
+  const deleteFactura = useCallback(async (facturaId: number): Promise<boolean> => {
+    try {
+      await api.facturas.delete(facturaId);
+      await fetchData();
+      return true;
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, 'Error al eliminar factura'));
+      return false;
+    }
+  }, [api, fetchData]);
+
+  return { data, loading, error, from, to, setFrom, setTo, fetchData, stats, updateEstado, updateFactura, deleteFactura };
 }
