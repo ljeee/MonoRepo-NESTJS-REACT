@@ -197,9 +197,9 @@ export function FacturaCard({
   return (
     <Card style={{ overflow: 'hidden', borderWidth: 0, backgroundColor: 'rgba(15,23,42,0.6)', padding: 0, marginBottom: 12 }}>
        {/* Left accent border equivalent */}
-       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: isCancelado ? '#F43F5E' : isPagado ? '#10B981' : '#F5A524' }} />
+       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 8, backgroundColor: isCancelado ? '#F43F5E' : isPagado ? '#10B981' : '#F5A524' }} />
        
-       <View style={{ paddingLeft: 14, padding: 12 }}>
+       <View style={{ paddingLeft: 20, padding: 12 }}>
           {/* Header */}
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
              <View style={{ flex: 1, paddingTop: 4 }}>
