@@ -13,6 +13,7 @@ export default function FacturasDiaScreen() {
   const { data, loading, error, refetch, stats, updateEstado, updateFactura } = useFacturasDia();
   const [updating, setUpdating] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterPending, setFilterPending] = useState(false);
 
   const handleChangeEstado = async (facturaId: number, nuevoEstado: string, metodo?: string) => {
     setUpdating(facturaId);
@@ -58,10 +59,11 @@ export default function FacturasDiaScreen() {
     downloadCsv(csv, `contabilidad_${today}.csv`);
   };
 
-  const filteredData = (data || []).filter(f => 
-    !searchQuery || 
-    (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredData = (data || []).filter(f => {
+    const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesPending = !filterPending || f.estado === 'pendiente';
+    return matchesSearch && matchesPending;
+  });
 
   return (
     <PageContainer
@@ -93,21 +95,31 @@ export default function FacturasDiaScreen() {
       {/* Stats */}
       {stats && <StatsHeader stats={stats} periodLabel="Total del Día" />}
 
-      {/* Buscador */}
-      <View className="mb-6 flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10">
-          <Icon name="magnify" size={22} color="#94A3B8" />
-          <TextInput
-              className="text-white ml-3 flex-1 h-full outline-none font-bold"
-              placeholder="Buscar factura por nombre de cliente..."
-              placeholderTextColor="#64748B"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')} className="bg-white/10 rounded-full p-1 border border-white/20">
-                  <Icon name="close" size={14} color="#CBD5E1" />
-              </TouchableOpacity>
-          )}
+      {/* Buscador y Filtro */}
+      <View className="mb-6 flex-row items-center gap-3">
+        <View className="flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10 flex-1">
+            <Icon name="magnify" size={22} color="#94A3B8" />
+            <TextInput
+                className="text-white ml-3 flex-1 h-full outline-none font-bold"
+                placeholder="Buscar factura por cliente..."
+                placeholderTextColor="#64748B"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} className="bg-white/10 rounded-full p-1 border border-white/20">
+                    <Icon name="close" size={14} color="#CBD5E1" />
+                </TouchableOpacity>
+            )}
+        </View>
+
+        <TouchableOpacity 
+            onPress={() => setFilterPending(!filterPending)}
+            className={`px-4 min-h-[50px] rounded-2xl border flex-row items-center gap-2 ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
+        >
+            <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
+            {!isMobile && <Text className={`font-bold text-xs uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pendientes</Text>}
+        </TouchableOpacity>
       </View>
 
       {/* Error */}

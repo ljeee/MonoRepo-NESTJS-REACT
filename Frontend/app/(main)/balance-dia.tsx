@@ -162,6 +162,7 @@ export default function BalanceDiaScreen() {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [filterPending, setFilterPending] = useState(false);
 
     useEffect(() => { fetchGastos(); }, [fetchGastos]);
 
@@ -199,10 +200,11 @@ export default function BalanceDiaScreen() {
     const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
     const loading = loadingFacturas || loadingGastos;
 
-    const filteredFacturas = facturas.filter(f => 
-        !searchQuery || 
-        (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
+    const filteredFacturas = facturas.filter(f => {
+        const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesPending = !filterPending || f.estado === 'pendiente';
+        return matchesSearch && matchesPending;
+    });
 
     return (
         <PageContainer
@@ -246,21 +248,30 @@ export default function BalanceDiaScreen() {
                     </View>
                 </View>
 
-                {/* Buscador */}
-                <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 min-w-[250px] border border-white/10 max-w-sm">
-                    <Icon name="magnify" size={20} color="#94A3B8" />
-                    <TextInput
-                        className="text-white ml-3 flex-1 h-8 outline-none font-bold text-sm"
-                        placeholder="Buscar por cliente..."
-                        placeholderTextColor="#64748B"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <Icon name="close-circle" size={18} color="#64748B" />
-                        </TouchableOpacity>
-                    )}
+                {/* Buscador y Filtro */}
+                <View className="flex-row items-center gap-2 flex-1 max-w-md">
+                    <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 min-w-[200px] border border-white/10">
+                        <Icon name="magnify" size={20} color="#94A3B8" />
+                        <TextInput
+                            className="text-white ml-3 flex-1 h-8 outline-none font-bold text-sm"
+                            placeholder="Buscar por cliente..."
+                            placeholderTextColor="#64748B"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Icon name="close-circle" size={18} color="#64748B" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    <TouchableOpacity 
+                        onPress={() => setFilterPending(!filterPending)}
+                        className={`px-3 h-12 rounded-xl border flex-row items-center gap-1 ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
+                    >
+                        <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
+                        {!isMobile && <Text className={`font-bold text-[10px] uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pend.</Text>}
+                    </TouchableOpacity>
                 </View>
             </View>
 
