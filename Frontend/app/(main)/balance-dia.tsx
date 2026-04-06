@@ -9,7 +9,7 @@ import { formatCurrency } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { View, Text, TouchableOpacity, TextInput } from '../../tw';
 
-import { FacturaCard } from '../../components/facturas/FacturaShared';
+import { FacturaCard, FacturaItem } from '../../components/facturas/FacturaShared';
 import {
     PageContainer,
     PageHeader,
@@ -197,10 +197,10 @@ export default function BalanceDiaScreen() {
     };
 
     const ingresos = stats?.totalPagado ?? 0;
-    const totalGastos = gastos.reduce((sum, g) => sum + (Number(g.total) || 0), 0);
+    const totalGastos = gastos.reduce((sum: number, g: FacturaPago) => sum + (Number(g.total) || 0), 0);
     const loading = loadingFacturas || loadingGastos;
 
-    const filteredFacturas = facturas.filter(f => {
+    const filteredFacturas = facturas.filter((f: FacturaItem) => {
         const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesPending = !filterPending || f.estado === 'pendiente';
         return matchesSearch && matchesPending;
@@ -294,7 +294,7 @@ export default function BalanceDiaScreen() {
             )}
 
             <View className="flex-row flex-wrap gap-4 mb-12">
-                {filteredFacturas.map((item, idx) => (
+                {filteredFacturas.map((item: FacturaItem, idx: number) => (
                     <View key={item.facturaId?.toString() || idx.toString()} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'}`}>
                         <FacturaCard
                             item={item}
@@ -335,7 +335,7 @@ export default function BalanceDiaScreen() {
             )}
 
             <View className="flex-row flex-wrap gap-4 pb-20">
-                {gastos.map((item, idx) => (
+                {gastos.map((item: FacturaPago, idx: number) => (
                     <View key={item.pagosId?.toString() || idx.toString()} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'}`}>
                         <GastoRow
                             item={item}

@@ -4,7 +4,7 @@ import { Animated } from '../../tw/animated';
 import { View, Pressable } from '../../tw';
 
 interface CardProps {
-    children: ReactNode;
+    children?: ReactNode;
     onPress?: () => void;
     variant?: 'default' | 'elevated' | 'outlined';
     padding?: 'none' | 'sm' | 'md' | 'lg';

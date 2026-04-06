@@ -4,7 +4,7 @@ import { Text, View, TextInput, TouchableOpacity } from '../../tw';
 import { useFacturasDia } from '@monorepo/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
-import { FacturaCard, StatsHeader } from '../../components/facturas/FacturaShared';
+import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
 import { PageContainer, PageHeader, Button, ListSkeleton, Icon } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 
@@ -59,7 +59,7 @@ export default function FacturasDiaScreen() {
     downloadCsv(csv, `contabilidad_${today}.csv`);
   };
 
-  const filteredData = (data || []).filter(f => {
+  const filteredData = (data || []).filter((f: FacturaItem) => {
     const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesPending = !filterPending || f.estado === 'pendiente';
     return matchesSearch && matchesPending;
@@ -145,7 +145,7 @@ export default function FacturasDiaScreen() {
         </View>
       ) : (
         <View className="flex-row flex-wrap justify-between gap-y-4 pb-8">
-          {filteredData.map((item, idx) => {
+          {filteredData.map((item: FacturaItem, idx: number) => {
             const isLastOddDesktop = !isMobile && filteredData.length % 2 === 1 && idx === filteredData.length - 1;
             return (
             <View
