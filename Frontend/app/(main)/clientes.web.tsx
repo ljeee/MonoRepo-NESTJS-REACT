@@ -43,11 +43,30 @@ function timeAgo(dateStr: string): string {
   return `Hace ${Math.floor(days / 30)} mes${Math.floor(days / 30) > 1 ? 'es' : ''}`;
 }
 
+const PAGE_SIZE = 20;
+
 export default function ClientesScreen() {
   const { data, loading, error, refetch } = useClientesList();
   const { client, loading: searching, error: searchError, fetchClient } = useClientByPhone();
-  const [telefono, setTelefono] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+
+  const isPhoneQuery = /^\d+$/.test(searchQuery);
+
+  const filteredData = useMemo(() => {
+    if (!searchQuery || isPhoneQuery) return data;
+    const q = searchQuery.toLowerCase();
+    return data.filter(c =>
+      c.clienteNombre?.toLowerCase().includes(q) ||
+      c.telefono?.includes(q)
+    );
+  }, [data, searchQuery, isPhoneQuery]);
+
+  useEffect(() => { setPage(1); }, [searchQuery, data]);
+
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const paginatedData = filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const [frecuentes, setFrecuentes] = useState<ClienteStats[]>([]);
 
   // ── Form state ──
@@ -363,21 +382,23 @@ export default function ClientesScreen() {
       {/* ── Search Bar ── */}
       <Card className="mb-6 p-4 flex-row items-center gap-3">
         <Input
-          placeholder="Buscar teléfono..."
-          value={telefono}
-          onChangeText={setTelefono}
-          keyboardType="number-pad"
+          placeholder="Buscar por nombre o teléfono..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
           className="flex-1"
           size="sm"
           leftIcon={<Icon name="magnify" size={18} color="#64748B" />}
+          containerStyle={{ marginBottom: 0 }}
         />
-        <Button
-          title={searching ? '...' : 'Buscar'}
-          onPress={() => telefono && fetchClient(telefono)}
-          variant="secondary"
-          size="sm"
-          disabled={!telefono || searching}
-        />
+        {isPhoneQuery && (
+          <Button
+            title={searching ? '...' : 'Buscar'}
+            onPress={() => searchQuery && fetchClient(searchQuery)}
+            variant="secondary"
+            size="sm"
+            disabled={!searchQuery || searching}
+          />
+        )}
       </Card>
 
       {searchError ? (
@@ -412,8 +433,8 @@ export default function ClientesScreen() {
         </View>
       )}
 
-      <View className="gap-y-4 pb-10">
-        {!loading && data.map((item) => {
+      <View className="gap-y-4 pb-4">
+        {!loading && paginatedData.map((item) => {
           const stats = getStats(item);
           return (
             <Card key={item.telefono} className="overflow-hidden">
@@ -490,6 +511,42 @@ export default function ClientesScreen() {
           );
         })}
       </View>
+
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingVertical: 20 }}>
+          <TouchableOpacity
+            onPress={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            style={{
+              paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+              backgroundColor: page <= 1 ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)',
+              borderWidth: 1, borderColor: page <= 1 ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)',
+              opacity: page <= 1 ? 0.4 : 1,
+            }}
+          >
+            <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>← Anterior</Text>
+          </TouchableOpacity>
+
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 14 }}>Página {page} de {totalPages}</Text>
+            <Text style={{ color: '#64748B', fontFamily: 'Outfit', fontSize: 11, marginTop: 2 }}>{filteredData.length} clientes en total</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            style={{
+              paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+              backgroundColor: page >= totalPages ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)',
+              borderWidth: 1, borderColor: page >= totalPages ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)',
+              opacity: page >= totalPages ? 0.4 : 1,
+            }}
+          >
+            <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>Siguiente →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Delete Confirmation Modal ── */}
       <ConfirmModal

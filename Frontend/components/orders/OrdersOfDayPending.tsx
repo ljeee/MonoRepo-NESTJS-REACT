@@ -253,42 +253,46 @@ export default function OrdersOfDayPending() {
                   color="#F5A524"
                 />
               </View>
-              <Text className={`text-white font-black ${fullscreen ? 'text-lg' : 'text-sm'}`} numberOfLines={1}>
+              <Text className={`text-white font-black ${fullscreen ? 'text-xl' : 'text-sm'}`} numberOfLines={1} style={{ fontFamily: 'Space Grotesk' }}>
                 {getClientName(item)}
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  router.push(`/editar-orden?ordenId=${item.ordenId}` as Href);
-                }}
-                className={`w-8 h-8 rounded-xl bg-orange-500/10 items-center justify-center border border-orange-500/20`}
-              >
-                <Icon name="pencil" size={14} color="#F5A524" />
-              </TouchableOpacity>
-              {typeof window !== 'undefined' && (
-                <TouchableOpacity
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    printOrderReceipt({
-                      ordenId: item.ordenId,
-                      clienteNombre: getClientName(item),
-                      tipoPedido: item.tipoPedido,
-                      observaciones: item.observaciones,
-                      direccion: item.domicilios?.[0]?.direccionEntrega,
-                      fecha: item.fechaOrden,
-                      productos: (item.productos || []).map((p) => ({
-                        nombre: p.producto,
-                        cantidad: p.cantidad ?? 1,
-                        sabores: getProductFlavors(p).filter(Boolean),
-                      })),
-                    });
-                  }}
-                  className="w-8 h-8 rounded-xl bg-blue-500/10 items-center justify-center border border-blue-500/20"
-                >
-                  <Icon name="printer" size={14} color="#3B82F6" />
-                </TouchableOpacity>
+              {!fullscreen && (
+                <>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push(`/editar-orden?ordenId=${item.ordenId}` as Href);
+                    }}
+                    className="w-8 h-8 rounded-xl bg-orange-500/10 items-center justify-center border border-orange-500/20"
+                  >
+                    <Icon name="pencil" size={14} color="#F5A524" />
+                  </TouchableOpacity>
+                  {typeof window !== 'undefined' && (
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        printOrderReceipt({
+                          ordenId: item.ordenId,
+                          clienteNombre: getClientName(item),
+                          tipoPedido: item.tipoPedido,
+                          observaciones: item.observaciones,
+                          direccion: item.domicilios?.[0]?.direccionEntrega,
+                          fecha: item.fechaOrden,
+                          productos: (item.productos || []).map((p) => ({
+                            nombre: p.producto,
+                            cantidad: p.cantidad ?? 1,
+                            sabores: getProductFlavors(p).filter(Boolean),
+                          })),
+                        });
+                      }}
+                      className="w-8 h-8 rounded-xl bg-blue-500/10 items-center justify-center border border-blue-500/20"
+                    >
+                      <Icon name="printer" size={14} color="#3B82F6" />
+                    </TouchableOpacity>
+                  )}
+                </>
               )}
               <Badge
                 label={item.estadoOrden}
@@ -305,10 +309,21 @@ export default function OrdersOfDayPending() {
             </View>
           </View>
 
-          <View className={`flex-row justify-between items-center opacity-60 ${fullscreen ? 'mb-4' : 'mb-2'}`}>
-            <Text className={`text-slate-400 font-black uppercase tracking-widest ${fullscreen ? 'text-[12px]' : 'text-[10px]'}`}>{item.tipoPedido}</Text>
-            <Text className={`text-slate-400 font-bold ${fullscreen ? 'text-[12px]' : 'text-[10px]'}`}>{formatDate(item.fechaOrden)}</Text>
-          </View>
+          {(() => {
+            const tipoCfg = item.tipoPedido === 'domicilio'
+              ? { bg: 'bg-amber-500/15', border: 'border-amber-500/30', text: 'text-amber-400', label: 'Domicilio' }
+              : item.tipoPedido === 'llevar'
+              ? { bg: 'bg-violet-500/15', border: 'border-violet-500/30', text: 'text-violet-400', label: 'Llevar' }
+              : { bg: 'bg-slate-500/15', border: 'border-slate-500/30', text: 'text-slate-300', label: 'Mesa' };
+            return (
+              <View className={`flex-row justify-between items-center ${fullscreen ? 'mb-4' : 'mb-2'}`}>
+                <View className={`flex-row items-center px-2.5 py-0.5 rounded-full border ${tipoCfg.bg} ${tipoCfg.border}`}>
+                  <Text className={`${tipoCfg.text} font-black uppercase tracking-widest ${fullscreen ? 'text-[12px]' : 'text-[9px]'}`}>{tipoCfg.label}</Text>
+                </View>
+                <Text className={`text-slate-500 font-bold ${fullscreen ? 'text-[12px]' : 'text-[10px]'}`}>{formatDate(item.fechaOrden)}</Text>
+              </View>
+            );
+          })()}
 
           {item.tipoPedido === 'domicilio' && item.domicilios?.[0]?.direccionEntrega && (
             <View className={`flex-row items-center bg-black/20 rounded-lg ${fullscreen ? 'px-3 py-2 mb-2' : 'px-2 py-1.5 mb-1.5'}`}>
@@ -318,9 +333,14 @@ export default function OrdersOfDayPending() {
           )}
 
           {item.observaciones && (
-            <View className={`flex-row items-start bg-amber-500/10 rounded-lg border border-amber-500/30 ${fullscreen ? 'px-3 py-2.5 mb-2' : 'px-2 py-1.5 mb-1.5'}`}>
-              <Icon name="note-text-outline" size={fullscreen ? 16 : 12} color="#F5A524" />
-              <Text className={`text-amber-100 ml-2 flex-1 font-black italic ${fullscreen ? 'text-sm font-bold' : 'text-[11px]'}`} numberOfLines={fullscreen ? 4 : 2}>{item.observaciones}</Text>
+            <View className={`flex-row items-start rounded-lg border ${fullscreen ? 'bg-amber-500/20 border-amber-500/50 px-4 py-3 mb-3' : 'bg-amber-500/10 border-amber-500/30 px-2 py-1.5 mb-1.5'}`}>
+              <Icon name="alert-circle-outline" size={fullscreen ? 22 : 12} color="#F5A524" />
+              <View className="flex-1 ml-2">
+                {fullscreen && (
+                  <Text className="text-amber-500 text-[9px] font-black uppercase tracking-widest mb-1">Nota del cliente</Text>
+                )}
+                <Text className={`text-amber-100 font-bold ${fullscreen ? 'text-base leading-snug' : 'text-[11px] italic'}`} numberOfLines={fullscreen ? 6 : 2}>{item.observaciones}</Text>
+              </View>
             </View>
           )}
 
@@ -349,7 +369,7 @@ export default function OrdersOfDayPending() {
                               {baseName}
                             </Text>
                             {details && (
-                              <Text className="text-slate-500 text-[10px] leading-tight mt-0.5 italic">
+                              <Text className={`${fullscreen ? 'text-sm' : 'text-[12px]'} text-slate-300 leading-tight mt-0.5`}>
                                 {details}
                               </Text>
                             )}
@@ -542,26 +562,26 @@ export default function OrdersOfDayPending() {
       {isFullscreen && (
         <View className="fixed inset-0 bg-black z-[99999] p-4 sm:p-8">
             <View className="flex-row justify-between items-center mb-6 pt-4 border-b border-white/10 pb-4">
-                <View className="flex-row items-center gap-4">
-                    <View className="w-10 h-10 rounded-xl bg-orange-500 items-center justify-center">
+                <View className="flex-row items-center gap-3">
+                    <View className="w-10 h-10 rounded-xl bg-orange-500 items-center justify-center shrink-0">
                         <Icon name="clipboard-list" size={24} color="black" />
                     </View>
                     <View>
-                        <Text className="text-white text-3xl font-black uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>Órdenes Activas</Text>
+                        <Text className="text-white text-xl sm:text-3xl font-black uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>Órdenes Activas</Text>
                         <Text className="text-slate-500 text-xs font-bold uppercase tracking-widest">Vista Expandida</Text>
                     </View>
                 </View>
-                
-                <View className="flex-row items-center gap-8">
-                    <View className="items-end">
-                        <Text className="text-white text-3xl font-black" style={{ fontFamily: 'Space Grotesk' }}>
+
+                <View className="flex-row items-center gap-2 sm:gap-8">
+                    <View className="items-end hidden sm:flex">
+                        <Text className="text-white text-2xl font-black" style={{ fontFamily: 'Space Grotesk' }}>
                              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
                         <Text className="text-orange-500 text-[10px] font-black uppercase tracking-widest">
                             {currentTime.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
                         </Text>
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setIsFullscreen(false)}
                         className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center border border-white/10 active:bg-white/10"
                     >

@@ -7,7 +7,7 @@ import { ScrollView, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingVi
 import { Badge } from '../ui';
 import { api } from '../../services/api';
 import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce } from '@monorepo/shared';
-import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState } from '@monorepo/shared';
+import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import CartPanel, { CartItem } from './CartPanel';
 import MenuPicker from './MenuPicker';
@@ -100,6 +100,9 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   }, [mode, globalUpdateForm]);
 
   const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
+  const [clientesList, setClientesList] = useState<Cliente[]>([]);
+  const [nameSuggestions, setNameSuggestions] = useState<Cliente[]>([]);
+
   const fetchDomiciliarios = useCallback(async () => {
     try {
       const data = await api.domiciliarios.getAll();
@@ -175,6 +178,27 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       return () => clearTimeout(timer);
     }
   }, [fetchDomiciliarios, formState.tipoPedido]);
+
+  // Cargar lista de clientes para autocompletar en llevar
+  useEffect(() => {
+    if (formState.tipoPedido === 'llevar') {
+      api.clientes.getAll().then(setClientesList).catch(() => {});
+    } else {
+      setNameSuggestions([]);
+    }
+  }, [formState.tipoPedido]);
+
+  // Filtrar sugerencias mientras se escribe el nombre (solo llevar)
+  useEffect(() => {
+    if (formState.tipoPedido !== 'llevar' || formState.nombreCliente.length < 2) {
+      setNameSuggestions([]);
+      return;
+    }
+    const q = formState.nombreCliente.toLowerCase();
+    setNameSuggestions(
+      clientesList.filter(c => c.clienteNombre?.toLowerCase().includes(q)).slice(0, 6)
+    );
+  }, [formState.nombreCliente, formState.tipoPedido, clientesList]);
 
   const resolvedNombreCliente =
     formState.tipoPedido === 'domicilio'
@@ -359,7 +383,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                             costoDomicilio: '',
                         });
                       }}
-                      style={{ color: 'white' }}
+                      style={{ color: 'white', fontSize: 14 }}
                       itemStyle={{ color: 'white', fontSize: 14 }}
                       dropdownIconColor="#94A3B8"
                     >
@@ -404,14 +428,41 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                       </Picker>
                     </View>
                   ) : (
-                    <TextInput
-                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                      value={resolvedNombreCliente}
-                      onChangeText={(val) => updateForm({ nombreCliente: val })}
-                      placeholder="Nombre"
-                      placeholderTextColor="#475569"
-                      editable={!client || !client.clienteNombre}
-                    />
+                    <View style={{ position: 'relative' }}>
+                      <TextInput
+                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                        value={resolvedNombreCliente}
+                        onChangeText={(val) => updateForm({ nombreCliente: val })}
+                        placeholder="Nombre"
+                        placeholderTextColor="#475569"
+                        editable={!client || !client.clienteNombre}
+                        onBlur={() => setTimeout(() => setNameSuggestions([]), 150)}
+                      />
+                      {formState.tipoPedido === 'llevar' && nameSuggestions.length > 0 && (
+                        <View style={{
+                          position: 'absolute', top: 50, left: 0, right: 0, zIndex: 9999,
+                          backgroundColor: '#1E293B', borderRadius: 12,
+                          borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+                          overflow: 'hidden', elevation: 10,
+                        }}>
+                          {nameSuggestions.map((c) => (
+                            <TouchableOpacity
+                              key={c.telefono}
+                              style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                              onPress={() => {
+                                updateForm({ nombreCliente: c.clienteNombre || '' });
+                                setNameSuggestions([]);
+                              }}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ color: '#F8FAFC', fontWeight: 'bold', fontSize: 13 }}>{c.clienteNombre}</Text>
+                                <Text style={{ color: '#64748B', fontSize: 11 }}>{c.telefono}</Text>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
                   )}
                 </View>
               </View>
@@ -468,7 +519,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         itemStyle={{ color: 'white', fontSize: 14 }}
                         dropdownIconColor="#94A3B8"
                       >
-                        <Picker.Item label={domiciliarios.length === 0 ? "No hay domiciliarios" : "Selecciona uno"} value="" color="#64748B" />
+                        <Picker.Item label={domiciliarios.length === 0 ? "No hay domiciliarios" : "Sin asignar"} value="" color="#64748B" />
                         {domiciliarios.map(d => (
                           <Picker.Item 
                             key={d.telefono} 

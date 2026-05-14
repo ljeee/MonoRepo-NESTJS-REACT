@@ -5,9 +5,11 @@ import { PageContainer, PageHeader, Button, Icon, Card, Badge, ConfirmModal, Lis
 import { api } from '../../services/api';
 import { useToast, formatCurrency, formatDate, Role } from '@monorepo/shared';
 import { useAuth } from '../../contexts/AuthContext';
+import { useBreakpoint } from '../../styles/responsive';
 
 export default function CierreCajaScreen() {
     const { showToast } = useToast();
+    const { isMobile } = useBreakpoint();
     const [history, setHistory] = useState<any[]>([]);
     const [resumen, setResumen] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -97,16 +99,16 @@ export default function CierreCajaScreen() {
                 <View style={{ marginBottom: 32, paddingHorizontal: 8 }}>
                     <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, marginBottom: 16 }}>Estado Actual (Hoy)</Text>
                     
-                    <View style={{ flexDirection: 'row', gap: 16, marginBottom: 16 }}>
-                        <Card style={{ flex: 1, padding: 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(16,185,129,0.1)' }}>
+                    <View style={{ flexDirection: 'row', gap: isMobile ? 10 : 16, marginBottom: 16 }}>
+                        <Card style={{ flex: 1, padding: isMobile ? 14 : 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(16,185,129,0.1)' }}>
                             <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Ventas Brutas</Text>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 24 }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: isMobile ? 18 : 24 }} numberOfLines={1} adjustsFontSizeToFit>
                                 ${formatCurrency(resumen?.totalVentas || 0)}
                             </Text>
                         </Card>
-                        <Card style={{ flex: 1, padding: 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(244,63,94,0.1)' }}>
+                        <Card style={{ flex: 1, padding: isMobile ? 14 : 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(244,63,94,0.1)' }}>
                             <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Egresos/Gastos</Text>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#FB7185', fontSize: 24 }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#FB7185', fontSize: isMobile ? 18 : 24 }} numberOfLines={1} adjustsFontSizeToFit>
                                 ${formatCurrency(resumen?.totalEgresos || 0)}
                             </Text>
                         </Card>
@@ -116,7 +118,7 @@ export default function CierreCajaScreen() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                             <View>
                                 <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Balance Neto</Text>
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 30 }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: isMobile ? 22 : 30 }} numberOfLines={1} adjustsFontSizeToFit>
                                     ${formatCurrency(resumen?.balanceNeto || 0)}
                                 </Text>
                             </View>

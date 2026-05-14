@@ -21,6 +21,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Dashboard', route: '/', icon: 'home-variant-outline' },
       { label: 'Mis Domicilios', route: '/mis-domicilios', icon: 'truck-delivery-outline' },
       { label: 'Crear Orden', route: '/crear-orden', icon: 'plus-circle-outline' },
+      { label: 'Asignar Domicilios', route: '/asignar-domiciliarios', icon: 'map-marker-account-outline' },
       { label: 'Órdenes Activas', route: '/ordenes', icon: 'clock-outline' },
       { label: 'Historial Local', route: '/ordenes-todas', icon: 'history' },
     ],

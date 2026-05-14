@@ -163,7 +163,7 @@ export default function OrdenesTodasScreen() {
               const ec = getEstadoColor(orden.estadoOrden);
               const total = getOrdenTotal(orden);
               return (
-                <View key={orden.ordenId} style={{ width: '32%', minWidth: 300, marginBottom: 12 }}>
+                <View key={orden.ordenId} style={{ width: isMobile ? '100%' : '32%', minWidth: isMobile ? undefined : 300, marginBottom: 12 }}>
                   <Card
                     onPress={() => router.push(`/orden-detalle?ordenId=${orden.ordenId}`)}
                     className="h-full overflow-hidden"

@@ -291,6 +291,7 @@ export default function BalanceFechasScreen() {
                                     placeholder="2025-01-01"
                                     className="flex-1"
                                     size="sm"
+                                    containerStyle={{ marginBottom: 0 }}
                                     leftIcon={<Icon name="calendar" size={16} color="#475569" />}
                                 />
                                 <Input
@@ -300,6 +301,7 @@ export default function BalanceFechasScreen() {
                                     placeholder="2026-12-31"
                                     className="flex-1"
                                     size="sm"
+                                    containerStyle={{ marginBottom: 0 }}
                                     leftIcon={<Icon name="calendar" size={16} color="#475569" />}
                                 />
                                 <Button

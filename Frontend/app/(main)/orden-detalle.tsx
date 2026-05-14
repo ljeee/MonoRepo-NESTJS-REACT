@@ -313,7 +313,7 @@ export default function OrdenDetalleScreen() {
         title={`Detalle #${orden.ordenId}`}
         icon="receipt-text-outline"
         rightContent={
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row flex-wrap items-center gap-2 justify-end">
             {canCancelOrder() && (
               <Button
                 title="Cancelar"
@@ -499,7 +499,7 @@ export default function OrdenDetalleScreen() {
                               <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total Orden</Text>
                               <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>IVA Incluido (Exento)</Text>
                           </View>
-                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 30 }}>
+                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 24 }} numberOfLines={1} adjustsFontSizeToFit>
                               ${formatCurrency(Number(orden.factura.total))}
                           </Text>
                       </View>

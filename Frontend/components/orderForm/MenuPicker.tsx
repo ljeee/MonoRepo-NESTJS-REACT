@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
+import { Text, TextInput, TouchableOpacity, View } from '../../tw';
 import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@monorepo/shared';
 import type { Producto, ProductoVariante } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -71,7 +71,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   }
 
   return (
-    <View className="flex-1 pb-4">
+    <View className="pb-4">
       {/* Search bar */}
       <View className="mb-6 relative">
           <View className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
@@ -86,7 +86,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
           />
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="p-4 pb-6">
+      <View className="p-4 pb-6">
         <View className="flex-row flex-wrap -mx-2">
           {filteredProducts.length === 0 ? (
             <View className="w-full py-20 items-center opacity-50">
@@ -95,7 +95,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
             </View>
           ) : (
             filteredProducts.map((producto) => (
-              <ProductItem 
+              <ProductItem
                 key={producto.productoId}
                 producto={producto}
                 isSelected={expandedProductId === producto.productoId}
@@ -109,7 +109,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
             ))
           )}
         </View>
-      </ScrollView>
+      </View>
 
       {/* ─── BARRA DE VARIANTES (DOCKABLE / NO OVERLAP) ─── */}
       {expandedProductId && (

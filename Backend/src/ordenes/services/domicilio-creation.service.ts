@@ -66,7 +66,7 @@ export class DomicilioCreationService {
 		facturaId: number,
 		ordenId: number,
 		telefonoCliente: string,
-		telefonoDomiciliario: string,
+		telefonoDomiciliario: string | undefined,
 		direccion?: string,
 		costoDomicilio?: number,
 		manager?: EntityManager,
@@ -89,21 +89,20 @@ export class DomicilioCreationService {
 		if (!data.telefonoCliente) {
 			throw new BadRequestException('telefonoCliente es requerido cuando tipoPedido es domicilio');
 		}
-		if (!data.telefonoDomiciliario) {
-			throw new BadRequestException('telefonoDomiciliario es requerido cuando tipoPedido es domicilio');
-		}
 	}
 
 	async procesarDomicilio(data: CreateOrdenesDto, facturaId: number, ordenId: number, manager?: EntityManager): Promise<void> {
 		this.validarDatosDomicilio(data);
 
 		await this.upsertCliente(data.telefonoCliente!, data.nombreCliente, data.direccionCliente, manager);
-		await this.upsertDomiciliario(data.telefonoDomiciliario!, manager);
+		if (data.telefonoDomiciliario) {
+			await this.upsertDomiciliario(data.telefonoDomiciliario, manager);
+		}
 		await this.crearDomicilio(
 			facturaId,
 			ordenId,
 			data.telefonoCliente!,
-			data.telefonoDomiciliario!,
+			data.telefonoDomiciliario,
 			data.direccionCliente,
 			data.costoDomicilio,
 			manager,

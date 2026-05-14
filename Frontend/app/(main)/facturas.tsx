@@ -188,7 +188,7 @@ export default function FacturasRangoScreen() {
                 value={from}
                 onChangeText={setFrom}
                 placeholder="2025-01-01"
-                containerStyle={{ flex: 1, minWidth: 140 }}
+                containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
                 size="sm"
                 leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
               />
@@ -197,21 +197,19 @@ export default function FacturasRangoScreen() {
                 value={to}
                 onChangeText={setTo}
                 placeholder="2026-12-31"
-                containerStyle={{ flex: 1, minWidth: 140 }}
+                containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
                 size="sm"
                 leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
               />
-              <View className="mb-8">
-                <Button
-                  title={loading ? '...' : 'Buscar'}
-                  icon="magnify"
-                  variant="primary"
-                  size="sm"
-                  onPress={handleSearch}
-                  disabled={!from || !to || loading}
-                  loading={loading}
-                />
-              </View>
+              <Button
+                title={loading ? '...' : 'Buscar'}
+                icon="magnify"
+                variant="primary"
+                size="sm"
+                onPress={handleSearch}
+                disabled={!from || !to || loading}
+                loading={loading}
+              />
             </View>
 
             {filterError ? (

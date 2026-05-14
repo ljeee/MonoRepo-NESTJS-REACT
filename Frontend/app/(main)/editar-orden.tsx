@@ -436,7 +436,7 @@ export default function EditarOrdenScreen() {
                                         <View className="flex-row justify-between items-center">
                                             <Text className="font-black text-white text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>Total</Text>
                                             <View className="items-end">
-                                                <Text className="font-black text-(--color-pos-primary) text-4xl" style={{ fontFamily: 'Space Grotesk' }}>
+                                                <Text className="font-black text-(--color-pos-primary) text-2xl sm:text-4xl" style={{ fontFamily: 'Space Grotesk' }}>
                                                     ${formatCOP(total)}
                                                 </Text>
                                             </View>

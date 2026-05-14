@@ -48,9 +48,11 @@ export default function PageHeader({
                         </Text>
                     )}
                     <View className="flex-row items-center flex-wrap">
-                        <Text 
-                            style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: isMobile ? 20 : 24, color: '#F8FAFC', letterSpacing: -0.5, flexShrink: 1 }}
-                            numberOfLines={1}
+                        <Text
+                            style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: isMobile ? 17 : 24, color: '#F8FAFC', letterSpacing: -0.5, flexShrink: 1 }}
+                            numberOfLines={isMobile ? 2 : 1}
+                            adjustsFontSizeToFit={isMobile}
+                            minimumFontScale={0.75}
                         >
                             {title}
                         </Text>

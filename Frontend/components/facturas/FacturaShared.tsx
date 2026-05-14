@@ -2,12 +2,12 @@ import React from 'react';
 import { ActivityIndicator, TouchableOpacity } from 'react-native';
 import { formatCurrency, formatDate } from '@monorepo/shared';
 import { View, Text } from '../../tw';
+import { useBreakpoint } from '../../styles/responsive';
 
 import { printReceipt } from '../../utils/printReceipt';
 import UpdateTotalModal from './UpdateTotalModal';
 import PaymentSelectionModal from '../orders/PaymentSelectionModal';
 import { Badge, Card, Icon } from '../ui';
-import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -57,13 +57,14 @@ export function StatsHeader({
   stats: FacturaStats;
   periodLabel?: string;
 }) {
+  const { isMobile } = useBreakpoint();
   return (
     <View style={{ gap: 10, marginBottom: 16 }}>
       {/* Main stat */}
       <Card style={{ overflow: 'hidden', position: 'relative', borderColor: 'rgba(245,165,36,0.15)', backgroundColor: 'rgba(6,14,26,0.8)' }}>
          <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(245,165,36,0.04)' }} />
          <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.5)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>{periodLabel}</Text>
-         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 32 }}>
+         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: isMobile ? 22 : 32 }}>
             ${formatCurrency(stats.totalDia)}
          </Text>
          <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11, marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{stats.count} facturas generadas</Text>
@@ -146,7 +147,6 @@ export function FacturaCard({
   onDelete?: (facturaId: number) => Promise<boolean>;
   showPrint?: boolean;
 }) {
-  const { isMobile } = useBreakpoint();
   const [editing, setEditing] = React.useState(false);
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [updateLoading, setUpdateLoading] = React.useState(false);
@@ -194,142 +194,193 @@ export function FacturaCard({
     });
   };
 
+  const accentColor = isCancelado ? '#F43F5E' : isPagado ? '#10B981' : '#F5A524';
+  const bgTint = isCancelado
+    ? 'rgba(244,63,94,0.04)'
+    : isPagado
+    ? 'rgba(16,185,129,0.04)'
+    : 'rgba(245,165,36,0.04)';
+
+  const direccionDomicilio = item.domicilios?.[0]?.direccionEntrega;
+
   return (
-    <Card style={{ overflow: 'hidden', borderWidth: 0, backgroundColor: 'rgba(15,23,42,0.6)', padding: 0, marginBottom: 12 }}>
-       {/* Left accent border equivalent */}
-       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 8, backgroundColor: isCancelado ? '#F43F5E' : isPagado ? '#10B981' : '#F5A524' }} />
-       
-       <View style={{ paddingLeft: 20, padding: 12 }}>
-          {/* Header */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-             <View style={{ flex: 1, paddingTop: 4 }}>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', lineHeight: 22 }} numberOfLines={1}>
-                    {item.clienteNombre || 'Cliente S/N'}
-                </Text>
-                <Text style={{ fontFamily: 'Outfit', color: '#F8FAFC', fontSize: 10, marginTop: 2, textTransform: 'uppercase', opacity: 0.9 }}>
-                    {formatDate(item.fechaFactura)}
-                </Text>
-             </View>
-             <View style={{ alignItems: 'flex-end' }}>
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>
-                    ${formatCurrency(item.total ?? 0)}
-                </Text>
-                {item.metodo ? (
-                   <Badge label={item.metodo} variant="info" size="sm" />
-                ) : (
-                   <Badge label="Sin Definir" variant="neutral" size="sm" />
-                )}
-             </View>
-          </View>
+    <Card style={{ overflow: 'hidden', borderWidth: 0, padding: 0, marginBottom: 12, backgroundColor: `rgba(15,23,42,0.7)` }}>
+      {/* Fondo tintado según estado */}
+      <View style={{ position: 'absolute', inset: 0, backgroundColor: bgTint }} pointerEvents="none" />
 
-          {/* Badges row */}
+      <View style={{ padding: 14 }}>
+        {/* ── Header ── */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <View style={{ flex: 1, paddingRight: 12 }}>
+            <Text
+              style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', lineHeight: 21 }}
+              numberOfLines={1}
+            >
+              {item.clienteNombre || 'Cliente S/N'}
+            </Text>
+            <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, marginTop: 2 }}>
+              {formatDate(item.fechaFactura)}
+            </Text>
+          </View>
+          <View style={{ alignItems: 'flex-end', gap: 4 }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>
+              ${formatCurrency(item.total ?? 0)}
+            </Text>
+            {item.metodo ? (
+              <Badge label={item.metodo} variant="info" size="sm" />
+            ) : (
+              <Badge label="Sin método" variant="neutral" size="sm" />
+            )}
+          </View>
+        </View>
+
+        {/* ── Tags: domicilio + dirección ── */}
+        {(esDomicilio || direccionDomicilio) && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-             {esDomicilio && (
-                 <View className="bg-orange-500/10 border border-orange-500/20 px-2 py-1 rounded-md flex-row items-center gap-1">
-                    <Text className="text-orange-400 text-[10px] font-black uppercase tracking-tighter">🛵 Domicilio</Text>
-                    {costoDomicilio > 0 && <Text className="text-orange-400/60 text-[10px] font-bold">+${formatCurrency(costoDomicilio)}</Text>}
-                 </View>
-             )}
+            {esDomicilio && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                <Icon name="moped-outline" size={12} color="#FB923C" />
+                <Text style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }}>
+                  Domicilio{costoDomicilio > 0 ? `  +$${formatCurrency(costoDomicilio)}` : ''}
+                </Text>
+              </View>
+            )}
+            {direccionDomicilio && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Icon name="map-marker-outline" size={11} color="#475569" />
+                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }} numberOfLines={1}>
+                  {direccionDomicilio}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ── Notas ── */}
+        {item.descripcion && (
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginBottom: 8 }}>
+            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>Notas</Text>
+            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, fontStyle: 'italic' }}>'{item.descripcion}'</Text>
+          </View>
+        )}
+
+        {/* ── Productos ── */}
+        {item.ordenes && item.ordenes.length > 0 && (
+          <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8, marginBottom: 10 }}>
+            <Text style={{ fontFamily: 'Outfit', color: '#334155', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Productos</Text>
+            {item.ordenes.map((orden, oIdx) =>
+              orden.productos?.map((op, pIdx) => (
+                <View key={`${oIdx}-${pIdx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                  <View style={{ flex: 1, paddingRight: 12 }}>
+                    <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.8)', fontSize: 12 }} numberOfLines={1}>
+                      {op.productoNombre}
+                    </Text>
+                    <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>
+                      {op.cantidad}× ${formatCurrency(op.precioUnitario ?? 0)}
+                    </Text>
+                  </View>
+                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 12 }}>
+                    ${formatCurrency(op.subtotal ?? 0)}
+                  </Text>
+                </View>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* ── Footer de acciones ── */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
+          {/* Izquierda: print */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {showPrint && (
+              <TouchableOpacity
+                onPress={handlePrint}
+                style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(59,130,246,0.12)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)' }}
+              >
+                <Icon name="printer-outline" size={15} color="#60A5FA" />
+              </TouchableOpacity>
+            )}
+            {onDelete && item.facturaId && (
+              confirmDelete ? (
+                <TouchableOpacity
+                  onPress={async () => {
+                    setDeleting(true);
+                    await onDelete(item.facturaId!);
+                    setDeleting(false);
+                    setConfirmDelete(false);
+                  }}
+                  disabled={deleting}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: 'rgba(244,63,94,0.15)', borderWidth: 1, borderColor: 'rgba(244,63,94,0.3)' }}
+                >
+                  {deleting
+                    ? <ActivityIndicator size="small" color="#F43F5E" />
+                    : <>
+                        <Icon name="alert-outline" size={13} color="#F87171" />
+                        <Text style={{ fontFamily: 'Outfit', color: '#F87171', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' }}>Confirmar</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setConfirmDelete(true)}
+                  style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(244,63,94,0.08)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(244,63,94,0.15)' }}
+                >
+                  <Icon name="trash-can-outline" size={15} color="#F43F5E" />
+                </TouchableOpacity>
+              )
+            )}
           </View>
 
-          {/* Notas */}
-          {item.descripcion && (
-            <View style={{ backgroundColor: 'rgba(255,255,255,0.04)', padding: 10, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', marginBottom: 8 }}>
-                <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.35)', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>Notas</Text>
-                <Text style={{ fontFamily: 'Outfit', color: '#CBD5E1', fontSize: 11, fontStyle: 'italic' }}>'{item.descripcion}'</Text>
-            </View>
-          )}
-
-          {/* Products summary */}
-          {item.ordenes && item.ordenes.length > 0 && (
-             <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8, marginBottom: 8 }}>
-                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Productos</Text>
-                {item.ordenes.map((orden, oIdx) =>
-                    orden.productos?.map((op, pIdx) => (
-                      <View key={`${oIdx}-${pIdx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                         <View style={{ flex: 1, paddingRight: 12 }}>
-                             <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.75)', fontSize: 12 }} numberOfLines={1}>{op.productoNombre}</Text>
-                             <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase' }}>{op.cantidad} x ${formatCurrency(op.precioUnitario ?? 0)}</Text>
-                         </View>
-                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12 }}>${formatCurrency(op.subtotal ?? 0)}</Text>
-                      </View>
-                    ))
+          {/* Derecha: editar + cobrar/revertir */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {!isCancelado && (
+              <TouchableOpacity
+                onPress={() => setEditing(true)}
+                style={{ width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}
+              >
+                <Icon name="pencil-outline" size={15} color="#64748B" />
+              </TouchableOpacity>
+            )}
+            {!isCancelado && (
+              <TouchableOpacity
+                onPress={() => {
+                  if (isPagado) {
+                    item.facturaId && onToggleEstado(item.facturaId, 'pendiente');
+                  } else {
+                    setShowPaymentModal(true);
+                  }
+                }}
+                disabled={isUpdating}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6,
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
+                  backgroundColor: isPagado ? 'rgba(245,165,36,0.1)' : 'rgba(16,185,129,0.12)',
+                  borderWidth: 1,
+                  borderColor: isPagado ? 'rgba(245,165,36,0.2)' : 'rgba(16,185,129,0.25)',
+                }}
+              >
+                {isUpdating ? (
+                  <ActivityIndicator size="small" color={isPagado ? '#F5A524' : '#10B981'} />
+                ) : (
+                  <>
+                    <Icon
+                      name={isPagado ? 'undo-variant' : 'check-circle-outline'}
+                      size={14}
+                      color={isPagado ? '#F5A524' : '#10B981'}
+                    />
+                    <Text style={{ fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: isPagado ? '#F5A524' : '#10B981' }}>
+                      {isPagado ? 'Revertir' : 'Cobrar'}
+                    </Text>
+                  </>
                 )}
-             </View>
-          )}
-
-          {/* Actions Footer */}
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
-             <View className="flex-row items-center gap-2">
-                <Badge label={item.estado || 'pendiente'} variant={variant} size="md" />
-                {showPrint && !isMobile && (
-                    <TouchableOpacity onPress={handlePrint} className="w-9 h-9 items-center justify-center bg-blue-500/20 rounded-xl border border-blue-500/30">
-                        <Icon name="printer" size={16} color="#3B82F6" />
-                    </TouchableOpacity>
-                )}
-             </View>
-
-              <View className="flex-row items-center gap-2">
-                {onDelete && item.facturaId && (
-                  confirmDelete ? (
-                    <TouchableOpacity
-                      onPress={async () => {
-                        setDeleting(true);
-                        await onDelete(item.facturaId!);
-                        setDeleting(false);
-                        setConfirmDelete(false);
-                      }}
-                      disabled={deleting}
-                      className="px-3 py-2 rounded-xl bg-red-500/20 border border-red-500/40 flex-row items-center gap-1"
-                    >
-                      {deleting
-                        ? <ActivityIndicator size="small" color="#F43F5E" />
-                        : <Text className="font-black text-[11px] uppercase tracking-tight text-red-400">¿Eliminar?</Text>
-                      }
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => setConfirmDelete(true)}
-                      className="w-9 h-9 items-center justify-center bg-red-500/10 rounded-xl border border-red-500/20"
-                    >
-                      <Icon name="trash-can-outline" size={16} color="#F43F5E" />
-                    </TouchableOpacity>
-                  )
-                )}
-
-                {!isCancelado && (
-                     <TouchableOpacity
-                        onPress={() => {
-                          if (isPagado) {
-                            item.facturaId && onToggleEstado(item.facturaId, 'pendiente');
-                          } else {
-                            setShowPaymentModal(true);
-                          }
-                        }}
-                        disabled={isUpdating}
-                        className={`px-4 py-2 rounded-xl border ${isPagado ? 'bg-orange-500/10 border-orange-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}
-                    >
-                        {isUpdating ? (
-                            <ActivityIndicator size="small" color={isPagado ? '#F5A524' : '#10B981'} />
-                        ) : (
-                            <Text className={`font-black text-[11px] uppercase tracking-tighter ${isPagado ? 'text-orange-400' : 'text-emerald-400'}`}>
-                                {isPagado ? 'Revertir' : 'Cobrar'}
-                            </Text>
-                        )}
-                    </TouchableOpacity>
-                )}
-                
-                {!isCancelado && (
-                    <TouchableOpacity
-                        onPress={() => setEditing(true)}
-                        className="w-9 h-9 items-center justify-center bg-white/5 rounded-xl border border-white/10"
-                    >
-                        <Icon name="pencil" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                )}
-             </View>
+              </TouchableOpacity>
+            )}
           </View>
-       </View>
+        </View>
+      </View>
+
+      {/* ── Barra de estado en la base ── */}
+      <View style={{ height: 4, backgroundColor: accentColor, opacity: isCancelado ? 0.6 : 0.85 }} />
 
       <UpdateTotalModal
         visible={editing}

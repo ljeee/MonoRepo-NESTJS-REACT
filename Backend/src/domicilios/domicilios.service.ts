@@ -40,6 +40,24 @@ export class DomiciliosService {
 			.getMany();
 	}
 
+	findSinAsignarHoy() {
+		const start = new Date();
+		start.setHours(0, 0, 0, 0);
+		const end = new Date();
+		end.setHours(23, 59, 59, 999);
+		return this.repo.createQueryBuilder('d')
+			.leftJoinAndSelect('d.factura', 'factura')
+			.leftJoinAndSelect('d.orden', 'orden')
+			.leftJoinAndSelect('orden.productos', 'productos')
+			.leftJoinAndSelect('d.cliente', 'cliente')
+			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
+			.where('(d.telefonoDomiciliarioAsignado IS NULL OR d.telefonoDomiciliarioAsignado = :empty)', { empty: '' })
+			.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end })
+			.andWhere('d.estadoDomicilio NOT IN (:...excluir)', { excluir: ['cancelado', 'entregado'] })
+			.orderBy('d.fechaCreado', 'ASC')
+			.getMany();
+	}
+
 	findPendingByDay() {
 		const start = new Date();
 		start.setHours(0, 0, 0, 0);

@@ -123,7 +123,7 @@ export default function PizzaPersonalizadaModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View className="flex-1 bg-black/60 justify-center items-center p-5">
+      <View className="flex-1 bg-black/85 justify-center items-center p-5">
         <View className="bg-(--color-pos-surface) w-full max-w-lg rounded-3xl p-6 border border-white/5 shadow-2xl">
           {/* Header */}
           <Text className="text-white font-black text-2xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>🍕 Pizza {variante?.nombre}</Text>

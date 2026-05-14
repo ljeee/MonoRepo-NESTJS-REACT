@@ -106,6 +106,7 @@ export default function DashboardPage() {
         pendientes: number;
         sinPagar: number;
         completadas: number;
+        sinAsignar: number;
     }>({
         loading: true,
         resumen: null,
@@ -114,8 +115,9 @@ export default function DashboardPage() {
         pendientes: 0,
         sinPagar: 0,
         completadas: 0,
+        sinAsignar: 0,
     });
-    const { loading, resumen, ventasHora, ordenes, pendientes, sinPagar, completadas } = dashboard;
+    const { loading, resumen, ventasHora, ordenes, pendientes, sinPagar, completadas, sinAsignar } = dashboard;
 
     useEffect(() => {
         const tick = () => {
@@ -129,11 +131,12 @@ export default function DashboardPage() {
         setDashboard((prev) => ({ ...prev, loading: true }));
         const hoy = todayStr();
         try {
-            const [r, vh, ords, facts] = await Promise.allSettled([
+            const [r, vh, ords, facts, domSinAsignar] = await Promise.allSettled([
                 api.estadisticas.resumenPeriodo(hoy, hoy),
                 api.estadisticas.ventasPorHora(hoy),
                 api.ordenes.getDay(),
                 api.facturas.getDay(),
+                api.domicilios.getSinAsignar(),
             ]);
 
             const ordData = ords.status === 'fulfilled' ? ords.value : [];
@@ -151,6 +154,7 @@ export default function DashboardPage() {
                 pendientes: ordData.filter(o => o.estadoOrden === 'pendiente').length,
                 completadas: ordData.filter(o => isCompletedEstado(o.estadoOrden)).length,
                 sinPagar: factsData.filter(f => f.estado === 'pendiente').length,
+                sinAsignar: domSinAsignar.status === 'fulfilled' ? domSinAsignar.value.length : 0,
             });
         } catch (err) {
             console.error('Dashboard fetch error', err);
@@ -241,7 +245,7 @@ export default function DashboardPage() {
                         <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest">Pendientes</Text>
                     </View>
                 </Card>
-                
+
                 <Card className="flex-1 min-w-[140px] p-4 flex-row items-center gap-4 bg-white/5 border-white/10">
                     <View className={`w-2 h-10 rounded-full ${sinPagar > 0 ? 'bg-(--color-pos-primary)' : 'bg-emerald-500'}`} />
                     <View>
@@ -257,6 +261,20 @@ export default function DashboardPage() {
                         <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest">Entregadas</Text>
                     </View>
                 </Card>
+
+                <TouchableOpacity
+                    className="flex-1 min-w-[140px]"
+                    onPress={() => router.push('/asignar-domiciliarios' as any)}
+                >
+                    <Card className={`p-4 flex-row items-center gap-4 h-full ${sinAsignar > 0 ? 'bg-amber-500/10 border-amber-500/20' : 'bg-white/5 border-white/10'}`}>
+                        <View className={`w-2 h-10 rounded-full ${sinAsignar > 0 ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                        <View className="flex-1">
+                            <Text className={`font-black text-2xl tracking-tighter ${sinAsignar > 0 ? 'text-amber-400' : 'text-white'}`} style={{ fontFamily: 'Space Grotesk' }}>{sinAsignar}</Text>
+                            <Text className="text-slate-500 font-black text-[9px] uppercase tracking-widest">Sin Asignar</Text>
+                        </View>
+                        {sinAsignar > 0 && <UIIcon name="chevron-right" size={14} color="#F59E0B" />}
+                    </Card>
+                </TouchableOpacity>
             </View>
 
             {loading && !resumen && <ActivityIndicator size="large" color="#F5A524" className="py-20" />}

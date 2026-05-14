@@ -290,6 +290,9 @@ export function createApi(http: AxiosInstance) {
     getAllDay: () =>
       http.get<any[]>('/domicilios/dia').then((r) => arr<any>(r.data)),
 
+    getSinAsignar: () =>
+      http.get<any[]>('/domicilios/sin-asignar').then((r) => arr<any>(r.data)),
+
     update: (id: number, data: any) =>
       http.patch<any>(`/domicilios/${id}`, data).then((r) => r.data),
   };

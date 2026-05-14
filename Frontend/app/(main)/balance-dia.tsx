@@ -26,6 +26,7 @@ import {
 function BalanceCard({ ingresos, gastos }: { ingresos: number; gastos: number }) {
     const neto = ingresos - gastos;
     const isPositive = neto >= 0;
+    const { isMobile } = useBreakpoint();
 
     return (
         <Card className="mb-8 overflow-hidden relative border-0 p-0 bg-transparent rounded-[32px] shadow-2xl shadow-black/40">
@@ -73,7 +74,7 @@ function BalanceCard({ ingresos, gastos }: { ingresos: number; gastos: number })
                     <View className="flex-row justify-between items-end">
                          <View className="gap-1">
                             <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Efectivo Neto</Text>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 32, color: isPositive ? '#F5A524' : '#EF4444', letterSpacing: -1 }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: isMobile ? 22 : 32, color: isPositive ? '#F5A524' : '#EF4444', letterSpacing: -1 }} numberOfLines={1} adjustsFontSizeToFit>
                                  ${formatCurrency(Math.abs(neto))}
                             </Text>
                         </View>
@@ -250,7 +251,7 @@ export default function BalanceDiaScreen() {
 
                 {/* Buscador y Filtro */}
                 <View className="flex-row items-center gap-2 flex-1 max-w-md">
-                    <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 min-w-[200px] border border-white/10">
+                    <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 border border-white/10">
                         <Icon name="magnify" size={20} color="#94A3B8" />
                         <TextInput
                             className="text-white ml-3 flex-1 h-8 outline-none font-bold text-sm"
