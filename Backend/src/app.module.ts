@@ -1,6 +1,7 @@
 import {Module} from '@nestjs/common';
 import {TypeOrmModule} from '@nestjs/typeorm';
 import {ConfigModule, ConfigService} from '@nestjs/config';
+import {APP_GUARD} from '@nestjs/core';
 import {FacturasVentasModule} from './facturas-ventas/facturas-ventas.module';
 import {OrdenesModule} from './ordenes/ordenes.module';
 import {DomiciliosModule} from './domicilios/domicilios.module';
@@ -12,7 +13,7 @@ import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 import {AuthModule} from './auth/auth.module';
 import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
 import { EstadisticasModule } from './estadisticas/estadisticas.module';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { BullModule } from '@nestjs/bullmq';
 import { RedisModule } from './common/redis/redis.module';
 import { CierresModule } from './cierres/cierres.module';
@@ -95,6 +96,12 @@ import * as Joi from 'joi';
 		InventarioCajasModule,
 	],
 	controllers: [],
-	providers: [SocketGateway],
+	providers: [
+		SocketGateway,
+		{
+			provide: APP_GUARD,
+			useClass: ThrottlerGuard,
+		},
+	],
 })
 export class AppModule {}

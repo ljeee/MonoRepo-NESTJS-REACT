@@ -2,11 +2,12 @@ import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput } from '../../tw';
-import { ActivityIndicator, Modal, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Modal, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { api } from '../../services/api';
 import { formatCurrency, formatDate } from '@monorepo/shared';
 import { getEstadoColor } from '../../constants/estados';
 import { useToast } from '@monorepo/shared';
+import { useBreakpoint } from '../../styles/responsive';
 import type { IconName } from '../../components/ui';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
 import {
@@ -97,6 +98,9 @@ export default function OrdenDetalleScreen() {
   const params = useLocalSearchParams();
   const ordenId = params.ordenId || params.id; // Support both naming conventions
   const { showToast } = useToast();
+  const { isMobile } = useBreakpoint();
+  const { width: screenWidth } = useWindowDimensions();
+  const modalMaxWidth = Math.min(screenWidth - 32, 420);
 
   const [viewState, setViewState] = useState<{ orden: OrdenDetalle | null; loading: boolean; error: string | null }>({
     orden: null,
@@ -373,7 +377,7 @@ export default function OrdenDetalleScreen() {
           {/* ── Info Cards Split ── */}
           <View className="flex-row gap-4 mb-4 flex-wrap">
               {/* Client Info */}
-              <Card className="flex-1 min-w-[300px] p-6 border border-white/5 bg-white/5">
+              <Card className={`flex-1 p-6 border border-white/5 bg-white/5 ${isMobile ? 'w-full' : 'min-w-[300px]'}`}>
                   <View className="flex-row items-center gap-3 mb-6">
                       <View className="w-10 h-10 rounded-xl bg-(--color-pos-primary-light) items-center justify-center border border-(--color-pos-primary)/20">
                           <Icon name="account-outline" size={22} color="#F5A524" />
@@ -394,7 +398,7 @@ export default function OrdenDetalleScreen() {
               </Card>
 
               {/* Order Info */}
-              <Card className="flex-1 min-w-[300px] p-6 border border-white/5 bg-white/5">
+              <Card className={`flex-1 p-6 border border-white/5 bg-white/5 ${isMobile ? 'w-full' : 'min-w-[300px]'}`}>
                   <View className="flex-row items-center gap-3 mb-6">
                       <View className="w-10 h-10 rounded-xl bg-(--color-pos-secondary-light) items-center justify-center border border-(--color-pos-secondary)/20">
                           <Icon name="clock-outline" size={22} color="#8B5CF6" />
@@ -438,8 +442,8 @@ export default function OrdenDetalleScreen() {
                               marginBottom: 10, backgroundColor: 'rgba(255,255,255,0.04)',
                               padding: 12, borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
                           }}>
-                              <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.04)', alignItems: 'center', justifyContent: 'center', marginRight: 12 }}>
-                                  <Text style={{ fontSize: 18 }}>🍕</Text>
+                              <View style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.08)', alignItems: 'center', justifyContent: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(245,165,36,0.15)' }}>
+                                  <Icon name="pizza" size={18} color="#F5A524" />
                               </View>
                               
                               <View className="flex-1">
@@ -541,7 +545,7 @@ export default function OrdenDetalleScreen() {
             onPress={() => setShowDomModal(false)}
             style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 20 }}
           >
-            <TouchableOpacity activeOpacity={1} style={{ width: '100%', maxWidth: 420 }}>
+            <TouchableOpacity activeOpacity={1} style={{ width: '100%', maxWidth: modalMaxWidth }}>
               <View style={{ backgroundColor: '#0F172A', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
                 {/* Header */}
                 <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)', flexDirection: 'row', alignItems: 'center', gap: 12 }}>

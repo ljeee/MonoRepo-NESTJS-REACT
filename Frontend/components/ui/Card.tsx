@@ -2,6 +2,7 @@ import React, { ReactNode, useEffect } from 'react';
 import { useSharedValue, useAnimatedStyle, withSpring, withDelay, withTiming } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
 import { View, Pressable } from '../../tw';
+import { springs, timings } from '../../styles/tokens';
 
 interface CardProps {
     children?: ReactNode;
@@ -27,18 +28,18 @@ export default function Card({
     const translateY = useSharedValue(10);
 
     useEffect(() => {
-        opacity.value = withDelay(delay, withTiming(1, { duration: 400 }));
-        translateY.value = withDelay(delay, withSpring(0, { damping: 15, stiffness: 100 }));
+        opacity.value = withDelay(delay, withTiming(1, { duration: timings.slow }));
+        translateY.value = withDelay(delay, withSpring(0, springs.slow));
     }, [delay]);
 
     const handlePressIn = () => {
         if (!onPress) return;
-        scale.value = withSpring(0.98, { damping: 12, stiffness: 200 });
+        scale.value = withSpring(0.98, springs.fast);
     };
 
     const handlePressOut = () => {
         if (!onPress) return;
-        scale.value = withSpring(1, { damping: 12, stiffness: 200 });
+        scale.value = withSpring(1, springs.fast);
     };
 
     const animatedStyle = useAnimatedStyle(() => {

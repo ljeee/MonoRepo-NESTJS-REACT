@@ -40,7 +40,7 @@ export default function ConfirmModal({
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
             <Pressable className="flex-1 bg-black/85 justify-center items-center p-5" onPress={onCancel}>
-                <Pressable className="bg-(--color-pos-surface) rounded-3xl p-8 w-full max-w-sm items-center border border-white/5 shadow-2xl" onPress={(e) => e.stopPropagation()}>
+                <Pressable className="bg-(--color-pos-surface) rounded-3xl p-5 md:p-8 w-full max-w-sm items-center border border-white/5 shadow-2xl" onPress={(e) => e.stopPropagation()}>
                     {/* Icon */}
                     {icon && (
                         <View className="w-16 h-16 rounded-full items-center justify-center mb-6" style={{ backgroundColor: variantColor + '20' }}>

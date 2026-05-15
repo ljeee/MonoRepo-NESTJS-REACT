@@ -1,0 +1,86 @@
+{
+  "name": "WhatsApp Satisfaction Survey",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "satisfaction-survey",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Satisfaction Survey Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (!items.length) return [];\nconst body = items[0].json.body || items[0].json;\n\n// Generate a random variant (1, 2, or 3) for the survey message\nconst variant = Math.floor(Math.random() * 3) + 1;\n\n// Construct the template message\nlet templateName = 'encuesta_satis_1';\nif (variant === 2) templateName = 'encuesta_satis_2';\nif (variant === 3) templateName = 'encuesta_satis_3';\n\nconst payload = {\n  messaging_product: \"whatsapp\",\n  to: body.telefono,\n  type: \"template\",\n  template: {\n    name: templateName,\n    language: {\n      code: \"es\"\n    },\n    components: [\n      {\n        type: \"body\",\n        parameters: [\n          { type: \"text\", text: body.clienteNombre || \"Cliente\" }\n        ]\n      }\n    ]\n  }\n};\n\nreturn [{ json: { payload, originalBody: body, variant } }];"
+      },
+      "name": "Select Variant & Build Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v16.0/1118129041383772/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer EAAlXKUCtZCLEBRcVZBEW4vvlUMHtWTowvR59ShbtzKFBL2KVMI0C4efVJHPciJeryWKoZBd3yLmYTvHjXZBv90yQtiySBOdACfreFxhfi1rf68nNLiW7GuA0H0nKLqTRbgbELKapylsJcVZBUrbJ7ZBuZA8feVCITHIlEfHOjZCDCv6P2qh29LN6dOZCg6u5awTNGNcDEgMO0zxRqQPWCsB5BAlkMUosNuajJcOSGMgqtErLVhGXeTRRkyK01PG61wRRBpZAf5lAjMbpRAph7WMj3j"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.payload }}",
+        "options": {}
+      },
+      "name": "Send WhatsApp Template",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        650,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Satisfaction Survey Webhook": {
+      "main": [
+        [
+          {
+            "node": "Select Variant & Build Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Variant & Build Template": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "timezone": "America/Bogota"
+  }
+}

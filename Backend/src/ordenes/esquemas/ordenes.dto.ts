@@ -48,6 +48,11 @@ export class CreateOrdenesDto {
 	@IsNumber()
 	costoDomicilio?: number;
 
+	@ApiProperty({example: 'efectivo', required: false, description: 'Método de pago preferido (efectivo, transferencia, tarjeta)'})
+	@IsOptional()
+	@IsString()
+	metodo?: string;
+
 	@ApiProperty({example: 'Cliente pidió sin cebolla', required: false, description: 'Observaciones o notas adicionales de la orden'})
 	@IsOptional()
 	@IsString()

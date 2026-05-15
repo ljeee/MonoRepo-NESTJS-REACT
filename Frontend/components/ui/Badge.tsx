@@ -3,6 +3,7 @@ import { View, Text } from '../../tw';
 import Icon, { IconName } from './Icon';
 import { useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
+import { springs, timings } from '../../styles/tokens';
 
 type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'primary' | 'secondary';
 
@@ -21,8 +22,8 @@ export default function Badge({ label, variant = 'neutral', icon, size = 'sm', c
     const scale = useSharedValue(0.8);
 
     React.useEffect(() => {
-        opacity.value = withDelay(delay, withTiming(1, { duration: 300 }));
-        scale.value = withDelay(delay, withSpring(1, { damping: 15, stiffness: 150 }));
+        opacity.value = withDelay(delay, withTiming(1, { duration: timings.medium }));
+        scale.value = withDelay(delay, withSpring(1, springs.medium));
     }, [delay]);
 
     const animatedStyle = useAnimatedStyle(() => ({
@@ -31,30 +32,27 @@ export default function Badge({ label, variant = 'neutral', icon, size = 'sm', c
     }));
 
     const variantClasses = {
-        success: 'bg-green-500/10 border-green-500/20 text-green-500',
-        warning: 'bg-amber-500/10 border-amber-500/20 text-amber-500',
-        danger: 'bg-red-500/10 border-red-500/20 text-red-500',
-        info: 'bg-blue-500/10 border-blue-500/20 text-blue-500',
+        success: 'bg-green-500/10 border-green-500/20 text-green-400',
+        warning: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
+        danger: 'bg-red-500/10 border-red-500/20 text-red-400',
+        info: 'bg-blue-500/10 border-blue-500/20 text-blue-400',
         primary: 'bg-(--color-pos-primary)/10 border-(--color-pos-primary)/20 text-(--color-pos-primary)',
-        secondary: 'bg-purple-500/10 border-purple-500/20 text-purple-500',
-        neutral: 'bg-white/5 border-white/10 text-slate-400',
+        secondary: 'bg-white/5 border-white/20 text-slate-300',
+        neutral: 'bg-white/5 border-white/20 text-slate-300',
     };
 
     const sizeClasses = size === 'sm' ? 'px-2 py-0.5' : 'px-3 py-1';
     const textClasses = size === 'sm' ? 'text-[10px]' : 'text-xs';
 
     const vClass = variantClasses[variant];
-    const textHexColor = vClass.split(' ').pop(); // This is a bit hacky but works for the Icon color if we use standard hex, but better pass a specific color.
-    
-    // Better map for icon color
     const iconColorMap = {
-        success: '#22C55E',
-        warning: '#F59E0B',
-        danger: '#EF4444',
-        info: '#3B82F6',
+        success: '#4ADE80',
+        warning: '#FCD34D',
+        danger: '#F87171',
+        info: '#60A5FA',
         primary: '#F5A524',
-        secondary: '#A855F7',
-        neutral: '#64748B',
+        secondary: '#94A3B8',
+        neutral: '#94A3B8',
     };
 
     return (

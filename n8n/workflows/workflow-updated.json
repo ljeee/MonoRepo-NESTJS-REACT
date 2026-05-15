@@ -1,0 +1,1062 @@
+[
+  {
+    "updatedAt": "2026-05-07T22:32:48.254Z",
+    "createdAt": "2026-05-07T03:25:56.128Z",
+    "id": "NUK9LUEDMKvOwwAE",
+    "name": "My workflow",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "whatsapp/webhook",
+          "options": {}
+        },
+        "name": "WhatsApp Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          432,
+          16
+        ],
+        "webhookId": "whatsapp_inbound",
+        "id": "398798ea-08d0-4ef4-a30a-d924f2dfb04b"
+      },
+      {
+        "parameters": {
+          "functionCode": "const phone = $json.entry[0].changes[0].value.messages[0].from;\nconst message = $json.entry[0].changes[0].value.messages[0];\nlet session = await $node[\"Redis Get Session\"].run({\n  key: `wa_session:${phone}`\n});\nif (!session) {\n  session = { step: 1, cart: [], createdAt: new Date().toISOString() };\n}\nreturn { phone, message, session };"
+        },
+        "name": "Parse Incoming Message",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [
+          688,
+          16
+        ],
+        "id": "ce10257f-733e-4747-8fe4-272b34025435"
+      },
+      {
+        "parameters": {
+          "functionCode": "let { step, cart } = $json.session;\nconst incoming = $json.message;\nlet response;\n\n// GREETING\nif (step === 1) {\n  response = {\n    type: 'interactive',\n    interactive: {\n      type: 'button',\n      body: { text: '🍕 ¡Bienvenido a D\\'Firu Pizza! ¿Qué deseas ordenar hoy?' },\n      action: {\n        buttons: [\n          { type: 'reply', reply: { id: 'menu', title: 'Ver Menú' } },\n          { type: 'reply', reply: { id: 'orders', title: 'Mis Pedidos' } },\n          { type: 'reply', reply: { id: 'address', title: 'Cambiar Dirección' } }\n        ]\n      }\n    }\n  };\n  step = 2;\n}\n\n// MENU CATEGORIES\nelse if (step === 2 && (incoming.type === 'interactive' && incoming.interactive.button_reply.id === 'menu')) {\n  response = {\n    type: 'interactive',\n    interactive: {\n      type: 'list',\n      header: { type: 'text', text: 'Nuestra Carta' },\n      body: { text: 'Selecciona una categoría para ver los productos.' },\n      action: {\n        button: 'Ver Categorías',\n        sections: [\n          {\n            title: 'Principales',\n            rows: [\n              { id: 'cat_pizza', title: 'Pizzas', description: 'Tradicionales y Especiales' },\n              { id: 'cat_hamb', title: 'Hamburguesas', description: 'Res, Picosita, Doble' },\n              { id: 'cat_chuzo', title: 'Chuzos', description: 'Mixtos, Pollo/Tocineta' },\n              { id: 'cat_calzone', title: 'Calzones', description: 'Pizza cerrada' }\n            ]\n          },\n          {\n            title: 'Otros',\n            rows: [\n              { id: 'cat_pburg', title: 'Pizza Burguer', description: 'Original, D\\'Firu, Paisa' },\n              { id: 'cat_bebi', title: 'Bebidas', description: 'Jugos y Gaseosas' }\n            ]\n          }\n        ]\n      }\n    }\n  };\n  step = 3;\n}\n\n// SHOW PRODUCTS (Example for Pizza)\nelse if (step === 3 && (incoming.type === 'interactive' && incoming.interactive.list_reply.id === 'cat_pizza')) {\n  response = {\n    type: 'interactive',\n    interactive: {\n      type: 'list',\n      body: { text: 'Selecciona el tamaño de tu Pizza' },\n      action: {\n        button: 'Ver Tamaños',\n        sections: [\n          {\n            title: 'Tamaños',\n            rows: [\n              { id: 'prod_piz_peq', title: 'Pequeña', description: '$16.000' },\n              { id: 'prod_piz_med', title: 'Mediana', description: '$30.000' },\n              { id: 'prod_piz_gde', title: 'Grande', description: '$43.000' }\n            ]\n          }\n        ]\n      }\n    }\n  };\n  step = 4;\n}\n\nelse {\n  response = { type: 'text', text: { body: 'Lo siento, no entiendo la opción seleccionada. Por favor usa los botones del menú.' } };\n}\n\nreturn { phone: $json.phone, response, step, cart };"
+        },
+        "name": "Build Response",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [
+          944,
+          16
+        ],
+        "id": "ddccf49f-0018-4bb9-b924-999c0dc3e7aa"
+      },
+      {
+        "parameters": {
+          "requestMethod": "POST",
+          "url": "https://graph.facebook.com/v25.0/1118129041383772/messages",
+          "jsonParameters": true,
+          "options": {}
+        },
+        "name": "Send WhatsApp Message",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [
+          1184,
+          16
+        ],
+        "id": "030e4e2a-ea9d-4b20-8357-bd15e30ad9f8"
+      },
+      {
+        "parameters": {},
+        "name": "Redis Set Session",
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "position": [
+          1440,
+          16
+        ],
+        "id": "219ec220-23c8-4320-9606-904b4abaf815",
+        "credentials": {
+          "redis": {
+            "id": "hdN3B1mFgIl1BiZA",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {},
+        "name": "Daily Cron Trigger",
+        "type": "n8n-nodes-base.cron",
+        "typeVersion": 1,
+        "position": [
+          176,
+          144
+        ],
+        "id": "c91fef5a-bf25-49d8-a04c-85471ed96a55"
+      },
+      {
+        "parameters": {
+          "url": "{{ $process.env.API_BASE_URL }}/estadisticas/resumen-diario?fecha={{ $json.date }}",
+          "jsonParameters": true,
+          "options": {}
+        },
+        "name": "Fetch Daily Summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [
+          432,
+          144
+        ],
+        "id": "06591fa7-b713-44fa-b814-e2b90c7b511f"
+      },
+      {
+        "parameters": {
+          "functionCode": "const data = $json;\nreturn {\n  body: `📊 *Resumen del Día - ${data.fecha}*\n\n💰 Total ventas: ${data.totalVentas}\n✅ Pagadas: ${data.pagadas} (${data.cantPagadas} facturas)\n⏳ Pendientes: ${data.pendientes} (${data.cantPendientes} facturas)\n🛵 Domicilios: ${data.domicilios}\n🏃 Para llevar: ${data.paraLlevar}\n🪑 Mesa: ${data.mesas}\n💸 Gastos operativos: ${data.gastos}\n📦 Neto del día: ${data.neto}\n\n🍕 Top producto: ${data.topProducto}`\n};"
+        },
+        "name": "Build WhatsApp Text",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [
+          672,
+          144
+        ],
+        "id": "b91e3eca-e011-4f53-90b6-3a224bffe48e"
+      },
+      {
+        "parameters": {
+          "requestMethod": "POST",
+          "url": "https://graph.facebook.com/v25.0/1118129041383772/messages",
+          "jsonParameters": true,
+          "options": {}
+        },
+        "name": "Send Summary to Admin",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 1,
+        "position": [
+          928,
+          144
+        ],
+        "id": "9c645eac-a476-4cb8-947e-60a408631505"
+      }
+    ],
+    "connections": {
+      "WhatsApp Webhook": {
+        "main": [
+          [
+            {
+              "node": "Parse Incoming Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Incoming Message": {
+        "main": [
+          [
+            {
+              "node": "Build Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Response": {
+        "main": [
+          [
+            {
+              "node": "Send WhatsApp Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WhatsApp Message": {
+        "main": [
+          [
+            {
+              "node": "Redis Set Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Daily Cron Trigger": {
+        "main": [
+          [
+            {
+              "node": "Fetch Daily Summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Daily Summary": {
+        "main": [
+          [
+            {
+              "node": "Build WhatsApp Text",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build WhatsApp Text": {
+        "main": [
+          [
+            {
+              "node": "Send Summary to Admin",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "pinData": {},
+    "versionId": "9112a0ac-41ad-4778-833f-b0885fb2f425",
+    "activeVersionId": null,
+    "versionCounter": 22,
+    "triggerCount": 2,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-05-07T03:25:56.131Z",
+        "createdAt": "2026-05-07T03:25:56.131Z",
+        "role": "workflow:owner",
+        "workflowId": "NUK9LUEDMKvOwwAE",
+        "projectId": "V2R8iEarQww1WAiZ",
+        "project": {
+          "updatedAt": "2026-05-15T06:16:22.161Z",
+          "createdAt": "2026-05-07T03:21:50.614Z",
+          "id": "V2R8iEarQww1WAiZ",
+          "name": "Jefer Escudero <ljeferr@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "170e1663-8403-4aae-9b28-33edc7654971"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Version 9112a0ac",
+      "description": ""
+    }
+  },
+  {
+    "updatedAt": "2026-05-07T23:15:53.700Z",
+    "createdAt": "2026-05-07T23:15:53.700Z",
+    "id": "wa_verify_001",
+    "name": "WhatsApp Verification",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "whatsapp/webhook",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "name": "Verify Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "webhookId": "whatsapp_verify",
+        "id": "a24c34e3-f20b-4e54-afed-320e5502712f"
+      },
+      {
+        "parameters": {
+          "functionCode": "const q = items[0].json.query || items[0].json;\nconst challenge = q['hub.challenge'];\nreturn [{ json: { challenge: String(challenge) } }];"
+        },
+        "name": "Extract Challenge",
+        "type": "n8n-nodes-base.function",
+        "typeVersion": 1,
+        "position": [
+          500,
+          300
+        ],
+        "id": "f674d730-954d-42c4-bd31-4ba6acde031d"
+      },
+      {
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "={{ $json.challenge }}",
+          "options": {}
+        },
+        "name": "Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          750,
+          300
+        ],
+        "id": "c1f4b431-c4e6-44e9-8ec5-7a0b09255143"
+      }
+    ],
+    "connections": {
+      "Verify Webhook": {
+        "main": [
+          [
+            {
+              "node": "Extract Challenge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Challenge": {
+        "main": [
+          [
+            {
+              "node": "Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": null,
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "479f5b3b-073b-4bac-8f92-c10936686cff",
+    "activeVersionId": null,
+    "versionCounter": 12,
+    "triggerCount": 1,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-05-07T23:15:53.704Z",
+        "createdAt": "2026-05-07T23:15:53.704Z",
+        "role": "workflow:owner",
+        "workflowId": "wa_verify_001",
+        "projectId": "V2R8iEarQww1WAiZ",
+        "project": {
+          "updatedAt": "2026-05-15T06:16:22.161Z",
+          "createdAt": "2026-05-07T03:21:50.614Z",
+          "id": "V2R8iEarQww1WAiZ",
+          "name": "Jefer Escudero <ljeferr@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "170e1663-8403-4aae-9b28-33edc7654971"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Version 479f5b3b",
+      "description": ""
+    }
+  },
+  {
+    "updatedAt": "2026-05-15T06:26:14.011Z",
+    "createdAt": "2026-05-07T23:24:52.272Z",
+    "id": "whatsapp_order_flow",
+    "name": "Whatsapp Order Flow",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "whatsapp/webhook",
+          "options": {}
+        },
+        "name": "WhatsApp Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          256,
+          304
+        ],
+        "webhookId": "whatsapp_inbound",
+        "id": "9aac04ad-4d3f-4e88-af1f-9584ae8c569a"
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nif (!items.length) return [];\nconst body = items[0].json.body || items[0].json;\n\nconst entry = body.entry;\nif (!entry || !entry[0] || !entry[0].changes || !entry[0].changes[0]) {\n  return [];\n}\n\nconst value = entry[0].changes[0].value;\nif (!value.messages || !value.messages[0]) {\n  return [];\n}\n\nconst phone = value.messages[0].from;\nconst message = value.messages[0];\n\nreturn [{ json: { phone, message } }];\n"
+        },
+        "name": "Parse Incoming Message",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [
+          512,
+          304
+        ],
+        "id": "66bd43b5-3051-4e00-8c7f-c91cec0b0d88"
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "key": "={{ $json.phone }}",
+          "options": {}
+        },
+        "name": "Redis Get Session",
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "position": [
+          752,
+          304
+        ],
+        "id": "cc509e1a-85e2-46ba-8e7c-645d6f103dc0",
+        "credentials": {
+          "redis": {
+            "id": "hdN3B1mFgIl1BiZA",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "const items = $input.all();\nif (!items.length) return [];\nconst data = items[0].json;\n\n// Parse session from Redis (stored as JSON string) or create new\nlet session;\ntry {\n  session = data.value ? JSON.parse(data.value) : { step: 1, cart: [], createdAt: new Date().toISOString() };\n} catch(e) {\n  session = { step: 1, cart: [], createdAt: new Date().toISOString() };\n}\n\nconst parseData = $('Parse Incoming Message').first().json;\nconst phone = parseData.phone;\nconst message = parseData.message;\nconst incoming = message;\nlet { step, cart } = session;\nlet response;\n\n// GREETING (step 1 or unrecognized)\nif (step === 1 || !step) {\n  response = {\n    type: 'interactive',\n    interactive: {\n      type: 'button',\n      body: { text: '🍕 ¡Bienvenido a D\\'Firu Pizza! ¿Qué deseas ordenar hoy?' },\n      action: {\n        buttons: [\n          { type: 'reply', reply: { id: 'menu', title: 'Ver Menú' } },\n          { type: 'reply', reply: { id: 'orders', title: 'Mis Pedidos' } },\n          { type: 'reply', reply: { id: 'address', title: 'Cambiar Dirección' } }\n        ]\n      }\n    }\n  };\n  step = 2;\n}\n\n// WAITING FOR MAIN MENU SELECTION\nelse if (step === 2) {\n  const buttonId = incoming.interactive?.button_reply?.id;\n  if (buttonId === 'menu') {\n    response = {\n      type: 'interactive',\n      interactive: {\n        type: 'list',\n        header: { type: 'text', text: 'Nuestra Carta' },\n        body: { text: 'Selecciona una categoría para ver los productos.' },\n        action: {\n          button: 'Ver Categorías',\n          sections: [\n            {\n              title: 'Principales',\n              rows: [\n                { id: 'cat_pizza', title: 'Pizzas', description: 'Tradicionales y Especiales' },\n                { id: 'cat_hamb', title: 'Hamburguesas', description: 'Res, Picosita, Doble' },\n                { id: 'cat_chuzo', title: 'Chuzos', description: 'Mixtos, Pollo/Tocineta' },\n                { id: 'cat_calzone', title: 'Calzones', description: 'Pizza cerrada' }\n              ]\n            },\n            {\n              title: 'Otros',\n              rows: [\n                { id: 'cat_pburg', title: 'Pizza Burguer', description: 'Original, D\\'Firu, Paisa' },\n                { id: 'cat_bebi', title: 'Bebidas', description: 'Jugos y Gaseosas' }\n              ]\n            }\n          ]\n        }\n      }\n    };\n    step = 3;\n  } else {\n    response = { type: 'text', text: { body: 'Por favor selecciona una opción del menú 👆' } };\n  }\n}\n\n// WAITING FOR CATEGORY SELECTION\nelse if (step === 3) {\n  const catId = incoming.interactive?.list_reply?.id;\n  if (catId === 'cat_pizza') {\n    response = {\n      type: 'interactive',\n      interactive: {\n        type: 'list',\n        body: { text: 'Selecciona el tamaño de tu Pizza' },\n        action: {\n          button: 'Ver Tamaños',\n          sections: [{\n            title: 'Tamaños',\n            rows: [\n              { id: 'prod_piz_peq', title: 'Pequeña', description: '$16.000' },\n              { id: 'prod_piz_med', title: 'Mediana', description: '$30.000' },\n              { id: 'prod_piz_gde', title: 'Grande', description: '$43.000' }\n            ]\n          }]\n        }\n      }\n    };\n    step = 4;\n  } else if (catId === 'cat_hamb') {\n    response = {\n      type: 'interactive',\n      interactive: {\n        type: 'list',\n        body: { text: 'Selecciona tu Hamburguesa' },\n        action: {\n          button: 'Ver Hamburguesas',\n          sections: [{\n            title: 'Hamburguesas',\n            rows: [\n              { id: 'prod_hamb_res', title: 'Hamburguesa Res', description: '$18.000' },\n              { id: 'prod_hamb_pic', title: 'Hamburguesa Picosita', description: '$20.000' },\n              { id: 'prod_hamb_dob', title: 'Hamburguesa Doble', description: '$25.000' }\n            ]\n          }]\n        }\n      }\n    };\n    step = 4;\n  } else if (catId === 'cat_bebi') {\n    response = {\n      type: 'interactive',\n      interactive: {\n        type: 'list',\n        body: { text: 'Selecciona tu Bebida' },\n        action: {\n          button: 'Ver Bebidas',\n          sections: [{\n            title: 'Bebidas',\n            rows: [\n              { id: 'prod_jugo', title: 'Jugo Natural', description: '$5.000' },\n              { id: 'prod_gaseo', title: 'Gaseosa', description: '$3.000' }\n            ]\n          }]\n        }\n      }\n    };\n    step = 4;\n  } else {\n    response = { type: 'text', text: { body: 'Por favor selecciona una categoría de la lista 👆' } };\n  }\n}\n\n// PRODUCT SELECTED → ADD TO CART\nelse if (step === 4) {\n  const productId = incoming.interactive?.list_reply?.id;\n  const productTitles = {\n    'prod_piz_peq': { name: 'Pizza Pequeña', price: 16000 },\n    'prod_piz_med': { name: 'Pizza Mediana', price: 30000 },\n    'prod_piz_gde': { name: 'Pizza Grande', price: 43000 },\n    'prod_hamb_res': { name: 'Hamburguesa Res', price: 18000 },\n    'prod_hamb_pic': { name: 'Hamburguesa Picosita', price: 20000 },\n    'prod_hamb_dob': { name: 'Hamburguesa Doble', price: 25000 },\n    'prod_jugo': { name: 'Jugo Natural', price: 5000 },\n    'prod_gaseo': { name: 'Gaseosa', price: 3000 }\n  };\n  \n  const product = productTitles[productId];\n  if (product) {\n    cart.push(product);\n    const total = cart.reduce((sum, p) => sum + p.price, 0);\n    const cartSummary = cart.map((p, i) => `${i+1}. ${p.name} - $${p.price.toLocaleString()}`).join('\\n');\n    \n    response = {\n      type: 'interactive',\n      interactive: {\n        type: 'button',\n        body: { text: `✅ *${product.name}* agregado al carrito!\\n\\n🛒 *Tu pedido:*\\n${cartSummary}\\n\\n💰 *Total: $${total.toLocaleString()}*\\n\\n¿Qué deseas hacer?` },\n        action: {\n          buttons: [\n            { type: 'reply', reply: { id: 'add_more', title: 'Agregar más' } },\n            { type: 'reply', reply: { id: 'confirm_order', title: 'Confirmar pedido' } }\n          ]\n        }\n      }\n    };\n    step = 5;\n  } else {\n    response = { type: 'text', text: { body: 'Por favor selecciona un producto de la lista 👆' } };\n  }\n}\n\n// CONFIRM OR ADD MORE\nelse if (step === 5) {\n  const buttonId = incoming.interactive?.button_reply?.id;\n  if (buttonId === 'add_more') {\n    response = {\n      type: 'interactive',\n      interactive: {\n        type: 'list',\n        body: { text: 'Selecciona una categoría para agregar más productos' },\n        action: {\n          button: 'Ver Categorías',\n          sections: [\n            {\n              title: 'Principales',\n              rows: [\n                { id: 'cat_pizza', title: 'Pizzas', description: 'Tradicionales y Especiales' },\n                { id: 'cat_hamb', title: 'Hamburguesas', description: 'Res, Picosita, Doble' },\n                { id: 'cat_chuzo', title: 'Chuzos', description: 'Mixtos, Pollo/Tocineta' },\n                { id: 'cat_calzone', title: 'Calzones', description: 'Pizza cerrada' }\n              ]\n            },\n            {\n              title: 'Otros',\n              rows: [\n                { id: 'cat_pburg', title: 'Pizza Burguer', description: 'Original, D\\'Firu, Paisa' },\n                { id: 'cat_bebi', title: 'Bebidas', description: 'Jugos y Gaseosas' }\n              ]\n            }\n          ]\n        }\n      }\n    };\n    step = 3;\n  } else if (buttonId === 'confirm_order') {\n    const total = cart.reduce((sum, p) => sum + p.price, 0);\n    const cartSummary = cart.map((p, i) => `${i+1}. ${p.name} - $${p.price.toLocaleString()}`).join('\\n');\n    response = {\n      type: 'interactive',\n      interactive: {\n        type: 'button',\n        body: { text: `🎉 *Confirmar Pedido*\\n\\n${cartSummary}\\n\\n💰 *Total: $${total.toLocaleString()}*\\n\\n¿Cómo lo recibes?` },\n        action: {\n          buttons: [\n            { type: 'reply', reply: { id: 'delivery', title: 'Domicilio' } },\n            { type: 'reply', reply: { id: 'pickup', title: 'Para llevar' } }\n          ]\n        }\n      }\n    };\n    step = 6;\n  } else {\n    response = { type: 'text', text: { body: 'Por favor usa los botones 👆' } };\n  }\n}\n\n// DELIVERY TYPE\nelse if (step === 6) {\n  const buttonId = incoming.interactive?.button_reply?.id;\n  const total = cart.reduce((sum, p) => sum + p.price, 0);\n  const tipo = buttonId === 'delivery' ? 'Domicilio 🛵' : 'Para llevar 🏃';\n  cart = []; // reset cart after order\n  step = 1;\n  response = { type: 'text', text: { body: `✅ *¡Pedido recibido!*\\n\\nTipo: ${tipo}\\nTotal: $${total.toLocaleString()}\\n\\n¡Gracias por tu pedido en D'Firu Pizza! Te avisamos cuando esté listo. 🍕` } };\n}\n\nelse {\n  step = 1;\n  cart = [];\n  response = { type: 'text', text: { body: 'Lo siento, algo salió mal. Escribe *hola* para empezar de nuevo.' } };\n}\n\nconst metaPayload = {\n  messaging_product: 'whatsapp',\n  to: phone,\n  type: response.type,\n  ...response\n};\n\nreturn [{ json: { phone, response, step, cart, metaPayload } }];\n"
+        },
+        "name": "Build Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 1,
+        "position": [
+          1008,
+          304
+        ],
+        "id": "59587495-d5c2-4387-b3bf-c15af30897a3"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://graph.facebook.com/v16.0/1118129041383772/messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "Bearer {{$env.WA_ACCESS_TOKEN}}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json.metaPayload }}",
+          "options": {}
+        },
+        "name": "Send WhatsApp Message",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1264,
+          304
+        ],
+        "id": "9acb5ac3-b16c-4076-a82c-c10b9cc4ccbb"
+      },
+      {
+        "parameters": {
+          "operation": "set",
+          "key": "={{ $('Build Response').first().json.phone }}",
+          "value": "={{ JSON.stringify({ step: $('Build Response').first().json.step, cart: $('Build Response').first().json.cart }) }}",
+          "keyType": "string",
+          "expire": true,
+          "ttl": 1800
+        },
+        "name": "Redis Set Session",
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "position": [
+          1504,
+          304
+        ],
+        "id": "cc7bdfe7-04a9-4c79-bc96-525bc5a9d50e",
+        "credentials": {
+          "redis": {
+            "id": "hdN3B1mFgIl1BiZA",
+            "name": "Redis account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "WhatsApp Webhook": {
+        "main": [
+          [
+            {
+              "node": "Parse Incoming Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse Incoming Message": {
+        "main": [
+          [
+            {
+              "node": "Redis Get Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Redis Get Session": {
+        "main": [
+          [
+            {
+              "node": "Build Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Response": {
+        "main": [
+          [
+            {
+              "node": "Send WhatsApp Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WhatsApp Message": {
+        "main": [
+          [
+            {
+              "node": "Redis Set Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "timezone": "America/Bogota",
+      "executionOrder": "v1",
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "pinData": {},
+    "versionId": "58206916-d26c-4ae4-9774-12dcf05172d8",
+    "activeVersionId": null,
+    "versionCounter": 60,
+    "triggerCount": 1,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-05-07T23:24:52.275Z",
+        "createdAt": "2026-05-07T23:24:52.275Z",
+        "role": "workflow:owner",
+        "workflowId": "whatsapp_order_flow",
+        "projectId": "V2R8iEarQww1WAiZ",
+        "project": {
+          "updatedAt": "2026-05-15T06:16:22.161Z",
+          "createdAt": "2026-05-07T03:21:50.614Z",
+          "id": "V2R8iEarQww1WAiZ",
+          "name": "Jefer Escudero <ljeferr@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "170e1663-8403-4aae-9b28-33edc7654971"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-05-15T15:18:39.600Z",
+    "createdAt": "2026-05-15T06:31:20.320Z",
+    "id": "n3LfTGQWinpEEBez",
+    "name": "My workflow 2",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "whatsapp/webhook",
+          "options": {}
+        },
+        "id": "80d661be-3ba1-45a4-9c26-a2b29b0fadf0",
+        "name": "WhatsApp Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          -1376,
+          144
+        ],
+        "webhookId": "wa-inbound-dfiru"
+      },
+      {
+        "parameters": {
+          "jsCode": "const body = $input.first().json.body ?? $input.first().json;\nconst entry = body?.entry;\nif (!entry?.[0]?.changes?.[0]) return [];\nconst value = entry[0].changes[0].value;\nif (!value?.messages?.[0]) return [];\nconst msg = value.messages[0];\nconst phone = msg.from;\nconst msgType = msg.type;\nlet msgBody = null;\nlet buttonId = null;\nlet listId = null;\nif (msgType === 'text') {\n  msgBody = msg.text?.body || '';\n} else if (msgType === 'interactive') {\n  const iType = msg.interactive?.type;\n  if (iType === 'button_reply') {\n    buttonId = msg.interactive.button_reply?.id || null;\n  } else if (iType === 'list_reply') {\n    listId = msg.interactive.list_reply?.id || null;\n  }\n}\nreturn [{ json: { phone, msgType, body: msgBody, buttonId, listId } }];"
+        },
+        "id": "8e3df32f-4649-43e7-b335-1394508af56b",
+        "name": "Parse WA Payload",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -1168,
+          144
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "get",
+          "propertyName": "value",
+          "key": "=wa_sess_{{ $json.phone }}",
+          "options": {}
+        },
+        "id": "33c39c29-e19f-41bb-8fcd-525f368864f5",
+        "name": "Redis Get Session",
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "position": [
+          -944,
+          144
+        ],
+        "credentials": {
+          "redis": {
+            "id": "hdN3B1mFgIl1BiZA",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "url": "=http://backend:3000/productos",
+          "options": {}
+        },
+        "id": "a5049a9a-e1dd-4cf8-8224-d9fde3d4bf21",
+        "name": "Get Products",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          -720,
+          144
+        ]
+      },
+      {
+        "parameters": {
+          "url": "=http://backend:3000/pizza-sabores",
+          "options": {}
+        },
+        "id": "264041ed-6ca5-4e75-a9ea-4f67e6d9d9ef",
+        "name": "Get Sabores",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          -608,
+          144
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const parseData = $('Parse WA Payload').first().json;\nconst redisData = $('Redis Get Session').first().json;\nconst products = $('Get Products').all().map(i => i.json).flat().filter(p => p && p.productoId);\nconst sabores = $('Get Sabores').all().map(i => i.json).flat().filter(s => s && s.nombre);\n\nconst phone = parseData.phone;\nconst msgType = parseData.msgType;\nconst msgBody = parseData.body;\nconst buttonId = parseData.buttonId;\nconst listId = parseData.listId;\n\nlet session;\ntry {\n  session = redisData.value ? JSON.parse(redisData.value) : null;\n} catch(e) {\n  session = null;\n}\n\nif (!session || !session.step) {\n  session = {\n    step: 'await_tipo',\n    productPage: 0,\n    tipoPedido: null,\n    nombreCliente: null,\n    telefonoCliente: phone,\n    direccionCliente: null,\n    metodoPago: null,\n    observaciones: null,\n    cart: [],\n    cur: {}\n  };\n}\n\nfunction fmt(n) { return '$' + Number(n).toLocaleString('es-CO'); }\n\nfunction cartSummary(cart) {\n  if (!cart.length) return 'El carrito esta vacio.';\n  return cart.map((item, i) => {\n    let line = `${i+1}. ${item.productoNombre} ${item.varianteNombre || ''} x${item.cantidad}`;\n    if (item.sabor1) line += ` [${[item.sabor1, item.sabor2, item.sabor3].filter(Boolean).join('/')}]`;\n    line += ` = ${fmt(item.subtotal)}`;\n    return line;\n  }).join('\\n');\n}\n\nfunction cartTotal(cart) {\n  return cart.reduce((s, i) => s + (Number(i.subtotal) || 0), 0);\n}\n\nfunction btnMsg(body, buttons, header) {\n  const msg = {\n    messaging_product: 'whatsapp',\n    to: phone,\n    type: 'interactive',\n    interactive: {\n      type: 'button',\n      body: { text: String(body).substring(0, 1024) },\n      action: { buttons }\n    }\n  };\n  if (header) msg.interactive.header = { type: 'text', text: String(header).substring(0, 60) };\n  return msg;\n}\n\nfunction listMsg(body, sections, buttonText, header) {\n  const msg = {\n    messaging_product: 'whatsapp',\n    to: phone,\n    type: 'interactive',\n    interactive: {\n      type: 'list',\n      body: { text: String(body).substring(0, 1024) },\n      action: {\n        button: String(buttonText || 'Ver opciones').substring(0, 20),\n        sections\n      }\n    }\n  };\n  if (header) msg.interactive.header = { type: 'text', text: String(header).substring(0, 60) };\n  return msg;\n}\n\nfunction textMsg(text) {\n  return {\n    messaging_product: 'whatsapp',\n    to: phone,\n    type: 'text',\n    text: { body: String(text).substring(0, 4096) }\n  };\n}\n\nfunction activeVariants(product) {\n  return (product.variantes || []).filter(v => v.activo !== false);\n}\n\nfunction buildProductButtonsMsg(page) {\n  const active = products.filter(p => p.activo !== false);\n  if (!active.length) return textMsg(\"Lo sentimos, no hay productos disponibles. Contactanos directamente.\");\n\n  if (active.length <= 3) {\n    return btnMsg(\n      '?Que deseas ordenar?',\n      active.map(p => ({\n        type: 'reply',\n        reply: { id: `prod_${p.productoId}`, title: ((p.emoji ? p.emoji + ' ' : '') + p.productoNombre).substring(0, 20) }\n      })),\n      \"Menu D'Firu\"\n    );\n  }\n\n  const startIdx = page * 2;\n  const pageProducts = active.slice(startIdx, startIdx + 2);\n  const hasMore = startIdx + 2 < active.length;\n  const buttons = pageProducts.map(p => ({\n    type: 'reply',\n    reply: { id: `prod_${p.productoId}`, title: ((p.emoji ? p.emoji + ' ' : '') + p.productoNombre).substring(0, 20) }\n  }));\n  if (hasMore) {\n    buttons.push({ type: 'reply', reply: { id: `prod_page_${page + 1}`, title: 'Ver mas' } });\n  } else if (page > 0) {\n    buttons.push({ type: 'reply', reply: { id: 'prod_page_0', title: 'Inicio menu' } });\n  }\n  return btnMsg(`?Que deseas ordenar? (${startIdx + 1}-${Math.min(startIdx + 2, active.length)} de ${active.length})`, buttons, \"Menu D'Firu\");\n}\n\nfunction buildSaboresListMsg(label) {\n  const tradicionales = sabores.filter(s => s.activo !== false && s.tipo === 'tradicional');\n  const especiales = sabores.filter(s => s.activo !== false && s.tipo !== 'tradicional');\n  const toRow = s => ({\n    id: `sab_${s.nombre.replace(/\\s+/g, '_')}`,\n    title: s.nombre.substring(0, 24),\n    description: s.tipo !== 'tradicional' ? `Especial +${fmt(s.recargoGrande || 0)}` : 'Sabor clasico'\n  });\n  const sections = [];\n  if (tradicionales.length) sections.push({ title: 'Sabores Clasicos', rows: tradicionales.slice(0, 10).map(toRow) });\n  if (especiales.length) sections.push({ title: 'Sabores Especiales', rows: especiales.slice(0, 10).map(toRow) });\n  if (!sections.length) sections.push({ title: 'Sabores', rows: [{ id: 'sab_Clasica', title: 'Clasica', description: 'Sabor de la casa' }] });\n  return listMsg(label || 'Elige un sabor:', sections, 'Ver Sabores', 'Sabores Pizza');\n}\n\nlet waPayload = null;\nlet needsOrderCreation = false;\nlet orderData = null;\nlet updatedSession = JSON.parse(JSON.stringify(session));\n\nconst step = session.step || 'await_tipo';\nconst cur = session.cur || {};\n\nif (step === 'await_tipo') {\n  waPayload = btnMsg(\n    \"Bienvenido a *D'Firu Pizza*!\\n\\nComo deseas tu pedido?\",\n    [\n      { type: 'reply', reply: { id: 'tipo_mesa', title: 'En Mesa' } },\n      { type: 'reply', reply: { id: 'tipo_llevar', title: 'Para Llevar' } },\n      { type: 'reply', reply: { id: 'tipo_domicilio', title: 'Domicilio' } }\n    ],\n    \"D'Firu Pizza\"\n  );\n  updatedSession.step = 'await_tipo_select';\n}\n\nelse if (step === 'await_tipo_select') {\n  if (buttonId === 'tipo_mesa') {\n    updatedSession.tipoPedido = 'mesa';\n    updatedSession.productPage = 0;\n    updatedSession.step = 'await_product';\n    waPayload = buildProductButtonsMsg(0);\n  } else if (buttonId === 'tipo_llevar') {\n    updatedSession.tipoPedido = 'llevar';\n    updatedSession.step = 'await_nombre';\n    waPayload = textMsg('Escribe tu *nombre* para identificar tu pedido:');\n  } else if (buttonId === 'tipo_domicilio') {\n    updatedSession.tipoPedido = 'domicilio';\n    updatedSession.step = 'await_nombre';\n    waPayload = textMsg('Escribe tu *nombre completo*:');\n  } else {\n    waPayload = btnMsg(\n      'Selecciona como deseas tu pedido:',\n      [\n        { type: 'reply', reply: { id: 'tipo_mesa', title: 'En Mesa' } },\n        { type: 'reply', reply: { id: 'tipo_llevar', title: 'Para Llevar' } },\n        { type: 'reply', reply: { id: 'tipo_domicilio', title: 'Domicilio' } }\n      ]\n    );\n  }\n}\n\nelse if (step === 'await_nombre') {\n  if (msgType === 'text' && msgBody && msgBody.trim().length >= 2) {\n    updatedSession.nombreCliente = msgBody.trim();\n    if (session.tipoPedido === 'domicilio') {\n      updatedSession.step = 'await_direccion';\n      waPayload = textMsg('Escribe la *direccion de entrega*:');\n    } else {\n      updatedSession.productPage = 0;\n      updatedSession.step = 'await_product';\n      waPayload = buildProductButtonsMsg(0);\n    }\n  } else {\n    waPayload = textMsg('Escribe tu nombre (minimo 2 caracteres):');\n  }\n}\n\nelse if (step === 'await_direccion') {\n  if (msgType === 'text' && msgBody && msgBody.trim().length >= 5) {\n    updatedSession.direccionCliente = msgBody.trim();\n    updatedSession.productPage = 0;\n    updatedSession.step = 'await_product';\n    waPayload = buildProductButtonsMsg(0);\n  } else {\n    waPayload = textMsg('Escribe la *direccion completa* (minimo 5 caracteres):');\n  }\n}\n\nelse if (step === 'await_product') {\n  const input = buttonId || listId;\n\n  if (buttonId && buttonId.startsWith('prod_page_')) {\n    const newPage = parseInt(buttonId.replace('prod_page_', ''), 10);\n    updatedSession.productPage = newPage;\n    waPayload = buildProductButtonsMsg(newPage);\n  } else if (buttonId === 'prod_page_0') {\n    updatedSession.productPage = 0;\n    waPayload = buildProductButtonsMsg(0);\n  } else if (input && input.startsWith('prod_')) {\n    const prodId = parseInt(input.replace('prod_', ''), 10);\n    const product = products.find(p => p.productoId === prodId);\n    if (product) {\n      const isPizza = product.productoNombre.toLowerCase().includes('pizza');\n      const variants = activeVariants(product);\n      updatedSession.cur = {\n        productoId: product.productoId,\n        productoNombre: product.productoNombre,\n        tipo: isPizza ? 'Pizza' : product.productoNombre,\n        isPizza,\n        varianteId: null, varianteNombre: null, variantePrecio: 0,\n        sabor1: null, sabor2: null, sabor3: null, cantidad: 1\n      };\n      if (variants.length === 0) {\n        waPayload = textMsg(`Lo sentimos, ${product.productoNombre} no esta disponible.`);\n      } else if (variants.length === 1) {\n        updatedSession.cur.varianteId = variants[0].varianteId;\n        updatedSession.cur.varianteNombre = variants[0].nombre;\n        updatedSession.cur.variantePrecio = Number(variants[0].precio) || 0;\n        if (isPizza) {\n          updatedSession.step = 'await_sabor1';\n          waPayload = buildSaboresListMsg(`Elige el primer sabor de tu *${product.productoNombre} ${variants[0].nombre}*:`);\n        } else {\n          updatedSession.step = 'await_qty';\n          waPayload = btnMsg(\n            `*${product.productoNombre}*\\nPrecio: ${fmt(variants[0].precio)}\\n\\nCuantas unidades?`,\n            [\n              { type: 'reply', reply: { id: 'qty_1', title: '1 unidad' } },\n              { type: 'reply', reply: { id: 'qty_2', title: '2 unidades' } },\n              { type: 'reply', reply: { id: 'qty_3', title: '3 unidades' } }\n            ]\n          );\n        }\n      } else {\n        updatedSession.step = isPizza ? 'await_variant_pizza' : 'await_variant_other';\n        if (variants.length <= 3) {\n          waPayload = btnMsg(\n            `*${product.productoNombre}*\\n\\nQue tamano/variante deseas?`,\n            variants.slice(0, 3).map(v => ({\n              type: 'reply',\n              reply: { id: `var_${product.productoId}_${v.varianteId}`, title: `${v.nombre} ${fmt(v.precio)}`.substring(0, 20) }\n            }))\n          );\n        } else {\n          waPayload = listMsg(\n            `*${product.productoNombre}*\\n\\nSelecciona el tamano:`,\n            [{ title: 'Variantes', rows: variants.slice(0, 10).map(v => ({ id: `var_${product.productoId}_${v.varianteId}`, title: v.nombre.substring(0, 24), description: fmt(v.precio) })) }],\n            'Ver Variantes'\n          );\n        }\n      }\n    } else {\n      waPayload = buildProductButtonsMsg(session.productPage || 0);\n    }\n  } else {\n    waPayload = buildProductButtonsMsg(session.productPage || 0);\n  }\n}\n\nelse if (step === 'await_variant_pizza' || step === 'await_variant_other') {\n  const varRaw = buttonId || listId;\n  if (varRaw && varRaw.startsWith('var_')) {\n    const parts = varRaw.split('_');\n    const pId = parseInt(parts[1], 10);\n    const vId = parseInt(parts[2], 10);\n    const product = products.find(p => p.productoId === pId || p.productoId === cur.productoId);\n    const variant = product ? activeVariants(product).find(v => v.varianteId === vId) : null;\n    if (variant) {\n      updatedSession.cur = { ...cur, varianteId: variant.varianteId, varianteNombre: variant.nombre, variantePrecio: Number(variant.precio) || 0 };\n      if (cur.isPizza) {\n        updatedSession.step = 'await_sabor1';\n        waPayload = buildSaboresListMsg(`Elige el primer sabor para tu *${cur.productoNombre} ${variant.nombre}*:`);\n      } else {\n        updatedSession.step = 'await_qty';\n        waPayload = btnMsg(\n          `*${cur.productoNombre} - ${variant.nombre}*\\n${fmt(variant.precio)}\\n\\nCuantas unidades?`,\n          [\n            { type: 'reply', reply: { id: 'qty_1', title: '1 unidad' } },\n            { type: 'reply', reply: { id: 'qty_2', title: '2 unidades' } },\n            { type: 'reply', reply: { id: 'qty_3', title: '3 unidades' } }\n          ]\n        );\n      }\n    } else {\n      waPayload = buildProductButtonsMsg(session.productPage || 0);\n    }\n  }\n}\n\nelse if (step === 'await_sabor1') {\n  if (listId && listId.startsWith('sab_')) {\n    const saborNombre = listId.replace('sab_', '').replace(/_/g, ' ');\n    updatedSession.cur = { ...cur, sabor1: saborNombre };\n    updatedSession.step = 'await_more_s1';\n    waPayload = btnMsg(\n      `Sabor 1: *${saborNombre}* ✓\\n\\nDeseas agregar un segundo sabor?`,\n      [\n        { type: 'reply', reply: { id: 'more_s1_yes', title: 'Si, otro sabor' } },\n        { type: 'reply', reply: { id: 'more_s1_no', title: 'No, continuar' } }\n      ]\n    );\n  } else {\n    waPayload = buildSaboresListMsg('Elige el primer sabor de tu pizza:');\n  }\n}\n\nelse if (step === 'await_more_s1') {\n  if (buttonId === 'more_s1_yes') {\n    updatedSession.step = 'await_sabor2';\n    waPayload = buildSaboresListMsg('Elige el segundo sabor:');\n  } else if (buttonId === 'more_s1_no') {\n    updatedSession.step = 'await_qty';\n    waPayload = btnMsg(\n      `*${cur.productoNombre} ${cur.varianteNombre}*\\nSabor: ${cur.sabor1}\\n\\nCuantas unidades?`,\n      [\n        { type: 'reply', reply: { id: 'qty_1', title: '1 unidad' } },\n        { type: 'reply', reply: { id: 'qty_2', title: '2 unidades' } },\n        { type: 'reply', reply: { id: 'qty_3', title: '3 unidades' } }\n      ]\n    );\n  } else {\n    waPayload = btnMsg(\n      'Deseas agregar un segundo sabor?',\n      [\n        { type: 'reply', reply: { id: 'more_s1_yes', title: 'Si, otro sabor' } },\n        { type: 'reply', reply: { id: 'more_s1_no', title: 'No, continuar' } }\n      ]\n    );\n  }\n}\n\nelse if (step === 'await_sabor2') {\n  if (listId && listId.startsWith('sab_')) {\n    const saborNombre = listId.replace('sab_', '').replace(/_/g, ' ');\n    updatedSession.cur = { ...cur, sabor2: saborNombre };\n    updatedSession.step = 'await_more_s2';\n    waPayload = btnMsg(\n      `Sabor 1: *${cur.sabor1}* ✓\\nSabor 2: *${saborNombre}* ✓\\n\\nDeseas un tercer sabor?`,\n      [\n        { type: 'reply', reply: { id: 'more_s2_yes', title: 'Si, tercer sabor' } },\n        { type: 'reply', reply: { id: 'more_s2_no', title: 'No, continuar' } }\n      ]\n    );\n  } else {\n    waPayload = buildSaboresListMsg('Elige el segundo sabor:');\n  }\n}\n\nelse if (step === 'await_more_s2') {\n  if (buttonId === 'more_s2_yes') {\n    updatedSession.step = 'await_sabor3';\n    waPayload = buildSaboresListMsg('Elige el tercer sabor:');\n  } else if (buttonId === 'more_s2_no') {\n    updatedSession.step = 'await_qty';\n    waPayload = btnMsg(\n      `*${cur.productoNombre} ${cur.varianteNombre}*\\nSabores: ${cur.sabor1} / ${cur.sabor2}\\n\\nCuantas unidades?`,\n      [\n        { type: 'reply', reply: { id: 'qty_1', title: '1 unidad' } },\n        { type: 'reply', reply: { id: 'qty_2', title: '2 unidades' } },\n        { type: 'reply', reply: { id: 'qty_3', title: '3 unidades' } }\n      ]\n    );\n  } else {\n    waPayload = btnMsg(\n      'Deseas un tercer sabor?',\n      [\n        { type: 'reply', reply: { id: 'more_s2_yes', title: 'Si, tercer sabor' } },\n        { type: 'reply', reply: { id: 'more_s2_no', title: 'No, continuar' } }\n      ]\n    );\n  }\n}\n\nelse if (step === 'await_sabor3') {\n  if (listId && listId.startsWith('sab_')) {\n    const saborNombre = listId.replace('sab_', '').replace(/_/g, ' ');\n    updatedSession.cur = { ...cur, sabor3: saborNombre };\n    updatedSession.step = 'await_qty';\n    const sabTxt = [cur.sabor1, cur.sabor2, saborNombre].filter(Boolean).join(' / ');\n    waPayload = btnMsg(\n      `Sabores: ${sabTxt} ✓\\n\\nCuantas unidades?`,\n      [\n        { type: 'reply', reply: { id: 'qty_1', title: '1 unidad' } },\n        { type: 'reply', reply: { id: 'qty_2', title: '2 unidades' } },\n        { type: 'reply', reply: { id: 'qty_3', title: '3 unidades' } }\n      ]\n    );\n  } else {\n    waPayload = buildSaboresListMsg('Elige el tercer sabor:');\n  }\n}\n\nelse if (step === 'await_qty') {\n  const qtyMap = { qty_1: 1, qty_2: 2, qty_3: 3 };\n  const qty = buttonId ? qtyMap[buttonId] : null;\n  if (qty) {\n    const finalCur = (updatedSession.cur && updatedSession.cur.varianteId) ? updatedSession.cur : cur;\n    const subtotal = Number(finalCur.variantePrecio || 0) * qty;\n    const cartItem = {\n      tipo: finalCur.tipo || finalCur.productoNombre,\n      productoId: finalCur.productoId,\n      varianteId: finalCur.varianteId,\n      productoNombre: finalCur.productoNombre,\n      varianteNombre: finalCur.varianteNombre,\n      precio: finalCur.variantePrecio,\n      sabor1: finalCur.sabor1 || null,\n      sabor2: finalCur.sabor2 || null,\n      sabor3: finalCur.sabor3 || null,\n      cantidad: qty,\n      subtotal\n    };\n    updatedSession.cart = [...(session.cart || []), cartItem];\n    updatedSession.cur = {};\n    updatedSession.step = 'await_cart';\n    const total = cartTotal(updatedSession.cart);\n    const summary = cartSummary(updatedSession.cart);\n    waPayload = btnMsg(\n      `Agregado!\\n\\n*Tu pedido:*\\n${summary}\\n\\n*Total: ${fmt(total)}*`,\n      [\n        { type: 'reply', reply: { id: 'cart_add', title: 'Agregar mas' } },\n        { type: 'reply', reply: { id: 'cart_pay', title: 'Pagar' } }\n      ],\n      'Carrito'\n    );\n  } else {\n    waPayload = btnMsg(\n      'Cuantas unidades deseas?',\n      [\n        { type: 'reply', reply: { id: 'qty_1', title: '1 unidad' } },\n        { type: 'reply', reply: { id: 'qty_2', title: '2 unidades' } },\n        { type: 'reply', reply: { id: 'qty_3', title: '3 unidades' } }\n      ]\n    );\n  }\n}\n\nelse if (step === 'await_cart') {\n  if (buttonId === 'cart_add') {\n    updatedSession.productPage = 0;\n    updatedSession.step = 'await_product';\n    updatedSession.cur = {};\n    waPayload = buildProductButtonsMsg(0);\n  } else if (buttonId === 'cart_pay') {\n    updatedSession.step = 'await_pago';\n    waPayload = btnMsg(\n      `Total: ${fmt(cartTotal(session.cart))}\\n\\nComo vas a pagar?`,\n      [\n        { type: 'reply', reply: { id: 'pago_efectivo', title: 'Efectivo' } },\n        { type: 'reply', reply: { id: 'pago_transfer', title: 'Transferencia' } }\n      ]\n    );\n  } else {\n    const total = cartTotal(session.cart);\n    const summary = cartSummary(session.cart);\n    waPayload = btnMsg(\n      `*Tu pedido:*\\n${summary}\\n\\n*Total: ${fmt(total)}*`,\n      [\n        { type: 'reply', reply: { id: 'cart_add', title: 'Agregar mas' } },\n        { type: 'reply', reply: { id: 'cart_pay', title: 'Pagar' } }\n      ],\n      'Carrito'\n    );\n  }\n}\n\nelse if (step === 'await_pago') {\n  const pagoMap = { pago_efectivo: 'efectivo', pago_transfer: 'transferencia' };\n  const metodo = buttonId ? pagoMap[buttonId] : null;\n  if (metodo) {\n    updatedSession.metodoPago = metodo;\n    updatedSession.step = 'await_observaciones';\n    waPayload = btnMsg(\n      `Metodo de pago: *${metodo}* ✓\\n\\n¿Tienes alguna nota especial para tu pedido?\\n(ej: sin cebolla, extra salsa, sin aji)\\n\\nEscribe tu nota o toca *Omitir*:`,\n      [{ type: 'reply', reply: { id: 'skip_obs', title: 'Omitir' } }]\n    );\n  } else {\n    waPayload = btnMsg(\n      'Como vas a pagar?',\n      [\n        { type: 'reply', reply: { id: 'pago_efectivo', title: 'Efectivo' } },\n        { type: 'reply', reply: { id: 'pago_transfer', title: 'Transferencia' } }\n      ]\n    );\n  }\n}\n\nelse if (step === 'await_observaciones') {\n  if (buttonId === 'skip_obs') {\n    updatedSession.observaciones = null;\n    updatedSession.step = 'await_confirm';\n    const total = cartTotal(session.cart);\n    const summary = cartSummary(session.cart);\n    const tipoLabel = { mesa: 'Mesa', llevar: 'Para Llevar', domicilio: 'Domicilio' }[session.tipoPedido] || session.tipoPedido;\n    let ct = `*Confirmar Pedido*\\n\\nTipo: ${tipoLabel}`;\n    if (session.nombreCliente) ct += `\\nCliente: ${session.nombreCliente}`;\n    if (session.tipoPedido === 'domicilio' && session.direccionCliente) ct += `\\nDireccion: ${session.direccionCliente}`;\n    ct += `\\n\\n*Productos:*\\n${summary}\\n\\n*Total: ${fmt(total)}*\\nPago: ${session.metodoPago}`;\n    waPayload = btnMsg(ct, [\n      { type: 'reply', reply: { id: 'confirm_yes', title: 'Confirmar Pedido' } },\n      { type: 'reply', reply: { id: 'confirm_no', title: 'Cancelar' } }\n    ]);\n  } else if (msgType === 'text' && msgBody && msgBody.trim().length >= 1) {\n    updatedSession.observaciones = msgBody.trim();\n    updatedSession.step = 'await_confirm';\n    const total = cartTotal(session.cart);\n    const summary = cartSummary(session.cart);\n    const tipoLabel = { mesa: 'Mesa', llevar: 'Para Llevar', domicilio: 'Domicilio' }[session.tipoPedido] || session.tipoPedido;\n    let ct = `*Confirmar Pedido*\\n\\nTipo: ${tipoLabel}`;\n    if (session.nombreCliente) ct += `\\nCliente: ${session.nombreCliente}`;\n    if (session.tipoPedido === 'domicilio' && session.direccionCliente) ct += `\\nDireccion: ${session.direccionCliente}`;\n    ct += `\\n\\n*Productos:*\\n${summary}\\n\\n*Total: ${fmt(total)}*\\nPago: ${session.metodoPago}`;\n    ct += `\\n*Nota:* ${msgBody.trim()}`;\n    waPayload = btnMsg(ct, [\n      { type: 'reply', reply: { id: 'confirm_yes', title: 'Confirmar Pedido' } },\n      { type: 'reply', reply: { id: 'confirm_no', title: 'Cancelar' } }\n    ]);\n  } else {\n    waPayload = btnMsg(\n      '¿Tienes alguna nota especial?\\nEscribe tu nota o toca *Omitir*:',\n      [{ type: 'reply', reply: { id: 'skip_obs', title: 'Omitir' } }]\n    );\n  }\n}\n\nelse if (step === 'await_confirm') {\n  if (buttonId === 'confirm_yes') {\n    orderData = {\n      tipoPedido: session.tipoPedido,\n      nombreCliente: session.nombreCliente || undefined,\n      telefonoCliente: phone,\n      direccionCliente: session.tipoPedido === 'domicilio' ? (session.direccionCliente || undefined) : undefined,\n      costoDomicilio: session.tipoPedido === 'domicilio' ? 5000 : undefined,\n      metodo: session.metodoPago || undefined,\n      observaciones: session.observaciones ? `${session.observaciones} | WhatsApp: ${phone}` : `WhatsApp: ${phone}`,\n      productos: (session.cart || []).map(item => ({\n        tipo: item.tipo,\n        varianteId: item.varianteId,\n        sabor1: item.sabor1 || undefined,\n        sabor2: item.sabor2 || undefined,\n        sabor3: item.sabor3 || undefined,\n        cantidad: item.cantidad\n      }))\n    };\n    needsOrderCreation = true;\n    updatedSession = { step: 'await_tipo', productPage: 0, cart: [], tipoPedido: null, nombreCliente: null, telefonoCliente: phone, direccionCliente: null, metodoPago: null, observaciones: null, cur: {} };\n    waPayload = null;\n  } else if (buttonId === 'confirm_no') {\n    updatedSession = { step: 'await_tipo_select', productPage: 0, cart: [], tipoPedido: null, nombreCliente: null, telefonoCliente: phone, direccionCliente: null, metodoPago: null, observaciones: null, cur: {} };\n    waPayload = btnMsg(\n      'Pedido cancelado.\\n\\nDeseas hacer un nuevo pedido?',\n      [\n        { type: 'reply', reply: { id: 'tipo_mesa', title: 'En Mesa' } },\n        { type: 'reply', reply: { id: 'tipo_llevar', title: 'Para Llevar' } },\n        { type: 'reply', reply: { id: 'tipo_domicilio', title: 'Domicilio' } }\n      ]\n    );\n  } else {\n    const total = cartTotal(session.cart);\n    const summary = cartSummary(session.cart);\n    waPayload = btnMsg(\n      `*Tu Pedido:*\\n${summary}\\n\\n*Total: ${fmt(total)}*\\nPago: ${session.metodoPago}\\n\\nConfirmas?`,\n      [\n        { type: 'reply', reply: { id: 'confirm_yes', title: 'Confirmar Pedido' } },\n        { type: 'reply', reply: { id: 'confirm_no', title: 'Cancelar' } }\n      ]\n    );\n  }\n}\n\nelse {\n  updatedSession = { step: 'await_tipo_select', productPage: 0, cart: [], tipoPedido: null, nombreCliente: null, telefonoCliente: phone, direccionCliente: null, metodoPago: null, observaciones: null, cur: {} };\n  waPayload = btnMsg(\n    \"Hola! Bienvenido a D'Firu Pizza.\\n\\nComo deseas tu pedido?\",\n    [\n      { type: 'reply', reply: { id: 'tipo_mesa', title: 'En Mesa' } },\n      { type: 'reply', reply: { id: 'tipo_llevar', title: 'Para Llevar' } },\n      { type: 'reply', reply: { id: 'tipo_domicilio', title: 'Domicilio' } }\n    ]\n  );\n}\n\nreturn [{ json: { phone, waPayload, needsOrderCreation, orderData, updatedSession, originalCart: session.cart || [] } }];"
+        },
+        "id": "48bc364f-5c85-49f2-8735-b7899b6d1705",
+        "name": "State Machine",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -480,
+          144
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{ $json.needsOrderCreation }}",
+                "value2": true
+              }
+            ]
+          }
+        },
+        "id": "e81b4418-237f-4687-ac9d-a94c8905fb2f",
+        "name": "If Create Order",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          -240,
+          144
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://backend:3000/auth/login",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {}
+            ]
+          },
+          "options": {}
+        },
+        "id": "8daf27c0-c810-434e-a28c-48785eb325fe",
+        "name": "Bot Login",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          0,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=http://backend:3000/ordenes",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $('Bot Login').first().json.accessToken }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {}
+            ]
+          },
+          "options": {}
+        },
+        "id": "aa198245-a60a-41a6-bac8-d6fe9bb78255",
+        "name": "Create Order",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          240,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const sm = $('State Machine').first().json;\nconst order = $('Create Order').first().json;\nconst phone = sm.phone;\nconst cart = sm.originalCart || [];\nconst total = cart.reduce((s, i) => s + (Number(i.subtotal) || 0), 0);\nconst fmt = n => '$' + Number(n).toLocaleString('es-CO');\nconst ordenId = order?.ordenId || order?.id || '?';\nconst waPayload = {\n  messaging_product: 'whatsapp',\n  to: phone,\n  type: 'text',\n  text: {\n    body: `Pedido confirmado! ✅\\n\\n*Orden #${ordenId}*\\nTotal: ${fmt(total)}\\n\\nGracias por tu pedido en D'Firu Pizza!\\nTe avisaremos cuando este listo. 🍕\\n\\nEscribe cualquier mensaje para hacer otro pedido.`\n  }\n};\nreturn [{ json: { phone, waPayload, updatedSession: sm.updatedSession } }];"
+        },
+        "id": "cf3ab8df-3285-4394-b276-09fad95518d0",
+        "name": "Build Success Message",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://graph.facebook.com/v20.0/{{ $process.env.WA_PHONE_NUMBER_ID }}/messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $process.env.WA_ACCESS_TOKEN }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json.waPayload }}",
+          "options": {}
+        },
+        "id": "c6800d54-a4b4-4bd0-8d23-9e5a28bf5339",
+        "name": "Send WA Success",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          720,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "set",
+          "key": "=wa_sess_{{ $('Build Success Message').first().json.phone }}",
+          "value": "={{ JSON.stringify($('Build Success Message').first().json.updatedSession) }}",
+          "expire": true,
+          "ttl": 1800
+        },
+        "id": "f6d09052-6a6c-4036-855e-011a2a27b2ab",
+        "name": "Redis Clear Session",
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "position": [
+          960,
+          0
+        ],
+        "credentials": {
+          "redis": {
+            "id": "hdN3B1mFgIl1BiZA",
+            "name": "Redis account"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "=https://graph.facebook.com/v20.0/{{ $env.WA_PHONE_NUMBER_ID }}/messages",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.WA_ACCESS_TOKEN }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json.waPayload }}",
+          "options": {}
+        },
+        "id": "05e598bc-6b9b-4131-95d1-6b7577ecea79",
+        "name": "Send WA Message",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4,
+        "position": [
+          0,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "set",
+          "key": "=wa_sess_{{ $('State Machine').first().json.phone }}",
+          "value": "={{ JSON.stringify($('State Machine').first().json.updatedSession) }}",
+          "expire": true,
+          "ttl": 1800
+        },
+        "id": "d75b949c-4dad-40fb-9c02-a77858afc324",
+        "name": "Redis Save Session",
+        "type": "n8n-nodes-base.redis",
+        "typeVersion": 1,
+        "position": [
+          240,
+          288
+        ],
+        "credentials": {
+          "redis": {
+            "id": "hdN3B1mFgIl1BiZA",
+            "name": "Redis account"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "WhatsApp Webhook": {
+        "main": [
+          [
+            {
+              "node": "Parse WA Payload",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Parse WA Payload": {
+        "main": [
+          [
+            {
+              "node": "Redis Get Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Redis Get Session": {
+        "main": [
+          [
+            {
+              "node": "Get Products",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Products": {
+        "main": [
+          [
+            {
+              "node": "Get Sabores",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Sabores": {
+        "main": [
+          [
+            {
+              "node": "State Machine",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "State Machine": {
+        "main": [
+          [
+            {
+              "node": "If Create Order",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "If Create Order": {
+        "main": [
+          [
+            {
+              "node": "Bot Login",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Send WA Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Bot Login": {
+        "main": [
+          [
+            {
+              "node": "Create Order",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Create Order": {
+        "main": [
+          [
+            {
+              "node": "Build Success Message",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Success Message": {
+        "main": [
+          [
+            {
+              "node": "Send WA Success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WA Success": {
+        "main": [
+          [
+            {
+              "node": "Redis Clear Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send WA Message": {
+        "main": [
+          [
+            {
+              "node": "Redis Save Session",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": {},
+    "versionId": "39b1e947-fcfc-434c-90d4-79074f1b0b0e",
+    "activeVersionId": "39b1e947-fcfc-434c-90d4-79074f1b0b0e",
+    "versionCounter": 72,
+    "triggerCount": 1,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-05-15T06:31:20.322Z",
+        "createdAt": "2026-05-15T06:31:20.322Z",
+        "role": "workflow:owner",
+        "workflowId": "n3LfTGQWinpEEBez",
+        "projectId": "V2R8iEarQww1WAiZ",
+        "project": {
+          "updatedAt": "2026-05-15T06:16:22.161Z",
+          "createdAt": "2026-05-07T03:21:50.614Z",
+          "id": "V2R8iEarQww1WAiZ",
+          "name": "Jefer Escudero <ljeferr@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "creatorId": "170e1663-8403-4aae-9b28-33edc7654971"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": "Version 39b1e947",
+      "description": ""
+    }
+  }
+]

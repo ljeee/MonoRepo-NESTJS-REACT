@@ -79,6 +79,14 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const { formState: globalFormState, updateForm: globalUpdateForm, clearCart, isHydrated: globalIsHydrated } = useOrder();
   const { showToast } = useToast();
 
+  const pendingTimers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
+  React.useEffect(() => {
+    return () => {
+      pendingTimers.current.forEach((t) => clearTimeout(t));
+      pendingTimers.current = [];
+    };
+  }, []);
+
   const [localFormState, setLocalFormState] = useState<OrderFormState | null>(null);
 
   // Initialize local state if editing
@@ -320,9 +328,10 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
     });
 
     showToast(mode === 'edit' ? '¡Orden actualizada!' : '¡Orden creada exitosamente!', 'success', 2000);
-    setTimeout(() => {
+    const navTimer = setTimeout(() => {
       router.push(mode === 'edit' ? (`/orden-detalle?ordenId=${ordenId}` as any) : '/ordenes');
     }, 2000);
+    pendingTimers.current.push(navTimer);
     setLoading(false);
   });
 
@@ -353,7 +362,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       >
         <View className="flex-row flex-wrap -mx-3 items-start">
           {/* LEFT COLUMN: Header & Menu */}
-          <View className="w-full lg:w-[65%] px-3">
+          <View className={`px-3 ${isMobile ? 'w-full' : isTablet ? 'w-[60%]' : 'w-[65%]'}`}>
             <View className={`bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl mb-6 ${isCompact ? 'p-3' : ''}`}>
               <View className="flex-row justify-between items-center mb-4">
                 <Text className={`text-2xl font-black text-white tracking-tighter ${isCompact ? 'text-xl' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>
@@ -436,7 +445,10 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         placeholder="Nombre"
                         placeholderTextColor="#475569"
                         editable={!client || !client.clienteNombre}
-                        onBlur={() => setTimeout(() => setNameSuggestions([]), 150)}
+                        onBlur={() => {
+                          const t = setTimeout(() => setNameSuggestions([]), 150);
+                          pendingTimers.current.push(t);
+                        }}
                       />
                       {formState.tipoPedido === 'llevar' && nameSuggestions.length > 0 && (
                         <View style={{
@@ -561,7 +573,10 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
           </View>
 
           {/* RIGHT COLUMN: Cart & Observations */}
-          <View className="w-full lg:w-[32%] px-3 sticky lg:top-5 self-start lg:ml-[3%]">
+          <View
+            className={`px-3 self-start ${isMobile ? 'w-full' : isTablet ? 'w-[40%]' : 'w-[32%] ml-[3%]'}`}
+            style={Platform.OS === 'web' && !isMobile ? ({ position: 'sticky', top: 20 } as any) : undefined}
+          >
             <View className="bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl">
               {/* =============== CARRITO / BALANCE =============== */}
               <CartPanel

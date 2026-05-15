@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBreakpoint } from '../styles/responsive';
 import Icon, { IconName } from './ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
+import { Role } from '@monorepo/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Section definitions ──
@@ -42,6 +43,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { label: 'Balance Global', route: '/balance-fechas', icon: 'chart-timeline-variant' },
       { label: 'Consultar Facturas', route: '/facturas', icon: 'database-search-outline' },
+      { label: 'Contabilidad', route: '/contabilidad', icon: 'book-account-outline' },
       { label: 'Analíticas', route: '/estadisticas', icon: 'chart-areaspline' },
       { label: 'Analíticas Domiciliarios', route: '/estadisticas-domiciliarios', icon: 'chart-bar' },
     ],
@@ -132,13 +134,14 @@ function AccordionSection({
                   size={16}
                   color={active ? '#F5A524' : '#64748B'}
                 />
-                <Text 
-                  numberOfLines={1}
-                  className={`ml-4 text-[13px] flex-1 ${active ? 'text-white font-black' : 'text-slate-400 font-medium'}`}
-                  style={{ display: compact ? 'none' : 'flex' }}
-                >
-                  {item.label}
-                </Text>
+                {!compact && (
+                  <Text
+                    numberOfLines={1}
+                    className={`ml-4 text-[13px] flex-1 ${active ? 'text-white font-black' : 'text-slate-400 font-medium'}`}
+                  >
+                    {item.label}
+                  </Text>
+                )}
               </Pressable>
             );
           })}
@@ -154,7 +157,8 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
   const pathname = usePathname();
   const { logout, user } = useAuth();
 
-  const isDomiciliario = (user as any)?.roles?.includes('domiciliario');
+  const isDomiciliario = user?.roles?.includes(Role.Domiciliario);
+  const isCocina = user?.roles?.includes(Role.Cocina);
 
   // ── Hooks siempre al tope (Rules of Hooks) ───────────────────────────────────
   const activeIdx = SECTIONS.findIndex((s) =>
@@ -173,13 +177,13 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
 
   // ── Footer de logout (shared) ─────────────────────────────────────────────────
   const LogoutButton = (
-    <View className="p-6 border-t border-white/5">
+    <View className="px-3 pb-4 pt-2 border-t border-white/5">
       <Pressable
-        className={`flex-row items-center py-4 rounded-2xl bg-red-500/10 border border-red-500/20 ${compact ? 'px-0 justify-center' : 'px-5'}`}
+        className={`flex-row items-center py-3 rounded-xl active:bg-white/5 ${compact ? 'justify-center px-2' : 'px-4 gap-3'}`}
         onPress={logout}
       >
-        <Icon name="logout-variant" size={20} color="#F43F5E" />
-        {!compact && <Text className="ml-4 text-xs font-black uppercase tracking-widest text-red-500">Cerrar Sesión</Text>}
+        <Icon name="logout-variant" size={18} color="#64748B" />
+        {!compact && <Text className="text-[12px] font-bold uppercase tracking-wider text-slate-500">Cerrar Sesión</Text>}
       </Pressable>
     </View>
   );
@@ -210,7 +214,51 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
     );
   }
 
-  const isAdmin = (user as any)?.role?.toLowerCase() === 'admin' || (user as any)?.roles?.includes('admin');
+  // ── Vista exclusiva para cocina (KDS) ────────────────────────────────────────
+  if (isCocina) {
+    const kdsItems = [
+      { label: 'Órdenes Activas', route: '/ordenes', icon: 'clock-outline' as const },
+      { label: 'Historial Órdenes', route: '/ordenes-todas', icon: 'history' as const },
+    ];
+    return (
+      <>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
+          {/* KDS badge */}
+          {!compact && (
+            <View className="mx-4 mb-4 px-3 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl flex-row items-center gap-2">
+              <Icon name="chef-hat" size={14} color="#F5A524" />
+              <Text className="text-orange-400 text-[10px] font-black uppercase tracking-widest">Modo Cocina · KDS</Text>
+            </View>
+          )}
+          {kdsItems.map((item) => {
+            const active = pathname === item.route;
+            return (
+              <Pressable
+                key={item.route}
+                className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
+                onPress={() => {
+                  router.push(item.route as any);
+                  if (onClose) onClose();
+                }}
+              >
+                <View className={`w-1 h-3 rounded-full mr-4 ${active ? 'bg-orange-500' : 'bg-transparent'}`} />
+                <Icon name={item.icon} size={18} color={active ? '#F5A524' : '#64748B'} />
+                {!compact && (
+                  <Text className={`ml-4 text-[13px] flex-1 ${active ? 'text-white font-black' : 'text-slate-400 font-medium'}`}>
+                    {item.label}
+                  </Text>
+                )}
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        {LogoutButton}
+      </>
+    );
+  }
+
+  const isAdmin = user?.roles?.includes(Role.Admin);
+
 
   // ── Menú completo para otros roles ───────────────────────────────────────────
   return (
@@ -263,19 +311,27 @@ export default function Navbar({ onClose }: { onClose?: () => void } = {}) {
       width.value = 280;
       return;
     }
-    AsyncStorage.getItem('@Auth:sidebarCollapsed').then((val: string | null) => {
-      if (val === 'true') {
-        setIsCollapsed(true);
-        width.value = 88; 
-      }
-    });
+    let cancelled = false;
+    AsyncStorage.getItem('@Auth:sidebarCollapsed')
+      .then((val: string | null) => {
+        if (cancelled) return;
+        if (val === 'true') {
+          setIsCollapsed(true);
+          width.value = 88;
+        }
+      })
+      .catch((err) => {
+        console.warn('[Navbar] Failed to read sidebar state', err);
+      });
+    return () => { cancelled = true; };
   }, [isCompact]);
 
   const toggleCollapse = () => {
     const nextValue = !isCollapsed;
     setIsCollapsed(nextValue);
     width.value = withTiming(nextValue ? 88 : 280, { duration: 300 });
-    AsyncStorage.setItem('@Auth:sidebarCollapsed', String(nextValue));
+    AsyncStorage.setItem('@Auth:sidebarCollapsed', String(nextValue))
+      .catch((err) => console.warn('[Navbar] Failed to persist sidebar state', err));
   };
 
   const animatedStyle = useAnimatedStyle(() => ({

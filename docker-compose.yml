@@ -149,7 +149,7 @@ services:
           memory: 256m
     <<: *default-logging
 
- # ── Cloudflare Tunnel ──────────────────────────────────────────────────────
+  # ── Cloudflare Tunnel (Normal) ─────────────────────────────────────────────
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: pizzeria-cloudflared
@@ -160,6 +160,55 @@ services:
     networks: [pizzeria-network]
     <<: *default-logging
 
+  # # ── Cloudflare Tunnel (solo n8n dev) ─────────────────────────────────────
+  # cloudflared_n8n:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: pizzeria-cloudflared-n8n
+  #   restart: unless-stopped
+  #   command: tunnel run
+  #   environment:
+  #     - TUNNEL_TOKEN=${CLOUDFLARE_N8N_TUNNEL_TOKEN}
+  #   networks: [pizzeria-network]
+  #   <<: *default-logging
+  #
+  # n8n:
+  #   image: n8nio/n8n:latest
+  #   container_name: pizzeria-n8n
+  #   restart: unless-stopped
+  #   ports:
+  #   - "5678:5678"
+  #   environment:
+  #     - N8N_BASIC_AUTH_ACTIVE=true
+  #     - N8N_BASIC_AUTH_USER=${N8N_USER}
+  #     - N8N_BASIC_AUTH_PASSWORD=${N8N_PASS}
+  #     - N8N_HOST=${HOST_URL}
+  #     - N8N_PORT=5678
+  #     - N8N_PROTOCOL=https
+  #     - N8N_PROXY_HOPS=1
+  #     - WEBHOOK_URL=${WEBHOOK_URL}
+  #     - N8N_EDITOR_BASE_URL=https://${HOST_URL}/
+  #     - WA_PHONE_NUMBER_ID=${WA_PHONE_NUMBER_ID}
+  #     - WA_ACCESS_TOKEN=${WA_ACCESS_TOKEN}
+  #     - ADMIN_PHONE=${ADMIN_PHONE}
+  #     - BOT_USERNAME=${BOT_USERNAME}
+  #     - BOT_PASSWORD=${BOT_PASSWORD}
+  #     - API_BASE_URL=http://backend:3000
+  #     # Allow $env.VAR access from inside node expressions. Without this, n8n returns "access to env vars denied".
+  #     - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+  #   volumes:
+  #     - n8n_data:/home/node/.n8n
+  #     - ./n8n/workflows:/home/node/.n8n/workflows
+  #   networks:
+  #     - pizzeria-network
+  #   depends_on:
+  #     - redis
+  #     - backend
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:5678/healthz"]
+  #     interval: 15s
+  #     timeout: 5s
+  #     retries: 5
+
 networks:
   pizzeria-network:
     driver: bridge
@@ -169,3 +218,5 @@ volumes:
     name: pizzeria-pgdata
   redis_data:
     name: pizzeria-redis-data  # Nombre explícito para facilitar backups
+  n8n_data:
+    name: pizzeria-n8n-data

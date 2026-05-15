@@ -19,7 +19,9 @@ export function getEstadoColor(estado?: string) {
     case 'en preparación':
       return { bg: 'rgba(34, 211, 238, 0.12)', text: '#22D3EE', icon: 'chef-hat' as const };
     case 'enviado':
-      return { bg: 'rgba(245, 165, 36, 0.12)', text: '#F5A524', icon: 'truck-delivery-outline' as const };
+      // Use warning orange (#FB923C), NOT primary amber (#F5A524).
+      // Primary is reserved for CTAs / brand accents — never status states.
+      return { bg: 'rgba(251, 146, 60, 0.12)', text: '#FB923C', icon: 'truck-delivery-outline' as const };
     case 'entregado':
     case 'completada':
       return { bg: 'rgba(52, 211, 153, 0.12)', text: '#34D399', icon: estado === 'completada' ? 'check-all' : 'check-circle-outline' as const };

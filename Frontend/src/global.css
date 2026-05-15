@@ -14,9 +14,9 @@
     --color-pos-primary: #F5A524;
     --color-pos-primary-light: rgba(245, 165, 36, 0.12);
 
-    /* Secundario — Electric Violet */
-    --color-pos-secondary: #8B5CF6;
-    --color-pos-secondary-light: rgba(139, 92, 246, 0.12);
+    /* Secundario — Slate Neutral */
+    --color-pos-secondary: #475569;
+    --color-pos-secondary-light: rgba(71, 85, 105, 0.15);
 
     /* Estados */
     --color-pos-success: #34D399;

@@ -11,8 +11,8 @@ export class FacturasPagosService {
 		private readonly repo: Repository<FacturasPagos>,
 	) {}
 
-	findAll(query: FindFacturasPagosDto = {}) {
-		const { from, to, page = 1, limit = 500 } = query;
+	async findAll(query: FindFacturasPagosDto = {}) {
+		const { from, to, page = 1, limit = 100 } = query;
 		const qb = this.repo.createQueryBuilder('p')
 			.orderBy('p.fechaFactura', 'DESC')
 			.take(limit)
@@ -26,7 +26,8 @@ export class FacturasPagosService {
 			qb.where('p.fechaFactura <= :to', { to });
 		}
 
-		return qb.getMany();
+		const [data, total] = await qb.getManyAndCount();
+		return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
 	}
 
 	findByDay() {

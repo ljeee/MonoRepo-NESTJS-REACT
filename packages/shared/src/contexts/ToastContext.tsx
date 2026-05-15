@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
@@ -69,8 +69,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts((prev) => prev.filter((t) => t.id !== id));
     }, []);
 
+    const value = useMemo(
+        () => ({ toasts, showToast, hideToast }),
+        [toasts, showToast, hideToast]
+    );
+
     return (
-        <ToastContext.Provider value={{ toasts, showToast, hideToast }}>
+        <ToastContext.Provider value={value}>
             {children}
         </ToastContext.Provider>
     );

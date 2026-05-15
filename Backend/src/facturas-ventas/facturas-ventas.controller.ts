@@ -1,4 +1,4 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@nestjs/common";
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query, BadRequestException} from "@nestjs/common";
 import {ApiTags, ApiOperation, ApiResponse, ApiQuery} from '@nestjs/swagger';
 import {FacturasVentasService} from "./facturas-ventas.service";
 import {CreateFacturasVentasDto} from "./esquemas/facturas-ventas.dto";
@@ -20,11 +20,24 @@ export class FacturasVentasController {
 		@Query('page') page?: string,
 		@Query('limit') limit?: string,
 	) {
+		const limitNum = limit ? Number(limit) : undefined;
+		
+		// Security check: Limit date range for large queries (e.g., limit: 9999)
+		if ((!limitNum || limitNum > 100) && from && to) {
+			const fromDate = new Date(from);
+			const toDate = new Date(to);
+			const diffInDays = (toDate.getTime() - fromDate.getTime()) / (1000 * 3600 * 24);
+			
+			if (diffInDays > 365) {
+				throw new BadRequestException('El rango de fechas no puede exceder 1 año (365 días) para consultas masivas o exportaciones.');
+			}
+		}
+
 		return this.service.findAll({
 			from,
 			to,
 			page: page ? Number(page) : undefined,
-			limit: limit ? Number(limit) : undefined,
+			limit: limitNum,
 		});
 	}
 

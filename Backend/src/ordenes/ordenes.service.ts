@@ -23,7 +23,7 @@ export class OrdenesService {
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
-		const { estado, from, to, page = 1, limit = 500 } = query;
+		const { estado, from, to, page = 1, limit = 50 } = query;
 		const qb = this.repo.createQueryBuilder('o')
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
@@ -128,8 +128,8 @@ export class OrdenesService {
 				? this.facturaCreationService.generarDescripcionFactura(productos, this.productProcessingService.construirNombreProducto.bind(this.productProcessingService))
 				: '';
 
-			// 1. Crear factura
-			const factura = await this.facturaCreationService.crearFactura(data.nombreCliente || '', undefined, descripcion, manager);
+			// 1. Crear factura (metodo se guarda desde el inicio para pedidos con pago conocido, ej. WhatsApp bot)
+			const factura = await this.facturaCreationService.crearFactura(data.nombreCliente || '', data.metodo, descripcion, manager);
 
 			// 2. Crear orden
 			const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden, data.observaciones, manager);

@@ -52,7 +52,46 @@ export async function seedUsers() {
 				name: 'FELIPE',
 				roles: [Role.Domiciliario],
 			},
+			// ── Cocina ──────────────────────────────────────────────────────
+			{
+				username: 'cocina01',
+				password: 'cocina1234',
+				name: 'Cocinero',
+				roles: [Role.Cocina],
+			},
+			// ── Meseros ─────────────────────────────────────────────────────
+			{
+				username: 'mesero01',
+				password: 'mesero1234',
+				name: 'Mesero 1',
+				roles: [Role.Mesero],
+			},
+			{
+				username: 'mesero02',
+				password: 'mesero1234',
+				name: 'Mesero 2',
+				roles: [Role.Mesero],
+			},
+			{
+				username: 'mesero03',
+				password: 'mesero1234',
+				name: 'Mesero 3',
+				roles: [Role.Mesero],
+			},
+			{
+				username: 'mesero04',
+				password: 'mesero1234',
+				name: 'Mesero 4',
+				roles: [Role.Mesero],
+			},
+			{
+				username: 'mesero05',
+				password: 'mesero1234',
+				name: 'Mesero 5',
+				roles: [Role.Mesero],
+			},
 		];
+
 
 		for (const userData of users) {
 			const existing = await userRepository.findOne({where: {username: userData.username}});

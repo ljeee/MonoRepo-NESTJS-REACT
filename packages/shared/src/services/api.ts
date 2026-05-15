@@ -129,8 +129,8 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Facturas Pagos (Gastos) ────────────────────────────────────────
   const pagos = {
-    getAll: (params?: { from?: string; to?: string }) =>
-      http.get<FacturaPago[]>('/facturas-pagos', { params }).then((r) => arr<FacturaPago>(r.data)),
+    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number }) =>
+      http.get<PaginatedResponse<FacturaPago>>('/facturas-pagos', { params }).then((r) => r.data),
 
     getDay: () =>
       http.get<FacturaPago[]>('/facturas-pagos/dia').then((r) => arr<FacturaPago>(r.data)),

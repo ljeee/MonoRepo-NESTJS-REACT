@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { api, setAuthToken } from '../services/api';
 import type { AuthUser } from '@monorepo/shared';
+import { Role } from '@monorepo/shared';
 
 interface AuthContextData {
     token: string | null;
@@ -38,7 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ])
             .then(([storedToken, storedUser]) => {
                 if (storedToken && storedUser) {
-                    applySession(storedToken, JSON.parse(storedUser), false);
+                    let parsedUser: AuthUser | null = null;
+                    try {
+                        parsedUser = JSON.parse(storedUser);
+                    } catch (parseErr) {
+                        console.warn('[Auth] Stored user is corrupt, clearing session', parseErr);
+                        void AsyncStorage.multiRemove(['@Auth:token', '@Auth:refreshToken', '@Auth:user']);
+                        applySession(null, null, false);
+                        return;
+                    }
+                    applySession(storedToken, parsedUser, false);
                     setAuthToken(storedToken);
                     return;
                 }
@@ -61,13 +71,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // login lives at (main)/login, so segments = ["(main)", "login"]
         const onLoginScreen = segments.includes('login' as any);
-        const isDomiciliario = (user as any)?.roles?.includes('domiciliario');
+        const isDomiciliario = user?.roles?.includes(Role.Domiciliario);
+        const isCocina = user?.roles?.includes(Role.Cocina);
 
         if (!token && !onLoginScreen) {
             router.replace('/login' as any);
         } else if (token && onLoginScreen) {
             // Just logged in — send to the right home screen
-            router.replace((isDomiciliario ? '/mis-domicilios' : '/') as any);
+            if (isDomiciliario) {
+                router.replace('/mis-domicilios' as any);
+            } else if (isCocina) {
+                router.replace('/ordenes' as any);
+            } else {
+                router.replace('/' as any);
+            }
         } else if (token && isDomiciliario) {
             // Session restored from storage — keep domiciliarios off admin routes
             const currentPath = '/' + segments.filter((s: string) => !s.startsWith('(')).join('/');
@@ -75,8 +92,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!allowedForDomiciliario.some(p => currentPath.startsWith(p))) {
                 router.replace('/mis-domicilios' as any);
             }
+        } else if (token && isCocina) {
+            // Session restored — keep cocina users on read-only order views (KDS)
+            const currentPath = '/' + segments.filter((s: string) => !s.startsWith('(')).join('/');
+            const allowedForCocina = ['/ordenes', '/ordenes-todas', '/orden-detalle'];
+            if (!allowedForCocina.some(p => currentPath.startsWith(p))) {
+                router.replace('/ordenes' as any);
+            }
         }
     }, [token, user, segments, isLoading, router]);
+
 
 
     const login = async (usuario: string, contrasena: string) => {

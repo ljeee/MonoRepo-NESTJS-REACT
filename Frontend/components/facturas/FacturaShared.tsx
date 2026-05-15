@@ -119,7 +119,7 @@ export function EstadoToggle({
               <ActivityIndicator size="small" color={isPagado ? '#F5A524' : '#10B981'} />
             ) : (
               <Text className={`font-black text-xs uppercase ${isPagado ? 'text-orange-400' : 'text-emerald-400'}`}>
-                {isPagado ? '↶ Marcar Pendiente' : '✓ Marcar Pagado'}
+                {isPagado ? 'Marcar Pendiente' : 'Marcar Pagado'}
               </Text>
             )}
           </TouchableOpacity>

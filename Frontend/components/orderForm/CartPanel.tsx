@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
+import Icon from '../ui/Icon';
 import { formatCurrency } from '@monorepo/shared';
 
 export interface CartItem {
@@ -25,7 +26,7 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
 
   if (items.length === 0) {
     return (
-      <View className="bg-(--color-pos-bg)/50 rounded-2xl p-8 items-center justify-center border border-white/5 border-dashed mb-5">
+      <View className="bg-(--color-pos-bg)/50 rounded-2xl p-6 items-center justify-center border border-white/5 border-dashed mb-5">
         <Text className="text-slate-500 font-medium">Agrega productos desde el menú</Text>
       </View>
     );
@@ -33,7 +34,10 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
 
   return (
     <View className="bg-(--color-pos-bg)/50 rounded-2xl p-5 border border-white/5 mb-5">
-      <Text className="text-white font-black uppercase tracking-widest text-base mb-4 opacity-80">🛒 Resumen del pedido</Text>
+      <View className="flex-row items-center gap-2 mb-4">
+        <Icon name="cart-outline" size={16} color="#94A3B8" />
+        <Text className="text-white font-black uppercase tracking-widest text-base opacity-80">Resumen del pedido</Text>
+      </View>
 
       <ScrollView className="max-h-72" nestedScrollEnabled>
         {items.map((item) => (
@@ -96,7 +100,10 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
       <View className="mt-4 pt-4 border-t border-white/10">
         {costoDomicilio > 0 && (
           <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-slate-400 text-xs font-medium">🛵 DOMICILIO</Text>
+            <View className="flex-row items-center gap-1.5">
+              <Icon name="moped-outline" size={12} color="#94A3B8" />
+              <Text className="text-slate-400 text-xs font-medium">DOMICILIO</Text>
+            </View>
             <Text className="text-slate-400 text-xs font-bold">${formatCurrency(costoDomicilio)}</Text>
           </View>
         )}

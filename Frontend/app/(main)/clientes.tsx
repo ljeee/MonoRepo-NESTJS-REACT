@@ -52,7 +52,12 @@ export default function ClientesScreen() {
   const { data, loading, error, refetch } = useClientesList();
   const { client, loading: searching, error: searchError, fetchClient } = useClientByPhone();
   const [searchQuery, setSearchQuery] = useState('');
-  const isPhoneQuery = /^\d+$/.test(searchQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 250);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+  const isPhoneQuery = /^\d+$/.test(debouncedQuery);
   const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [frecuentes, setFrecuentes] = useState<ClienteStats[]>([]);
@@ -101,16 +106,16 @@ export default function ClientesScreen() {
 
   // Filtrar lista cuando el query contiene letras (búsqueda por nombre)
   const filteredData = useMemo(() => {
-    if (!searchQuery || isPhoneQuery) return data;
-    const q = searchQuery.toLowerCase();
+    if (!debouncedQuery || isPhoneQuery) return data;
+    const q = debouncedQuery.toLowerCase();
     return data.filter(c =>
       c.clienteNombre?.toLowerCase().includes(q) ||
       c.telefono?.includes(q)
     );
-  }, [data, searchQuery, isPhoneQuery]);
+  }, [data, debouncedQuery, isPhoneQuery]);
 
   // Resetear página al cambiar búsqueda o datos
-  useEffect(() => { setPage(1); }, [searchQuery, data]);
+  useEffect(() => { setPage(1); }, [debouncedQuery, data]);
 
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
   const paginatedData = filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
