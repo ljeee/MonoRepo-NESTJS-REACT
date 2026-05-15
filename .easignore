@@ -1,7 +1,6 @@
 # Ignorar carpetas pesadas del monorepo para EAS Build
 Backend/
 Desktop/
-packages/
 node_modules/
 .git/
 .expo/
