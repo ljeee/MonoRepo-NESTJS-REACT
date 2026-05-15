@@ -2,6 +2,8 @@
 Backend/
 Desktop/
 node_modules/
+Frontend/android/
+Frontend/ios/
 .git/
 .expo/
 *.apk
