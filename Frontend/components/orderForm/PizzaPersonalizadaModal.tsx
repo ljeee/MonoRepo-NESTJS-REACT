@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal } from 'react-native';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
+import Icon from '../ui/Icon';
 import type { Producto, ProductoVariante, PizzaSabor } from '@monorepo/shared';
 import { formatCurrency } from '@monorepo/shared';
 
@@ -111,10 +112,14 @@ export default function PizzaPersonalizadaModal({
       <TouchableOpacity
         key={sabor.saborId}
         onPress={() => handleSaborPress(sabor.nombre)}
-        className={`px-4 py-2 rounded-xl mb-2 mr-2 border ${isSelected ? (isEspecial ? 'bg-(--color-pos-secondary)/20 border-(--color-pos-secondary)' : 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)') : 'bg-white/5 border-white/10'}`}
+        className={`px-4 py-2 rounded-xl mb-2 mr-2 border flex-row items-center gap-1.5 ${isSelected ? (isEspecial ? 'bg-white/5 border-white/20' : 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)') : 'bg-white/5 border-white/10'}`}
       >
-        <Text className={`font-bold text-sm ${isSelected ? (isEspecial ? 'text-(--color-pos-secondary)' : 'text-(--color-pos-primary)') : 'text-slate-400'}`}>
-          {isEspecial ? '★ ' : ''}{sabor.nombre}{isSelected ? ' ✓' : ''}
+        {isEspecial && <Icon name="star" size={11} color={isSelected ? '#94A3B8' : '#475569'} />}
+        <Text
+          className={`font-bold text-sm ${isSelected ? (isEspecial ? 'text-slate-300' : 'text-(--color-pos-primary)') : 'text-slate-400'}`}
+          numberOfLines={2}
+        >
+          {sabor.nombre}{isSelected ? ' ✓' : ''}
           {isEspecial && recargo > 0 ? `  +$${formatCurrency(recargo)}` : ''}
         </Text>
       </TouchableOpacity>
@@ -123,11 +128,22 @@ export default function PizzaPersonalizadaModal({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View className="flex-1 bg-black/60 justify-center items-center p-5">
+      <View className="flex-1 bg-black/85 justify-center items-center p-5">
         <View className="bg-(--color-pos-surface) w-full max-w-lg rounded-3xl p-6 border border-white/5 shadow-2xl">
           {/* Header */}
-          <Text className="text-white font-black text-2xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>🍕 Pizza {variante?.nombre}</Text>
-          <Text className="text-slate-400 text-sm mt-1 mb-6">
+          <View className="flex-row items-center gap-3 mb-1">
+            <View className="w-10 h-10 rounded-xl bg-orange-500/15 items-center justify-center border border-orange-500/25">
+              <Icon name="pizza" size={22} color="#F5A524" />
+            </View>
+            <Text
+              className="text-white font-black text-2xl tracking-tighter flex-1"
+              style={{ fontFamily: 'Space Grotesk' }}
+              numberOfLines={1}
+            >
+              Pizza {variante?.nombre}
+            </Text>
+          </View>
+          <Text className="text-slate-400 text-sm mt-2 mb-6">
             Selecciona 1-3 sabores • Base ${formatCurrency(Number(variante?.precio))}
           </Text>
 
@@ -143,7 +159,10 @@ export default function PizzaPersonalizadaModal({
                 {tradicionales.map(sb => renderChip(sb))}
               </View>
 
-              <Text className="text-(--color-pos-secondary) font-black text-xs uppercase tracking-widest mb-3">Especiales ★</Text>
+              <View className="flex-row items-center gap-1.5 mb-3">
+                <Icon name="star" size={11} color="#475569" />
+                <Text className="text-slate-500 font-black text-xs uppercase tracking-widest">Especiales</Text>
+              </View>
               <View className="flex-row flex-wrap mb-4">
                 {especiales.map(sb => renderChip(sb))}
               </View>

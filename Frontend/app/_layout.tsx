@@ -1,6 +1,7 @@
 import { Stack, usePathname } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Platform, StatusBar, Pressable, ActivityIndicator } from 'react-native';
+import { Platform, Pressable, ActivityIndicator } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 if (Platform.OS === 'web') {
   require('../src/global.web.css');
@@ -144,6 +145,7 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
+      <StatusBar style="light" backgroundColor="#060E1A" />
       <SafeAreaProvider>
         <ApiProvider api={api}>
           <AuthProvider>

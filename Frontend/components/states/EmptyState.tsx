@@ -14,8 +14,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
     icon = 'package-variant-closed'
 }) => {
     return (
-        <View className="flex-1 justify-center items-center p-8 min-h-[300px]">
-            <View className="mb-4 opacity-50 bg-white/5 p-8 rounded-full">
+        <View className="flex-1 justify-center items-center p-6 md:p-8 min-h-[300px]">
+            <View className="mb-4 opacity-50 bg-white/5 p-5 rounded-full">
                 <Icon name={icon} size={64} color="#64748B" />
             </View>
             <Text className="text-xl font-black text-white mb-2 text-center" style={{ fontFamily: 'Space Grotesk' }}>

@@ -30,43 +30,76 @@ const DOMICILIARIOS = [
 ];
 
 const CLIENTES = [
-    { nombre: 'Carlos Morales',    tel: '3100001111', dir: 'Cra 5 # 12-34 Apto 201' },
-    { nombre: 'Luisa Fernández',   tel: '3100002222', dir: 'Calle 8 # 3-10' },
-    { nombre: 'Andrés Gómez',      tel: '3100003333', dir: 'Tv 9 # 7-15 Casa 2' },
-    { nombre: 'María Rodríguez',   tel: '3100004444', dir: 'Cll 15 # 8-20 Bl 3 Ap 5' },
-    { nombre: 'Pedro Jiménez',     tel: '3100005555', dir: 'Cra 12 # 18-40' },
-    { nombre: 'Ana Martínez',      tel: '3100006666', dir: 'Diagonal 10 # 4-22' },
-    { nombre: 'Santiago López',    tel: '3100007777', dir: 'Cll 22 # 6-18 Ap 302' },
-    { nombre: 'Valentina Ruiz',    tel: '3100008888', dir: 'Cra 3 # 9-55 Casa 1' },
-    { nombre: 'Camilo Herrera',    tel: '3100009999', dir: 'Cll 30 # 11-5 Of 201' },
-    { nombre: 'Isabella Torres',   tel: '3101001010', dir: 'Cra 7 # 14-22' },
+    { nombre: 'Carlos Morales', tel: '3100001111', dir: 'Cra 5 # 12-34 Apto 201' },
+    { nombre: 'Luisa Fernández', tel: '3100002222', dir: 'Calle 8 # 3-10' },
+    { nombre: 'Andrés Gómez', tel: '3100003333', dir: 'Tv 9 # 7-15 Casa 2' },
+    { nombre: 'María Rodríguez', tel: '3100004444', dir: 'Cll 15 # 8-20 Bl 3 Ap 5' },
+    { nombre: 'Pedro Jiménez', tel: '3100005555', dir: 'Cra 12 # 18-40' },
+    { nombre: 'Ana Martínez', tel: '3100006666', dir: 'Diagonal 10 # 4-22' },
+    { nombre: 'Santiago López', tel: '3100007777', dir: 'Cll 22 # 6-18 Ap 302' },
+    { nombre: 'Valentina Ruiz', tel: '3100008888', dir: 'Cra 3 # 9-55 Casa 1' },
+    { nombre: 'Camilo Herrera', tel: '3100009999', dir: 'Cll 30 # 11-5 Of 201' },
+    { nombre: 'Isabella Torres', tel: '3101001010', dir: 'Cra 7 # 14-22' },
 ];
 
 const PRODUCTOS = [
-    { nombre: 'Pizza Grande Especial',    precio: 42000 },
-    { nombre: 'Pizza Mediana BBQ',        precio: 28000 },
-    { nombre: 'Pizza Pequeña Hawaiana',   precio: 18000 },
-    { nombre: 'Lasaña Mixta',             precio: 14000 },
-    { nombre: 'Hamburguesa Doble',        precio: 16000 },
-    { nombre: 'Salchipapa Doble',         precio: 10000 },
-    { nombre: 'Coca Cola 1.5L',           precio: 7000  },
-    { nombre: 'Agua Cristal 600ml',       precio: 3000  },
-    { nombre: 'Pan de Ajo',               precio: 5000  },
-    { nombre: 'Alitas BBQ x6',            precio: 20000 },
+    { nombre: 'Pizza Grande Especial', precio: 42000 },
+    { nombre: 'Pizza Mediana BBQ', precio: 28000 },
+    { nombre: 'Pizza Pequeña Hawaiana', precio: 18000 },
+    { nombre: 'Lasaña Mixta', precio: 14000 },
+    { nombre: 'Hamburguesa Doble', precio: 16000 },
+    { nombre: 'Salchipapa Doble', precio: 10000 },
+    { nombre: 'Coca Cola 1.5L', precio: 7000 },
+    { nombre: 'Agua Cristal 600ml', precio: 3000 },
+    { nombre: 'Pan de Ajo', precio: 5000 },
+    { nombre: 'Alitas BBQ x6', precio: 20000 },
 ];
 
 const METODOS: string[] = ['efectivo', 'nequi', 'daviplata', 'transferencia'];
 const SABORES = ['Hawaiana', 'Carnes', 'Pollo Champiñones', 'Mexicana', 'BBQ', 'Napolitana', 'Pepperoni'];
+
+/** Pool de observaciones para debug del KDS */
+const OBSERVACIONES: Array<string | undefined> = [
+    // Cortas
+    'Sin salsa',
+    'Sin cebolla',
+    'Sin queso',
+    'Llamar al llegar',
+    'Sin jalapeños',
+    'Extra queso',
+    'Sin piña',
+    'Sin tomate',
+    'Poca sal',
+    'Bien cocida',
+    // Medianas
+    'Sin cebolla y sin salsa roja, por favor',
+    'Alergia al maní — no agregar ningún ingrediente con nuez',
+    'La pizza sin orilla rellena, solo masa delgada',
+    'Cortar en 8 porciones, empacar por separado',
+    'El cliente prefiere sin ají ni picante en ningún producto',
+    'Extra salsa BBQ aparte en recipiente pequeño',
+    'Sin aceitunas en toda la orden, el niño es alérgico',
+    'Hamburguesa sin pepinillos y sin mostaza',
+    // Largas (para verificar overflow en tarjeta KDS)
+    'IMPORTANTE: cliente con alergia severa al gluten. Usar utensilios limpios, no contaminar cruzado con harinas. Confirmar con cocina antes de despachar. Cualquier duda llamar al 3100004444.',
+    'Sin cebolla, sin salsa rosada, sin tomate fresco. La ensalada aparte sin aderezo. Las papas fritas muy crocantes, no blandas. Agregar servilletas extra y cubiertos desechables para 4 personas.',
+    'Pedido para reunión de oficina: todo bien presentado. Las pizzas en cajas separadas etiquetadas por sabor. Incluir lista de ingredientes de cada pizza. No incluir ají ni picante en NINGÚN producto. Gracias.',
+    'Alergia a la lactosa — sin queso en TODA la orden. Verificar que la salsa tampoco tenga derivados lácteos. El cliente lo ha tenido problemas antes con otros pedidos. Por favor confirmar con el chef.',
+    // undefined = sin observación (para variedad)
+    undefined,
+    undefined,
+    undefined,
+];
 
 // ── Seeder ───────────────────────────────────────────────────────────────────
 
 export async function seedOrders() {
     const dataSource = await AppDataSource.initialize();
 
-    const facturaRepo  = dataSource.getRepository(FacturasVentas);
-    const ordenRepo    = dataSource.getRepository(Ordenes);
-    const prodRepo     = dataSource.getRepository(OrdenesProductos);
-    const domRepo      = dataSource.getRepository(Domicilios);
+    const facturaRepo = dataSource.getRepository(FacturasVentas);
+    const ordenRepo = dataSource.getRepository(Ordenes);
+    const prodRepo = dataSource.getRepository(OrdenesProductos);
+    const domRepo = dataSource.getRepository(Domicilios);
     const varianteRepo = dataSource.getRepository(ProductoVariantes);
 
     // Fetch actual variants with products
@@ -82,9 +115,9 @@ export async function seedOrders() {
 
         // ── 30 domicilios distribuidos entre 4 domiciliarios ──────────────────
         for (let i = 0; i < 30; i++) {
-            const dom     = DOMICILIARIOS[i % DOMICILIARIOS.length];
+            const dom = DOMICILIARIOS[i % DOMICILIARIOS.length];
             const cliente = randomFrom(CLIENTES);
-            
+
             // Pick 1-2 random products
             const numProds = Math.random() > 0.7 ? 2 : 1;
             const items = Array.from({ length: numProds }).map(() => {
@@ -92,7 +125,7 @@ export async function seedOrders() {
                 const isPizza = v.producto?.productoNombre?.toLowerCase().includes('pizza');
                 const s1 = isPizza ? randomFrom(SABORES) : undefined;
                 const s2 = isPizza && Math.random() > 0.5 ? randomFrom(SABORES) : undefined;
-                
+
                 let nombre = `${v.producto?.productoNombre} - ${v.nombre}`;
                 if (s1 && s2) nombre += ` (${s1} + ${s2})`;
                 else if (s1) nombre += ` (${s1})`;
@@ -107,27 +140,27 @@ export async function seedOrders() {
                 };
             });
 
-            const fecha   = daysAgo(Math.floor(i / 6), 10 + (i % 12));
+            const fecha = daysAgo(Math.floor(i / 6), 10 + (i % 12));
             const subtotal = items.reduce((sum, item) => sum + item.precio, 0);
-            const total   = subtotal + 3000;
-            const estado  = i < 20 ? 'pendiente' : 'entregado';
-            const pagada  = estado === 'entregado';
+            const total = subtotal + 3000;
+            const estado = i < 20 ? 'pendiente' : 'entregado';
+            const pagada = estado === 'entregado';
 
             const factura = await facturaRepo.save(facturaRepo.create({
                 clienteNombre: cliente.nombre,
-                descripcion:   `Domicilio #${i + 1}`,
-                fechaFactura:  fecha,
-                estado:        pagada ? 'pagada' : 'pendiente',
-                metodo:        pagada ? randomFrom(METODOS) : undefined,
+                descripcion: `Domicilio #${i + 1}`,
+                fechaFactura: fecha,
+                estado: pagada ? 'pagada' : 'pendiente',
+                metodo: pagada ? randomFrom(METODOS) : undefined,
                 total,
             }));
 
             const orden = await ordenRepo.save(ordenRepo.create({
                 factura,
-                tipoPedido:  'domicilio',
+                tipoPedido: 'domicilio',
                 estadoOrden: pagada ? 'completada' : 'pendiente',
-                fechaOrden:  fecha,
-                observaciones: i % 3 === 0 ? 'Llamar al llegar' : undefined,
+                fechaOrden: fecha,
+                observaciones: randomFrom(OBSERVACIONES),
             }));
 
             for (const item of items) {
@@ -142,14 +175,14 @@ export async function seedOrders() {
             }
 
             await domRepo.save(domRepo.create({
-                facturaId:                    factura.facturaId,
-                ordenId:                      orden.ordenId,
-                fechaCreado:                  fecha,
-                telefono:                     cliente.tel,
+                facturaId: factura.facturaId,
+                ordenId: orden.ordenId,
+                fechaCreado: fecha,
+                telefono: cliente.tel,
                 telefonoDomiciliarioAsignado: dom.telefono,
-                direccionEntrega:             cliente.dir,
-                costoDomicilio:               3000,
-                estadoDomicilio:              estado,
+                direccionEntrega: cliente.dir,
+                costoDomicilio: 3000,
+                estadoDomicilio: estado,
             }));
 
             console.log(`  ✅ Domicilio ${i + 1}/30 → ${dom.nombre} | ${cliente.nombre} | ${estado}`);
@@ -161,23 +194,24 @@ export async function seedOrders() {
             const fecha = daysAgo(Math.floor(i / 3), 12 + i);
             const pagada = i % 2 === 0;
             const precio = Number(v.precio);
-            
+
             const nombre = `${v.producto?.productoNombre} - ${v.nombre}`;
 
             const factura = await facturaRepo.save(facturaRepo.create({
                 clienteNombre: `Mesa ${(i % 5) + 1}`,
-                descripcion:   'Consumo en local',
-                fechaFactura:  fecha,
-                estado:        pagada ? 'pagada' : 'pendiente',
-                metodo:        pagada ? randomFrom(METODOS) : undefined,
-                total:         precio,
+                descripcion: 'Consumo en local',
+                fechaFactura: fecha,
+                estado: pagada ? 'pagada' : 'pendiente',
+                metodo: pagada ? randomFrom(METODOS) : undefined,
+                total: precio,
             }));
 
             const orden = await ordenRepo.save(ordenRepo.create({
                 factura,
-                tipoPedido:  'mesa',
+                tipoPedido: 'mesa',
                 estadoOrden: pagada ? 'completada' : 'pendiente',
-                fechaOrden:  fecha,
+                fechaOrden: fecha,
+                observaciones: randomFrom(OBSERVACIONES),
             }));
 
             await prodRepo.save(prodRepo.create({
@@ -198,18 +232,19 @@ export async function seedOrders() {
 
             const factura = await facturaRepo.save(facturaRepo.create({
                 clienteNombre: `Cliente Paso ${i + 1}`,
-                descripcion:   'Para llevar',
-                fechaFactura:  fecha,
-                estado:        'pagada',
-                metodo:        randomFrom(METODOS),
-                total:         precio,
+                descripcion: 'Para llevar',
+                fechaFactura: fecha,
+                estado: 'pagada',
+                metodo: randomFrom(METODOS),
+                total: precio,
             }));
 
             const orden = await ordenRepo.save(ordenRepo.create({
                 factura,
-                tipoPedido:  'llevar',
+                tipoPedido: 'llevar',
                 estadoOrden: 'completada',
-                fechaOrden:  fecha,
+                fechaOrden: fecha,
+                observaciones: randomFrom(OBSERVACIONES),
             }));
 
             await prodRepo.save(prodRepo.create({

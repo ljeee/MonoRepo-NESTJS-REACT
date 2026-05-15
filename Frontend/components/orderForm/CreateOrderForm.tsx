@@ -7,7 +7,7 @@ import { ScrollView, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingVi
 import { Badge } from '../ui';
 import { api } from '../../services/api';
 import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce } from '@monorepo/shared';
-import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState } from '@monorepo/shared';
+import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import CartPanel, { CartItem } from './CartPanel';
 import MenuPicker from './MenuPicker';
@@ -79,6 +79,14 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const { formState: globalFormState, updateForm: globalUpdateForm, clearCart, isHydrated: globalIsHydrated } = useOrder();
   const { showToast } = useToast();
 
+  const pendingTimers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
+  React.useEffect(() => {
+    return () => {
+      pendingTimers.current.forEach((t) => clearTimeout(t));
+      pendingTimers.current = [];
+    };
+  }, []);
+
   const [localFormState, setLocalFormState] = useState<OrderFormState | null>(null);
 
   // Initialize local state if editing
@@ -100,6 +108,9 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   }, [mode, globalUpdateForm]);
 
   const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
+  const [clientesList, setClientesList] = useState<Cliente[]>([]);
+  const [nameSuggestions, setNameSuggestions] = useState<Cliente[]>([]);
+
   const fetchDomiciliarios = useCallback(async () => {
     try {
       const data = await api.domiciliarios.getAll();
@@ -175,6 +186,27 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       return () => clearTimeout(timer);
     }
   }, [fetchDomiciliarios, formState.tipoPedido]);
+
+  // Cargar lista de clientes para autocompletar en llevar
+  useEffect(() => {
+    if (formState.tipoPedido === 'llevar') {
+      api.clientes.getAll().then(setClientesList).catch(() => {});
+    } else {
+      setNameSuggestions([]);
+    }
+  }, [formState.tipoPedido]);
+
+  // Filtrar sugerencias mientras se escribe el nombre (solo llevar)
+  useEffect(() => {
+    if (formState.tipoPedido !== 'llevar' || formState.nombreCliente.length < 2) {
+      setNameSuggestions([]);
+      return;
+    }
+    const q = formState.nombreCliente.toLowerCase();
+    setNameSuggestions(
+      clientesList.filter(c => c.clienteNombre?.toLowerCase().includes(q)).slice(0, 6)
+    );
+  }, [formState.nombreCliente, formState.tipoPedido, clientesList]);
 
   const resolvedNombreCliente =
     formState.tipoPedido === 'domicilio'
@@ -296,9 +328,10 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
     });
 
     showToast(mode === 'edit' ? '¡Orden actualizada!' : '¡Orden creada exitosamente!', 'success', 2000);
-    setTimeout(() => {
+    const navTimer = setTimeout(() => {
       router.push(mode === 'edit' ? (`/orden-detalle?ordenId=${ordenId}` as any) : '/ordenes');
     }, 2000);
+    pendingTimers.current.push(navTimer);
     setLoading(false);
   });
 
@@ -329,7 +362,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       >
         <View className="flex-row flex-wrap -mx-3 items-start">
           {/* LEFT COLUMN: Header & Menu */}
-          <View className="w-full lg:w-[65%] px-3">
+          <View className={`px-3 ${isMobile ? 'w-full' : isTablet ? 'w-[60%]' : 'w-[65%]'}`}>
             <View className={`bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl mb-6 ${isCompact ? 'p-3' : ''}`}>
               <View className="flex-row justify-between items-center mb-4">
                 <Text className={`text-2xl font-black text-white tracking-tighter ${isCompact ? 'text-xl' : ''}`} style={{ fontFamily: 'Space Grotesk' }}>
@@ -359,7 +392,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                             costoDomicilio: '',
                         });
                       }}
-                      style={{ color: 'white' }}
+                      style={{ color: 'white', fontSize: 14 }}
                       itemStyle={{ color: 'white', fontSize: 14 }}
                       dropdownIconColor="#94A3B8"
                     >
@@ -404,14 +437,44 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                       </Picker>
                     </View>
                   ) : (
-                    <TextInput
-                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                      value={resolvedNombreCliente}
-                      onChangeText={(val) => updateForm({ nombreCliente: val })}
-                      placeholder="Nombre"
-                      placeholderTextColor="#475569"
-                      editable={!client || !client.clienteNombre}
-                    />
+                    <View style={{ position: 'relative' }}>
+                      <TextInput
+                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                        value={resolvedNombreCliente}
+                        onChangeText={(val) => updateForm({ nombreCliente: val })}
+                        placeholder="Nombre"
+                        placeholderTextColor="#475569"
+                        editable={!client || !client.clienteNombre}
+                        onBlur={() => {
+                          const t = setTimeout(() => setNameSuggestions([]), 150);
+                          pendingTimers.current.push(t);
+                        }}
+                      />
+                      {formState.tipoPedido === 'llevar' && nameSuggestions.length > 0 && (
+                        <View style={{
+                          position: 'absolute', top: 50, left: 0, right: 0, zIndex: 9999,
+                          backgroundColor: '#1E293B', borderRadius: 12,
+                          borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+                          overflow: 'hidden', elevation: 10,
+                        }}>
+                          {nameSuggestions.map((c) => (
+                            <TouchableOpacity
+                              key={c.telefono}
+                              style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                              onPress={() => {
+                                updateForm({ nombreCliente: c.clienteNombre || '' });
+                                setNameSuggestions([]);
+                              }}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ color: '#F8FAFC', fontWeight: 'bold', fontSize: 13 }}>{c.clienteNombre}</Text>
+                                <Text style={{ color: '#64748B', fontSize: 11 }}>{c.telefono}</Text>
+                              </View>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                    </View>
                   )}
                 </View>
               </View>
@@ -468,7 +531,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         itemStyle={{ color: 'white', fontSize: 14 }}
                         dropdownIconColor="#94A3B8"
                       >
-                        <Picker.Item label={domiciliarios.length === 0 ? "No hay domiciliarios" : "Selecciona uno"} value="" color="#64748B" />
+                        <Picker.Item label={domiciliarios.length === 0 ? "No hay domiciliarios" : "Sin asignar"} value="" color="#64748B" />
                         {domiciliarios.map(d => (
                           <Picker.Item 
                             key={d.telefono} 
@@ -510,7 +573,10 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
           </View>
 
           {/* RIGHT COLUMN: Cart & Observations */}
-          <View className="w-full lg:w-[32%] px-3 sticky lg:top-5 self-start lg:ml-[3%]">
+          <View
+            className={`px-3 self-start ${isMobile ? 'w-full' : isTablet ? 'w-[40%]' : 'w-[32%] ml-[3%]'}`}
+            style={Platform.OS === 'web' && !isMobile ? ({ position: 'sticky', top: 20 } as any) : undefined}
+          >
             <View className="bg-(--color-pos-surface) rounded-2xl p-4 border border-white/5 shadow-xl">
               {/* =============== CARRITO / BALANCE =============== */}
               <CartPanel

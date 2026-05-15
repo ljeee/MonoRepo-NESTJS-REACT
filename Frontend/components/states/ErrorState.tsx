@@ -14,8 +14,8 @@ export const ErrorState: React.FC<ErrorStateProps> = ({
     title = '¡Ups! Algo salió mal'
 }) => {
     return (
-        <View className="flex-1 justify-center items-center p-8 min-h-[300px]">
-            <View className="mb-6 p-6 bg-red-500/10 rounded-full">
+        <View className="flex-1 justify-center items-center p-6 md:p-8 min-h-[300px]">
+            <View className="mb-6 p-4 bg-red-500/10 rounded-full">
                 <Icon name="alert-circle-outline" size={48} color="#EF4444" />
             </View>
             <Text className="text-lg font-black text-white mb-2 text-center" style={{ fontFamily: 'Space Grotesk' }}>

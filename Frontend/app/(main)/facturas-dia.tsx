@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RefreshControl, StyleSheet } from 'react-native';
 import { Text, View, TextInput, TouchableOpacity } from '../../tw';
-import { useFacturasDia } from '@monorepo/shared';
+import { useFacturasDia, calcStats } from '@monorepo/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
@@ -65,6 +65,8 @@ export default function FacturasDiaScreen() {
     return matchesSearch && matchesPending;
   });
 
+  const computedStats = React.useMemo(() => calcStats(filteredData as any), [filteredData]);
+
   return (
     <PageContainer
       refreshControl={
@@ -93,7 +95,7 @@ export default function FacturasDiaScreen() {
 
 
       {/* Stats */}
-      {stats && <StatsHeader stats={stats} periodLabel="Total del Día" />}
+      {data && data.length > 0 && <StatsHeader stats={computedStats} periodLabel="Total del Día (Filtrado)" />}
 
       {/* Buscador y Filtro */}
       <View className="mb-6 flex-row items-center gap-3">

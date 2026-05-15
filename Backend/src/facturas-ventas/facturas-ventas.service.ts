@@ -3,12 +3,15 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {FacturasVentas} from './esquemas/facturas-ventas.entity';
 import {CreateFacturasVentasDto} from './esquemas/facturas-ventas.dto';
+import {Ordenes} from '../ordenes/esquemas/ordenes.entity';
 
 @Injectable()
 export class FacturasVentasService {
 	constructor(
 		@InjectRepository(FacturasVentas)
 		private readonly repo: Repository<FacturasVentas>,
+		@InjectRepository(Ordenes)
+		private readonly ordenesRepo: Repository<Ordenes>,
 	) {}
 
 	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number } = {}) {
@@ -107,8 +110,33 @@ export class FacturasVentasService {
 		return this.repo.save(data);
 	}
 
-	update(id: number, data: Partial<CreateFacturasVentasDto>) {
-		return this.repo.update(id, data);
+	async update(id: number, data: Partial<CreateFacturasVentasDto>) {
+		const completing = data.estado === 'pagada';
+
+		if (!completing) {
+			// Simple update without side-effects
+			return this.repo.update(id, data);
+		}
+
+		// Transactional: complete factura + all linked orders atomically
+		return this.repo.manager.transaction(async (manager) => {
+			const facturasRepo = manager.getRepository(FacturasVentas);
+			const ordenesRepo = manager.getRepository(Ordenes);
+
+			// 1. Update factura
+			await facturasRepo.update(id, data);
+
+			// 2. Mark all pending orders linked to this factura as completada
+			await ordenesRepo
+				.createQueryBuilder()
+				.update(Ordenes)
+				.set({ estadoOrden: 'completada' })
+				.where('factura_id = :facturaId', { facturaId: id })
+				.andWhere('estado_orden = :pendiente', { pendiente: 'pendiente' })
+				.execute();
+
+			return facturasRepo.findOne({ where: { facturaId: id } });
+		});
 	}
 
 	remove(id: number) {

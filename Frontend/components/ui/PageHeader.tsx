@@ -26,10 +26,10 @@ export default function PageHeader({
 
     return (
         <View 
-          className={`flex-row justify-between items-center gap-3 ${isMobile ? 'mb-4' : 'mb-6'} ${className}`} 
+          className={`flex-row justify-between ${isMobile ? 'mb-4 flex-wrap items-start gap-y-3' : 'mb-6 items-center gap-3'} ${className}`} 
           style={style}
         >
-            <View className="flex-row items-center gap-3 flex-1 min-w-0">
+            <View className={`flex-row items-center gap-3 ${isMobile ? 'w-full' : 'flex-1 min-w-0'}`}>
                 {icon && (
                     <View style={{
                         width: isMobile ? 38 : 44, height: isMobile ? 38 : 44,
@@ -43,14 +43,16 @@ export default function PageHeader({
                 )}
                 <View className="flex-1 min-w-0">
                     {subtitle && (
-                        <Text style={{ fontFamily: 'Outfit', fontSize: 10, color: '#F5A524', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>
+                        <Text style={{ fontFamily: 'Outfit', fontSize: 10, color: '#64748B', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>
                             {subtitle}
                         </Text>
                     )}
                     <View className="flex-row items-center flex-wrap">
-                        <Text 
-                            style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: isMobile ? 20 : 24, color: '#F8FAFC', letterSpacing: -0.5, flexShrink: 1 }}
-                            numberOfLines={1}
+                        <Text
+                            style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: isMobile ? 17 : 24, color: '#F8FAFC', letterSpacing: -0.5, flexShrink: 1 }}
+                            numberOfLines={isMobile ? 2 : 1}
+                            adjustsFontSizeToFit={isMobile}
+                            minimumFontScale={0.75}
                         >
                             {title}
                         </Text>
@@ -60,7 +62,7 @@ export default function PageHeader({
             </View>
             
             {rightContent && (
-                <View className="flex-row items-center gap-2 flex-shrink-0">
+                <View className={`flex-row items-center gap-2 flex-shrink-0 ${isMobile ? 'w-full justify-end mt-1' : ''}`}>
                     {rightContent}
                 </View>
             )}

@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
+import { Text, TextInput, TouchableOpacity, View } from '../../tw';
 import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@monorepo/shared';
 import type { Producto, ProductoVariante } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -46,6 +46,28 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
     );
   }, [sortedProducts, searchQuery]);
 
+  const productColumnClass = isMobile
+    ? 'w-1/2'
+    : isTablet
+      ? 'w-1/4'
+      : 'w-[16.66%]';
+
+  const expandedProducto = useMemo(
+    () => productos.find(p => p.productoId === expandedProductId) ?? null,
+    [productos, expandedProductId]
+  );
+
+  const expandedVariantes = useMemo(() => {
+    if (!expandedProducto) return [];
+    return [...expandedProducto.variantes]
+      .sort((a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50))
+      .filter(v => v.activo);
+  }, [expandedProducto]);
+
+  const handleSelectProduct = useCallback((id: number) => {
+    setExpandedProductId(prev => (prev === id ? null : id));
+  }, []);
+
   if (loading) {
     return (
       <View className="py-20 items-center justify-center">
@@ -71,14 +93,14 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   }
 
   return (
-    <View className="flex-1 pb-4">
+    <View className="pb-4">
       {/* Search bar */}
-      <View className="mb-6 relative">
-          <View className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
+      <View className="mb-6 flex-row items-center bg-white/5 rounded-2xl border border-white/10">
+          <View className="pl-4 pr-2">
               <Icon name="magnify" size={20} color="#64748B" />
           </View>
           <TextInput
-              className="bg-white/5 rounded-2xl border border-white/10 pl-12 pr-5 py-4 text-white font-medium"
+              className="flex-1 pr-5 py-4 text-white font-medium"
               placeholder="¿Qué deseas pedir hoy?"
               placeholderTextColor="#64748B"
               value={searchQuery}
@@ -86,7 +108,7 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
           />
       </View>
 
-      <ScrollView className="flex-1" contentContainerClassName="p-4 pb-6">
+      <View className="p-4 pb-6">
         <View className="flex-row flex-wrap -mx-2">
           {filteredProducts.length === 0 ? (
             <View className="w-full py-20 items-center opacity-50">
@@ -95,13 +117,14 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
             </View>
           ) : (
             filteredProducts.map((producto) => (
-              <ProductItem 
+              <ProductItem
                 key={producto.productoId}
                 producto={producto}
                 isSelected={expandedProductId === producto.productoId}
-                onSelect={() => setExpandedProductId(expandedProductId === producto.productoId ? null : producto.productoId)}
+                onSelect={handleSelectProduct}
                 onAdd={onAdd}
                 isMobile={isMobile}
+                columnClass={productColumnClass}
                 setSelectedProducto={setSelectedProducto}
                 setSelectedVariante={setSelectedVariante}
                 setModalVisible={setModalVisible}
@@ -109,48 +132,45 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
             ))
           )}
         </View>
-      </ScrollView>
+      </View>
 
       {/* ─── BARRA DE VARIANTES (DOCKABLE / NO OVERLAP) ─── */}
-      {expandedProductId && (
-        <View className="mt-2 px-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <View className="bg-(--color-pos-surface) rounded-3xl border border-(--color-pos-primary)/30 shadow-2xl overflow-hidden backdrop-blur-md">
+      {expandedProducto && (
+        <View className="mt-2 px-2">
+          <View className="bg-(--color-pos-surface) rounded-3xl border border-(--color-pos-primary)/30 shadow-2xl overflow-hidden">
             <View className="flex-row items-center justify-between px-5 py-3 border-b border-white/5 bg-white/5">
-              <View className="flex-row items-center">
+              <View className="flex-row items-center flex-1 mr-2">
                 <View className="w-8 h-8 rounded-xl bg-(--color-pos-primary)/20 items-center justify-center mr-3">
                   <Text className="text-lg">
-                    {(() => {
-                        const p = productos.find(p => p.productoId === expandedProductId);
-                        return p ? getProductEmoji(p.productoNombre, p.emoji) : '🍕';
-                    })()}
+                    {getProductEmoji(expandedProducto.productoNombre, expandedProducto.emoji)}
                   </Text>
                 </View>
-                <Text className="text-white font-black text-xs uppercase tracking-widest">
-                  {productos.find(p => p.productoId === expandedProductId)?.productoNombre}
+                <Text
+                  className="text-white font-black text-xs uppercase tracking-widest flex-1"
+                  numberOfLines={1}
+                >
+                  {expandedProducto.productoNombre}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => setExpandedProductId(null)} className="p-2">
+              <TouchableOpacity
+                onPress={() => setExpandedProductId(null)}
+                className="p-3"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
                 <Icon name="close" size={20} color="#64748B" />
               </TouchableOpacity>
             </View>
 
             <View className="flex-row flex-wrap p-4 gap-3">
-              {(() => {
-                const producto = productos.find(p => p.productoId === expandedProductId);
-                if (!producto) return null;
-                
-                const vs = [...producto.variantes].sort(
-                  (a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50)
-                ).filter(v => v.activo);
-
-                if (vs.length === 0) {
-                   return <Text className="text-slate-500 italic py-2">Sin variantes disponibles</Text>;
-                }
-
-                return vs.map((variante) => (
+              {expandedVariantes.length === 0 ? (
+                <Text className="text-slate-500 italic py-2">Sin variantes disponibles</Text>
+              ) : (
+                expandedVariantes.map((variante) => {
+                const producto = expandedProducto;
+                return (
                   <TouchableOpacity
                     key={variante.varianteId}
-                    className="bg-[#1E293B] border border-white/10 p-4 rounded-2xl w-[48%] md:w-[31%] flex-col items-start active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40 mb-1"
+                    className={`bg-[#1E293B] border border-white/10 p-4 rounded-2xl flex-col items-start active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40 mb-1 ${isMobile ? 'w-[48%]' : 'w-[31%]'}`}
                     onPress={() => {
                       const nameLower = producto.productoNombre.toLowerCase();
                       const isPizza = nameLower.includes('pizza') && !nameLower.includes('burguer');
@@ -178,8 +198,9 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                       </View>
                     </View>
                   </TouchableOpacity>
-                ));
-              })()}
+                );
+                })
+              )}
             </View>
           </View>
         </View>
@@ -214,34 +235,36 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
 interface ProductItemProps {
   producto: Producto;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (id: number) => void;
   onAdd: (p: Producto, v: ProductoVariante, s?: string[]) => void;
   isMobile: boolean;
+  columnClass: string;
   setSelectedProducto: (p: Producto) => void;
   setSelectedVariante: (v: ProductoVariante) => void;
   setModalVisible: (v: boolean) => void;
 }
 
-const ProductItem = React.memo(({ 
-  producto, isSelected, onSelect, onAdd, isMobile, 
-  setSelectedProducto, setSelectedVariante, setModalVisible 
+const ProductItem = React.memo(({
+  producto, isSelected, onSelect, onAdd, isMobile, columnClass,
+  setSelectedProducto, setSelectedVariante, setModalVisible
 }: ProductItemProps) => {
-  
+
   const emoji = getProductEmoji(producto.productoNombre, producto.emoji);
+  const handlePress = useCallback(() => onSelect(producto.productoId), [onSelect, producto.productoId]);
 
   return (
-    <View className={`px-1 mb-2 w-1/2 sm:w-1/3 md:w-1/4 lg:w-1/5 xl:w-[12.5%]`}>
+    <View className={`px-1 mb-2 ${columnClass}`}>
       <TouchableOpacity
         className={`bg-(--color-pos-surface) rounded-2xl border p-3 items-center ${isSelected ? 'border-(--color-pos-primary) bg-(--color-pos-surface-hover) shadow-2xl shadow-(--color-pos-primary)/20' : 'border-white/5'}`}
-        onPress={onSelect}
+        onPress={handlePress}
         activeOpacity={0.7}
       >
         <Text className={`text-white font-black text-[10px] uppercase tracking-tighter text-center mb-1 min-h-[2.5rem] flex items-center justify-center ${isSelected ? 'text-(--color-pos-primary)' : ''}`} numberOfLines={2} style={{ fontFamily: 'Space Grotesk' }}>
           {producto.productoNombre}
         </Text>
 
-        <View className={`w-14 h-14 rounded-2xl items-center justify-center mb-1 ${isSelected ? 'bg-(--color-pos-primary)/10' : 'bg-white/5'}`}>
-            <Text className="text-3xl">{emoji}</Text>
+        <View className={`w-14 h-14 rounded-2xl items-center justify-center mb-1 border ${isSelected ? 'bg-(--color-pos-primary)/10 border-(--color-pos-primary)/20' : 'bg-white/5 border-white/8'}`}>
+            <Text style={{ fontSize: 26 }}>{emoji}</Text>
         </View>
 
         <View className={`w-6 h-6 rounded-full items-center justify-center ${isSelected ? 'bg-(--color-pos-primary)' : 'bg-white/5'}`}>

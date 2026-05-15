@@ -49,3 +49,7 @@ eas-credentials.json
 # Docs and temporary files
 Docs/
 eslint-report.json
+
+# AI Skills
+skills/
+skills-lock.json

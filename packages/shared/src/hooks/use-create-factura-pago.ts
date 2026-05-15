@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import axios from 'axios';
 import { useApi } from '../contexts/ApiContext';
 import type { CreateFacturaPagoDto, FacturaPago } from '../types/models';
@@ -83,10 +83,21 @@ export function useFacturasPagosRango() {
   const [error, setError] = useState<string | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const fetchData = useCallback(async (f?: string, t?: string) => {
-    const finalFrom = f || from;
-    const finalTo = t || to;
+  const fromRef = useRef(from);
+  const toRef = useRef(to);
+  const pageRef = useRef(page);
+  fromRef.current = from;
+  toRef.current = to;
+  pageRef.current = page;
+
+  const fetchData = useCallback(async (f?: string, t?: string, p?: number) => {
+    const finalFrom = f || fromRef.current;
+    const finalTo = t || toRef.current;
+    const finalPage = p ?? pageRef.current;
 
     if (!finalFrom || !finalTo) return;
     if (isNaN(new Date(finalFrom).getTime()) || isNaN(new Date(finalTo).getTime())) {
@@ -95,7 +106,11 @@ export function useFacturasPagosRango() {
     }
     setLoading(true); setError(null);
     try {
-      setData(await api.pagos.getAll({ from: finalFrom, to: finalTo }));
+      const response = await api.pagos.getAll({ from: finalFrom, to: finalTo, page: finalPage });
+      setData(response.data);
+      setTotal(response.total);
+      setPage(response.page);
+      setTotalPages(response.totalPages);
       setLoading(false);
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -105,9 +120,15 @@ export function useFacturasPagosRango() {
       }
       setLoading(false);
     }
-  }, [api, from, to]);
+  }, [api]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  return { data, loading, error, from, to, setFrom, setTo, fetchData };
+  const goToPage = useCallback((p: number) => {
+    setPage(p);
+    pageRef.current = p;
+    fetchData(undefined, undefined, p);
+  }, [fetchData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return { data, loading, error, from, to, setFrom, setTo, fetchData, page, totalPages, total, goToPage };
 }
 
 export function useUpdateFacturaPago() {

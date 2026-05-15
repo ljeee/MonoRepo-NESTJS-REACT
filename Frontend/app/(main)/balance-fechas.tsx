@@ -1,5 +1,5 @@
-import React, { useReducer, useCallback } from 'react';
-import { FlatList, RefreshControl } from 'react-native';
+import React, { useReducer, useCallback, useMemo, useState } from 'react';
+import { FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { ScrollView } from '../../tw';
 
 import { useFacturasRango } from '@monorepo/shared';
@@ -9,7 +9,7 @@ import { exportPdf } from '../../utils/exportData';
 import { validateFlexibleDateRange } from '@monorepo/shared';
 import { formatCurrency } from '@monorepo/shared';
 import { useBreakpoint } from '../../styles/responsive';
-import { View, Text, TouchableOpacity } from '../../tw';
+import { View, Text } from '../../tw';
 
 import { FacturaCard } from '../../components/facturas/FacturaShared';
 import {
@@ -22,6 +22,16 @@ import {
     Badge,
     Card,
 } from '../../components/ui';
+
+// ─── Tipos de filtro local ──────────────────────────────────────────────────
+
+type EstadoFilter = 'todas' | 'pendiente' | 'pagado';
+
+const ESTADO_TABS: { key: EstadoFilter; label: string; icon: string }[] = [
+    { key: 'todas',     label: 'Todas',      icon: 'format-list-bulleted' },
+    { key: 'pendiente', label: 'Pendientes', icon: 'clock-outline' },
+    { key: 'pagado',    label: 'Pagadas',    icon: 'check-circle-outline' },
+];
 
 // ─── Balance card ─────────────────────────────────────────────────────────────
 
@@ -93,7 +103,8 @@ function BalanceCard({ ingresos, gastos }: { ingresos: number; gastos: number })
 
 export default function BalanceFechasScreen() {
     const { isMobile } = useBreakpoint();
-    // ── Grouped UI/filter state to avoid fragmented updates ──
+
+    // ── Grouped UI/filter state ──
     type FilterState = {
         from: string;
         to: string;
@@ -125,6 +136,11 @@ export default function BalanceFechasScreen() {
     });
 
     const { from, to, filterError, updatingId } = filterState;
+
+    // ── Filtros locales post-búsqueda ──
+    const [hasSearched, setHasSearched] = useState(false);
+    const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todas');
+    const [nombreFilter, setNombreFilter] = useState('');
 
     // ── Facturas hook ──
     const {
@@ -159,12 +175,31 @@ export default function BalanceFechasScreen() {
         dispatch({ type: 'setFilterError', value: '' });
         dispatch({ type: 'setRange', from: fromParsed, to: toParsed });
 
-        // Push dates into both hooks and fetch with explicit range args.
         setFromF(fromParsed); setToF(toParsed);
         setFromG(fromParsed); setToG(toParsed);
         void fetchFacturas(fromParsed, toParsed);
         void fetchGastos(fromParsed, toParsed);
+
+        setHasSearched(true);
+        // Limpiar filtros locales al hacer nueva búsqueda
+        setEstadoFilter('todas');
+        setNombreFilter('');
     }, [from, to, setFromF, setToF, setFromG, setToG, fetchFacturas, fetchGastos]);
+
+    // ── Facturas filtradas localmente ──
+    const filteredFacturas = useMemo(() => {
+        let result = facturas;
+        if (estadoFilter !== 'todas') {
+            result = result.filter(f => f.estado === estadoFilter);
+        }
+        if (nombreFilter.trim()) {
+            const q = nombreFilter.trim().toLowerCase();
+            result = result.filter(f =>
+                (f.clienteNombre || '').toLowerCase().includes(q)
+            );
+        }
+        return result;
+    }, [facturas, estadoFilter, nombreFilter]);
 
     const handleToggleEstado = useCallback(async (facturaId: number, nuevoEstado: string, metodo?: string) => {
         dispatch({ type: 'setUpdatingId', value: facturaId });
@@ -188,7 +223,7 @@ export default function BalanceFechasScreen() {
         const safeFrom = from || 'inicio';
         const safeTo = to || 'fin';
         const rows: (string | number)[][] = [
-            ...facturas.map((f) => [
+            ...filteredFacturas.map((f) => [
                 'Ingreso',
                 f.facturaId ?? '',
                 f.clienteNombre || 'Sin nombre',
@@ -214,17 +249,14 @@ export default function BalanceFechasScreen() {
             headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Total', 'Estado', 'Metodo'],
             rows,
         });
-    }, [facturas, gastos, from, to]);
-
-
-
+    }, [filteredFacturas, gastos, from, to]);
 
     const handleExportContabilidad = useCallback(async () => {
         const safeFrom = from || 'inicio';
         const safeTo = to || 'fin';
-        const csv = await buildCombinedBalanceCsv(facturas, gastos);
+        const csv = await buildCombinedBalanceCsv(filteredFacturas, gastos);
         downloadCsv(csv, `contabilidad_${safeFrom}_${safeTo}.csv`);
-    }, [facturas, gastos, from, to]);
+    }, [filteredFacturas, gastos, from, to]);
 
     const loading = loadingFacturas || loadingGastos;
     const hasData = facturas.length > 0 || gastos.length > 0;
@@ -245,7 +277,7 @@ export default function BalanceFechasScreen() {
     return (
         <PageContainer scrollable={false} className="flex-1">
             <FlatList
-                data={facturas}
+                data={filteredFacturas}
                 className="flex-1"
                 keyExtractor={(item, idx) => item.facturaId?.toString() || idx.toString()}
                 contentContainerStyle={{ paddingBottom: 40 }}
@@ -257,32 +289,8 @@ export default function BalanceFechasScreen() {
                             icon="scale-balance"
                         />
 
-                        {/* Actions bar */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-8 overflow-visible">
-                            <View className="flex-row items-center gap-2 pr-4 pb-4">
-                                <Button
-                                    title="Exportar PDF"
-                                    icon="file-pdf-outline"
-                                    variant="secondary"
-                                    size="sm"
-                                    onPress={handleExportPdf}
-                                    disabled={!hasData}
-                                    className="bg-purple-600/20 border-purple-500/30"
-                                />
-                                <Button
-                                    title="CSV Contable"
-                                    icon="table-large"
-                                    variant="secondary"
-                                    size="sm"
-                                    onPress={handleExportContabilidad}
-                                    disabled={!hasData}
-                                    className="bg-emerald-600/20 border-emerald-500/30"
-                                />
-                            </View>
-                        </ScrollView>
-
                         {/* ── Date range filter ─────────────── */}
-                        <Card className="mb-8 p-4">
+                        <Card className="mb-6 p-4">
                             <View className={`${isMobile ? 'flex-col' : 'flex-row'} items-end gap-3`}>
                                 <Input
                                     label="Desde"
@@ -291,6 +299,7 @@ export default function BalanceFechasScreen() {
                                     placeholder="2025-01-01"
                                     className="flex-1"
                                     size="sm"
+                                    containerStyle={{ marginBottom: 0 }}
                                     leftIcon={<Icon name="calendar" size={16} color="#475569" />}
                                 />
                                 <Input
@@ -300,6 +309,7 @@ export default function BalanceFechasScreen() {
                                     placeholder="2026-12-31"
                                     className="flex-1"
                                     size="sm"
+                                    containerStyle={{ marginBottom: 0 }}
                                     leftIcon={<Icon name="calendar" size={16} color="#475569" />}
                                 />
                                 <Button
@@ -321,6 +331,98 @@ export default function BalanceFechasScreen() {
                             ) : null}
                         </Card>
 
+                        {/* ── Filtros locales + Exportar (solo post-búsqueda) ─────── */}
+                        {hasSearched && !loading && (
+                            <View
+                                style={{
+                                    backgroundColor: 'rgba(255,255,255,0.03)',
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(255,255,255,0.07)',
+                                    borderRadius: 16,
+                                    padding: 12,
+                                    marginBottom: 20,
+                                    gap: 10,
+                                }}
+                            >
+                                {/* Fila 1: chips de estado */}
+                                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                                    {ESTADO_TABS.map((tab) => {
+                                        const isActive = estadoFilter === tab.key;
+                                        const count = tab.key === 'todas'
+                                            ? facturas.length
+                                            : facturas.filter(f => f.estado === tab.key).length;
+                                        return (
+                                            <TouchableOpacity
+                                                key={tab.key}
+                                                onPress={() => setEstadoFilter(tab.key)}
+                                                style={{
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    gap: 5,
+                                                    paddingHorizontal: 12,
+                                                    paddingVertical: 6,
+                                                    borderRadius: 20,
+                                                    borderWidth: 1,
+                                                    backgroundColor: isActive ? 'rgba(245,165,36,0.15)' : 'rgba(255,255,255,0.04)',
+                                                    borderColor: isActive ? 'rgba(245,165,36,0.35)' : 'rgba(255,255,255,0.08)',
+                                                }}
+                                            >
+                                                <Icon name={tab.icon} size={12} color={isActive ? '#F5A524' : '#64748B'} />
+                                                <Text style={{
+                                                    fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5,
+                                                    color: isActive ? '#F5A524' : '#64748B',
+                                                }}>
+                                                    {tab.label}
+                                                </Text>
+                                                <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
+                                                    <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>{count}</Text>
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+
+                                {/* Fila 2: buscador por nombre */}
+                                <Input
+                                    placeholder="Buscar por nombre de cliente..."
+                                    value={nombreFilter}
+                                    onChangeText={setNombreFilter}
+                                    size="sm"
+                                    containerStyle={{ marginBottom: 0 }}
+                                    leftIcon={<Icon name="account-search-outline" size={15} color="#475569" />}
+                                />
+
+                                {/* Fila 3: botones exportar + contador */}
+                                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <Button
+                                        title="Exportar PDF"
+                                        icon="file-pdf-outline"
+                                        variant="secondary"
+                                        size="sm"
+                                        onPress={handleExportPdf}
+                                        disabled={!hasData}
+                                        className="bg-purple-600/20 border-purple-500/30"
+                                    />
+                                    <Button
+                                        title="CSV Contable"
+                                        icon="table-large"
+                                        variant="secondary"
+                                        size="sm"
+                                        onPress={handleExportContabilidad}
+                                        disabled={!hasData}
+                                        className="bg-emerald-600/20 border-emerald-500/30"
+                                    />
+                                    {filteredFacturas.length !== facturas.length && (
+                                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
+                                            <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
+                                                {filteredFacturas.length} de {facturas.length} facturas
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            </View>
+                        )}
+
                         {/* Balance summary */}
                         {hasData && <BalanceCard ingresos={ingresos} gastos={totalGastos} />}
 
@@ -332,7 +434,9 @@ export default function BalanceFechasScreen() {
                                 <View style={{ width: 6, height: 24, backgroundColor: '#F5A524', borderRadius: 999 }} />
                                 <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', letterSpacing: 1 }}>Facturación</Text>
                                 <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>{facturas.length}</Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>
+                                        {filteredFacturas.length}{filteredFacturas.length !== facturas.length ? ` / ${facturas.length}` : ''}
+                                    </Text>
                                 </View>
                             </View>
                         )}
@@ -355,6 +459,15 @@ export default function BalanceFechasScreen() {
                                     {from && to
                                         ? 'Sin facturas en este rango'
                                         : 'Selecciona un rango de fechas y presiona Buscar'}
+                                </Text>
+                            </View>
+                        )}
+
+                        {!loading && facturas.length > 0 && filteredFacturas.length === 0 && (
+                            <View className="items-center py-16 opacity-50">
+                                <Icon name="filter-off-outline" size={48} color="#64748B" />
+                                <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs px-10">
+                                    Sin resultados con estos filtros
                                 </Text>
                             </View>
                         )}

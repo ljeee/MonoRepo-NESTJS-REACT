@@ -5,6 +5,8 @@ import {CreateOrdenesDto, FindOrdenesDto, UpdateOrdenesDto} from './esquemas/ord
 import {Public} from '../auth/decorators/public.decorator';
 import {GetUser} from '../auth/decorators/get-user.decorator';
 import {User} from '../auth/esquemas/user.entity';
+import {Roles} from '../auth/decorators/roles.decorator';
+import {Role} from '../auth/roles.enum';
 
 @ApiTags('Ordenes')
 @ApiBearerAuth()
@@ -45,6 +47,7 @@ export class OrdenesController {
 	}
 
 	@Post()
+	@Roles(Role.Admin, Role.Mesero, Role.Cajero)
 	@ApiOperation({summary: 'Crear una orden'})
 	@ApiOkResponse({
 		description: 'Orden creada con productos asociados',
@@ -109,6 +112,7 @@ export class OrdenesController {
 	}
 
 	@Patch(':id')
+	@Roles(Role.Admin, Role.Cajero)
 	@ApiOperation({summary: 'Actualizar una orden'})
 	@ApiResponse({status: 200, description: 'Orden actualizada.'})
 	update(@Param('id') id: string, @Body() dto: UpdateOrdenesDto) {
@@ -116,12 +120,14 @@ export class OrdenesController {
 	}
 
 	@Delete(':id')
+	@Roles(Role.Admin, Role.Cajero)
 	@ApiOperation({summary: 'Eliminar una orden'})
 	@ApiResponse({status: 200, description: 'Orden eliminada.'})
 	remove(@Param('id') id: number) {
 		return this.service.remove(id);
 	}
 	@Patch(':id/completar')
+	@Roles(Role.Admin, Role.Cajero)
 	@ApiOperation({summary: 'Completar una orden y su factura asociada con un método de pago'})
 	@ApiResponse({status: 200, description: 'Orden completada.'})
 	completar(
@@ -136,6 +142,7 @@ export class OrdenesController {
 	}
 
 	@Patch(':id/cancel')
+	@Roles(Role.Admin, Role.Cajero)
 	@ApiOperation({summary: 'Cancelar una orden y su factura asociada'})
 	@ApiResponse({status: 200, description: 'Orden cancelada.'})
 	cancel(

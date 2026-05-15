@@ -1,0 +1,61 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "cronExpression": "55 23 * * *",
+        "timezone": "America/Bogota"
+      },
+      "name": "Daily Cron Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 200]
+    },
+    {
+      "parameters": {
+        "url": "{{ $process.env.API_BASE_URL }}/estadisticas/resumen-diario?fecha={{ $json.date }}",
+        "method": "GET",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "name": "Fetch Daily Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $json;\nreturn {\n  body: `📊 *Resumen del Día - ${data.fecha}*\n\n💰 Total ventas: ${data.totalVentas}\n✅ Pagadas: ${data.pagadas} (${data.cantPagadas} facturas)\n⏳ Pendientes: ${data.pendientes} (${data.cantPendientes} facturas)\n🛵 Domicilios: ${data.domicilios}\n🏃 Para llevar: ${data.paraLlevar}\n🪑 Mesa: ${data.mesas}\n💸 Gastos operativos: ${data.gastos}\n📦 Neto del día: ${data.neto}\n\n🍕 Top producto: ${data.topProducto}`\n};",
+        "outputPropertyName": "whatsappMessage"
+      },
+      "name": "Build WhatsApp Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [750, 200]
+    },
+    {
+      "parameters": {
+        "url": "https://graph.facebook.com/v16.0/{{ $env.WA_PHONE_NUMBER_ID }}/messages",
+        "method": "POST",
+        "jsonParameters": true,
+        "bodyParametersJson": "{{ { messaging_product: 'whatsapp', to: $env.ADMIN_PHONE, type: 'text', text: { body: $json.whatsappMessage.body } } }}",
+        "authentication": "headerAuth",
+        "headerAuth": {
+          "name": "Authorization",
+          "value": "Bearer {{ $env.WA_ACCESS_TOKEN }}"
+        }
+      },
+      "name": "Send Summary to Admin",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [1000, 200]
+    }
+  ],
+  "connections": {
+    "Daily Cron Trigger": { "main": [ [ { "node": "Fetch Daily Summary", "type": "main", "index": 0 } ] ] },
+    "Fetch Daily Summary": { "main": [ [ { "node": "Build WhatsApp Text", "type": "main", "index": 0 } ] ] },
+    "Build WhatsApp Text": { "main": [ [ { "node": "Send Summary to Admin", "type": "main", "index": 0 } ] ] }
+  },
+  "active": false,
+  "settings": { "timezone": "America/Bogota" },
+  "id": "whatsapp_daily_summary"
+}

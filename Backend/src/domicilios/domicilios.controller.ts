@@ -36,6 +36,13 @@ export class DomiciliosController {
 		return this.service.findPendingByDay();
 	}
 
+	@Get('sin-asignar')
+	@ApiOperation({ summary: 'Obtener domicilios del día actual sin domiciliario asignado' })
+	@ApiResponse({ status: 200, description: 'Lista de domicilios sin domiciliario.' })
+	findSinAsignar() {
+		return this.service.findSinAsignarHoy();
+	}
+
 	@Get(":id")
 	@ApiOperation({ summary: 'Obtener un domicilio por ID' })
 	@ApiResponse({ status: 200, description: 'Domicilio encontrado.' })

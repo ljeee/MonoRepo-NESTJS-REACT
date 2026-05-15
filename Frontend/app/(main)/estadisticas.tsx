@@ -215,16 +215,16 @@ export default function EstadisticasPage() {
                 <View className="flex-row flex-wrap gap-4 mb-8">
                     <KpiCard icon="cash" label="Ventas Totales" value={formatCurrency(resumen.totalVentas)} color="#10B981" />
                     <KpiCard icon="trending-up" label="Balance Neto" value={formatCurrency(resumen.balanceNeto)} color="#3B82F6" />
-                    <KpiCard icon="cart-outline" label="Ticket Medio" value={formatCurrency(resumen.ticketPromedio)} color="#8B5CF6" />
+                    <KpiCard icon="cart-outline" label="Ticket Medio" value={formatCurrency(resumen.ticketPromedio)} color="#3B82F6" />
                     <KpiCard icon="clipboard-list-outline" label="Órdenes" value={String(resumen.ordenes)} color="#F5A524" />
                 </View>
             )}
 
             {/* ── Charts Grid ── */}
-            <View className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-6 pb-12`}>
+            <View className={`flex-row flex-wrap gap-6 pb-12`}>
                 
                 {/* Ranking Productos */}
-                <Card className="p-5 bg-slate-900 border-white/5">
+                <Card className={`p-5 bg-slate-900 border-white/5 ${isMobile ? 'w-full' : 'w-[calc(50%-12px)]'}`}>
                     <View className="flex-row items-center gap-2 mb-6">
                         <View className="w-8 h-8 rounded-lg bg-emerald-500/10 items-center justify-center">
                             <Icon name="trophy-outline" size={16} color="#10B981" />
@@ -237,20 +237,20 @@ export default function EstadisticasPage() {
                 </Card>
 
                 {/* Top Sabores */}
-                <Card className="p-5 bg-slate-900 border-white/5">
+                <Card className={`p-5 bg-slate-900 border-white/5 ${isMobile ? 'w-full' : 'w-[calc(50%-12px)]'}`}>
                     <View className="flex-row items-center gap-2 mb-6">
-                        <View className="w-8 h-8 rounded-lg bg-purple-500/10 items-center justify-center">
-                            <Icon name="pizza" size={16} color="#A855F7" />
+                        <View className="w-8 h-8 rounded-lg bg-orange-500/10 items-center justify-center">
+                            <Icon name="pizza" size={16} color="#FB923C" />
                         </View>
                         <Text className="text-white font-black uppercase text-xs tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Sabores Favoritos</Text>
                     </View>
                     {saboresTop.length > 0 ? saboresTop.slice(0, 5).map((sb, i) => (
-                        <HBar key={sb.sabor} label={sb.sabor} value={sb.cantidad} max={maxSabor} rank={i + 1} color="#A855F7" />
+                        <HBar key={sb.sabor} label={sb.sabor} value={sb.cantidad} max={maxSabor} rank={i + 1} color="#FB923C" />
                     )) : <Text className="text-slate-600 italic text-center py-4">Sin datos de pizzas</Text>}
                 </Card>
 
                 {/* Métodos de Pago */}
-                <Card className="p-5 bg-slate-900 border-white/5 col-span-1">
+                <Card className={`p-5 bg-slate-900 border-white/5 ${isMobile ? 'w-full' : 'w-[calc(50%-12px)]'}`}>
                     <View className="flex-row items-center gap-2 mb-6">
                         <View className="w-8 h-8 rounded-lg bg-orange-500/10 items-center justify-center">
                             <Icon name="credit-card-outline" size={16} color="#F5A524" />
@@ -277,7 +277,7 @@ export default function EstadisticasPage() {
                 </Card>
 
                 {/* Clientes Frecuentes */}
-                <Card className="p-5 bg-slate-900 border-white/5 overflow-hidden">
+                <Card className={`p-5 bg-slate-900 border-white/5 overflow-hidden ${isMobile ? 'w-full' : 'w-[calc(50%-12px)]'}`}>
                     <View className="flex-row items-center gap-2 mb-6">
                         <View className="w-8 h-8 rounded-lg bg-blue-500/10 items-center justify-center">
                             <Icon name="account-group-outline" size={16} color="#3B82F6" />
@@ -302,7 +302,7 @@ export default function EstadisticasPage() {
                 </Card>
 
                 {/* Ventas por Hora (Visual simple) */}
-                <Card className={`p-5 bg-slate-900 border-white/5 ${!isMobile ? 'col-span-2' : ''}`}>
+                <Card className="p-5 bg-slate-900 border-white/5 w-full">
                     <View className="flex-row items-center gap-2 mb-8">
                         <View className="w-8 h-8 rounded-lg bg-blue-500/10 items-center justify-center">
                             <Icon name="clock-outline" size={16} color="#3B82F6" />
@@ -329,7 +329,7 @@ export default function EstadisticasPage() {
                 </Card>
 
                 {/* Ventas por Día (Visual simple) */}
-                <Card className={`p-5 bg-slate-900 border-white/5 ${!isMobile ? 'col-span-2' : ''}`}>
+                <Card className="p-5 bg-slate-900 border-white/5 w-full">
                     <View className="flex-row items-center gap-2 mb-8">
                         <View className="w-8 h-8 rounded-lg bg-emerald-500/10 items-center justify-center">
                             <Icon name="trending-up" size={16} color="#10B981" />

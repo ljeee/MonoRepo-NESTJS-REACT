@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, View, Text, TouchableOpacity, Pressable } from '../../tw';
 import { Button, Icon, ListSkeleton, Badge, PageContainer } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast } from '@monorepo/shared';
+import { useToast, Role } from '@monorepo/shared';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     useSharedValue, useAnimatedStyle, withTiming, withSpring,
@@ -334,10 +334,10 @@ export default function MisDomiciliosScreen() {
     const [confirmingId, setConfirmingId] = useState<number | null>(null);
     const [completingId, setCompletingId] = useState<number | null>(null);
 
-    const userName = user && (user as any).name ? String((user as any).name) : 'Domiciliario';
+    const userName = user?.name ?? 'Domiciliario';
     const isWeb = Platform.OS === 'web';
 
-    const isAdminOrCajero = user && ['admin', 'cajero'].includes((user as any).role?.toLowerCase());
+    const isAdminOrCajero = user?.roles?.some(r => r === Role.Admin || r === Role.Cajero);
 
     const fetchHoy = useCallback(async () => {
         try {

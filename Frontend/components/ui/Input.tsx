@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextInputProps } from 'react-native';
+import { Platform, TextInputProps } from 'react-native';
 import { View, Text, TextInput } from '../../tw';
 
 interface InputProps extends Omit<TextInputProps, 'style'> {
@@ -45,12 +45,16 @@ export default function Input({
             <View className={wrapperClasses}>
                 {leftIcon && <View className="pl-3">{leftIcon}</View>}
                 <TextInput
-                    className={`flex-1 text-white focus:outline-none ${sizeClasses[size]} ${leftIcon ? 'pl-2' : ''} ${rightIcon ? 'pr-2' : ''} ${multiline ? 'h-auto py-3' : ''}`}
+                    className={`flex-1 text-white ${sizeClasses[size]} ${leftIcon ? 'pl-2' : ''} ${rightIcon ? 'pr-2' : ''} ${multiline ? 'h-auto py-3' : ''}`}
                     placeholderTextColor="#64748B"
                     cursorColor="#F5A524"
                     selectionColor="#F5A524"
                     multiline={multiline}
-                    style={[{ outlineStyle: 'none' } as any, { textAlignVertical: multiline ? 'top' : 'center' }, inputStyle]}
+                    style={[
+                        Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : null,
+                        { textAlignVertical: multiline ? 'top' : 'center' },
+                        inputStyle,
+                    ]}
                     {...rest}
                 />
                 {rightIcon && <View className="pr-3">{rightIcon}</View>}

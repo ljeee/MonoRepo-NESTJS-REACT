@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 
 export type ToastVariant = 'success' | 'error' | 'warning' | 'info';
 
@@ -30,20 +30,34 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const showToast = useCallback((message: string, variant: ToastVariant = 'info', duration = 4000) => {
-        toastIdRef.current += 1;
-        const id = `toast-${toastIdRef.current}-${Date.now()}`;
-        const newToast: Toast = { id, message, variant, duration };
+        const MAX_TOASTS = 3;
 
-        setToasts((prev) => [...prev, newToast]);
+        let added = false;
+        let id = '';
 
-        // Auto-dismiss
-        if (duration > 0) {
+        setToasts((prev) => {
+            // Deduplicate: same message+variant already visible → skip
+            if (prev.some((t) => t.message === message && t.variant === variant)) {
+                return prev;
+            }
+            toastIdRef.current += 1;
+            id = `toast-${toastIdRef.current}-${Date.now()}`;
+            added = true;
+            // Drop oldest if at cap
+            const base = prev.length >= MAX_TOASTS ? prev.slice(-(MAX_TOASTS - 1)) : prev;
+            return [...base, { id, message, variant, duration }];
+        });
+
+        // Schedule auto-dismiss only if we actually added the toast
+        // We use a short delay so `id` is set before the timeout check runs
+        setTimeout(() => {
+            if (!added || !id || duration <= 0) return;
             const timeoutId = setTimeout(() => {
                 setToasts((prev) => prev.filter((t) => t.id !== id));
                 timeoutRefs.current.delete(id);
             }, duration);
             timeoutRefs.current.set(id, timeoutId);
-        }
+        }, 0);
     }, []);
 
     const hideToast = useCallback((id: string) => {
@@ -55,8 +69,13 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         setToasts((prev) => prev.filter((t) => t.id !== id));
     }, []);
 
+    const value = useMemo(
+        () => ({ toasts, showToast, hideToast }),
+        [toasts, showToast, hideToast]
+    );
+
     return (
-        <ToastContext.Provider value={{ toasts, showToast, hideToast }}>
+        <ToastContext.Provider value={value}>
             {children}
         </ToastContext.Provider>
     );

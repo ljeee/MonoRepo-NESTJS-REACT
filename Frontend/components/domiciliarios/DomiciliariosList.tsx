@@ -74,7 +74,7 @@ export default function DomiciliariosList() {
 
 
       {/* ── Search & Actions ── */}
-      <View className="flex-row items-end gap-3 mb-8">
+      <View className={`gap-3 mb-8 ${isMobile ? 'flex-col' : 'flex-row items-end'}`}>
         <Input
           label="Filtrar por nombre o teléfono"
           value={telefonoBusqueda}
@@ -82,25 +82,28 @@ export default function DomiciliariosList() {
           placeholder="Buscar..."
           keyboardType="default"
           className="flex-1"
+          containerStyle={{ marginBottom: 0 }}
           leftIcon={<Icon name="magnify" size={18} color="#64748B" />}
         />
-        <Button
-          title="Alta Domiciliarios"
-          icon="account-plus"
-          onPress={() => router.push('/(main)/registro-usuarios')}
-          variant="primary"
-          size="md"
-          className="h-11 px-4"
-        />
-        <Button
-          title="Recargar"
-          icon="refresh"
-          onPress={refetch}
-          variant="secondary"
-          size="md"
-          loading={loading}
-          className="h-11 px-4"
-        />
+        <View className="flex-row gap-3">
+          <Button
+            title="Alta Domiciliarios"
+            icon="account-plus"
+            onPress={() => router.push('/(main)/registro-usuarios')}
+            variant="primary"
+            size="md"
+            className={`h-11 px-4 ${isMobile ? 'flex-1' : ''}`}
+          />
+          <Button
+            title="Recargar"
+            icon="refresh"
+            onPress={refetch}
+            variant="secondary"
+            size="md"
+            loading={loading}
+            className="h-11 px-4"
+          />
+        </View>
       </View>
 
       {/* ── Error / Loading ── */}

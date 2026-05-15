@@ -22,7 +22,7 @@ export default function PaymentSelectionModal({ visible, onClose, onSelect, load
 
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-            <Pressable className="flex-1 bg-black/60 justify-center items-center p-5" onPress={onClose}>
+            <Pressable className="flex-1 bg-black/85 justify-center items-center p-5" onPress={onClose}>
                 <Pressable 
                     className="bg-(--color-pos-surface) rounded-3xl p-6 w-full max-w-sm border border-white/5 shadow-2xl" 
                     onPress={(e) => e.stopPropagation()}

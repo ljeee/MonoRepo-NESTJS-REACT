@@ -1,0 +1,47 @@
+{
+  "id": "wa_verify_001",
+  "name": "WhatsApp Verification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "whatsapp/webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Verify Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "whatsapp_verify"
+    },
+    {
+      "parameters": {
+        "jsCode": "const q = $input.all()[0].json.query || $input.all()[0].json;\nconst challenge = q['hub.challenge'];\nreturn [{ json: { challenge: String(challenge) } }];"
+      },
+      "name": "Extract Challenge",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.challenge }}",
+        "options": {}
+      },
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [750, 300]
+    }
+  ],
+  "connections": {
+    "Verify Webhook": {
+      "main": [[{"node": "Extract Challenge", "type": "main", "index": 0}]]
+    },
+    "Extract Challenge": {
+      "main": [[{"node": "Respond", "type": "main", "index": 0}]]
+    }
+  }
+}

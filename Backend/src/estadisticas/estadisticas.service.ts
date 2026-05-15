@@ -236,8 +236,9 @@ export class EstadisticasService {
 			.addSelect('MAX(f.fechaFactura)', 'ultimaVisita')
 			.where("f.cliente_nombre IS NOT NULL")
 			.andWhere("f.cliente_nombre != ''")
-			.andWhere("f.cliente_nombre NOT ILIKE 'mesa %'") // Excluir "Mesa 1", "Mesa 2", etc.
-			.andWhere("f.cliente_nombre NOT ILIKE 'mesa'") // Excluir "Mesa" sin número
+			.andWhere("f.cliente_nombre NOT ILIKE 'mesa %'")
+			.andWhere("f.cliente_nombre NOT ILIKE 'mesa'")
+			.andWhere("f.cliente_nombre !~ '^[0-9]+$'")
 			.andWhere("f.estado != 'cancelado'")
 			.groupBy('f.cliente_nombre')
 			.orderBy('"totalOrdenes"', 'DESC')

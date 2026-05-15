@@ -33,7 +33,7 @@ export {
   useUpdateFacturaPago,
   useDeleteFacturaPago,
 } from './hooks/use-create-factura-pago';
-export { useFacturasDia, useFacturasRango } from './hooks/use-facturas';
+export { useFacturasDia, useFacturasRango, calcStats } from './hooks/use-facturas';
 export { useFacturasPagosScreen, todayISO } from './hooks/use-facturas-pagos-screen';
 export { useGestionProductosScreen } from './hooks/use-gestion-productos-screen';
 export { useOrdenesSocket } from './hooks/use-ordenes-socket';

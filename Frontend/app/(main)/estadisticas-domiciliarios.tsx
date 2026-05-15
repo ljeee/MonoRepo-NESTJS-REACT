@@ -18,6 +18,7 @@ type DateRange = { label: string; days: number };
 
 const DATE_RANGES: DateRange[] = [
     { label: 'Hoy', days: 0 },
+    { label: 'Ayer', days: -1 },
     { label: '7 días', days: 7 },
     { label: '15 días', days: 15 },
     { label: '30 días', days: 30 },
@@ -30,6 +31,11 @@ function toISO(d: Date): string {
 }
 
 function getRangeDates(days: number): { from: string; to: string } {
+    if (days === -1) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return { from: toISO(yesterday), to: toISO(yesterday) };
+    }
     const to = new Date();
     const from = new Date();
     if (days > 0) from.setDate(from.getDate() - days + 1);
@@ -57,7 +63,7 @@ function getColor(idx: number): string {
 
 function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
     return (
-        <Card className="flex-1 p-4 border border-white/5 items-center min-w-[100px]">
+        <Card className="flex-1 p-4 border border-white/5 items-center">
             <Text className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-2">{label}</Text>
             <Text
                 className="font-black text-2xl"
@@ -278,13 +284,13 @@ export default function EstadisticasDomiciliariosScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F5A524" />}
             >
                 {/* ── Date Range Selector ── */}
-                <View className="flex-row gap-2 mb-6">
+                <View className="flex-row flex-wrap gap-2 mb-6">
                     {DATE_RANGES.map((r, idx) => {
                         const active = activeRange === idx;
                         return (
                             <TouchableOpacity
                                 key={r.label}
-                                className={`flex-1 py-2.5 rounded-xl border items-center ${
+                                className={`py-2.5 px-4 rounded-xl border items-center ${
                                     active
                                         ? 'bg-(--color-pos-primary)/10 border-(--color-pos-primary)/30'
                                         : 'bg-white/5 border-white/5'
@@ -333,7 +339,7 @@ export default function EstadisticasDomiciliariosScreen() {
                         <Text className="text-slate-400 text-[10px] font-black uppercase tracking-widest mb-1">
                             Total Ganado por el Equipo · {rangeLabel}
                         </Text>
-                        <Text className="text-emerald-400 font-black text-3xl" style={{ fontFamily: 'Space Grotesk' }}>
+                        <Text className="text-emerald-400 font-black text-xl sm:text-3xl" style={{ fontFamily: 'Space Grotesk' }}>
                             ${formatCurrency(totalGanancia)}
                         </Text>
                     </View>

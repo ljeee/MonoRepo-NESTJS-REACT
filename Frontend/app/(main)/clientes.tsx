@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { RefreshControl, Platform } from 'react-native';
 import { useBreakpoint } from '../../styles/responsive';
 import { api } from '../../services/api';
@@ -44,13 +44,22 @@ function timeAgo(dateStr: string): string {
   return `Hace ${Math.floor(days / 30)} mes${Math.floor(days / 30) > 1 ? 'es' : ''}`;
 }
 
+const PAGE_SIZE = 20;
+
 export default function ClientesScreen() {
   const { isMobile } = useBreakpoint();
   const isWeb = Platform.OS === 'web';
   const { data, loading, error, refetch } = useClientesList();
   const { client, loading: searching, error: searchError, fetchClient } = useClientByPhone();
-  const [telefono, setTelefono] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 250);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+  const isPhoneQuery = /^\d+$/.test(debouncedQuery);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
   const [frecuentes, setFrecuentes] = useState<ClienteStats[]>([]);
 
   // ── Form state ──
@@ -94,6 +103,28 @@ export default function ClientesScreen() {
     const name = (c.clienteNombre || '').toLowerCase();
     return name ? statsMap.get(name) : undefined;
   };
+
+  // Filtrar lista cuando el query contiene letras (búsqueda por nombre)
+  const filteredData = useMemo(() => {
+    if (!debouncedQuery || isPhoneQuery) return data;
+    const q = debouncedQuery.toLowerCase();
+    return data.filter(c =>
+      c.clienteNombre?.toLowerCase().includes(q) ||
+      c.telefono?.includes(q)
+    );
+  }, [data, debouncedQuery, isPhoneQuery]);
+
+  // Resetear página al cambiar búsqueda o datos
+  useEffect(() => { setPage(1); }, [debouncedQuery, data]);
+
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const paginatedData = filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleSearch = useCallback(() => {
+    if (!searchQuery) return;
+    if (isPhoneQuery) fetchClient(searchQuery);
+    // Name search is reactive via filteredData memo
+  }, [searchQuery, isPhoneQuery, fetchClient]);
 
   const resetForm = () => {
     setFormMode('closed');
@@ -366,31 +397,37 @@ export default function ClientesScreen() {
       {/* ── Search Bar ── */}
       <Card className="mb-6 p-4 flex-row items-center gap-3">
         <Input
-          placeholder="Buscar teléfono..."
-          value={telefono}
-          onChangeText={setTelefono}
-          keyboardType="number-pad"
+          placeholder="Buscar por teléfono o nombre..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
           className="flex-1"
           size="sm"
-          leftIcon={<Icon name="magnify" size={18} color="#64748B" />}
+          leftIcon={<Icon name={isPhoneQuery || !searchQuery ? 'phone-outline' : 'account-search-outline'} size={18} color="#64748B" />}
         />
         <Button
           title={searching ? '...' : 'Buscar'}
-          onPress={() => telefono && fetchClient(telefono)}
+          onPress={handleSearch}
           variant="secondary"
           size="sm"
-          disabled={!telefono || searching}
+          disabled={!searchQuery || searching}
+          loading={searching}
         />
       </Card>
+      {!isPhoneQuery && searchQuery.length > 0 && (
+        <View className="flex-row items-center gap-2 bg-blue-500/10 px-4 py-2 rounded-xl mb-4 border border-blue-500/20">
+          <Icon name="information-outline" size={14} color="#3B82F6" />
+          <Text className="text-blue-400 text-xs font-bold">Mostrando resultados para "{searchQuery}"</Text>
+        </View>
+      )}
 
-      {searchError ? (
+      {searchError && isPhoneQuery ? (
         <View className="flex-row items-center gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20 mb-6">
           <Icon name="alert-circle-outline" size={14} color="#EF4444" />
           <Text className="text-red-400 text-xs font-bold">{searchError}</Text>
         </View>
       ) : null}
 
-      {client && (
+      {client && isPhoneQuery && (
         <Card className="mb-8 p-5 border-2 border-(--color-pos-primary)/20 bg-(--color-pos-primary)/5">
           <Text className="text-(--color-pos-primary) font-black text-xs uppercase tracking-widest mb-4">Resultado de búsqueda</Text>
           <View className="flex-row items-center gap-3 mb-2">
@@ -415,8 +452,8 @@ export default function ClientesScreen() {
         </View>
       )}
 
-      <View className="flex-row flex-wrap gap-4 pb-10">
-        {!loading && data.map((item) => {
+      <View className="flex-row flex-wrap gap-4 pb-4">
+        {!loading && paginatedData.map((item) => {
           const stats = getStats(item);
           return (
             <Card key={item.telefono} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'} overflow-hidden`}>
@@ -493,6 +530,32 @@ export default function ClientesScreen() {
           );
         })}
       </View>
+
+      {/* ── Pagination ── */}
+      {totalPages > 1 && (
+        <View className="flex-row justify-center items-center gap-3 py-5 mb-4">
+          <TouchableOpacity
+            onPress={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className={`px-4 py-2 rounded-xl border ${page <= 1 ? 'opacity-30 bg-white/5 border-white/10' : 'bg-(--color-pos-primary)/15 border-(--color-pos-primary)/30'}`}
+          >
+            <Text className="text-(--color-pos-primary) font-black text-sm">← Anterior</Text>
+          </TouchableOpacity>
+
+          <View className="items-center">
+            <Text className="text-white font-black text-sm">Página {page} de {totalPages}</Text>
+            <Text className="text-slate-500 text-[10px] mt-0.5">{filteredData.length} clientes</Text>
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className={`px-4 py-2 rounded-xl border ${page >= totalPages ? 'opacity-30 bg-white/5 border-white/10' : 'bg-(--color-pos-primary)/15 border-(--color-pos-primary)/30'}`}
+          >
+            <Text className="text-(--color-pos-primary) font-black text-sm">Siguiente →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* ── Delete Confirmation Modal ── */}
       <ConfirmModal

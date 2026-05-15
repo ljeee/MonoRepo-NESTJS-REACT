@@ -102,7 +102,7 @@ function mapFactura(rawFactura: unknown): FacturaVenta {
   };
 }
 
-function calcStats(list: FacturaVenta[]): FacturaStats {
+export function calcStats(list: FacturaVenta[]): FacturaStats {
   const total = list.reduce((s, f) => s + (Number(f.total) || 0), 0);
   const pagado = list.filter((f) => f.estado === 'pagado').reduce((s, f) => s + (Number(f.total) || 0), 0);
   return { totalDia: total, totalPagado: pagado, totalPendiente: total - pagado, count: list.length };
@@ -161,7 +161,7 @@ export function useFacturasDia() {
 
 // ─── Facturas por Rango ───────────────────────────────────────────────────────
 
-export function useFacturasRango() {
+export function useFacturasRango(options?: { limit?: number }) {
   const api = useApi();
   const [data, setData] = useState<FacturaVenta[]>([]);
   const [loading, setLoading] = useState(false);
@@ -172,6 +172,8 @@ export function useFacturasRango() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<FacturaStats>({ totalDia: 0, totalPagado: 0, totalPendiente: 0, count: 0 });
+
+  const fetchLimit = options?.limit || 50;
 
   const fromRef = useRef(from);
   const toRef = useRef(to);
@@ -189,7 +191,7 @@ export function useFacturasRango() {
     setLoading(true);
     setError(null);
     try {
-      const response = await api.facturas.getAll({ from: finalFrom, to: finalTo, page: finalPage });
+      const response = await api.facturas.getAll({ from: finalFrom, to: finalTo, page: finalPage, limit: fetchLimit });
       const mapped = response.data.map(mapFactura);
       setData(mapped);
       setTotalPages(response.totalPages);

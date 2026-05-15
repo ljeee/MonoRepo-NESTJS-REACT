@@ -4,6 +4,7 @@ import { useSharedValue, useAnimatedStyle, withSpring, withTiming } from 'react-
 import { Animated } from '../../tw/animated';
 import { View, Text, Pressable } from '../../tw';
 import Icon, { IconName } from './Icon';
+import { springs, timings } from '../../styles/tokens';
 
 type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -41,18 +42,18 @@ export default function Button({
     const isDisabled = disabled || loading;
 
     React.useEffect(() => {
-        opacity.value = withTiming(1, { duration: 400 });
-        translateY.value = withSpring(0, { damping: 15, stiffness: 100 });
+        opacity.value = withTiming(1, { duration: timings.slow });
+        translateY.value = withSpring(0, springs.slow);
     }, []);
 
     const handlePressIn = () => {
         if (!isDisabled) {
-            scale.value = withSpring(0.96, { damping: 12, stiffness: 200 });
+            scale.value = withSpring(0.96, springs.fast);
         }
     };
 
     const handlePressOut = () => {
-        scale.value = withSpring(1, { damping: 12, stiffness: 200 });
+        scale.value = withSpring(1, springs.fast);
     };
 
     const animatedStyle = useAnimatedStyle(() => {
@@ -67,8 +68,8 @@ export default function Button({
 
     const variantClasses = {
         primary: 'bg-(--color-pos-primary) text-black',
-        secondary: 'bg-(--color-pos-secondary) text-white',
-        danger: 'bg-red-500 text-white',
+        secondary: 'bg-white/5 border border-white/15 text-slate-300',
+        danger: 'bg-red-500/15 border border-red-500/30 text-red-400',
         ghost: 'bg-transparent text-slate-400',
         outline: 'bg-transparent border-2 border-(--color-pos-primary) text-(--color-pos-primary)',
     };
@@ -85,7 +86,8 @@ export default function Button({
     const getIconColor = () => {
         if (isDisabled) return '#64748B';
         if (variant === 'primary') return '#000';
-        if (variant === 'secondary' || variant === 'danger') return '#FFF';
+        if (variant === 'danger') return '#F87171';
+        if (variant === 'secondary') return '#CBD5E1';
         if (variant === 'outline') return '#F5A524';
         return '#94A3B8';
     };

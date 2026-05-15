@@ -170,7 +170,7 @@ function AddProductPanel({ onAdd, onClose }: { onAdd: (p: ProductoEdit) => void;
     };
 
     return (
-        <View className="fixed inset-0 bg-black/60 z-[99999] justify-end">
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
             <TouchableOpacity className="flex-1" onPress={onClose} activeOpacity={1} />
             <View className="bg-(--color-pos-surface) rounded-t-[32px] border border-white/10 min-h-[70%] pb-10">
                 <View className="flex-row justify-between items-center p-6 border-b border-white/5">
@@ -249,7 +249,7 @@ export default function EditarOrdenScreen() {
                         sabor3: p.sabores?.[2],
                     })) as any,
             });
-            showToast('✅ Orden actualizada correctamente', 'success');
+            showToast('Orden actualizada correctamente', 'success');
             setTimeout(() => router.back(), 1000); // Volver al detalle original
         } catch (e: any) {
             showToast(e?.response?.data?.message || 'Error al guardar cambios', 'error');
@@ -436,7 +436,7 @@ export default function EditarOrdenScreen() {
                                         <View className="flex-row justify-between items-center">
                                             <Text className="font-black text-white text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>Total</Text>
                                             <View className="items-end">
-                                                <Text className="font-black text-(--color-pos-primary) text-4xl" style={{ fontFamily: 'Space Grotesk' }}>
+                                                <Text className="font-black text-(--color-pos-primary) text-2xl sm:text-4xl" style={{ fontFamily: 'Space Grotesk' }}>
                                                     ${formatCOP(total)}
                                                 </Text>
                                             </View>

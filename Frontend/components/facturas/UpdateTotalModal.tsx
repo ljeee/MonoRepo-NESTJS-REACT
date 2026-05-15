@@ -33,7 +33,7 @@ export default function UpdateTotalModal({
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
             <Pressable 
-                className="flex-1 bg-black/60 justify-center items-center p-6" 
+                className="flex-1 bg-black/85 justify-center items-center p-6"
                 onPress={onCancel}
             >
                 <Pressable 

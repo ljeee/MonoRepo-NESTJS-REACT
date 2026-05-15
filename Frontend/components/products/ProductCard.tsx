@@ -17,7 +17,7 @@ interface ProductCardProps {
     onDeleteSabor?: (saborId: number, name: string) => void;
 }
 
-export function ProductCard({
+function ProductCardImpl({
     product,
     onEdit,
     onEditVariant,
@@ -33,7 +33,7 @@ export function ProductCard({
     return (
         <Card className="bg-white/5 border border-white/5 overflow-hidden rounded-[40px]">
             {/* Product header */}
-            <View className="flex-row items-center justify-between p-6 bg-white/5 border-b border-white/5">
+            <View className="flex-row items-center justify-between p-4 md:p-6 bg-white/5 border-b border-white/5">
                 <View className="flex-row items-center flex-1 mr-4">
                     <View className="w-14 h-14 rounded-2xl bg-orange-500/10 items-center justify-center mr-4 border border-orange-500/20">
                         <Text className="text-2xl">{product.emoji || (isPizza ? '🍕' : '🍔')}</Text>
@@ -60,7 +60,7 @@ export function ProductCard({
             </View>
 
             {/* Variants */}
-            <View className="p-6">
+            <View className="p-4 md:p-6">
                 <View className="flex-row items-center justify-between mb-4 px-1">
                     <View className="flex-row items-center gap-2">
                         <Icon name="format-list-bulleted-type" size={14} color="#64748B" />
@@ -89,14 +89,16 @@ export function ProductCard({
                                 </View>
                                 
                                 <View className="flex-row gap-2">
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         onPress={() => onEditVariant(v.varianteId)}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                         className="w-9 h-9 rounded-xl bg-white/5 active:bg-white/10 items-center justify-center border border-white/10"
                                     >
                                         <Icon name="pencil" size={14} color="#64748B" />
                                     </TouchableOpacity>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         onPress={() => onDeleteVariant(v.varianteId, v.nombre)}
+                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                         className="w-9 h-9 rounded-xl bg-red-500/10 active:bg-red-500/20 items-center justify-center border border-red-500/20"
                                     >
                                         <Icon name="trash-can-outline" size={14} color="#EF4444" />
@@ -109,7 +111,7 @@ export function ProductCard({
 
             {/* Pizza Flavors Section */}
             {isPizza && sabores && (
-                <View className="border-t border-white/5 p-6 bg-orange-500/5">
+                <View className="border-t border-white/5 p-4 md:p-6 bg-orange-500/5">
                     <PizzaFlavorsSection 
                         sabores={sabores} 
                         onEditSabor={onEditSabor} 
@@ -122,7 +124,9 @@ export function ProductCard({
     );
 }
 
-function PizzaFlavorsSection({ 
+export const ProductCard = React.memo(ProductCardImpl);
+
+function PizzaFlavorsSection({
     sabores, 
     onEditSabor,
     onAddSabor,
@@ -144,10 +148,12 @@ function PizzaFlavorsSection({
                 onPress={() => onEditSabor?.(sabor)}
                 onLongPress={() => onDeleteSabor?.(sabor.saborId, sabor.nombre)}
                 activeOpacity={0.7}
-                className={`flex-row items-center px-3 py-2 rounded-xl mb-2 mr-2 border ${isEspecial ? 'bg-orange-500/10 border-orange-500/30' : 'bg-white/5 border-white/10'}`}
+                hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                className={`flex-row items-center gap-1 px-3 py-2.5 min-h-[44px] rounded-xl mb-2 mr-2 border ${isEspecial ? 'bg-orange-500/10 border-orange-500/30' : 'bg-white/5 border-white/10'}`}
             >
+                {isEspecial && <Icon name="star" size={9} color="#FB923C" />}
                 <Text className={`text-[9px] font-black uppercase tracking-widest ${isEspecial ? 'text-orange-400' : 'text-slate-400'}`} numberOfLines={1}>
-                    {isEspecial ? '★ ' : ''}{sabor.nombre}
+                    {sabor.nombre}
                 </Text>
             </TouchableOpacity>
         );
@@ -178,7 +184,10 @@ function PizzaFlavorsSection({
             </View>
 
             <View className="mb-4">
-                <Text className="text-orange-500/40 text-[8px] font-black uppercase tracking-widest mb-2 ml-1">Especialidades de la Casa ★</Text>
+                <View className="flex-row items-center gap-1 mb-2 ml-1">
+                    <Icon name="star" size={9} color="rgba(249,115,22,0.4)" />
+                    <Text className="text-orange-500/40 text-[8px] font-black uppercase tracking-widest">Especialidades de la Casa</Text>
+                </View>
                 <View className="flex-row flex-wrap">
                     {especiales.map(s => renderChip(s))}
                 </View>
