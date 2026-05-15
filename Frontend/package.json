@@ -26,6 +26,7 @@
     "color": "^4.2.3",
     "color-string": "^1.9.1",
     "expo": "^54.0.34",
+    "expo-build-properties": "^55.0.14",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
     "expo-font": "~14.0.11",

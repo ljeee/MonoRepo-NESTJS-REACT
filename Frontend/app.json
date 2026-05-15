@@ -28,7 +28,17 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProjectVariables": {
+              "REACT_NATIVE_NODE_MODULES_DIR": "../../../node_modules/react-native"
+            }
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false,
