@@ -257,13 +257,13 @@ export default function ContabilidadScreen() {
         setFrom: setFromF, setTo: setToF, search: searchF, stats,
         page: pageF, totalPages: totalPagesF, goToPage: goToPageF,
         total: totalFacturasCount,
-    } = useFacturasRango();
+    } = useFacturasRango({ limit: 5000 });
 
     const {
         data: gastos, loading: loadingG, error: errorG,
         setFrom: setFromG, setTo: setToG, fetchData: fetchGastos,
         page: pageG, totalPages: totalPagesG, total: totalGastosCount, goToPage: goToPageG,
-    } = useFacturasPagosRango();
+    } = useFacturasPagosRango({ limit: 5000 });
 
     // Full dataset for Resumen KPIs (not paginated)
     const [statsData, setStatsData] = useState<{ facturas: any[]; gastos: FacturaPago[] }>({ facturas: [], gastos: [] });

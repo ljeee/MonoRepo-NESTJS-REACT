@@ -76,7 +76,7 @@ export function useFacturasPagosDia() {
   return { data, loading, error, fetchData };
 }
 
-export function useFacturasPagosRango() {
+export function useFacturasPagosRango(options?: { limit?: number }) {
   const api = useApi();
   const [data, setData] = useState<FacturaPago[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,7 +106,7 @@ export function useFacturasPagosRango() {
     }
     setLoading(true); setError(null);
     try {
-      const response = await api.pagos.getAll({ from: finalFrom, to: finalTo, page: finalPage });
+      const response = await api.pagos.getAll({ from: finalFrom, to: finalTo, page: finalPage, limit: options?.limit });
       setData(response.data);
       setTotal(response.total);
       setPage(response.page);

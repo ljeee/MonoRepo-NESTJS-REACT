@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\Jefer\\\\Desktop\\\\MonoRepo-NESTJS-REACT\\\\node_modules\\\\react-native\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\Jefer\\\\Desktop\\\\MonoRepo-NESTJS-REACT\\\\node_modules\\\\react-native\\\\ReactAndroid\")",
+      "PowerShell(cmd /c \"dir C:\\\\Users\\\\Jefer\\\\Desktop\\\\MonoRepo-NESTJS-REACT\\\\Frontend\\\\android\\\\app\\\\build\")"
+    ]
+  }
+}

@@ -35,7 +35,7 @@ export default function FacturasRangoScreen() {
     from, to, setFrom, setTo,
     fetchData, search,
     stats, updateEstado, updateFactura, deleteFactura,
-  } = useFacturasRango({ limit: 9999 });
+  } = useFacturasRango({ limit: 5000 });
 
   const [localPage, setLocalPage] = useState(1);
   const itemsPerPage = 50;

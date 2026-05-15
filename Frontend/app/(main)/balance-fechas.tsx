@@ -153,7 +153,7 @@ export default function BalanceFechasScreen() {
         stats,
         updateEstado,
         updateFactura,
-    } = useFacturasRango();
+    } = useFacturasRango({ limit: 5000 });
 
     // ── Gastos hook ──
     const {
@@ -163,7 +163,7 @@ export default function BalanceFechasScreen() {
         setFrom: setFromG,
         setTo: setToG,
         fetchData: fetchGastos,
-    } = useFacturasPagosRango();
+    } = useFacturasPagosRango({ limit: 5000 });
 
     const handleSearch = useCallback(() => {
         const { from: fromParsed, to: toParsed, error } = validateFlexibleDateRange(from, to);

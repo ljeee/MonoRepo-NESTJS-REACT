@@ -1,11 +1,12 @@
 import {Entity, PrimaryGeneratedColumn, Column, Index} from 'typeorm';
+import {NumericTransformer} from '../../common/utils/numeric.transformer';
 
 @Entity('facturas_pagos')
 export class FacturasPagos {
 	@PrimaryGeneratedColumn({name: 'pagos_id', type: 'bigint'})
 	pagosId: number;
 
-	@Column({name: 'total', type: 'numeric', nullable: true})
+	@Column({name: 'total', type: 'numeric', nullable: true, transformer: new NumericTransformer()})
 	total: number;
 
 	@Column({name: 'nombre_gasto', type: 'text', nullable: true})
