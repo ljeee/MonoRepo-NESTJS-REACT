@@ -43,4 +43,4 @@ app-example
 
 # generated native folders
 /ios
-/android
+# /android — tracked so EAS uses our customized build.gradle
