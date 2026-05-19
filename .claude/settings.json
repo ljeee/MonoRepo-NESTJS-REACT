@@ -22,7 +22,8 @@
       "Bash(./gradlew clean *)",
       "Bash(./gradlew :expo:compileDebugKotlin --info)",
       "Bash(./gradlew :expo:compileDebugKotlin)",
-      "Bash(npx eas-cli *)"
+      "Bash(npx eas-cli *)",
+      "Bash(npx expo-doctor *)"
     ]
   }
 }
