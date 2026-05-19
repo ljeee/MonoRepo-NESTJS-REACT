@@ -1,15 +1,5 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
-// Monorepo: react-native may be hoisted to the workspace root. Expose its location via
-// rootProject.ext so @react-native-picker/picker (and similar libs) can find it.
-// We probe both possible locations rather than shelling out to node, which is unreliable
-// during Gradle's configuration phase in EAS build workers.
-ext {
-    def rnInFrontendModules = new File(rootDir, "../node_modules/react-native")
-    def rnInWorkspaceRoot   = new File(rootDir, "../../node_modules/react-native")
-    REACT_NATIVE_NODE_MODULES_DIR = rnInFrontendModules.exists() ? rnInFrontendModules : rnInWorkspaceRoot
-}
-
 buildscript {
   repositories {
     google()

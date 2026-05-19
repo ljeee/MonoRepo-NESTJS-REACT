@@ -8,6 +8,7 @@ npm-debug.log*
 
 # Environment & Secrets
 .env*
+.claude*
 !.env.example
 
 # Logs

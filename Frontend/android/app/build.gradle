@@ -4,18 +4,11 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
-// On Windows, node commands must go through cmd /c to be found on PATH.
-// On Linux/Mac (EAS), use /usr/bin/env so the Gradle daemon finds node in PATH.
 def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
 def nodeExec = { args ->
     def cmd = isWindows ? (["cmd", "/c"] + args) : (["/usr/bin/env"] + args)
     return cmd.execute(null, rootDir).text.trim()
 }
-
-// Resolve react-native once so hermesCommand can derive from it.
-// hermes-compiler no longer exists as a standalone package in RN 0.81+;
-// hermesc is bundled inside react-native/sdks/hermesc/.
-def rnDir = new File(nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])).getParentFile().getAbsoluteFile()
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -23,8 +16,8 @@ def rnDir = new File(nodeExec(["node", "--print", "require.resolve('react-native
  */
 react {
     entryFile = file(nodeExec(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"]))
-    reactNativeDir = rnDir
-    hermesCommand = new File(rnDir, "sdks/hermesc").getAbsolutePath() + "/%OS-BIN%/hermesc"
+    reactNativeDir = new File(nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])).getParentFile().getAbsoluteFile()
+    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
     codegenDir = new File(nodeExec(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"])).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
