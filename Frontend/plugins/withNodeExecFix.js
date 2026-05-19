@@ -3,17 +3,21 @@ const { withAppBuildGradle } = require('@expo/config-plugins');
 /**
  * Patches app/build.gradle after expo prebuild generates it.
  *
- * Problem: the generated nodeExec closure calls List.execute() with bare args.
- * On Linux (EAS), the Gradle daemon's PATH doesn't include node, so the command
- * returns an empty string → new File("").getParentFile() → null → crash.
+ * Problem: on Linux (EAS), the Gradle daemon's PATH doesn't include node
+ * (which is typically installed via nvm). Any ["node", ...].execute(null, rootDir)
+ * call returns an empty string → new File("").getParentFile() → null → crash.
  *
- * Fix: prepend /usr/bin/env on Linux/Mac so the OS resolves node from PATH.
+ * The expo SDK 55 template generates inline execute() calls without using /usr/bin/env.
+ * This plugin handles two template shapes:
+ *   A) Template already has a `def nodeExec = { args -> ... }` function: fix it.
+ *   B) Template uses inline ["node", ...].execute(null, rootDir).text.trim() calls:
+ *      inject the nodeExec helper and replace all inline calls.
  */
 module.exports = function withNodeExecFix(config) {
   return withAppBuildGradle(config, (config) => {
     let contents = config.modResults.contents;
 
-    const fixedBlock = [
+    const fixedHelper = [
       'def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")',
       'def nodeExec = { args ->',
       '    def cmd = isWindows ? (["cmd", "/c"] + args) : (["/usr/bin/env"] + args)',
@@ -21,16 +25,41 @@ module.exports = function withNodeExecFix(config) {
       '}',
     ].join('\n');
 
-    // Handle all variants the template might generate:
-    // 1. No isWindows, just: def nodeExec = { args -> return args.execute(...) }
-    // 2. isWindows check but Linux branch is bare args (not wrapped in env)
-    const pattern = /(?:def isWindows[^\n]*\n)?def nodeExec = \{ args ->[\s\S]*?\n\}/;
-
-    if (pattern.test(contents)) {
-      contents = contents.replace(pattern, fixedBlock);
-      console.log('[withNodeExecFix] Patched nodeExec in app/build.gradle ✓');
+    if (/def nodeExec\s*=\s*\{/.test(contents)) {
+      // Shape A: replace the existing nodeExec closure.
+      const pattern = /(?:def isWindows[^\n]*\n)?def nodeExec = \{ args ->[\s\S]*?\n\}/;
+      if (pattern.test(contents)) {
+        contents = contents.replace(pattern, fixedHelper);
+        console.log('[withNodeExecFix] Replaced existing nodeExec closure ✓');
+      } else {
+        console.warn('[withNodeExecFix] Found nodeExec but pattern mismatch — skipped');
+      }
     } else {
-      console.warn('[withNodeExecFix] nodeExec pattern not found — manual review needed');
+      // Shape B: template uses inline ["node", ...].execute(null, rootDir).text.trim().
+      // 1. Inject the helper right after def projectRoot.
+      if (!contents.includes('def projectRoot')) {
+        console.warn('[withNodeExecFix] def projectRoot not found — cannot inject helper');
+        config.modResults.contents = contents;
+        return config;
+      }
+      contents = contents.replace(
+        /(def projectRoot\s*=[^\n]+)/,
+        `$1\n\n${fixedHelper}`
+      );
+
+      // 2. Replace every inline call:
+      //    ["node", ...].execute(null, rootDir).text.trim()
+      //    → nodeExec(["node", ...])
+      //
+      // Non-greedy (.*?) correctly handles strings that contain "]" (e.g. codegenDir arg).
+      const replaced = contents.replace(
+        /\["node"(.*?)\]\.execute\(null,\s*rootDir\)\.text\.trim\(\)/gs,
+        'nodeExec(["node"$1])'
+      );
+
+      const callCount = (contents.match(/\["node".*?\]\.execute\(null,\s*rootDir\)\.text\.trim\(\)/gs) || []).length;
+      contents = replaced;
+      console.log(`[withNodeExecFix] Injected nodeExec helper, replaced ${callCount} inline call(s) ✓`);
     }
 
     config.modResults.contents = contents;
