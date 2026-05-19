@@ -62,6 +62,18 @@ module.exports = function withNodeExecFix(config) {
       console.log(`[withNodeExecFix] Injected nodeExec helper, replaced ${callCount} inline call(s) ✓`);
     }
 
+    // Final patch: hermes-compiler is no longer a standalone npm package in RN 0.81+.
+    // hermesc is now bundled inside react-native/sdks/hermesc/.
+    // The generated template still references hermes-compiler → require.resolve fails →
+    // empty string → new File("").getParentFile() → null → getAbsolutePath() NPE.
+    if (contents.includes('hermes-compiler')) {
+      contents = contents.replace(
+        /[ \t]*hermesCommand\s*=[^\n]*hermes-compiler[^\n]+/,
+        '    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve(\'react-native/package.json\')"])).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"'
+      );
+      console.log('[withNodeExecFix] Fixed hermesCommand: hermes-compiler → react-native/sdks/hermesc ✓');
+    }
+
     config.modResults.contents = contents;
     return config;
   });
