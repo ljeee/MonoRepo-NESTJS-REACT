@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { RefreshControl } from 'react-native';
 import { api } from '../../services/api';
-import type { Cliente, CreateClienteDto } from '@monorepo/shared';
-import { useClientByPhone } from '@monorepo/shared';
-import { useClientesList } from '@monorepo/shared';
+import type { Cliente, CreateClienteDto } from '@/src/shared';
+import { useClientByPhone } from '@/src/shared';
+import { useClientesList } from '@/src/shared';
 import { ScrollView, View, Text, TouchableOpacity } from '../../tw';
 import {
   PageContainer,

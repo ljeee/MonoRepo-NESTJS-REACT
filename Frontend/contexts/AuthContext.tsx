@@ -2,8 +2,8 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { api, setAuthToken } from '../services/api';
-import type { AuthUser } from '@monorepo/shared';
-import { Role } from '@monorepo/shared';
+import type { AuthUser } from '@/src/shared';
+import { Role } from '@/src/shared';
 
 interface AuthContextData {
     token: string | null;

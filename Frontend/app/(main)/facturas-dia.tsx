@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RefreshControl, StyleSheet } from 'react-native';
 import { Text, View, TextInput, TouchableOpacity } from '../../tw';
-import { useFacturasDia, calcStats } from '@monorepo/shared';
+import { useFacturasDia, calcStats } from '@/src/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from '../../tw';
 import { ActivityIndicator } from 'react-native';
-import { useOfflineQueue, useToast } from '@monorepo/shared';
+import { useOfflineQueue, useToast } from '@/src/shared';
 import { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
 import { api } from '../../services/api';

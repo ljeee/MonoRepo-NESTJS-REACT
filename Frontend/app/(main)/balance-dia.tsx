@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, Platform } from 'react-native';
 import { ScrollView } from '../../tw';
-import { useFacturasDia, useFacturasPagosDia, useDeleteFacturaPago } from '@monorepo/shared';
+import { useFacturasDia, useFacturasPagosDia, useDeleteFacturaPago } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportPdf } from '../../utils/exportData';
-import type { FacturaPago } from '@monorepo/shared';
-import { formatCurrency } from '@monorepo/shared';
+import type { FacturaPago } from '@/src/shared';
+import { formatCurrency } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { View, Text, TouchableOpacity, TextInput } from '../../tw';
 

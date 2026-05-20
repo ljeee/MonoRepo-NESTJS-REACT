@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Producto, ProductoVariante, PizzaSabor } from '@monorepo/shared';
+import type { Producto, ProductoVariante, PizzaSabor } from '@/src/shared';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProductModal } from './ProductModal';
 import { VariantModal } from './VariantModal';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
 import Icon from '../ui/Icon';
-import { formatCurrency } from '@monorepo/shared';
+import { formatCurrency } from '@/src/shared';
 
 export interface CartItem {
   id: string; // unique key for the cart row

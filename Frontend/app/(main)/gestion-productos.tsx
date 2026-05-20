@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshControl } from 'react-native';
-import { useGestionProductosScreen } from '@monorepo/shared';
+import { useGestionProductosScreen } from '@/src/shared';
 import {
     PageContainer,
     PageHeader,

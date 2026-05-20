@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useReducer, useState } from 'react';
 import { ScrollView, TouchableOpacity, View, Text } from '../../tw';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
-import type { Orden, PaginatedResponse } from '@monorepo/shared';
-import { formatCurrency, formatDate } from '@monorepo/shared';
+import type { Orden, PaginatedResponse } from '@/src/shared';
+import { formatCurrency, formatDate } from '@/src/shared';
 import { ESTADO_LABELS, getEstadoColor } from '../../constants/estados';
 import {
   PageContainer,

@@ -3,8 +3,8 @@ import { RefreshControl } from 'react-native';
 import { Text, TouchableOpacity, View } from '../../tw';
 import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
-import { useFacturasPagosScreen, todayISO } from '@monorepo/shared';
-import { formatCurrency } from '@monorepo/shared';
+import { useFacturasPagosScreen, todayISO } from '@/src/shared';
+import { formatCurrency } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import {
   PageContainer,

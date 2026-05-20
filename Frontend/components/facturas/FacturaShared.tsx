@@ -1,6 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, TouchableOpacity } from 'react-native';
-import { formatCurrency, formatDate } from '@monorepo/shared';
+import { formatCurrency, formatDate } from '@/src/shared';
 import { View, Text } from '../../tw';
 import { useBreakpoint } from '../../styles/responsive';
 

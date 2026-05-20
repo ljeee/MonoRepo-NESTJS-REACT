@@ -3,7 +3,7 @@ import { ActivityIndicator, Platform } from 'react-native';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
-import type { VentaHora, ResumenPeriodo, Orden } from '@monorepo/shared';
+import type { VentaHora, ResumenPeriodo, Orden } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { PageContainer, Card, Icon } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';

@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Modal } from 'react-native';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
 import Icon from '../ui/Icon';
-import type { Producto, ProductoVariante, PizzaSabor } from '@monorepo/shared';
-import { formatCurrency } from '@monorepo/shared';
+import type { Producto, ProductoVariante, PizzaSabor } from '@/src/shared';
+import { formatCurrency } from '@/src/shared';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

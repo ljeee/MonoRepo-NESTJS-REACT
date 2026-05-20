@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBreakpoint } from '../styles/responsive';
 import Icon, { IconName } from './ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import { Role } from '@monorepo/shared';
+import { Role } from '@/src/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Section definitions ──

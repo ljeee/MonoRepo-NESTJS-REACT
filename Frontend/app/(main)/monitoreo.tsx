@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
-import { useOfflineQueue, formatDate, useToast } from '@monorepo/shared';
+import { useOfflineQueue, formatDate, useToast } from '@/src/shared';
 import { api } from '../../services/api';
 import { buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { Ionicons } from '@expo/vector-icons';

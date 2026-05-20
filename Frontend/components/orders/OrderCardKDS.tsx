@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from '../../tw';
 import Icon from '../ui/Icon';
-import type { Orden } from '@monorepo/shared';
+import type { Orden } from '@/src/shared';
 
 type Props = {
     orden: Orden;

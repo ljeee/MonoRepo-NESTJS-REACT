@@ -9,8 +9,8 @@ import type {
     MetodoPago,
     ResumenPeriodo,
     ClienteFrecuente,
-} from '@monorepo/shared';
-import { formatCompactCurrency as sharedFormatCompact } from '@monorepo/shared';
+} from '@/src/shared';
+import { formatCompactCurrency as sharedFormatCompact } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from '../../tw';
 import { PageContainer, PageHeader, Card, Icon, Button, ListSkeleton } from '../../components/ui';

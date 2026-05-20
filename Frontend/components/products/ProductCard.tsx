@@ -1,6 +1,6 @@
 import React from 'react';
-import type { Producto, PizzaSabor } from '@monorepo/shared';
-import { formatCurrency } from '@monorepo/shared';
+import type { Producto, PizzaSabor } from '@/src/shared';
+import { formatCurrency } from '@/src/shared';
 import { View, Text, TouchableOpacity } from '../../tw';
 import { Button, Card, Icon, Badge } from '../ui';
 

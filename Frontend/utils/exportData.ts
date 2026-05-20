@@ -1,6 +1,6 @@
 import type { FacturaItem } from '../components/facturas/FacturaShared';
-import type { FacturaPago } from '@monorepo/shared';
-import { formatCurrency } from '@monorepo/shared';
+import type { FacturaPago } from '@/src/shared';
+import { formatCurrency } from '@/src/shared';
 
 // ─── Shared PDF scaffold ───────────────────────────────────────────────────────
 

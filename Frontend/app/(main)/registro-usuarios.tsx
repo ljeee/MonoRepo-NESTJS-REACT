@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, TextInput, TouchableOpacity, View, Text } from '../../tw';
 import { PageContainer, PageHeader, Button, Icon, Card } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, Role, RegisterDto } from '@monorepo/shared';
+import { useToast, Role, RegisterDto } from '@/src/shared';
 import { Picker } from '@react-native-picker/picker';
 import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';

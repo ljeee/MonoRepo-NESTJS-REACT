@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RefreshControl } from 'react-native';
-import { useDomiciliariosList } from '@monorepo/shared';
+import { useDomiciliariosList } from '@/src/shared';
 import { api } from '../../services/api';
 import { View, Text, TouchableOpacity } from '../../tw';
 import { useBreakpoint } from '../../styles/responsive';

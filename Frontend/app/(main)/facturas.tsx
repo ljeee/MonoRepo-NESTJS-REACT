@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, TouchableOpacity } from 'react-native';
 import { View, Text } from '../../tw';
-import { useFacturasRango, calcStats } from '@monorepo/shared';
+import { useFacturasRango, calcStats } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
-import { validateFlexibleDateRange } from '@monorepo/shared';
+import { validateFlexibleDateRange } from '@/src/shared';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
 import {
   PageContainer,

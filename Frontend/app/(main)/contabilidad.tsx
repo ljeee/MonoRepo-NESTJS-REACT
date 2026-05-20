@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, TouchableOpacity } from 'react-native';
 import { View, Text, ScrollView } from '../../tw';
-import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@monorepo/shared';
-import { useFacturasPagosRango } from '@monorepo/shared';
-import type { FacturaVenta, FacturaPago } from '@monorepo/shared';
+import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@/src/shared';
+import { useFacturasPagosRango } from '@/src/shared';
+import type { FacturaVenta, FacturaPago } from '@/src/shared';
 import {
     buildCombinedBalanceCsv,
     buildFacturasBackupCsv,

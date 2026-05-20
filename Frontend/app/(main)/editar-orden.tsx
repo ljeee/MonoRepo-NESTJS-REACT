@@ -6,11 +6,11 @@ import { Animated } from '../../tw/animated';
 import { FadeInUp, FadeInRight, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Easing, useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, withSpring, withDelay } from 'react-native-reanimated';
 import { api } from '../../services/api';
-import { useToast } from '@monorepo/shared';
+import { useToast } from '@/src/shared';
 import { Icon, PageContainer, PageHeader, Card, Button } from '../../components/ui';
 import { ErrorState } from '../../components/states/ErrorState';
 import MenuPicker from '../../components/orderForm/MenuPicker';
-import type { Producto, ProductoVariante } from '@monorepo/shared';
+import type { Producto, ProductoVariante } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Types ───────────────────────────────────────────────────────────────────

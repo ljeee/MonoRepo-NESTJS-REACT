@@ -4,8 +4,8 @@ import { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } fro
 import { Animated } from '../../tw/animated';
 import { View, Text, TouchableOpacity } from '../../tw';
 import Icon from './Icon';
-import { useToast } from '@monorepo/shared';
-import type { ToastVariant } from '@monorepo/shared';
+import { useToast } from '@/src/shared';
+import type { ToastVariant } from '@/src/shared';
 
 function getToastConfig(variant: ToastVariant) {
     switch (variant) {

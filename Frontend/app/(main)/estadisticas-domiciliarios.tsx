@@ -3,7 +3,7 @@ import { View, Text, ScrollView, TouchableOpacity } from '../../tw';
 import { RefreshControl, ActivityIndicator } from 'react-native';
 import { PageContainer, PageHeader, Card, Icon, ListSkeleton, Button } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, formatCurrency } from '@monorepo/shared';
+import { useToast, formatCurrency } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Types ──────────────────────────────────────────────────────────────────

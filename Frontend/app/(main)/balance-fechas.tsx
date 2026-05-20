@@ -2,12 +2,12 @@ import React, { useReducer, useCallback, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import { ScrollView } from '../../tw';
 
-import { useFacturasRango } from '@monorepo/shared';
-import { useFacturasPagosRango } from '@monorepo/shared';
+import { useFacturasRango } from '@/src/shared';
+import { useFacturasPagosRango } from '@/src/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportPdf } from '../../utils/exportData';
-import { validateFlexibleDateRange } from '@monorepo/shared';
-import { formatCurrency } from '@monorepo/shared';
+import { validateFlexibleDateRange } from '@/src/shared';
+import { formatCurrency } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { View, Text } from '../../tw';
 

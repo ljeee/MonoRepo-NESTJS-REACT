@@ -3,7 +3,7 @@ import { ActivityIndicator, TouchableOpacity, Platform, Modal } from 'react-nati
 import { View, Text, ScrollView, TextInput } from '../../tw';
 import { api } from '../../services/api';
 import { PageContainer, PageHeader, Card, Icon, Button, ConfirmModal } from '../../components/ui';
-import type { InventarioCaja, InventarioCajasMovimiento } from '@monorepo/shared';
+import type { InventarioCaja, InventarioCajasMovimiento } from '@/src/shared';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 

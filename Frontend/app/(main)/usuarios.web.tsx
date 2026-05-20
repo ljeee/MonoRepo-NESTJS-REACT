@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import { useRouter } from 'expo-router';
 import { Badge, Icon, PageContainer, PageHeader, Card, ListSkeleton, Button } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
-import { Role } from '@monorepo/shared';
+import { Role } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 
 export default function UsuariosScreen() {

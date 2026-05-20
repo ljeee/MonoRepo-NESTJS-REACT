@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, TouchableOpacity } from 'react-native';
 import { View, Text } from '../../tw';
 import Icon from '../ui/Icon';
-import type { Orden } from '@monorepo/shared';
+import type { Orden } from '@/src/shared';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

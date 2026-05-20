@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { Text, TextInput, TouchableOpacity, View } from '../../tw';
-import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@monorepo/shared';
-import type { Producto, ProductoVariante } from '@monorepo/shared';
+import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@/src/shared';
+import type { Producto, ProductoVariante } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import PizzaPersonalizadaModal from './PizzaPersonalizadaModal';
 import Icon from '../ui/Icon';

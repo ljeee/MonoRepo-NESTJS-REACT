@@ -1,6 +1,6 @@
 import React from 'react';
 import { Platform } from 'react-native';
-import type { Producto, PizzaSabor } from '@monorepo/shared';
+import type { Producto, PizzaSabor } from '@/src/shared';
 import { View, Text } from '../../tw';
 import Input from '../ui/Input';
 import Icon from '../ui/Icon';
