@@ -81,8 +81,8 @@ module.exports = function withNodeExecFix(config) {
     const chmodBlock = `
 tasks.configureEach { task ->
     if (task.name.startsWith("createBundle") && task.name.endsWith("JsAndAssets")) {
+        def hermescDir = new File(project.rootDir.parentFile, "node_modules/react-native/sdks/hermesc")
         task.doFirst {
-            def hermescDir = new File(rootDir.parentFile, "node_modules/react-native/sdks/hermesc")
             if (hermescDir.exists()) {
                 hermescDir.eachFileRecurse { f ->
                     if (f.name == "hermesc") { f.setExecutable(true, false) }
