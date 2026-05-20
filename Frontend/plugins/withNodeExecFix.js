@@ -74,6 +74,29 @@ module.exports = function withNodeExecFix(config) {
       console.log('[withNodeExecFix] Fixed hermesCommand: hermes-compiler → react-native/sdks/hermesc ✓');
     }
 
+    // Fix hermesc execute permissions: npm on Windows strips +x bits from binaries.
+    // When EAS unpacks on Linux, hermesc lacks the execute bit → Gradle crashes with
+    // "A problem occurred starting process 'command '...hermesc''".
+    // Append a configureEach block that chmod +x's hermesc before any bundle task runs.
+    const chmodBlock = `
+tasks.configureEach { task ->
+    if (task.name.startsWith("createBundle") && task.name.endsWith("JsAndAssets")) {
+        task.doFirst {
+            def hermescDir = new File(rootDir.parentFile, "node_modules/react-native/sdks/hermesc")
+            if (hermescDir.exists()) {
+                hermescDir.eachFileRecurse { f ->
+                    if (f.name == "hermesc") { f.setExecutable(true, false) }
+                }
+            }
+        }
+    }
+}
+`;
+    if (!contents.includes('hermesc") { f.setExecutable')) {
+      contents = contents + chmodBlock;
+      console.log('[withNodeExecFix] Added hermesc chmod+x task ✓');
+    }
+
     config.modResults.contents = contents;
     return config;
   });
