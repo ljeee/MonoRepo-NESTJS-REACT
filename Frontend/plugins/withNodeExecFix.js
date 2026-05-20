@@ -81,12 +81,20 @@ module.exports = function withNodeExecFix(config) {
     const chmodBlock = `
 tasks.configureEach { task ->
     if (task.name.startsWith("createBundle") && task.name.endsWith("JsAndAssets")) {
-        def hermescDir = new File(project.rootDir.parentFile, "node_modules/react-native/sdks/hermesc")
         task.doFirst {
-            if (hermescDir.exists()) {
-                hermescDir.eachFileRecurse { f ->
-                    if (f.name == "hermesc") { f.setExecutable(true, false) }
+            try {
+                def rnPkg = nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])
+                if (rnPkg) {
+                    def hermescDir = new File(new File(rnPkg).parentFile, "sdks/hermesc")
+                    if (hermescDir.exists()) {
+                        hermescDir.eachFileRecurse { f ->
+                            if (f.name == "hermesc") { f.setExecutable(true, false) }
+                        }
+                        println("[withNodeExecFix] chmod +x hermesc done at: " + hermescDir)
+                    }
                 }
+            } catch (Exception e) {
+                println("[withNodeExecFix] chmod warning: " + e.message)
             }
         }
     }
