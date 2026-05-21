@@ -17,7 +17,7 @@ def nodeExec = { args ->
 react {
     entryFile = file(nodeExec(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"]))
     reactNativeDir = new File(nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])).getParentFile().getAbsoluteFile()
-    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
+    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve('hermes-compiler/package.json')"])).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"
     codegenDir = new File(nodeExec(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"])).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
@@ -66,6 +66,7 @@ react {
     // hermesFlags = ["-O", "-output-source-map"]
 
     /* Autolinking */
+    debuggableVariants = [] // embed JS bundle in all builds
     autolinkLibrariesWithApp()
 }
 

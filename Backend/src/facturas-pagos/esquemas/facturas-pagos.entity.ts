@@ -1,5 +1,5 @@
 import {Entity, PrimaryGeneratedColumn, Column, Index} from 'typeorm';
-import {NumericTransformer} from '../../common/utils/numeric.transformer';
+import {ColumnNumericTransformer as NumericTransformer} from '../../common/utils/numeric.transformer';
 
 @Entity('facturas_pagos')
 export class FacturasPagos {

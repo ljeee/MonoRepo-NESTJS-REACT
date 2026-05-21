@@ -62,16 +62,27 @@ module.exports = function withNodeExecFix(config) {
       console.log(`[withNodeExecFix] Injected nodeExec helper, replaced ${callCount} inline call(s) ✓`);
     }
 
-    // Final patch: hermes-compiler is no longer a standalone npm package in RN 0.81+.
-    // hermesc is now bundled inside react-native/sdks/hermesc/.
-    // The generated template still references hermes-compiler → require.resolve fails →
-    // empty string → new File("").getParentFile() → null → getAbsolutePath() NPE.
-    if (contents.includes('hermes-compiler')) {
+    // Patch hermesCommand to use the hermes-compiler package, which ships binaries for
+    // all platforms (linux64-bin, osx-bin, win64-bin). The react-native package no longer
+    // includes hermesc binaries on Windows local installs, so pointing to hermes-compiler
+    // is more reliable across environments.
+    const hermesCommandReplacement = '    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve(\'hermes-compiler/package.json\')"])).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"';
+    if (/hermesCommand\s*=/.test(contents)) {
       contents = contents.replace(
-        /[ \t]*hermesCommand\s*=[^\n]*hermes-compiler[^\n]+/,
-        '    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve(\'react-native/package.json\')"])).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"'
+        /[ \t]*hermesCommand\s*=[^\n]+/,
+        hermesCommandReplacement
       );
-      console.log('[withNodeExecFix] Fixed hermesCommand: hermes-compiler → react-native/sdks/hermesc ✓');
+      console.log('[withNodeExecFix] Fixed hermesCommand → hermes-compiler ✓');
+    }
+
+    // Embed the JS bundle in all variants (including debug) so the APK works standalone
+    // without a running Metro server. Essential for installing on physical devices.
+    if (!contents.includes('debuggableVariants')) {
+      contents = contents.replace(
+        /(autolinkLibrariesWithApp\(\))/,
+        'debuggableVariants = [] // embed JS bundle in all builds\n    $1'
+      );
+      console.log('[withNodeExecFix] Added debuggableVariants = [] ✓');
     }
 
     // Fix hermesc execute permissions: npm on Windows strips +x bits from binaries.
