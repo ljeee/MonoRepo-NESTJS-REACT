@@ -1,4 +1,4 @@
-import {IsString, IsNumber, IsOptional, IsDateString} from "class-validator";
+import {IsString, IsNumber, IsOptional, IsDateString, IsObject} from "class-validator";
 
 export class CreateFacturasVentasDto {
 
@@ -24,5 +24,17 @@ export class CreateFacturasVentasDto {
 
 	@IsOptional()
 	@IsNumber()
+	pagoEfectivo?: number;
+
+	@IsOptional()
+	@IsNumber()
+	pagoTransferencia?: number;
+
+	@IsOptional()
+	@IsNumber()
 	total?: number;
+
+	@IsOptional()
+	@IsObject()
+	denominaciones?: Record<string, number>;
 }

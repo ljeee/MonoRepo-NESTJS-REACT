@@ -9,6 +9,8 @@ import {ProductProcessingService} from './services/product-processing.service';
 import {OrdenesGateway} from './ordenes.gateway';
 import {CierresService} from '../cierres/cierres.service';
 import {InventarioCajasService} from '../inventario-cajas/inventario-cajas.service';
+import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
+import {getBogotaDateString} from '../common/utils/date.utils';
 
 @Injectable()
 export class OrdenesService {
@@ -20,6 +22,7 @@ export class OrdenesService {
 		private readonly productProcessingService: ProductProcessingService,
 		private readonly cierresService: CierresService,
 		private readonly inventarioCajasService: InventarioCajasService,
+		private readonly cajaMovimientosService: CajaMovimientosService,
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
@@ -162,7 +165,7 @@ export class OrdenesService {
 			this.ordenesGateway.emitirNuevaOrden(fullOrden);
 
 			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = new Date(fullOrden.fechaOrden).toISOString().split('T')[0];
+			const fechaStr = getBogotaDateString(new Date(fullOrden.fechaOrden));
 			await this.cierresService.updateCierreIfExists(fechaStr);
 
 			// 5. Descontar cajas (domicilio o para llevar) — fuera de TX para no bloquear
@@ -248,7 +251,7 @@ export class OrdenesService {
 			this.ordenesGateway.emitirOrdenActualizada(updated);
 
 			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = new Date(updated.fechaOrden).toISOString().split('T')[0];
+			const fechaStr = getBogotaDateString(new Date(updated.fechaOrden));
 			await this.cierresService.updateCierreIfExists(fechaStr);
 
 			return updated;
@@ -302,14 +305,24 @@ export class OrdenesService {
 			this.ordenesGateway.emitirOrdenActualizada(fullUpdated);
 
 			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = new Date(fullUpdated.fechaOrden).toISOString().split('T')[0];
+			const fechaStr = getBogotaDateString(new Date(fullUpdated.fechaOrden));
 			await this.cierresService.updateCierreIfExists(fechaStr);
 
 			return fullUpdated;
 		});
 	}
 
-	async completar(id: number, metodo: string, userId: string, ip: string, idempotencyKey?: string, lastUpdatedAt?: string) {
+	async completar(
+		id: number,
+		metodo: string,
+		userId: string,
+		ip: string,
+		idempotencyKey?: string,
+		lastUpdatedAt?: string,
+		pagoEfectivo?: number,
+		pagoTransferencia?: number,
+		denominaciones?: Record<string, number>,
+	) {
 		return this.repo.manager.transaction(async (manager) => {
 			const oRepo = manager.getRepository(Ordenes);
 			const orden = await oRepo.findOne({
@@ -345,6 +358,8 @@ export class OrdenesService {
 					fechaCobro: new Date(),
 					ipDispositivo: ip,
 					idempotencyKey,
+					pagoEfectivo,
+					pagoTransferencia,
 				}, manager);
 			}
 
@@ -356,8 +371,18 @@ export class OrdenesService {
 			this.ordenesGateway.emitirOrdenActualizada(updated);
 
 			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = new Date(updated.fechaOrden).toISOString().split('T')[0];
+			const fechaStr = getBogotaDateString(new Date(updated.fechaOrden));
 			await this.cierresService.updateCierreIfExists(fechaStr);
+
+			// Registrar movimiento de caja si hay denominaciones en efectivo
+			if (denominaciones && Object.keys(denominaciones).length > 0 && (pagoEfectivo ?? 0) > 0) {
+				await this.cajaMovimientosService.registrarEntrada({
+					denominaciones,
+					facturaVentaId: orden.facturaId,
+					descripcion: `Cobro orden #${id}`,
+					fecha: fechaStr,
+				});
+			}
 
 			return updated;
 		});

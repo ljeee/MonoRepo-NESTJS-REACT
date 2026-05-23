@@ -16,6 +16,7 @@ import {
   Badge,
   ConfirmModal,
   ListSkeleton,
+  DenominacionSelector,
 } from '../../components/ui';
 
 export default function FacturasPagosScreen() {
@@ -49,6 +50,11 @@ export default function FacturasPagosScreen() {
     setFechaFactura,
     metodo,
     setMetodo,
+    denominaciones,
+    setDenominaciones,
+    monedas,
+    setMonedas,
+    disponibleDenominaciones,
     from,
     to,
     setFrom,
@@ -82,9 +88,9 @@ export default function FacturasPagosScreen() {
         subtitle="Facturas"
         icon="credit-card-minus-outline"
         rightContent={
-          <View className="flex-row gap-2">
+          <View style={{ flexDirection: 'row', alignItems: 'center' }} className="gap-2">
             <Button
-              title="Refrescar"
+              title={isMobile ? "" : "Refrescar"}
               icon="refresh"
               variant="ghost"
               size="sm"
@@ -92,7 +98,7 @@ export default function FacturasPagosScreen() {
               loading={loadingDia}
             />
             <Button
-              title={showForm ? 'Cerrar' : 'Nuevo Gasto'}
+              title={showForm ? (isMobile ? '' : 'Cerrar') : (isMobile ? '' : 'Nuevo Gasto')}
               icon={showForm ? 'close' : 'plus'}
               variant={showForm ? 'ghost' : 'primary'}
               size="sm"
@@ -161,6 +167,23 @@ export default function FacturasPagosScreen() {
               </View>
             </View>
           </View>
+
+          {/* Denominaciones — solo efectivo, no edición */}
+          {metodo === 'efectivo' && !editingId && (
+            <View className="mb-4 p-3 rounded-2xl border border-orange-500/20 bg-orange-500/5">
+              <View className="flex-row items-center gap-2 mb-3">
+                <View className="w-1.5 h-4 bg-orange-500 rounded-full" />
+                <Text className="text-orange-300 text-xs font-black uppercase tracking-widest">Billetes entregados *</Text>
+              </View>
+              <DenominacionSelector
+                value={denominaciones}
+                onChange={setDenominaciones}
+                disponible={disponibleDenominaciones ?? undefined}
+                monedas={monedas}
+                onMonedasChange={setMonedas}
+              />
+            </View>
+          )}
 
           <Input
             label="Fecha (YYYY-MM-DD)"

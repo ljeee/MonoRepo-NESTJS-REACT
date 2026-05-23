@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, RefreshControl } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import { ScrollView, Text, View, TouchableOpacity, Pressable } from '../../tw';
 import { api } from '../../services/api';
 import { useToast } from '@/src/shared';
 import type { Domiciliario } from '@/src/shared';
-import { PageContainer, PageHeader, Card } from '../../components/ui';
+import { PageContainer, PageHeader, Card, Picker, PickerItem } from '../../components/ui';
 import Icon from '../../components/ui/Icon';
 import { useBreakpoint } from '../../styles/responsive';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
@@ -284,13 +283,13 @@ export default function AsignarDomiciliariosScreen() {
                                             itemStyle={{ color: 'white', fontSize: 14 }}
                                             dropdownIconColor="#94A3B8"
                                         >
-                                            <Picker.Item
+                                            <PickerItem
                                                 label={domiciliarios.length === 0 ? 'No hay domiciliarios registrados' : 'Seleccionar domiciliario...'}
                                                 value=""
                                                 color="#64748B"
                                             />
                                             {domiciliarios.map(dom => (
-                                                <Picker.Item
+                                                <PickerItem
                                                     key={dom.telefono}
                                                     label={dom.domiciliarioNombre || dom.telefono}
                                                     value={dom.telefono}

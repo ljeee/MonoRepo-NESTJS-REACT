@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Platform, TouchableOpacity } from 'react-n
 import { View, Text, ScrollView } from '../../tw';
 import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@/src/shared';
 import { useFacturasPagosRango } from '@/src/shared';
-import type { FacturaVenta, FacturaPago } from '@/src/shared';
+import type { FacturaVenta, FacturaPago, ResumenPeriodo } from '@/src/shared';
 import {
     buildCombinedBalanceCsv,
     buildFacturasBackupCsv,
@@ -130,17 +130,9 @@ function BalanceBanner({ ingresos, gastos }: { ingresos: number; gastos: number 
 
 // ─── Métodos breakdown ────────────────────────────────────────────────────────
 
-function MetodosBreakdown({ facturas }: { facturas: FacturaVenta[] }) {
-    const metodos = useMemo(() => {
-        const map: Record<string, number> = {};
-        for (const f of facturas) {
-            if (f.estado === 'pagado' && f.metodo) map[f.metodo] = (map[f.metodo] ?? 0) + (f.total ?? 0);
-        }
-        return Object.entries(map).sort((a, b) => b[1] - a[1]);
-    }, [facturas]);
-
-    if (!metodos.length) return null;
-    const total = metodos.reduce((s, [, v]) => s + v, 0);
+function MetodosBreakdown({ metodos }: { metodos: { metodo: string; total: number; porcentaje?: number }[] }) {
+    if (!metodos || !metodos.length) return null;
+    const total = metodos.reduce((s, m) => s + m.total, 0);
 
     return (
         <Card className="mb-4">
@@ -148,15 +140,15 @@ function MetodosBreakdown({ facturas }: { facturas: FacturaVenta[] }) {
                 <Icon name="credit-card-multiple-outline" size={15} color="#F5A524" />
                 <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Métodos de Pago</Text>
             </View>
-            {metodos.map(([metodo, monto]) => {
-                const pct = total > 0 ? (monto / total) * 100 : 0;
+            {metodos.map((item) => {
+                const pct = total > 0 ? (item.total / total) * 100 : 0;
                 return (
-                    <View key={metodo} style={{ marginBottom: 12 }}>
+                    <View key={item.metodo} style={{ marginBottom: 12 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                            <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }}>{metodoLabel(metodo)}</Text>
+                            <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }}>{metodoLabel(item.metodo)}</Text>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
                                 <Text style={{ color: '#475569', fontSize: 11 }}>{pct.toFixed(1)}%</Text>
-                                <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12 }}>${formatCurrency(monto)}</Text>
+                                <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12 }}>${formatCurrency(item.total)}</Text>
                             </View>
                         </View>
                         <View style={{ height: 4, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 2 }}>
@@ -257,16 +249,17 @@ export default function ContabilidadScreen() {
         setFrom: setFromF, setTo: setToF, search: searchF, stats,
         page: pageF, totalPages: totalPagesF, goToPage: goToPageF,
         total: totalFacturasCount,
-    } = useFacturasRango({ limit: 5000 });
+    } = useFacturasRango(50);
 
     const {
         data: gastos, loading: loadingG, error: errorG,
         setFrom: setFromG, setTo: setToG, fetchData: fetchGastos,
         page: pageG, totalPages: totalPagesG, total: totalGastosCount, goToPage: goToPageG,
-    } = useFacturasPagosRango({ limit: 5000 });
+    } = useFacturasPagosRango(50);
 
-    // Full dataset for Resumen KPIs (not paginated)
-    const [statsData, setStatsData] = useState<{ facturas: any[]; gastos: FacturaPago[] }>({ facturas: [], gastos: [] });
+    // Server-side calculated period statistics and payment methods
+    const [periodStats, setPeriodStats] = useState<ResumenPeriodo | null>(null);
+    const [metodosData, setMetodosData] = useState<any[]>([]);
     const [loadingStats, setLoadingStats] = useState(false);
 
     const fetchAllPeriod = useCallback(async (f?: string, t?: string) => {
@@ -290,20 +283,28 @@ export default function ContabilidadScreen() {
         searchF(f, t);
         fetchGastos(f, t, 1);
         setSearched(true);
-        // Fetch full dataset for Resumen KPIs & exports
+        
         setLoadingStats(true);
-        fetchAllPeriod(f, t)
-            .then(({ allF, allG }) => { setStatsData({ facturas: allF, gastos: allG }); })
-            .finally(() => setLoadingStats(false));
-    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchAllPeriod]);
+        Promise.all([
+            api.estadisticas.resumenPeriodo(f, t),
+            api.estadisticas.metodosPago(f, t)
+        ])
+        .then(([statsRes, metodosRes]) => {
+            setPeriodStats(statsRes);
+            setMetodosData(metodosRes);
+        })
+        .catch((err) => {
+            console.error('Error fetching period statistics/methods:', err);
+        })
+        .finally(() => setLoadingStats(false));
+    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, api]);
 
-    const totalIngresos = useMemo(() => statsData.facturas.filter((f: any) => f.estado === 'pagado').reduce((s: number, f: any) => s + (f.total ?? 0), 0), [statsData]);
-    const totalGastos   = useMemo(() => statsData.gastos.filter(g => g.estado === 'pagado').reduce((s, g) => s + (g.total ?? 0), 0), [statsData]);
-    const pendientesF   = useMemo(() => statsData.facturas.filter((f: any) => f.estado === 'pendiente').reduce((s: number, f: any) => s + (f.total ?? 0), 0), [statsData]);
-    const ticketProm    = useMemo(() => {
-        const cobradas = statsData.facturas.filter((f: any) => f.estado === 'pagado');
-        return cobradas.length > 0 ? totalIngresos / cobradas.length : 0;
-    }, [statsData, totalIngresos]);
+    const totalIngresos = periodStats?.totalIngresosPagados ?? 0;
+    const totalGastos   = periodStats?.totalEgresosPagados ?? 0;
+    const pendientesF   = periodStats?.totalIngresosPendientes ?? 0;
+    const ticketProm    = periodStats?.countIngresosPagados && periodStats.countIngresosPagados > 0
+        ? totalIngresos / periodStats.countIngresosPagados
+        : 0;
 
     const isWeb = Platform.OS === 'web';
     const loading = loadingF || loadingG;
@@ -410,13 +411,13 @@ export default function ContabilidadScreen() {
                             <BalanceBanner ingresos={totalIngresos} gastos={totalGastos} />
 
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-                                <KpiCard icon="arrow-down-circle-outline" label="Ingresos cobrados" value={`$${formatCurrency(totalIngresos)}`} sub={`${statsData.facturas.filter((f: any) => f.estado === 'pagado').length} facturas`} color="#10B981" accent="rgba(16,185,129,0.15)" />
-                                <KpiCard icon="arrow-up-circle-outline" label="Egresos pagados" value={`$${formatCurrency(totalGastos)}`} sub={`${statsData.gastos.filter(g => g.estado === 'pagado').length} gastos`} color="#EF4444" accent="rgba(239,68,68,0.15)" />
-                                <KpiCard icon="clock-alert-outline" label="Por cobrar" value={`$${formatCurrency(pendientesF)}`} sub={`${statsData.facturas.filter((f: any) => f.estado === 'pendiente').length} facturas`} color="#F59E0B" accent="rgba(245,158,11,0.15)" />
-                                <KpiCard icon="ticket-percent-outline" label="Ticket promedio" value={`$${formatCurrency(ticketProm)}`} sub={`${statsData.facturas.length} órdenes totales`} color="#60A5FA" accent="rgba(96,165,250,0.15)" />
+                                <KpiCard icon="arrow-down-circle-outline" label="Ingresos cobrados" value={`$${formatCurrency(totalIngresos)}`} sub={`${periodStats?.countIngresosPagados ?? 0} facturas`} color="#10B981" accent="rgba(16,185,129,0.15)" />
+                                <KpiCard icon="arrow-up-circle-outline" label="Egresos pagados" value={`$${formatCurrency(totalGastos)}`} sub={`${periodStats?.countEgresosPagados ?? 0} gastos`} color="#EF4444" accent="rgba(239,68,68,0.15)" />
+                                <KpiCard icon="clock-alert-outline" label="Por cobrar" value={`$${formatCurrency(pendientesF)}`} sub={`${periodStats?.countIngresosPendientes ?? 0} facturas`} color="#F59E0B" accent="rgba(245,158,11,0.15)" />
+                                <KpiCard icon="ticket-percent-outline" label="Ticket promedio" value={`$${formatCurrency(ticketProm)}`} sub={`${periodStats?.facturas ?? 0} facturas totales`} color="#60A5FA" accent="rgba(96,165,250,0.15)" />
                             </View>
 
-                            <MetodosBreakdown facturas={statsData.facturas as any} />
+                            <MetodosBreakdown metodos={metodosData} />
 
                             {(errorF || errorG) && (
                                 <View style={{ flexDirection: 'row', gap: 10, backgroundColor: 'rgba(239,68,68,0.08)', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }}>

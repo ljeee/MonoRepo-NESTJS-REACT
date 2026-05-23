@@ -32,6 +32,9 @@ export class CreateFacturasPagosDto {
 	@IsOptional()
 	@IsString()
 	categoria?: string;
+
+	@IsOptional()
+	denominaciones?: Record<string, number>;
 }
 
 export class FindFacturasPagosDto {

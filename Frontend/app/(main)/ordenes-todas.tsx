@@ -137,7 +137,7 @@ export default function OrdenesTodasScreen() {
         subtitle="Listado general"
         icon="format-list-bulleted"
         rightContent={
-          <View className="flex-row items-center gap-2">
+          <View style={{ flexDirection: 'row', alignItems: 'center' }} className="gap-2">
             {!isMobile && (
               <Button
                 title="Ampliar"
@@ -148,7 +148,7 @@ export default function OrdenesTodasScreen() {
               />
             )}
             <Button
-              title="Refrescar"
+              title={isMobile ? "" : "Refrescar"}
               icon="refresh"
               variant="ghost"
               size="sm"

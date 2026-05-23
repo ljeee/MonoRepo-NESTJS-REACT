@@ -27,7 +27,6 @@ export default function GestionProductosScreen() {
         deleteLoading,
         editingSabor,
         prodName,
-        prodCategory,
         prodDesc,
         prodError,
         varName,
@@ -105,7 +104,6 @@ export default function GestionProductosScreen() {
                 showProductModal={showProductModal}
                 editingProduct={editingProduct}
                 prodName={prodName}
-                prodCategory={prodCategory}
                 prodDesc={prodDesc}
                 prodError={prodError}
                 showVariantModal={showVariantModal}
@@ -134,7 +132,6 @@ export default function GestionProductosScreen() {
                     });
                 }}
                 onProdNameChange={(name) => patchUi({ prodName: name })}
-                onProdCategoryChange={(category) => patchUi({ prodCategory: category })}
                 onProdDescriptionChange={(description) => patchUi({ prodDesc: description })}
                 onVarNameChange={(name) => patchUi({ varName: name })}
                 onVarPriceChange={(price) => patchUi({ varPrice: price })}

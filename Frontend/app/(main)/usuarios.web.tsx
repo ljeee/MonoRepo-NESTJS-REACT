@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FlatList, RefreshControl, Platform } from 'react-native';
 import { View, Text } from '../../tw';
 import { api } from '../../services/api';
@@ -18,27 +18,52 @@ export default function UsuariosScreen() {
     const { isMobile } = useBreakpoint();
     const isWeb = Platform.OS === 'web';
 
+    // Prevents state updates after unmount
+    const mountedRef = useRef(true);
+    useEffect(() => {
+        console.log('[usuarios.web.tsx] mountedRef initialized/mounted. Setting to true.');
+        mountedRef.current = true;
+        return () => {
+            console.log('[usuarios.web.tsx] unmounting. Setting mountedRef to false.');
+            mountedRef.current = false;
+        };
+    }, []);
+
     const loadUsuarios = useCallback(async () => {
+        console.log('[usuarios.web.tsx] loadUsuarios starting... setting loading = true. mountedRef:', mountedRef.current);
         setLoading(true);
         try {
+            console.log('[usuarios.web.tsx] loadUsuarios: calling api.auth.getUsers()...');
             const data = await api.auth.getUsers();
-            setUsuarios(data);
+            console.log('[usuarios.web.tsx] loadUsuarios: api.auth.getUsers() resolved. Count:', data?.length, 'mountedRef:', mountedRef.current);
+            if (mountedRef.current) {
+                setUsuarios(data);
+            } else {
+                console.warn('[usuarios.web.tsx] loadUsuarios: resolved but component unmounted. Ignoring setUsuarios.');
+            }
         } catch (error) {
-            console.error('Error loading users:', error);
+            console.error('[usuarios.web.tsx] loadUsuarios: Error loading users:', error);
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            console.log('[usuarios.web.tsx] loadUsuarios: Finally block. mountedRef:', mountedRef.current);
+            if (mountedRef.current) {
+                setLoading(false);
+                setRefreshing(false);
+                console.log('[usuarios.web.tsx] loadUsuarios: setLoading(false) executed.');
+            } else {
+                console.warn('[usuarios.web.tsx] loadUsuarios: finally block executed but component unmounted. Ignoring setLoading(false).');
+            }
         }
     }, []);
 
     useEffect(() => {
+        console.log('[usuarios.web.tsx] useEffect mount. Triggering loadUsuarios...');
         loadUsuarios();
     }, [loadUsuarios]);
 
-    const onRefresh = () => {
-        setRefreshing(refreshing);
+    const onRefresh = useCallback(() => {
+        setRefreshing(true); // fix: was setRefreshing(refreshing) — always true here
         loadUsuarios();
-    };
+    }, [loadUsuarios]);
 
     return (
         <PageContainer scrollable={false} maxWidthVariant="full">
@@ -81,10 +106,10 @@ export default function UsuariosScreen() {
                                 <Text className="text-slate-400 font-black mb-6 uppercase tracking-widest text-[10px] text-center max-w-[200px] leading-relaxed">
                                     No se encontraron usuarios activos en la plataforma
                                 </Text>
-                                <Button 
-                                    title="Consultar de nuevo" 
-                                    onPress={loadUsuarios} 
-                                    variant="secondary" 
+                                <Button
+                                    title="Consultar de nuevo"
+                                    onPress={loadUsuarios}
+                                    variant="secondary"
                                     size="sm"
                                     icon="refresh"
                                 />
@@ -106,15 +131,15 @@ export default function UsuariosScreen() {
                                             <Text className="text-slate-500 font-bold text-[10px] mt-1" numberOfLines={1}>@{u.username}</Text>
                                         </View>
                                     </View>
-                                    
+
                                     <View className="items-end gap-2">
                                         <View className="flex-row gap-1.5 flex-wrap justify-end">
                                             {u.roles?.map((role: string) => (
-                                                <Badge 
-                                                    key={role} 
-                                                    label={role} 
-                                                    variant={role?.toLowerCase() === 'admin' ? 'danger' : 'info'} 
-                                                    size="sm" 
+                                                <Badge
+                                                    key={role}
+                                                    label={role}
+                                                    variant={role?.toLowerCase() === 'admin' ? 'danger' : 'info'}
+                                                    size="sm"
                                                 />
                                             ))}
                                         </View>

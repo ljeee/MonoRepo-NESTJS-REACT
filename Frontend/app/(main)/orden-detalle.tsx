@@ -312,7 +312,7 @@ export default function OrdenDetalleScreen() {
   const ec = getEstadoColor(orden.estadoOrden);
 
   return (
-    <PageContainer>
+    <PageContainer scrollable={false}>
       <PageHeader
         title={`Detalle #${orden.ordenId}`}
         icon="receipt-text-outline"
@@ -355,7 +355,7 @@ export default function OrdenDetalleScreen() {
         }
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-10">
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
           {/* ── Status Banner ── */}
           <View className="mb-6 p-1 rounded-3xl bg-white/5 border border-white/5 overflow-hidden">
                 <View className={`flex-row items-center justify-between p-5 rounded-[22px] bg-white/5`}>

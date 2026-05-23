@@ -1,10 +1,9 @@
-import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { isAxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform } from 'react-native';
 import { ScrollView, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView } from '../../tw';
-import { Badge } from '../ui';
+import { Badge, Picker, PickerItem } from '../ui';
 import { api } from '../../services/api';
 import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce } from '@/src/shared';
 import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente } from '@/src/shared';
@@ -396,9 +395,9 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                       itemStyle={{ color: 'white', fontSize: 14 }}
                       dropdownIconColor="#94A3B8"
                     >
-                      <Picker.Item label="Domicilio" value="domicilio" />
-                      <Picker.Item label="Llevar" value="llevar" />
-                      <Picker.Item label="Mesa" value="mesa" />
+                      <PickerItem label="Domicilio" value="domicilio" />
+                      <PickerItem label="Llevar" value="llevar" />
+                      <PickerItem label="Mesa" value="mesa" />
                     </Picker>
                   </View>
                 </View>
@@ -432,8 +431,8 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         itemStyle={{ color: 'white', fontSize: 14 }}
                         dropdownIconColor="#94A3B8"
                       >
-                        <Picker.Item label="Seleccione mesa" value="" color="#64748B" />
-                        {[...Array(15)].map((_, i) => <Picker.Item key={`mesaPicker-${i + 1}`} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
+                        <PickerItem label="Seleccione mesa" value="" color="#64748B" />
+                        {[...Array(15)].map((_, i) => <PickerItem key={`mesaPicker-${i + 1}`} label={`Mesa ${i + 1}`} value={`${i + 1}`} />)}
                       </Picker>
                     </View>
                   ) : (
@@ -494,10 +493,10 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                             itemStyle={{ color: 'white', fontSize: 14 }}
                             dropdownIconColor="#94A3B8"
                           >
-                            <Picker.Item label="Seleccionar Dirección" value="" color="#64748B" />
+                            <PickerItem label="Seleccionar Dirección" value="" color="#64748B" />
                             {(client?.direcciones || [])
-                              .map((dir) => <Picker.Item key={dir.id} label={dir.direccion} value={dir.direccion} />)}
-                            <Picker.Item label="+ Nueva dirección..." value="__nueva__" />
+                              .map((dir) => <PickerItem key={dir.id} label={dir.direccion} value={dir.direccion} />)}
+                            <PickerItem label="+ Nueva dirección..." value="__nueva__" />
                           </Picker>
                         </View>
                         {formState.selectedAddress === '__nueva__' && (
@@ -531,9 +530,9 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         itemStyle={{ color: 'white', fontSize: 14 }}
                         dropdownIconColor="#94A3B8"
                       >
-                        <Picker.Item label={domiciliarios.length === 0 ? "No hay domiciliarios" : "Sin asignar"} value="" color="#64748B" />
+                        <PickerItem label={domiciliarios.length === 0 ? "No hay domiciliarios" : "Sin asignar"} value="" color="#64748B" />
                         {domiciliarios.map(d => (
-                          <Picker.Item 
+                          <PickerItem 
                             key={d.telefono} 
                             label={d.domiciliarioNombre || d.telefono.toString()} 
                             value={d.telefono.toString()} 

@@ -6,7 +6,6 @@ import android.content.res.Configuration
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
-import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
 import com.facebook.react.ReactHost
 import com.facebook.react.common.ReleaseLevel
@@ -16,10 +15,6 @@ import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
 
 class MainApplication : Application(), ReactApplication {
-
-  // Required by ReactApplication in RN 0.81.x; unused in New Architecture (reactHost is used instead).
-  override val reactNativeHost: ReactNativeHost
-    get() = throw IllegalStateException("New Architecture is enabled — use reactHost instead")
 
   override val reactHost: ReactHost by lazy {
     ExpoReactHostFactory.getDefaultReactHost(

@@ -1,6 +1,7 @@
 import { Stack, usePathname } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Platform, Pressable, ActivityIndicator } from 'react-native';
+import { Platform, ActivityIndicator } from 'react-native';
+import { Pressable } from '../tw';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 if (Platform.OS === 'web') {
@@ -8,7 +9,7 @@ if (Platform.OS === 'web') {
 } else {
   require('../src/global.css');
 }
-import { View, Text } from '../tw';
+import { View } from '../tw';
 import Navbar from '../components/Navbar';
 import { GlobalStyles } from '../components/GlobalStyles';
 import Icon from '../components/ui/Icon';
@@ -28,8 +29,8 @@ const asyncStorageAdapter: OrderStorageAdapter = {
   setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
 };
 
-function AppShell() {
-  const { isMobile, isTablet, isDesktop } = useBreakpoint();
+function AppShell({ fontsReady }: { fontsReady: boolean }) {
+  const { isDesktop } = useBreakpoint();
   const insets = useSafeAreaInsets();
   const isCompact = !isDesktop;
   const [showMobileMenu, setShowMobileMenu] = React.useState(false);
@@ -38,7 +39,6 @@ function AppShell() {
   const { showToast } = useToast();
 
   const pathname = usePathname();
-  // Close mobile menu on ANY navigation (including query-param changes from content taps)
   const pathnameRef = React.useRef(pathname);
   useEffect(() => {
     if (pathnameRef.current !== pathname) {
@@ -68,24 +68,21 @@ function AppShell() {
     return () => clearInterval(interval);
   }, [queue, token, showToast]);
 
-  const [fontsLoaded] = useFonts({
-    'Outfit': Outfit_400Regular,
-    'Outfit-Bold': Outfit_700Bold,
-    'Outfit-Black': Outfit_900Black,
-    'Space Grotesk': SpaceGrotesk_400Regular,
-    'SpaceGrotesk-Bold': SpaceGrotesk_700Bold,
-  });
-
-  if (isLoading || !fontsLoaded) return null;
-
+  const isReady = !isLoading && fontsReady;
   const isLoginScreen = pathname === '/login' || pathname?.includes('login');
   const showAppShell = !!token && !isLoginScreen;
 
   return (
-    <View className={`flex-1 bg-(--color-pos-bg) ${isCompact && showAppShell ? 'flex-col' : 'flex-row'}`}>
+    <View
+      style={{
+        flex: 1,
+        flexDirection: isCompact && showAppShell ? 'column' : 'row',
+        backgroundColor: '#060E1A',
+      }}
+    >
       <GlobalStyles />
 
-      {showAppShell && isCompact && (
+      {isReady && showAppShell && isCompact && (
         <>
           <View
             style={{ paddingTop: insets.top + 16 }}
@@ -115,18 +112,36 @@ function AppShell() {
         </>
       )}
 
-      {showAppShell && !isCompact && <Navbar />}
+      {isReady && showAppShell && !isCompact && <Navbar />}
 
-      <View className="flex-1 h-full overflow-hidden">
+      {/* Stack is always mounted — expo-router needs this to manage navigation and hide the splash */}
+      <View style={{ flex: 1, overflow: 'hidden' }}>
         <Stack screenOptions={{ headerShown: false }} />
       </View>
-      <ToastContainer />
+
+      {isReady && <ToastContainer />}
+
+      {/* Dark overlay while auth/fonts initialise — sits above Stack, dismissed when ready */}
+      {!isReady && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#060E1A', zIndex: 9999, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color="#F5A524" />
+        </View>
+      )}
     </View>
   );
 }
 
 export default function RootLayout() {
   const [ready, setReady] = useState(Platform.OS !== 'web');
+
+  const [fontsLoaded, fontError] = useFonts({
+    'Outfit': Outfit_400Regular,
+    'Outfit-Bold': Outfit_700Bold,
+    'Outfit-Black': Outfit_900Black,
+    'Space Grotesk': SpaceGrotesk_400Regular,
+    'SpaceGrotesk-Bold': SpaceGrotesk_700Bold,
+  });
+  const fontsReady = fontsLoaded || !!fontError;
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -153,11 +168,11 @@ export default function RootLayout() {
               <OfflineQueueProvider
                 storage={asyncStorageAdapter}
                 onSyncPayment={async (p: OfflinePayment) => {
-                  await api.ordenes.completar(p.ordenId, p.metodo, p.idempotencyKey);
+                  await api.ordenes.completar(p.ordenId, p.metodo, p.idempotencyKey, undefined, p.pagoEfectivo, p.pagoTransferencia);
                 }}
               >
                 <OrderProvider storage={asyncStorageAdapter}>
-                  <AppShell />
+                  <AppShell fontsReady={fontsReady} />
                 </OrderProvider>
               </OfflineQueueProvider>
             </ToastProvider>

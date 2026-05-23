@@ -34,7 +34,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 // ─── Map raw API response ─────────────────────────────────────────────────────
 
-function mapFactura(rawFactura: unknown): FacturaVenta {
+export function mapFactura(rawFactura: unknown): FacturaVenta {
   const factura = asRecord(rawFactura);
   const rawOrdenes = asArray(factura.ordenes);
   const rawDomicilios = asArray(factura.domicilios);
@@ -47,6 +47,8 @@ function mapFactura(rawFactura: unknown): FacturaVenta {
     descripcion: typeof factura.descripcion === 'string' ? factura.descripcion : undefined,
     estado: typeof factura.estado === 'string' ? factura.estado : undefined,
     metodo: typeof factura.metodo === 'string' ? factura.metodo : undefined,
+    pagoEfectivo: typeof factura.pagoEfectivo === 'number' || typeof factura.pagoEfectivo === 'string' ? numberOrZero(factura.pagoEfectivo) : undefined,
+    pagoTransferencia: typeof factura.pagoTransferencia === 'number' || typeof factura.pagoTransferencia === 'string' ? numberOrZero(factura.pagoTransferencia) : undefined,
     ordenes: rawOrdenes.map((rawOrden) => {
       const orden = asRecord(rawOrden);
       const rawProductos = asArray(orden.productos);
@@ -104,7 +106,7 @@ function mapFactura(rawFactura: unknown): FacturaVenta {
 
 export function calcStats(list: FacturaVenta[]): FacturaStats {
   const total = list.reduce((s, f) => s + (Number(f.total) || 0), 0);
-  const pagado = list.filter((f) => f.estado === 'pagado').reduce((s, f) => s + (Number(f.total) || 0), 0);
+  const pagado = list.filter((f) => f.estado === 'pagado' || f.estado === 'pagada').reduce((s, f) => s + (Number(f.total) || 0), 0);
   return { totalDia: total, totalPagado: pagado, totalPendiente: total - pagado, count: list.length };
 }
 
@@ -160,8 +162,11 @@ export function useFacturasDia() {
 }
 
 // ─── Facturas por Rango ───────────────────────────────────────────────────────
+// NOTE: limit is a primitive number (not an object) to keep it stable across
+// renders and prevent infinite re-render loops caused by object reference
+// instability in useCallback/useEffect dependency arrays.
 
-export function useFacturasRango(options?: { limit?: number }) {
+export function useFacturasRango(limit: number = 50) {
   const api = useApi();
   const [data, setData] = useState<FacturaVenta[]>([]);
   const [loading, setLoading] = useState(false);
@@ -173,25 +178,40 @@ export function useFacturasRango(options?: { limit?: number }) {
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<FacturaStats>({ totalDia: 0, totalPagado: 0, totalPendiente: 0, count: 0 });
 
-  const fetchLimit = options?.limit || 50;
+  const [estado, setEstado] = useState<string | undefined>(undefined);
+  const [clienteNombre, setClienteNombre] = useState<string | undefined>(undefined);
 
   const fromRef = useRef(from);
   const toRef = useRef(to);
   const pageRef = useRef(page);
+  const estadoRef = useRef(estado);
+  const clienteNombreRef = useRef(clienteNombre);
+
   useEffect(() => { fromRef.current = from; }, [from]);
   useEffect(() => { toRef.current = to; }, [to]);
   useEffect(() => { pageRef.current = page; }, [page]);
+  useEffect(() => { estadoRef.current = estado; }, [estado]);
+  useEffect(() => { clienteNombreRef.current = clienteNombre; }, [clienteNombre]);
 
-  const fetchData = useCallback(async (f?: string, t?: string, p?: number) => {
+  const fetchData = useCallback(async (f?: string, t?: string, p?: number, est?: string, cli?: string) => {
     const finalFrom = f ?? fromRef.current;
     const finalTo = t ?? toRef.current;
     const finalPage = p ?? pageRef.current;
+    const finalEstado = est !== undefined ? est : estadoRef.current;
+    const finalClienteNombre = cli !== undefined ? cli : clienteNombreRef.current;
     if (!finalFrom || !finalTo) return;
-    
+
     setLoading(true);
     setError(null);
     try {
-      const response = await api.facturas.getAll({ from: finalFrom, to: finalTo, page: finalPage, limit: fetchLimit });
+      const response = await api.facturas.getAll({
+        from: finalFrom,
+        to: finalTo,
+        page: finalPage,
+        limit,
+        estado: finalEstado || undefined,
+        clienteNombre: finalClienteNombre || undefined,
+      });
       const mapped = response.data.map(mapFactura);
       setData(mapped);
       setTotalPages(response.totalPages);
@@ -203,7 +223,7 @@ export function useFacturasRango(options?: { limit?: number }) {
       setError(getErrorMessage(error, 'Error al cargar facturas'));
       setLoading(false);
     }
-  }, [api]);
+  }, [api, limit]);
 
   const updateEstado = useCallback(async (facturaId: number, nuevoEstado: string) => {
     try {
@@ -241,11 +261,42 @@ export function useFacturasRango(options?: { limit?: number }) {
   }, [fetchData]);
 
   // Reset page to 1 when doing a brand-new search
-  const search = useCallback((f: string, t: string) => {
+  const search = useCallback((f: string, t: string, est?: string, cli?: string) => {
     setPage(1);
     pageRef.current = 1;
-    fetchData(f, t, 1);
+    if (est !== undefined) {
+      setEstado(est);
+      estadoRef.current = est;
+    }
+    if (cli !== undefined) {
+      setClienteNombre(cli);
+      clienteNombreRef.current = cli;
+    }
+    fetchData(f, t, 1, est, cli);
   }, [fetchData]);
 
-  return { data, loading, error, from, to, setFrom, setTo, fetchData, search, stats, updateEstado, updateFactura, deleteFactura, page, totalPages, total: totalCount, goToPage, limit: 50 };
+  return {
+    data,
+    loading,
+    error,
+    from,
+    to,
+    setFrom,
+    setTo,
+    estado,
+    setEstado,
+    clienteNombre,
+    setClienteNombre,
+    fetchData,
+    search,
+    stats,
+    updateEstado,
+    updateFactura,
+    deleteFactura,
+    page,
+    totalPages,
+    total: totalCount,
+    goToPage,
+    limit,
+  };
 }

@@ -14,6 +14,7 @@ import type {
   RegisterDto,
   EmpresaConfig, UpdateEmpresaDto,
   InventarioCaja, InventarioCajasMovimiento as InventarioCajasMovimientoModel, AjustarCajasDto as AjustarCajasDtoModel, CrearCajaDto as CrearCajaDtoModel,
+  DenominacionesMap, CajaMovimiento, CajaResumen,
 } from '../types/models';
 
 // ─── Factory: crea instancia configurada ──────────────────────────────────────
@@ -102,13 +103,13 @@ export function createApi(http: AxiosInstance) {
     cancel: (id: number, reason?: string) =>
       http.patch<Orden>(`/ordenes/${id}/cancel`, { reason }).then((r) => r.data),
     
-    completar: (id: number, metodo: string, idempotencyKey?: string, lastUpdatedAt?: string) =>
-      http.patch<Orden>(`/ordenes/${id}/completar`, { metodo, idempotencyKey, lastUpdatedAt }).then((r) => r.data),
+    completar: (id: number, metodo: string, idempotencyKey?: string, lastUpdatedAt?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap) =>
+      http.patch<Orden>(`/ordenes/${id}/completar`, { metodo, idempotencyKey, lastUpdatedAt, pagoEfectivo, pagoTransferencia, denominaciones }).then((r) => r.data),
   };
 
   // ─── Facturas Ventas ────────────────────────────────────────────────
   const facturas = {
-    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number }) =>
+    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string }) =>
       http.get<{ data: FacturaVenta[]; total: number; page: number; limit: number; totalPages: number }>('/facturas-ventas', { params }).then((r) => r.data),
 
     getDay: () =>
@@ -330,6 +331,20 @@ export function createApi(http: AxiosInstance) {
       http.get<InventarioCajasMovimientoModel[]>('/inventario-cajas/movimientos', { params: { limit } }).then((r) => arr<InventarioCajasMovimientoModel>(r.data)),
   };
 
+  const cajaDenominaciones = {
+    getEstado: (fecha?: string) =>
+      http.get<DenominacionesMap>('/caja-movimientos/estado', { params: fecha ? { fecha } : {} }).then((r) => r.data),
+
+    getResumen: (fecha?: string) =>
+      http.get<CajaResumen>('/caja-movimientos/resumen', { params: fecha ? { fecha } : {} }).then((r) => r.data),
+
+    getMovimientos: (fecha?: string) =>
+      http.get<CajaMovimiento[]>('/caja-movimientos', { params: fecha ? { fecha } : {} }).then((r) => arr<CajaMovimiento>(r.data)),
+
+    apertura: (denominaciones: DenominacionesMap, descripcion?: string) =>
+      http.post<CajaMovimiento>('/caja-movimientos/apertura', { denominaciones, descripcion }).then((r) => r.data),
+  };
+
   return {
     auth,
     ordenes,
@@ -344,6 +359,7 @@ export function createApi(http: AxiosInstance) {
     estadisticas,
     empresa,
     inventarioCajas,
+    cajaDenominaciones,
     http,
   };
 }

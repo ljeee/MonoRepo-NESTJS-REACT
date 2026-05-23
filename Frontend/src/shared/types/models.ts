@@ -123,8 +123,11 @@ export interface FacturaVenta {
   fechaFactura?: string;
   estado?: string;
   metodo?: string;
+  pagoEfectivo?: number;
+  pagoTransferencia?: number;
   total?: number;
   totalFactura?: number;
+  denominaciones?: DenominacionesMap | null;
   ordenes?: FacturaOrden[];
   domicilios?: FacturaDomicilio[];
 }
@@ -134,6 +137,41 @@ export interface FacturaStats {
   totalPagado: number;
   totalPendiente: number;
   count: number;
+}
+
+// ─── Denominaciones (Arqueada / Caja) ─────────────────────────────────────────
+
+/** Mapa de denominación → cantidad. Ej: { "50000": 2, "10000": 3 } */
+export type DenominacionesMap = Record<string, number>;
+
+export const DENOMINACIONES_COP = [
+  { valor: 100000, tipo: 'billete' as const, label: '$100.000' },
+  { valor: 50000,  tipo: 'billete' as const, label: '$50.000' },
+  { valor: 20000,  tipo: 'billete' as const, label: '$20.000' },
+  { valor: 10000,  tipo: 'billete' as const, label: '$10.000' },
+  { valor: 5000,   tipo: 'billete' as const, label: '$5.000' },
+  { valor: 2000,   tipo: 'billete' as const, label: '$2.000' },
+] as const;
+
+export interface CajaMovimiento {
+  id: string;
+  fecha: string;
+  tipo: 'entrada' | 'salida' | 'apertura';
+  denominaciones: DenominacionesMap;
+  total: number;
+  facturaVentaId?: number | null;
+  facturaPagoId?: number | null;
+  descripcion?: string | null;
+  createdAt: string;
+}
+
+export interface CajaResumen {
+  fecha: string;
+  estadoActual: DenominacionesMap;
+  totalEfectivo: number;
+  totalEntradas: number;
+  totalSalidas: number;
+  movimientos: CajaMovimiento[];
 }
 
 // ─── Facturas Pagos (Gastos) ──────────────────────────────────────────────────
@@ -147,6 +185,7 @@ export interface FacturaPago {
   fechaFactura?: string;
   metodo?: string;
   categoria?: string;
+  denominaciones?: DenominacionesMap | null;
 }
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────
@@ -198,6 +237,7 @@ export interface CreateFacturaPagoDto {
   fechaFactura?: string;
   metodo?: string;
   categoria?: string;
+  denominaciones?: DenominacionesMap;
 }
 
 export interface CreateClienteDto {
@@ -307,6 +347,16 @@ export interface ResumenPeriodo {
   cancelados: number;
   ticketPromedio: number;
   tasaCancelacion: number;
+
+  totalIngresosPagados?: number;
+  totalIngresosPendientes?: number;
+  countIngresosPagados?: number;
+  countIngresosPendientes?: number;
+
+  totalEgresosPagados?: number;
+  totalEgresosPendientes?: number;
+  countEgresosPagados?: number;
+  countEgresosPendientes?: number;
 }
 
 export interface ClienteFrecuente {

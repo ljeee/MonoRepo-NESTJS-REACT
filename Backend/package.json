@@ -92,15 +92,32 @@
 			"json",
 			"ts"
 		],
-		"rootDir": "src",
+		"rootDir": ".",
+		"roots": [
+			"<rootDir>/src",
+			"<rootDir>/test/unit"
+		],
 		"testRegex": ".*\\.spec\\.ts$",
 		"transform": {
-			"^.+\\.(t|j)s$": "ts-jest"
+			"^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "tsconfig.jest.json" }]
 		},
 		"collectCoverageFrom": [
-			"**/*.(t|j)s"
+			"src/**/*.(t|j)s",
+			"!src/main.ts",
+			"!src/**/*.module.ts",
+			"!src/**/*.dto.ts",
+			"!src/**/*.controller.ts",
+			"!src/**/*.gateway.ts",
+			"!src/**/*.guard.ts",
+			"!src/**/*.strategy.ts",
+			"!src/**/*.decorator.ts",
+			"!src/**/*.filter.ts",
+			"!src/**/*.interceptor.ts",
+			"!src/**/*.adapter.ts",
+			"!src/**/*.cron.ts",
+			"!src/common/seeders/**"
 		],
-		"coverageDirectory": "../coverage",
+		"coverageDirectory": "coverage",
 		"testEnvironment": "node"
 	}
 }

@@ -38,6 +38,8 @@ export class FacturaCreationService {
 		fechaCobro?: Date;
 		ipDispositivo?: string;
 		idempotencyKey?: string;
+		pagoEfectivo?: number;
+		pagoTransferencia?: number;
 	}, manager?: EntityManager) {
 		const repo = manager ? manager.getRepository(FacturasVentas) : this.facturasRepo;
         return repo.update(facturaId, updates);

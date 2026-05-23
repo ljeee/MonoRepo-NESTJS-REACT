@@ -93,7 +93,11 @@ export function exportFacturasPdf(facturas: FacturaItem[], periodLabel: string) 
       safeDateLabel(f.fechaFactura),
       f.clienteNombre || 'Sin nombre',
       `<span class="badge ${f.estado === 'pagado' ? 'badge-success' : f.estado === 'pendiente' ? 'badge-warning' : 'badge-danger'}">${f.estado ?? '—'}</span>`,
-      f.metodo || '—',
+      f.metodo
+        ? f.metodo === 'efectivo_transferencia'
+          ? `EFECTIVO Y TRANSFERENCIA (Ef: $${formatCurrency(Number(f.pagoEfectivo) || 0)} / Tr: $${formatCurrency(Number(f.pagoTransferencia) || 0)})`
+          : f.metodo.replace(/_/g, ' ').toUpperCase()
+        : '—',
       `$${formatCurrency(Number(f.total) || 0)}`,
     ]),
     summaryRows: [
@@ -121,14 +125,39 @@ export function exportLibroDiario(
   for (const f of facturas) {
     const monto = Number(f.total) || 0;
     const isPagado = f.estado === 'pagado';
-    entries.push({
-      fecha: f.fechaFactura ?? '',
-      tipo: 'ingreso',
-      ref: `F-${f.facturaId}`,
-      descripcion: `Venta — ${f.clienteNombre || 'Sin nombre'} (${f.metodo || 'efectivo'})`,
-      debito: isPagado ? monto : 0,
-      credito: isPagado ? 0 : monto,
-    });
+    if (isPagado && f.metodo === 'efectivo_transferencia') {
+      const ef = Number(f.pagoEfectivo) ?? 0;
+      const trans = Number(f.pagoTransferencia) ?? 0;
+      if (ef > 0) {
+        entries.push({
+          fecha: f.fechaFactura ?? '',
+          tipo: 'ingreso',
+          ref: `F-${f.facturaId}`,
+          descripcion: `Venta (Efectivo) — ${f.clienteNombre || 'Sin nombre'}`,
+          debito: ef,
+          credito: 0,
+        });
+      }
+      if (trans > 0) {
+        entries.push({
+          fecha: f.fechaFactura ?? '',
+          tipo: 'ingreso',
+          ref: `F-${f.facturaId}`,
+          descripcion: `Venta (Transferencia) — ${f.clienteNombre || 'Sin nombre'}`,
+          debito: trans,
+          credito: 0,
+        });
+      }
+    } else {
+      entries.push({
+        fecha: f.fechaFactura ?? '',
+        tipo: 'ingreso',
+        ref: `F-${f.facturaId}`,
+        descripcion: `Venta — ${f.clienteNombre || 'Sin nombre'} (${f.metodo ? f.metodo.replace(/_/g, ' ') : 'efectivo'})`,
+        debito: isPagado ? monto : 0,
+        credito: isPagado ? 0 : monto,
+      });
+    }
   }
 
   for (const g of gastos) {
@@ -185,8 +214,13 @@ export function exportBalanceDePrueba(
 
   const metodos: Record<string, number> = {};
   for (const f of facturas) {
-    if (f.estado === 'pagado' && f.metodo) {
-      metodos[f.metodo] = (metodos[f.metodo] ?? 0) + (Number(f.total) || 0);
+    if (f.estado === 'pagado') {
+      if (f.metodo === 'efectivo_transferencia') {
+        metodos['efectivo'] = (metodos['efectivo'] ?? 0) + (Number(f.pagoEfectivo) || 0);
+        metodos['transferencia'] = (metodos['transferencia'] ?? 0) + (Number(f.pagoTransferencia) || 0);
+      } else {
+        metodos[f.metodo || 'efectivo'] = (metodos[f.metodo || 'efectivo'] ?? 0) + (Number(f.total) || 0);
+      }
     }
   }
 
@@ -278,12 +312,21 @@ export function exportInformeImpuesto(
   // By method (for witholding info)
   const byMetodo: Record<string, number> = {};
   for (const f of pagadas) {
-    if (f.metodo) byMetodo[f.metodo] = (byMetodo[f.metodo] ?? 0) + (Number(f.total) || 0);
+    if (f.metodo) {
+      if (f.metodo === 'efectivo_transferencia') {
+        const ef = Number(f.pagoEfectivo) || 0;
+        const trans = Number(f.pagoTransferencia) || 0;
+        byMetodo['efectivo'] = (byMetodo['efectivo'] ?? 0) + ef;
+        byMetodo['transferencia'] = (byMetodo['transferencia'] ?? 0) + trans;
+      } else {
+        byMetodo[f.metodo] = (byMetodo[f.metodo] ?? 0) + (Number(f.total) || 0);
+      }
+    }
   }
 
   const rows: (string | number)[][] = [
     ...Object.entries(byMetodo).map(([m, v]) => [
-      m.toUpperCase(),
+      m.replace(/_/g, ' ').toUpperCase(),
       `$${formatCurrency(v / (1 + IVA_RATE))}`,
       `$${formatCurrency(v - v / (1 + IVA_RATE))}`,
       `$${formatCurrency(v)}`,

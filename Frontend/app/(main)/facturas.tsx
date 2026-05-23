@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, TouchableOpacity } from 'react-native';
 import { View, Text } from '../../tw';
 import { useFacturasRango, calcStats } from '@/src/shared';
+import type { DenominacionesMap } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { validateFlexibleDateRange } from '@/src/shared';
@@ -35,7 +36,7 @@ export default function FacturasRangoScreen() {
     from, to, setFrom, setTo,
     fetchData, search,
     stats, updateEstado, updateFactura, deleteFactura,
-  } = useFacturasRango({ limit: 5000 });
+  } = useFacturasRango(5000);
 
   const [localPage, setLocalPage] = useState(1);
   const itemsPerPage = 50;
@@ -65,18 +66,23 @@ export default function FacturasRangoScreen() {
     setLocalPage(1);
   }, [from, to, setFrom, setTo, search]);
 
-  const handleChangeEstado = useCallback(async (facturaId: number, nuevoEstado: string, metodo?: string) => {
+  const handleChangeEstado = useCallback(async (
+    facturaId: number,
+    nuevoEstado: string,
+    metodo?: string,
+    pagoEfectivo?: number,
+    pagoTransferencia?: number,
+    denominaciones?: DenominacionesMap,
+  ) => {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-         await updateFactura(facturaId, { estado: 'pagado', metodo });
+        await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones });
       } else {
-         await updateEstado(facturaId, nuevoEstado);
+        await updateEstado(facturaId, nuevoEstado);
       }
-      setUpdating(null);
-    } catch {
-      setUpdating(null);
-    }
+    } catch { /* silent */ }
+    setUpdating(null);
   }, [updateEstado, updateFactura]);
 
   const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
@@ -133,7 +139,7 @@ export default function FacturasRangoScreen() {
         onDelete={handleDeleteFactura}
       />
     </View>
-  ), [handleChangeEstado, handleUpdateTotal, handleDeleteFactura, updating]);
+  ), [handleChangeEstado, handleUpdateTotal, handleDeleteFactura, updateFactura, updating]);
 
   // ── Pagination bar ──────────────────────────────────────────────────────────
   const PaginationBar = totalLocalPages > 1 ? (
@@ -187,7 +193,7 @@ export default function FacturasRangoScreen() {
         keyExtractor={(item: FacturaItem, idx: number) => item.facturaId?.toString() || idx.toString()}
         key={isMobile ? 'col_1' : 'col_2'}
         numColumns={isMobile ? 1 : 2}
-        contentContainerClassName="pb-4"
+        contentContainerStyle={{ paddingBottom: 16 }}
         columnWrapperStyle={!isMobile ? { gap: 16 } : undefined}
         ListHeaderComponent={
           <>

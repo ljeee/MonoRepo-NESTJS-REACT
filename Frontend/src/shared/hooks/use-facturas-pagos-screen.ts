@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useCreateFacturaPago, useDeleteFacturaPago, useFacturasPagosDia, useFacturasPagosRango, useUpdateFacturaPago } from './use-create-factura-pago';
-import type { CreateFacturaPagoDto, FacturaPago } from '../types/models';
+import type { CreateFacturaPagoDto, DenominacionesMap, FacturaPago } from '../types/models';
+import { useApi } from '../contexts/ApiContext';
 
-import { validateFlexibleDateRange } from '../utils/dateRange';
+import { validateFlexibleDateRange, getLocalDateString } from '../utils/dateRange';
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
 export function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateString();
 }
 
 export function useFacturasPagosScreen() {
+  const api = useApi();
   const { createPago, loading: creating, error: createError, success } = useCreateFacturaPago();
   const { data: dataDia, loading: loadingDia, error: errorDia, fetchData: fetchDia } = useFacturasPagosDia();
   const {
@@ -39,7 +41,19 @@ export function useFacturasPagosScreen() {
   const [descripcion, setDescripcion] = useState('');
   const [estado, setEstado] = useState('pagado');
   const [fechaFactura, setFechaFactura] = useState(todayISO());
-  const [metodo, setMetodo] = useState('efectivo');
+  const [metodo, setMetodo] = useState('qr');
+  const [monedas, setMonedas] = useState('');
+  const [denominaciones, setDenominaciones] = useState<DenominacionesMap>({});
+  const [disponibleDenominaciones, setDisponibleDenominaciones] = useState<DenominacionesMap | null>(null);
+
+  const fetchDisponible = useCallback(async () => {
+    try {
+      const estado = await api.cajaDenominaciones.getEstado();
+      setDisponibleDenominaciones(estado);
+    } catch {
+      setDisponibleDenominaciones(null);
+    }
+  }, [api]);
 
   useEffect(() => {
     fetchDia();
@@ -51,10 +65,16 @@ export function useFacturasPagosScreen() {
     setDescripcion('');
     setEstado('pagado');
     setFechaFactura(todayISO());
-    setMetodo('efectivo');
+    setMetodo('qr');
+    setDenominaciones({});
+    setMonedas('');
     setEditingId(null);
     setFormError('');
   };
+
+  useEffect(() => {
+    if (metodo === 'efectivo') fetchDisponible();
+  }, [metodo, fetchDisponible]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -78,7 +98,22 @@ export function useFacturasPagosScreen() {
       return;
     }
 
+    // Para gastos en efectivo, exigir al menos un billete o monedas
+    if (metodo === 'efectivo' && !editingId) {
+      const hayBilletes = Object.keys(denominaciones).length > 0;
+      const hayMonedas = (Number(monedas) || 0) > 0;
+      if (!hayBilletes && !hayMonedas) {
+        setFormError('Ingresa los billetes o monedas entregados para el gasto en efectivo');
+        return;
+      }
+    }
+
     setFormError('');
+    const monedasNum = Number(monedas) || 0;
+    const denFinal: DenominacionesMap | undefined = metodo === 'efectivo' && !editingId
+      ? { ...denominaciones, ...(monedasNum > 0 ? { monedas: monedasNum } : {}) }
+      : undefined;
+
     const payload: CreateFacturaPagoDto = {
       total: totalNum,
       nombreGasto: nombreGasto.trim(),
@@ -86,6 +121,7 @@ export function useFacturasPagosScreen() {
       estado: estado?.trim() || undefined,
       fechaFactura: fechaFactura || undefined,
       metodo: metodo?.trim() || undefined,
+      denominaciones: denFinal && Object.keys(denFinal).length > 0 ? denFinal : undefined,
     };
 
     const ok = editingId ? await updatePago(editingId, payload) : await createPago(payload);
@@ -105,6 +141,8 @@ export function useFacturasPagosScreen() {
     setEstado(item.estado || 'pendiente');
     setFechaFactura(item.fechaFactura || todayISO());
     setMetodo(item.metodo || 'efectivo');
+    setDenominaciones({});
+    setMonedas('');
     setEditingId(item.pagosId);
     setFormError('');
     setShowForm(true);
@@ -165,6 +203,11 @@ export function useFacturasPagosScreen() {
     setFechaFactura,
     metodo,
     setMetodo,
+    denominaciones,
+    setDenominaciones,
+    monedas,
+    setMonedas,
+    disponibleDenominaciones,
     from,
     to,
     setFrom,

@@ -112,13 +112,21 @@ export default function Button({
                 ) : (
                     <>
                         {icon && (
-                            <View className="mr-2">
+                            <View className={title ? "mr-2" : ""}>
                                 <Icon name={icon} size={iconSize} color={getIconColor()} />
                             </View>
                         )}
-                        <Text className={textClasses}>
-                            {title}
-                        </Text>
+                        {title ? (
+                            <Text 
+                                className={textClasses} 
+                                numberOfLines={1} 
+                                ellipsizeMode="tail"
+                                adjustsFontSizeToFit
+                                minimumFontScale={0.8}
+                            >
+                                {title}
+                            </Text>
+                        ) : null}
                         {iconRight && (
                             <View className="ml-2">
                                 <Icon name={iconRight} size={iconSize} color={getIconColor()} />

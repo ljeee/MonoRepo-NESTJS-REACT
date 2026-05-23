@@ -19,6 +19,7 @@ export interface OrderFormState {
   newAddress: string;
   telefonoDomiciliario: string;
   costoDomicilio: string;
+  metodo?: string;
   observaciones: string;
   cart: OrderCartItem[];
 }

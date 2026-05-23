@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView, TextInput, TouchableOpacity, View, Text } from '../../tw';
-import { PageContainer, PageHeader, Button, Icon, Card } from '../../components/ui';
+import { PageContainer, PageHeader, Button, Icon, Card, Picker, PickerItem } from '../../components/ui';
 import { api } from '../../services/api';
 import { useToast, Role, RegisterDto } from '@/src/shared';
-import { Picker } from '@react-native-picker/picker';
 import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -130,7 +129,7 @@ export default function RegistroUsuariosScreen() {
                                     style={{ color: 'white', height: 60 }}
                                     dropdownIconColor="#94A3B8"
                                 >
-                                    {ROLES.map(r => <Picker.Item key={r.value} label={r.label} value={r.value} />)}
+                                    {ROLES.map(r => <PickerItem key={r.value} label={r.label} value={r.value} />)}
                                 </Picker>
                             </View>
                         </View>

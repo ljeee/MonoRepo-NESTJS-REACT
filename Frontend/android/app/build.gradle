@@ -17,7 +17,7 @@ def nodeExec = { args ->
 react {
     entryFile = file(nodeExec(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"]))
     reactNativeDir = new File(nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])).getParentFile().getAbsoluteFile()
-    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve('hermes-compiler/package.json')"])).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"
+    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve('hermes-compiler/package.json', { paths: [require.resolve('react-native/package.json')] })"])).getParentFile().getAbsolutePath() + "/hermesc/%OS-BIN%/hermesc"
     codegenDir = new File(nodeExec(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"])).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
@@ -185,5 +185,26 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name.startsWith("createBundle") && task.name.endsWith("JsAndAssets")) {
+        task.doFirst {
+            try {
+                def rnPkg = nodeExec(["node", "--print", "require.resolve('react-native/package.json')"])
+                if (rnPkg) {
+                    def hermescDir = new File(new File(rnPkg).parentFile, "sdks/hermesc")
+                    if (hermescDir.exists()) {
+                        hermescDir.eachFileRecurse { f ->
+                            if (f.name == "hermesc") { f.setExecutable(true, false) }
+                        }
+                        println("[withNodeExecFix] chmod +x hermesc done at: " + hermescDir)
+                    }
+                }
+            } catch (Exception e) {
+                println("[withNodeExecFix] chmod warning: " + e.message)
+            }
+        }
     }
 }

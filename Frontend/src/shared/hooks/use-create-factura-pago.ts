@@ -76,7 +76,7 @@ export function useFacturasPagosDia() {
   return { data, loading, error, fetchData };
 }
 
-export function useFacturasPagosRango(options?: { limit?: number }) {
+export function useFacturasPagosRango(limit: number = 50) {
   const api = useApi();
   const [data, setData] = useState<FacturaPago[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,7 +106,7 @@ export function useFacturasPagosRango(options?: { limit?: number }) {
     }
     setLoading(true); setError(null);
     try {
-      const response = await api.pagos.getAll({ from: finalFrom, to: finalTo, page: finalPage, limit: options?.limit });
+      const response = await api.pagos.getAll({ from: finalFrom, to: finalTo, page: finalPage, limit });
       setData(response.data);
       setTotal(response.total);
       setPage(response.page);
@@ -120,13 +120,13 @@ export function useFacturasPagosRango(options?: { limit?: number }) {
       }
       setLoading(false);
     }
-  }, [api]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [api, limit]); // limit is a primitive, stable across renders
 
   const goToPage = useCallback((p: number) => {
     setPage(p);
     pageRef.current = p;
     fetchData(undefined, undefined, p);
-  }, [fetchData]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchData]);
 
   return { data, loading, error, from, to, setFrom, setTo, fetchData, page, totalPages, total, goToPage };
 }

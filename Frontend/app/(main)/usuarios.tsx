@@ -18,19 +18,24 @@ export default function UsuariosScreen() {
     const [refreshing, setRefreshing] = useState(false);
 
     const loadUsuarios = useCallback(async () => {
+        console.log('[usuarios.tsx] loadUsuarios starting... setting loading = true');
         setLoading(true);
         try {
+            console.log('[usuarios.tsx] loadUsuarios: calling api.auth.getUsers()...');
             const data = await api.auth.getUsers();
+            console.log('[usuarios.tsx] loadUsuarios: api.auth.getUsers() resolved. Count:', data?.length);
             setUsuarios(data);
         } catch (error) {
-            console.error('Error loading users:', error);
+            console.error('[usuarios.tsx] loadUsuarios: Error loading users:', error);
         } finally {
+            console.log('[usuarios.tsx] loadUsuarios: Finally block. Setting loading = false, refreshing = false');
             setLoading(false);
             setRefreshing(false);
         }
     }, []);
 
     useEffect(() => {
+        console.log('[usuarios.tsx] useEffect mount. Triggering loadUsuarios...');
         loadUsuarios();
     }, [loadUsuarios]);
 

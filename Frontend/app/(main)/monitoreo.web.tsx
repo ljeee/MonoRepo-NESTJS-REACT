@@ -15,6 +15,8 @@ import {
 } from '../../components/ui';
 import { buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 
+import { getLocalDateString } from '../../src/shared/utils/dateRange';
+
 export default function MonitoreoScreen() {
     const { queue, isSyncing, syncPayments, hasItems } = useOfflineQueue();
     const { showToast } = useToast();
@@ -68,13 +70,14 @@ export default function MonitoreoScreen() {
         setExporting(true);
         try {
             // Fetch all invoices for a full backup
-            const data = await api.facturas.getAll();
-            if (!data || data.length === 0) {
+            const response = await api.facturas.getAll({ limit: 1000000 });
+            const facturasList = response?.data || [];
+            if (facturasList.length === 0) {
                 showToast('No hay facturas para exportar', 'warning');
                 return;
             }
-            const csv = await buildFacturasBackupCsv(data);
-            const today = new Date().toISOString().slice(0, 10);
+            const csv = await buildFacturasBackupCsv(facturasList);
+            const today = getLocalDateString();
             downloadCsv(csv, `backup_facturas_${today}.csv`);
             showToast('Copia de seguridad descargada', 'success');
         } catch (error) {

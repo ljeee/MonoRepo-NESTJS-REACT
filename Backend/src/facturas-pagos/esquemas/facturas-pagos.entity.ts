@@ -27,4 +27,7 @@ export class FacturasPagos {
 
 	@Column({name: 'categoria', type: 'text', nullable: true, default: 'general'})
 	categoria: string;
+
+	@Column({name: 'denominaciones', type: 'jsonb', nullable: true})
+	denominaciones: Record<string, number> | null;
 }

@@ -15,11 +15,18 @@ export default function FacturasDiaScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPending, setFilterPending] = useState(false);
 
-  const handleChangeEstado = async (facturaId: number, nuevoEstado: string, metodo?: string) => {
+  const handleChangeEstado = async (
+    facturaId: number,
+    nuevoEstado: string,
+    metodo?: string,
+    pagoEfectivo?: number,
+    pagoTransferencia?: number,
+    denominaciones?: Record<string, number>
+  ) => {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-         await updateFactura(facturaId, { estado: 'pagado', metodo });
+         await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones });
       } else {
          await updateEstado(facturaId, nuevoEstado);
       }
@@ -84,7 +91,7 @@ export default function FacturasDiaScreen() {
         icon="chart-bar"
         rightContent={
           <Button
-            title="Refrescar"
+            title={isMobile ? "" : "Refrescar"}
             icon="refresh"
             variant="ghost"
             size="sm"
@@ -98,11 +105,11 @@ export default function FacturasDiaScreen() {
       {data && data.length > 0 && <StatsHeader stats={computedStats} periodLabel="Total del Día (Filtrado)" />}
 
       {/* Buscador y Filtro */}
-      <View className="mb-6 flex-row items-center gap-3">
-        <View className="flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10 flex-1">
+      <View className={`mb-6 ${isMobile ? 'flex-col gap-3' : 'flex-row items-center gap-3'}`}>
+        <View className={`flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10 ${isMobile ? 'w-full' : 'flex-1'}`}>
             <Icon name="magnify" size={22} color="#94A3B8" />
             <TextInput
-                className="text-white ml-3 flex-1 h-full outline-none font-bold"
+                className="text-white ml-3 flex-1 h-full font-bold"
                 placeholder="Buscar factura por cliente..."
                 placeholderTextColor="#64748B"
                 value={searchQuery}
@@ -117,10 +124,10 @@ export default function FacturasDiaScreen() {
 
         <TouchableOpacity 
             onPress={() => setFilterPending(!filterPending)}
-            className={`px-4 min-h-[50px] rounded-2xl border flex-row items-center gap-2 ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
+            className={`px-4 min-h-[50px] rounded-2xl border flex-row items-center justify-center gap-2 ${isMobile ? 'w-full' : ''} ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
         >
             <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
-            {!isMobile && <Text className={`font-bold text-xs uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pendientes</Text>}
+            <Text className={`font-bold text-xs uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pendientes</Text>
         </TouchableOpacity>
       </View>
 

@@ -31,8 +31,17 @@
 
     /* Fonts */
     --font-display: "Space Grotesk", sans-serif;
-    --font-body: "Plus Jakarta Sans", sans-serif;
+    --font-body: "Outfit", sans-serif;
   }
+}
+
+/* Skeleton shimmer — pure CSS, zero JS animation frames */
+@keyframes skeleton-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.skeleton-shimmer {
+  animation: skeleton-shimmer 1.5s linear infinite;
 }
 
 @layer base {

@@ -1,6 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View as RNView, Text as RNText } from 'react-native';
 import { formatCurrency, formatDate } from '@/src/shared';
+import type { DenominacionesMap } from '@/src/shared';
 import { View, Text } from '../../tw';
 import { useBreakpoint } from '../../styles/responsive';
 
@@ -46,6 +47,8 @@ export interface FacturaItem {
   descripcion?: string;
   ordenes?: FacturaOrden[];
   domicilios?: FacturaDomicilio[];
+  pagoEfectivo?: number;
+  pagoTransferencia?: number;
 }
 
 // ─── StatsHeader ──────────────────────────────────────────────────────────────
@@ -59,33 +62,33 @@ export function StatsHeader({
 }) {
   const { isMobile } = useBreakpoint();
   return (
-    <View style={{ gap: 10, marginBottom: 16 }}>
+    <RNView style={{ gap: 10, marginBottom: 16 }}>
       {/* Main stat */}
       <Card style={{ overflow: 'hidden', position: 'relative', borderColor: 'rgba(245,165,36,0.15)', backgroundColor: 'rgba(6,14,26,0.8)' }}>
-         <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(245,165,36,0.04)' }} />
-         <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.5)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>{periodLabel}</Text>
-         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: isMobile ? 22 : 32 }}>
+         <RNView style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(245,165,36,0.04)' }} />
+         <RNText style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.5)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 4 }}>{periodLabel}</RNText>
+         <RNText style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: isMobile ? 22 : 32 }}>
             ${formatCurrency(stats.totalDia)}
-         </Text>
-         <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11, marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{stats.count} facturas generadas</Text>
+         </RNText>
+         <RNText style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11, marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{stats.count} facturas generadas</RNText>
       </Card>
-      
+
       {/* Pagado / Pendiente */}
-      <View style={{ flexDirection: 'row', gap: 10 }}>
+      <RNView style={{ flexDirection: 'row', gap: 10 }}>
         <Card style={{ flex: 1, backgroundColor: 'rgba(16,185,129,0.07)', borderColor: 'rgba(16,185,129,0.2)' }}>
-          <Text style={{ fontFamily: 'Outfit', color: 'rgba(16,185,129,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Pagado</Text>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 20 }}>
+          <RNText style={{ fontFamily: 'Outfit', color: 'rgba(16,185,129,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Pagado</RNText>
+          <RNText style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 20 }}>
             ${formatCurrency(stats.totalPagado)}
-          </Text>
+          </RNText>
         </Card>
         <Card style={{ flex: 1, backgroundColor: 'rgba(245,165,36,0.07)', borderColor: 'rgba(245,165,36,0.2)' }}>
-          <Text style={{ fontFamily: 'Outfit', color: 'rgba(245,165,36,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Pendiente</Text>
-          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 20 }}>
+          <RNText style={{ fontFamily: 'Outfit', color: 'rgba(245,165,36,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Pendiente</RNText>
+          <RNText style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 20 }}>
             ${formatCurrency(stats.totalPendiente)}
-          </Text>
+          </RNText>
         </Card>
-      </View>
-    </View>
+      </RNView>
+    </RNView>
   );
 }
 
@@ -118,7 +121,7 @@ export function EstadoToggle({
             {isUpdating ? (
               <ActivityIndicator size="small" color={isPagado ? '#F5A524' : '#10B981'} />
             ) : (
-              <Text className={`font-black text-xs uppercase ${isPagado ? 'text-orange-400' : 'text-emerald-400'}`}>
+              <Text className={`font-black text-xs uppercase ${isPagado ? 'text-orange-400' : 'text-emerald-400'}`} numberOfLines={1} ellipsizeMode="tail">
                 {isPagado ? 'Marcar Pendiente' : 'Marcar Pagado'}
               </Text>
             )}
@@ -141,7 +144,7 @@ export function FacturaCard({
 }: {
   item: FacturaItem;
   isUpdating: boolean;
-  onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string) => void;
+  onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap) => void;
   onUpdateTotal?: (facturaId: number, newTotal: number) => Promise<void>;
   onUpdate?: (facturaId: number, data: Partial<FacturaItem>) => Promise<void>;
   onDelete?: (facturaId: number) => Promise<boolean>;
@@ -206,92 +209,92 @@ export function FacturaCard({
   return (
     <Card style={{ overflow: 'hidden', borderWidth: 0, padding: 0, marginBottom: 12, backgroundColor: `rgba(15,23,42,0.7)` }}>
       {/* Fondo tintado según estado */}
-      <View style={{ position: 'absolute', inset: 0, backgroundColor: bgTint }} pointerEvents="none" />
+      <RNView style={{ position: 'absolute', inset: 0, backgroundColor: bgTint }} pointerEvents="none" />
 
-      <View style={{ padding: 14 }}>
+      <RNView style={{ padding: 14 }}>
         {/* ── Header ── */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-          <View style={{ flex: 1, paddingRight: 12 }}>
-            <Text
+        <RNView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+          <RNView style={{ flex: 1, paddingRight: 12 }}>
+            <RNText
               style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', lineHeight: 21 }}
               numberOfLines={1}
             >
               {item.clienteNombre || 'Cliente S/N'}
-            </Text>
-            <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, marginTop: 2 }}>
+            </RNText>
+            <RNText style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, marginTop: 2 }}>
               {formatDate(item.fechaFactura)}
-            </Text>
-          </View>
-          <View style={{ alignItems: 'flex-end', gap: 4 }}>
-            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>
+            </RNText>
+          </RNView>
+          <RNView style={{ alignItems: 'flex-end', gap: 4 }}>
+            <RNText style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>
               ${formatCurrency(item.total ?? 0)}
-            </Text>
+            </RNText>
             {item.metodo ? (
               <Badge label={item.metodo} variant="info" size="sm" />
             ) : (
               <Badge label="Sin método" variant="neutral" size="sm" />
             )}
-          </View>
-        </View>
+          </RNView>
+        </RNView>
 
         {/* ── Tags: domicilio + dirección ── */}
         {(esDomicilio || direccionDomicilio) && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+          <RNView style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {esDomicilio && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+              <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
                 <Icon name="moped-outline" size={12} color="#FB923C" />
-                <Text style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }}>
+                <RNText style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }}>
                   Domicilio{costoDomicilio > 0 ? `  +$${formatCurrency(costoDomicilio)}` : ''}
-                </Text>
-              </View>
+                </RNText>
+              </RNView>
             )}
             {direccionDomicilio && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Icon name="map-marker-outline" size={11} color="#475569" />
-                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }} numberOfLines={1}>
+                <RNText style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }} numberOfLines={1}>
                   {direccionDomicilio}
-                </Text>
-              </View>
+                </RNText>
+              </RNView>
             )}
-          </View>
+          </RNView>
         )}
 
         {/* ── Notas ── */}
         {item.descripcion && (
-          <View style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginBottom: 8 }}>
-            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>Notas</Text>
-            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, fontStyle: 'italic' }}>'{item.descripcion}'</Text>
-          </View>
+          <RNView style={{ backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginBottom: 8 }}>
+            <RNText style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 }}>Notas</RNText>
+            <RNText style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, fontStyle: 'italic' }}>'{item.descripcion}'</RNText>
+          </RNView>
         )}
 
         {/* ── Productos ── */}
         {item.ordenes && item.ordenes.length > 0 && (
-          <View style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8, marginBottom: 10 }}>
-            <Text style={{ fontFamily: 'Outfit', color: '#334155', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Productos</Text>
+          <RNView style={{ borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8, marginBottom: 10 }}>
+            <RNText style={{ fontFamily: 'Outfit', color: '#334155', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Productos</RNText>
             {item.ordenes.map((orden, oIdx) =>
               orden.productos?.map((op, pIdx) => (
-                <View key={`${oIdx}-${pIdx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                  <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.8)', fontSize: 12 }} numberOfLines={1}>
+                <RNView key={`${oIdx}-${pIdx}`} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                  <RNView style={{ flex: 1, paddingRight: 12 }}>
+                    <RNText style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.8)', fontSize: 12 }} numberOfLines={1}>
                       {op.productoNombre}
-                    </Text>
-                    <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>
+                    </RNText>
+                    <RNText style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>
                       {op.cantidad}× ${formatCurrency(op.precioUnitario ?? 0)}
-                    </Text>
-                  </View>
-                  <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 12 }}>
+                    </RNText>
+                  </RNView>
+                  <RNText style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 12 }}>
                     ${formatCurrency(op.subtotal ?? 0)}
-                  </Text>
-                </View>
+                  </RNText>
+                </RNView>
               ))
             )}
-          </View>
+          </RNView>
         )}
 
         {/* ── Footer de acciones ── */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
+        <RNView style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' }}>
           {/* Izquierda: print */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {showPrint && (
               <TouchableOpacity
                 onPress={handlePrint}
@@ -316,7 +319,7 @@ export function FacturaCard({
                     ? <ActivityIndicator size="small" color="#F43F5E" />
                     : <>
                         <Icon name="alert-outline" size={13} color="#F87171" />
-                        <Text style={{ fontFamily: 'Outfit', color: '#F87171', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' }}>Confirmar</Text>
+                        <RNText style={{ fontFamily: 'Outfit', color: '#F87171', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' }} numberOfLines={1} ellipsizeMode="tail">Confirmar</RNText>
                       </>
                   }
                 </TouchableOpacity>
@@ -329,10 +332,10 @@ export function FacturaCard({
                 </TouchableOpacity>
               )
             )}
-          </View>
+          </RNView>
 
           {/* Derecha: editar + cobrar/revertir */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {!isCancelado && (
               <TouchableOpacity
                 onPress={() => setEditing(true)}
@@ -368,19 +371,19 @@ export function FacturaCard({
                       size={14}
                       color={isPagado ? '#F5A524' : '#10B981'}
                     />
-                    <Text style={{ fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: isPagado ? '#F5A524' : '#10B981' }}>
+                    <RNText style={{ fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: isPagado ? '#F5A524' : '#10B981' }} numberOfLines={1} ellipsizeMode="tail">
                       {isPagado ? 'Revertir' : 'Cobrar'}
-                    </Text>
+                    </RNText>
                   </>
                 )}
               </TouchableOpacity>
             )}
-          </View>
-        </View>
-      </View>
+          </RNView>
+        </RNView>
+      </RNView>
 
       {/* ── Barra de estado en la base ── */}
-      <View style={{ height: 4, backgroundColor: accentColor, opacity: isCancelado ? 0.6 : 0.85 }} />
+      <RNView style={{ height: 4, backgroundColor: accentColor, opacity: isCancelado ? 0.6 : 0.85 }} />
 
       <UpdateTotalModal
         visible={editing}
@@ -392,11 +395,12 @@ export function FacturaCard({
 
       <PaymentSelectionModal
         visible={showPaymentModal}
+        total={item.total ?? 0}
         onClose={() => setShowPaymentModal(false)}
-        onSelect={(method) => {
+        onSelect={(method, pagoEfectivo, pagoTransferencia, denominaciones) => {
           setShowPaymentModal(false);
           if (item.facturaId) {
-            onToggleEstado(item.facturaId, 'pagado', method);
+            onToggleEstado(item.facturaId, 'pagado', method, pagoEfectivo, pagoTransferencia, denominaciones);
           }
         }}
         loading={isUpdating}

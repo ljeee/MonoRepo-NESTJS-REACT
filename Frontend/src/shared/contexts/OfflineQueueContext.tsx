@@ -6,6 +6,8 @@ export interface OfflinePayment {
   idempotencyKey: string;
   timestamp: number;
   retryCount: number;
+  pagoEfectivo?: number;
+  pagoTransferencia?: number;
 }
 
 export interface OfflineQueueStorageAdapter {
@@ -15,7 +17,7 @@ export interface OfflineQueueStorageAdapter {
 
 export interface OfflineQueueContextType {
   queue: OfflinePayment[];
-  addPayment: (ordenId: number, metodo: string, idempotencyKey: string) => Promise<void>;
+  addPayment: (ordenId: number, metodo: string, idempotencyKey: string, pagoEfectivo?: number, pagoTransferencia?: number) => Promise<void>;
   syncPayments: () => Promise<void>;
   isSyncing: boolean;
   hasItems: boolean;
@@ -61,13 +63,15 @@ export function OfflineQueueProvider({ children, storage, onSyncPayment }: Offli
     });
   }, [queue, isHydrated, storage]);
 
-  const addPayment = useCallback(async (ordenId: number, metodo: string, idempotencyKey: string) => {
+  const addPayment = useCallback(async (ordenId: number, metodo: string, idempotencyKey: string, pagoEfectivo?: number, pagoTransferencia?: number) => {
     const newPayment: OfflinePayment = {
       ordenId,
       metodo,
       idempotencyKey,
       timestamp: Date.now(),
       retryCount: 0,
+      pagoEfectivo,
+      pagoTransferencia,
     };
     setQueue(prev => [...prev, newPayment]);
   }, []);

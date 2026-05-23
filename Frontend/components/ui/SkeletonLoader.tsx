@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import { Platform } from 'react-native';
+import { View } from '../../tw';
+import { Animated } from '../../tw/animated';
+import { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, cancelAnimation } from 'react-native-reanimated';
 
 interface SkeletonProps {
     width?: number | string;
@@ -10,13 +12,30 @@ interface SkeletonProps {
     style?: any;
 }
 
-export function Skeleton({
-    width = '100%',
-    height = 20,
-    borderRadius = 8,
-    className = '',
-    style,
-}: SkeletonProps) {
+// ─── Web: pure CSS animation — zero JS/reanimated overhead ───────────────────
+function SkeletonWeb({ width = '100%', height = 20, borderRadius = 8, className = '', style }: SkeletonProps) {
+    return (
+        <View
+            className={`bg-white/5 overflow-hidden relative ${className}`}
+            style={[
+                {
+                    width: width as any,
+                    height,
+                    borderRadius: typeof borderRadius === 'string' ? undefined : borderRadius,
+                },
+                style,
+            ]}
+        >
+            <View
+                className="w-full h-full bg-white/10 opacity-50 skeleton-shimmer"
+                style={{ position: 'absolute', top: 0, left: 0 }}
+            />
+        </View>
+    );
+}
+
+// ─── Native: reanimated shimmer with proper cleanup ──────────────────────────
+function SkeletonNative({ width = '100%', height = 20, borderRadius = 8, className = '', style }: SkeletonProps) {
     const shimmer = useSharedValue(-200);
 
     useEffect(() => {
@@ -25,6 +44,9 @@ export function Skeleton({
             -1,
             false
         );
+        return () => {
+            cancelAnimation(shimmer);
+        };
     }, [shimmer]);
 
     const animatedStyle = useAnimatedStyle(() => {
@@ -51,6 +73,11 @@ export function Skeleton({
             />
         </View>
     );
+}
+
+// ─── Platform-switched export ─────────────────────────────────────────────────
+export function Skeleton(props: SkeletonProps) {
+    return Platform.OS === 'web' ? <SkeletonWeb {...props} /> : <SkeletonNative {...props} />;
 }
 
 export function CardSkeleton({ className = '', style }: { className?: string; style?: any }) {

@@ -71,6 +71,8 @@ export default function Badge({ label, variant = 'neutral', icon, size = 'sm', c
             )}
             <Text
                 className={`font-black uppercase tracking-wider ${vClass.split(' ').pop()} ${textClasses}`}
+                numberOfLines={1}
+                ellipsizeMode="tail"
             >
                 {label}
             </Text>
