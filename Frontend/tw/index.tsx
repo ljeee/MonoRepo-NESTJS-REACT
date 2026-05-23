@@ -15,23 +15,14 @@ import {
   TextInput as RNTextInput,
   TouchableOpacity as RNTouchableOpacity,
   KeyboardAvoidingView as RNKeyboardAvoidingView,
-  FlatList as RNFlatList,
   StyleSheet,
 } from "react-native";
-import { SafeAreaView as RNSafeAreaView } from "react-native-safe-area-context";
-
-// Ensures useCssElement always receives a className string (even empty),
-// avoiding the unstable_createElement call that crashes on web.
-function withClassName<T extends { className?: string }>(props: T): T {
-  if (props.className !== undefined) return props;
-  return { ...props, className: "" };
-}
 
 // CSS-enabled Link
 export const Link = (
   props: React.ComponentProps<typeof RouterLink> & { className?: string }
 ) => {
-  return useCssElement(RouterLink as any, withClassName(props) as any, { className: "style" }) as any;
+  return useCssElement(RouterLink, props, { className: "style" });
 };
 
 Link.Trigger = RouterLink.Trigger;
@@ -51,7 +42,7 @@ export type ViewProps = React.ComponentProps<typeof RNView> & {
 };
 
 export const View = (props: ViewProps) => {
-  return useCssElement(RNView, withClassName(props), { className: "style" });
+  return useCssElement(RNView, props, { className: "style" });
 };
 View.displayName = "CSS(View)";
 
@@ -59,7 +50,7 @@ View.displayName = "CSS(View)";
 export const Text = (
   props: React.ComponentProps<typeof RNText> & { className?: string }
 ) => {
-  return useCssElement(RNText, withClassName(props), { className: "style" });
+  return useCssElement(RNText, props, { className: "style" });
 };
 Text.displayName = "CSS(Text)";
 
@@ -70,10 +61,10 @@ export const ScrollView = (
     contentContainerClassName?: string;
   }
 ) => {
-  return useCssElement(RNScrollView as any, withClassName(props) as any, {
+  return useCssElement(RNScrollView, props, {
     className: "style",
     contentContainerClassName: "contentContainerStyle",
-  }) as any;
+  });
 };
 ScrollView.displayName = "CSS(ScrollView)";
 
@@ -81,7 +72,7 @@ ScrollView.displayName = "CSS(ScrollView)";
 export const Pressable = (
   props: React.ComponentProps<typeof RNPressable> & { className?: string }
 ) => {
-  return useCssElement(RNPressable as any, withClassName(props) as any, { className: "style" }) as any;
+  return useCssElement(RNPressable, props, { className: "style" });
 };
 Pressable.displayName = "CSS(Pressable)";
 
@@ -89,7 +80,7 @@ Pressable.displayName = "CSS(Pressable)";
 export const TextInput = (
   props: React.ComponentProps<typeof RNTextInput> & { className?: string }
 ) => {
-  return useCssElement(RNTextInput, withClassName(props), { className: "style" });
+  return useCssElement(RNTextInput, props, { className: "style" });
 };
 TextInput.displayName = "CSS(TextInput)";
 
@@ -101,18 +92,18 @@ export const AnimatedScrollView = (
     contentContainerClassName?: string;
   }
 ) => {
-  return useCssElement(Animated.ScrollView as any, withClassName(props) as any, {
+  return useCssElement(Animated.ScrollView, props, {
     className: "style",
     contentClassName: "contentContainerStyle",
     contentContainerClassName: "contentContainerStyle",
-  }) as any;
+  });
 };
 
 // TouchableHighlight with underlayColor extraction
 function XXTouchableHighlight(
   props: React.ComponentProps<typeof RNTouchableHighlight>
 ) {
-  const { underlayColor, ...style } = (StyleSheet.flatten(props.style) || {}) as any;
+  const { underlayColor, ...style } = StyleSheet.flatten(props.style) || {};
   return (
     <RNTouchableHighlight
       underlayColor={underlayColor}
@@ -123,9 +114,9 @@ function XXTouchableHighlight(
 }
 
 export const TouchableHighlight = (
-  props: React.ComponentProps<typeof RNTouchableHighlight> & { className?: string }
+  props: React.ComponentProps<typeof RNTouchableHighlight>
 ) => {
-  return useCssElement(XXTouchableHighlight as any, withClassName(props) as any, { className: "style" }) as any;
+  return useCssElement(XXTouchableHighlight, props, { className: "style" });
 };
 TouchableHighlight.displayName = "CSS(TouchableHighlight)";
 
@@ -133,7 +124,7 @@ TouchableHighlight.displayName = "CSS(TouchableHighlight)";
 export const TouchableOpacity = (
   props: React.ComponentProps<typeof RNTouchableOpacity> & { className?: string }
 ) => {
-  return useCssElement(RNTouchableOpacity as any, withClassName(props) as any, { className: "style" }) as any;
+  return useCssElement(RNTouchableOpacity, props, { className: "style" });
 };
 TouchableOpacity.displayName = "CSS(TouchableOpacity)";
 
@@ -141,28 +132,7 @@ TouchableOpacity.displayName = "CSS(TouchableOpacity)";
 export const KeyboardAvoidingView = (
   props: React.ComponentProps<typeof RNKeyboardAvoidingView> & { className?: string }
 ) => {
-  return useCssElement(RNKeyboardAvoidingView, withClassName(props), { className: "style" });
+  return useCssElement(RNKeyboardAvoidingView, props, { className: "style" });
 };
 KeyboardAvoidingView.displayName = "CSS(KeyboardAvoidingView)";
 
-// FlatList
-export const FlatList = (
-  props: React.ComponentProps<typeof RNFlatList> & {
-    className?: string;
-    contentContainerClassName?: string;
-  }
-) => {
-  return useCssElement(RNFlatList as any, withClassName(props) as any, {
-    className: "style",
-    contentContainerClassName: "contentContainerStyle",
-  }) as any;
-};
-FlatList.displayName = "CSS(FlatList)";
-
-// SafeAreaView
-export const SafeAreaView = (
-  props: React.ComponentProps<typeof RNSafeAreaView> & { className?: string }
-) => {
-  return useCssElement(RNSafeAreaView, withClassName(props), { className: "style" });
-};
-SafeAreaView.displayName = "CSS(SafeAreaView)";

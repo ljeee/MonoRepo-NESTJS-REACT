@@ -23,7 +23,6 @@ import {
     Badge,
     Card,
 } from '../../components/ui';
-import { useDeferredReady } from '../../hooks/useDeferredReady';
 
 type EstadoFilter = 'todas' | 'pendiente' | 'pagado';
 
@@ -157,23 +156,6 @@ export default function BalanceFechasScreen() {
         const csv = await buildCombinedBalanceCsv(mf, mg);
         downloadCsv(csv, `contabilidad_${searchedFrom || 'inicio'}_${searchedTo || 'fin'}.csv`);
     }, [searchedFrom, searchedTo, estadoFilter, nombreFilter, api]);
-
-    // ── Deferred mount — prevents OOM on initial navigation ───────────────────
-    console.log('[balance-fechas.tsx] calling useDeferredReady...');
-    const ready = useDeferredReady();
-    console.log('[balance-fechas.tsx] useDeferredReady result:', ready);
-    if (!ready) {
-        console.log('[balance-fechas.tsx] ready is false, rendering ListSkeleton');
-        return (
-            <PageContainer scrollable={false} maxWidthVariant="full">
-                <View className="px-4 py-6">
-                    <PageHeader title="Balance Histórico" subtitle="Facturación por rango" icon="scale-balance" />
-                    <ListSkeleton count={4} />
-                </View>
-            </PageContainer>
-        );
-    }
-    console.log('[balance-fechas.tsx] ready is true, rendering full screen JSX');
 
     // ── Derived values ─────────────────────────────────────────────────────────
     const loading  = loadingFacturas || loadingGastos || exporting;

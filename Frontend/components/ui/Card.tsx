@@ -28,9 +28,11 @@ export default function Card({
     const translateY = useSharedValue(10);
 
     useEffect(() => {
+        // Only animate when the Animated.View branch is actually rendered (onPress path)
+        if (!onPress) return;
         opacity.value = withDelay(delay, withTiming(1, { duration: timings.slow }));
         translateY.value = withDelay(delay, withSpring(0, springs.slow));
-    }, [delay]);
+    }, [delay, onPress]);
 
     const handlePressIn = () => {
         if (!onPress) return;

@@ -26,10 +26,10 @@ export default function PageHeader({
 
     return (
         <View 
-          style={[{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, style]}
-          className={`flex-row justify-between items-center w-full ${isMobile ? 'mb-4' : 'mb-6'} ${className}`} 
+          className={`flex-row justify-between ${isMobile ? 'mb-4 flex-wrap items-start gap-y-3' : 'mb-6 items-center gap-3'} ${className}`} 
+          style={style}
         >
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
+            <View className={`flex-row items-center gap-3 ${isMobile ? 'w-full' : 'flex-1 min-w-0'}`}>
                 {icon && (
                     <View style={{
                         width: isMobile ? 38 : 44, height: isMobile ? 38 : 44,
@@ -37,18 +37,17 @@ export default function PageHeader({
                         backgroundColor: 'rgba(245,165,36,0.12)',
                         alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                         borderWidth: 1, borderColor: 'rgba(245,165,36,0.25)',
-                        marginRight: 12,
                     }}>
                         <Icon name={icon} size={isMobile ? 20 : 22} color="#F5A524" />
                     </View>
                 )}
-                <View style={{ flex: 1, minWidth: 0 }}>
+                <View className="flex-1 min-w-0">
                     {subtitle && (
                         <Text style={{ fontFamily: 'Outfit', fontSize: 10, color: '#64748B', textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 }}>
                             {subtitle}
                         </Text>
                     )}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <View className="flex-row items-center flex-wrap">
                         <Text
                             style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: isMobile ? 17 : 24, color: '#F8FAFC', letterSpacing: -0.5, flexShrink: 1 }}
                             numberOfLines={isMobile ? 2 : 1}
@@ -63,7 +62,7 @@ export default function PageHeader({
             </View>
             
             {rightContent && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flexShrink: 0, marginLeft: 12 }}>
+                <View className={`flex-row items-center gap-2 flex-shrink-0 ${isMobile ? 'w-full justify-end mt-1' : ''}`}>
                     {rightContent}
                 </View>
             )}

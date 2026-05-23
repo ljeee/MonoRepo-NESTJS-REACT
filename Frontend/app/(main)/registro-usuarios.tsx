@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView, TextInput, TouchableOpacity, View, Text } from '../../tw';
 import { PageContainer, PageHeader, Button, Icon, Card, Picker, PickerItem } from '../../components/ui';
 import { api } from '../../services/api';
 import { useToast, Role, RegisterDto } from '@/src/shared';
-import { useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ROLES = [
@@ -19,13 +18,17 @@ export default function RegistroUsuariosScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const { showToast } = useToast();
+    // showToast is a new reference on every render — capture it in a ref
+    // so the guard effect only re-runs when `user` actually changes.
+    const showToastRef = useRef(showToast);
+    useEffect(() => { showToastRef.current = showToast; });
 
     useEffect(() => {
         if (user && !user.roles?.includes(Role.Admin)) {
-            showToast('Acceso denegado: Se requiere rol Admin', 'error');
+            showToastRef.current('Acceso denegado: Se requiere rol Admin', 'error');
             router.replace('/usuarios' as any);
         }
-    }, [user, router, showToast]);
+    }, [user, router]);
 
     const [loading, setLoading] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
