@@ -1,5 +1,5 @@
 import { Platform, Linking } from 'react-native';
-import { formatCurrency } from '@monorepo/shared';
+import { formatCurrency } from '@/src/shared';
 
 export interface ReceiptProduct {
   nombre: string;

@@ -1,48 +1,32 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Modal } from 'react-native';
+import { ActivityIndicator, Modal, useWindowDimensions } from 'react-native';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
 import Icon from '../ui/Icon';
-import type { Producto, ProductoVariante, PizzaSabor } from '@monorepo/shared';
-import { formatCurrency } from '@monorepo/shared';
+import type { Producto, ProductoVariante, PizzaSabor } from '@/src/shared';
+import { formatCurrency } from '@/src/shared';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function getRecargo(sabor: PizzaSabor, varianteNombre: string): number {
   const v = (varianteNombre || '').toLowerCase().trim();
-  
-  if (v.includes('pequeña') || v.includes('pequena') || v.includes('personal')) {
-    return Number(sabor.recargoPequena) || 0;
-  }
-  if (v.includes('mediana') || v.includes('mediano')) {
-    return Number(sabor.recargoMediana) || 0;
-  }
-  
-  // Por defecto (Grande, Familiar, etc.)
+  if (v.includes('pequeña') || v.includes('pequena') || v.includes('personal')) return Number(sabor.recargoPequena) || 0;
+  if (v.includes('mediana') || v.includes('mediano')) return Number(sabor.recargoMediana) || 0;
   return Number(sabor.recargoGrande) || 0;
 }
 
-function calcularPrecio(
-  variante: ProductoVariante | null,
-  saboresSeleccionados: string[],
-  saboresCatalogo: PizzaSabor[],
-): number {
+function calcularPrecio(variante: ProductoVariante | null, saboresSeleccionados: string[], saboresCatalogo: PizzaSabor[]): number {
   if (!variante) return 0;
   let precio = Number(variante.precio);
-
   const maxRecargo = saboresSeleccionados.reduce((max, nombre) => {
     const entry = saboresCatalogo.find(s => s.nombre === nombre);
     if (!entry || entry.tipo !== 'especial') return max;
     return Math.max(max, getRecargo(entry, variante.nombre));
   }, 0);
-
   precio += maxRecargo;
-
   if (saboresSeleccionados.length >= 3) {
-    const config3Sabores = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
-    const extra3SaboresAmount = config3Sabores ? getRecargo(config3Sabores, variante.nombre) : 3000;
-    precio += extra3SaboresAmount;
+    const cfg = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
+    precio += cfg ? getRecargo(cfg, variante.nombre) : 3000;
   }
-
   return precio;
 }
 
@@ -59,30 +43,22 @@ interface PizzaPersonalizadaModalProps {
 }
 
 export default function PizzaPersonalizadaModal({
-  visible,
-  variante,
-  producto,
-  saboresCatalogo,
-  loadingSabores,
-  onAdd,
-  onClose,
+  visible, variante, producto, saboresCatalogo, loadingSabores, onAdd, onClose,
 }: PizzaPersonalizadaModalProps) {
   const [selectedSabores, setSelectedSabores] = useState<string[]>([]);
+  const { height: screenHeight } = useWindowDimensions();
 
   const tradicionales = saboresCatalogo.filter(s => s.tipo === 'tradicional' && s.activo);
   const especiales = saboresCatalogo.filter(s => s.tipo === 'especial' && s.activo);
-
   const precioFinal = calcularPrecio(variante, selectedSabores, saboresCatalogo);
-
-  const config3Sabores = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
-  const extra3SaboresAmount = config3Sabores ? getRecargo(config3Sabores, variante?.nombre ?? '') : 3000;
-
+  const cfg3 = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
+  const extra3 = cfg3 ? getRecargo(cfg3, variante?.nombre ?? '') : 3000;
   const recargoEspecial = saboresCatalogo
     .filter(s => s.tipo === 'especial' && selectedSabores.includes(s.nombre))
     .reduce((max, s) => Math.max(max, getRecargo(s, variante?.nombre ?? '')), 0);
 
   const handleSaborPress = (nombre: string) => {
-    setSelectedSabores((prev) => {
+    setSelectedSabores(prev => {
       if (prev.includes(nombre)) return prev.filter(s => s !== nombre);
       if (prev.length >= 3) return prev;
       return [...prev, nombre];
@@ -90,31 +66,24 @@ export default function PizzaPersonalizadaModal({
   };
 
   const handleAdd = () => {
-    if (selectedSabores.length === 0) return;
-    if (producto && variante) {
-      const adjustedVariante = { ...variante, precio: precioFinal };
-      onAdd(producto, adjustedVariante, selectedSabores);
-      setSelectedSabores([]);
-    }
+    if (!selectedSabores.length || !producto || !variante) return;
+    onAdd(producto, { ...variante, precio: precioFinal }, selectedSabores);
+    setSelectedSabores([]);
   };
 
-  const handleClose = () => {
-    setSelectedSabores([]);
-    onClose();
-  };
+  const handleClose = () => { setSelectedSabores([]); onClose(); };
 
   const renderChip = (sabor: PizzaSabor) => {
     const isSelected = selectedSabores.includes(sabor.nombre);
     const isEspecial = sabor.tipo === 'especial';
     const recargo = variante ? getRecargo(sabor, variante.nombre) : 0;
-    
     return (
       <TouchableOpacity
         key={sabor.saborId}
         onPress={() => handleSaborPress(sabor.nombre)}
-        className={`px-4 py-2 rounded-xl mb-2 mr-2 border flex-row items-center gap-1.5 ${isSelected ? (isEspecial ? 'bg-white/5 border-white/20' : 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)') : 'bg-white/5 border-white/10'}`}
+        className={`px-3 py-1.5 rounded-xl mb-1.5 mr-1.5 border flex-row items-center gap-1.5 ${isSelected ? (isEspecial ? 'bg-white/5 border-white/20' : 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)') : 'bg-white/5 border-white/10'}`}
       >
-        {isEspecial && <Icon name="star" size={11} color={isSelected ? '#94A3B8' : '#475569'} />}
+        {isEspecial && <Icon name="star" size={10} color={isSelected ? '#94A3B8' : '#475569'} />}
         <Text
           className={`font-bold text-sm ${isSelected ? (isEspecial ? 'text-slate-300' : 'text-(--color-pos-primary)') : 'text-slate-400'}`}
           numberOfLines={2}
@@ -127,83 +96,110 @@ export default function PizzaPersonalizadaModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <View className="flex-1 bg-black/85 justify-center items-center p-5">
-        <View className="bg-(--color-pos-surface) w-full max-w-lg rounded-3xl p-6 border border-white/5 shadow-2xl">
-          {/* Header */}
-          <View className="flex-row items-center gap-3 mb-1">
-            <View className="w-10 h-10 rounded-xl bg-orange-500/15 items-center justify-center border border-orange-500/25">
-              <Icon name="pizza" size={22} color="#F5A524" />
-            </View>
-            <Text
-              className="text-white font-black text-2xl tracking-tighter flex-1"
-              style={{ fontFamily: 'Space Grotesk' }}
-              numberOfLines={1}
-            >
-              Pizza {variante?.nombre}
-            </Text>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      {/* Backdrop */}
+      <View className="flex-1 bg-black/85 p-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        {/* Modal card */}
+        <View
+          className="bg-(--color-pos-surface) w-full border border-white/5 shadow-2xl overflow-hidden"
+          style={{ borderRadius: 24, maxHeight: screenHeight * 0.88, maxWidth: 700 }}
+        >
+          {/* Drag handle */}
+          <View className="items-center pt-3 pb-1">
+            <View className="w-9 h-1 rounded-full bg-white/15" />
           </View>
-          <Text className="text-slate-400 text-sm mt-2 mb-6">
-            Selecciona 1-3 sabores • Base ${formatCurrency(Number(variante?.precio))}
-          </Text>
 
-          {/* Sabores */}
-          {loadingSabores ? (
-            <View className="py-10 items-center justify-center">
-              <ActivityIndicator color="#F5A524" />
+          {/* Header */}
+          <View className="flex-row items-center gap-3 px-5 pt-2 pb-2">
+            <View className="w-10 h-10 rounded-xl bg-orange-500/15 items-center justify-center border border-orange-500/25">
+              <Icon name="pizza" size={20} color="#F5A524" />
             </View>
-          ) : (
-            <ScrollView className="max-h-[60vh]" showsVerticalScrollIndicator={false}>
-              <Text className="text-white font-black text-xs uppercase tracking-widest mb-3 opacity-60">Tradicionales</Text>
-              <View className="flex-row flex-wrap mb-6">
-                {tradicionales.map(sb => renderChip(sb))}
-              </View>
-
-              <View className="flex-row items-center gap-1.5 mb-3">
-                <Icon name="star" size={11} color="#475569" />
-                <Text className="text-slate-500 font-black text-xs uppercase tracking-widest">Especiales</Text>
-              </View>
-              <View className="flex-row flex-wrap mb-4">
-                {especiales.map(sb => renderChip(sb))}
-              </View>
-            </ScrollView>
-          )}
-
-          {/* Price breakdown */}
-          {selectedSabores.length > 0 && (
-            <View className="bg-black/20 rounded-2xl p-4 my-4">
-              <Text className="text-white font-bold text-sm" numberOfLines={2}>{selectedSabores.join(' + ')}</Text>
-              {recargoEspecial > 0 && (
-                <Text className="text-(--color-pos-secondary) text-xs font-bold mt-1">
-                  + ${formatCurrency(recargoEspecial)} sabor especial
-                </Text>
-              )}
-              {selectedSabores.length >= 3 && (
-                <Text className="text-(--color-pos-primary) text-xs font-bold mt-1">
-                  + ${formatCurrency(extra3SaboresAmount)} por 3 sabores
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Buttons */}
-          <View className="flex-row -mx-2 mt-4">
-            <TouchableOpacity 
-              onPress={handleClose} 
-              className="flex-1 mx-2 py-4 rounded-2xl bg-white/5 items-center border border-white/5 active:bg-white/10"
-            >
-              <Text className="text-slate-400 font-bold">Cancelar</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              onPress={handleAdd}
-              disabled={selectedSabores.length === 0}
-              className={`flex-[2] mx-2 py-4 rounded-2xl items-center shadow-lg ${selectedSabores.length === 0 ? 'bg-slate-700' : 'bg-(--color-pos-primary)'}`}
-            >
-              <Text className={`font-black uppercase tracking-wider ${selectedSabores.length === 0 ? 'text-slate-500' : 'text-slate-900'}`}>
-                {selectedSabores.length === 0 ? 'Elige sabores' : `Agregar • $${formatCurrency(precioFinal)}`}
+            <View className="flex-1">
+              <Text className="text-white font-black text-xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>
+                Pizza {variante?.nombre}
               </Text>
-            </TouchableOpacity>
+              <Text className="text-slate-400 text-xs mt-0.5">
+                Hasta 3 sabores • Base ${formatCurrency(Number(variante?.precio))}
+              </Text>
+            </View>
+          </View>
+
+          {/* Slot indicators */}
+          <View className="flex-row gap-1.5 px-5 pb-3">
+            {[0, 1, 2].map(i => (
+              <View
+                key={i}
+                className={`flex-1 h-1 rounded-full ${i < selectedSabores.length ? 'bg-(--color-pos-primary)' : 'bg-white/10'}`}
+              />
+            ))}
+          </View>
+
+          {/* Scrollable chips */}
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {loadingSabores ? (
+              <View className="py-10 items-center justify-center">
+                <ActivityIndicator color="#F5A524" />
+              </View>
+            ) : (
+              <>
+                <Text className="text-white font-black text-[10px] uppercase tracking-widest mb-2 mt-1 opacity-60">Tradicionales</Text>
+                <View className="flex-row flex-wrap mb-4">
+                  {tradicionales.map(sb => renderChip(sb))}
+                </View>
+                {especiales.length > 0 && (
+                  <>
+                    <View className="flex-row items-center gap-1.5 mb-2">
+                      <Icon name="star" size={10} color="#475569" />
+                      <Text className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Especiales</Text>
+                    </View>
+                    <View className="flex-row flex-wrap">
+                      {especiales.map(sb => renderChip(sb))}
+                    </View>
+                  </>
+                )}
+              </>
+            )}
+          </ScrollView>
+
+          {/* Fixed footer */}
+          <View className="px-5 pt-3 border-t border-white/5" style={{ paddingBottom: 20 }}>
+            {selectedSabores.length > 0 && (
+              <View className="bg-black/20 rounded-2xl p-3 mb-3">
+                <Text className="text-white font-bold text-xs" numberOfLines={1}>{selectedSabores.join(' + ')}</Text>
+                {recargoEspecial > 0 && (
+                  <Text className="text-(--color-pos-secondary) text-[10px] font-bold mt-0.5">
+                    + ${formatCurrency(recargoEspecial)} sabor especial
+                  </Text>
+                )}
+                {selectedSabores.length >= 3 && (
+                  <Text className="text-(--color-pos-primary) text-[10px] font-bold mt-0.5">
+                    + ${formatCurrency(extra3)} por 3 sabores
+                  </Text>
+                )}
+              </View>
+            )}
+            <View className="flex-row gap-2.5">
+              <TouchableOpacity
+                onPress={handleClose}
+                className="flex-1 py-3.5 rounded-2xl bg-white/5 items-center border border-white/5 active:bg-white/10"
+              >
+                <Text className="text-slate-400 font-bold text-sm">Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleAdd}
+                disabled={selectedSabores.length === 0}
+                className={`flex-[2] py-3.5 rounded-2xl items-center ${selectedSabores.length === 0 ? 'bg-slate-800' : 'bg-(--color-pos-primary)'}`}
+              >
+                <Text className={`font-black text-sm tracking-wide ${selectedSabores.length === 0 ? 'text-slate-500' : 'text-slate-900'}`}>
+                  {selectedSabores.length === 0 ? 'Elige sabores' : `Agregar • $${formatCurrency(precioFinal)}`}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </View>

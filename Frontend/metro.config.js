@@ -2,21 +2,37 @@ const { getDefaultConfig } = require("expo/metro-config");
 const { withNativewind } = require("nativewind/metro");
 const path = require('path');
 
-// 1. Encontrar la raíz del monorepo
 const projectRoot = __dirname;
-const workspaceRoot = path.resolve(projectRoot, '..');
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(projectRoot);
 
-// 2. Configurar Metro para que "mire" la raíz del monorepo y las node_modules compartidas
-config.watchFolders = [workspaceRoot];
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, 'node_modules'),
-  path.resolve(workspaceRoot, 'node_modules'),
+// ─── Block Android/Gradle build directories ───────────────────────────────────
+// On Windows, Metro's FallbackWatcher crashes with ENOENT when it tries to watch
+// directories inside android/build or node_modules/**/android/build that Gradle
+// hasn't created yet. Block all such paths to prevent the crash.
+const escRe = (str) => str.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&');
+const androidBuildBlockList = [
+  // Local android project build outputs
+  path.join(projectRoot, 'android', '.gradle'),
+  path.join(projectRoot, 'android', 'app', 'build'),
+  path.join(projectRoot, 'android', 'app', '.cxx'),
+  path.join(projectRoot, 'android', 'build'),
+].map((p) => new RegExp(`^${escRe(p)}`));
+
+// Block node_modules/**/android/build (codegen outputs from native modules like
+// react-native-gesture-handler, reanimated, etc.)
+const nodeModulesAndroidBuild = new RegExp(
+  `^${escRe(path.join(projectRoot, '..', 'node_modules'))}[/\\\\].+[/\\\\]android[/\\\\](build|\.cxx)`
+);
+
+config.resolver.blockList = [
+  ...(config.resolver.blockList ? [config.resolver.blockList].flat() : []),
+  ...androidBuildBlockList,
+  nodeModulesAndroidBuild,
 ];
 
-// 3. Forzar la resolución de semver usando resolveRequest (El método más potente)
+// Resolve semver shims (workaround for bundler version conflicts)
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'semver/functions/satisfies') {
     return {
@@ -30,11 +46,25 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       type: 'sourceFile',
     };
   }
-  // Dejar que el resolver por defecto maneje el resto
+  // nativewind v5 removed jsx-runtime on all platforms — fall back to React's own
+  if (moduleName === 'nativewind/jsx-runtime') {
+    return context.resolveRequest(context, 'react/jsx-runtime', platform);
+  }
+  // Web-only: react-native-css's babel plugin rewrites `import { X } from 'react-native'`
+  // to `import { X } from 'react-native-css/components/X'`. Each of those modules
+  // calls copyComponentProperties(rn.X) at init time, hitting a circular-dep getter
+  // in react-native-web 0.21. This barrel shim defers all access to render time.
+  // On native, the original files work correctly — no shim needed.
+  if (platform === 'web' &&
+      moduleName.startsWith('react-native-css/components/') &&
+      !moduleName.includes('react-native-safe-area-context')) {
+    return {
+      filePath: path.resolve(projectRoot, 'shims/react-native-css-components.js'),
+      type: 'sourceFile',
+    };
+  }
   return context.resolveRequest(context, moduleName, platform);
 };
-
-config.resolver.disableHierarchicalLookup = true;
 
 // Add support for .app.tsx and .app.ts extensions
 config.resolver.sourceExts.push('app.tsx', 'app.ts');

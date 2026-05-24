@@ -2,8 +2,8 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useSegments } from 'expo-router';
 import { api, setAuthToken } from '../services/api';
-import type { AuthUser } from '@monorepo/shared';
-import { Role } from '@monorepo/shared';
+import type { AuthUser } from '@/src/shared';
+import { Role } from '@/src/shared';
 
 interface AuthContextData {
     token: string | null;
@@ -33,11 +33,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const loadStorageData = useCallback(() => {
+        console.log('[AuthContext] Loading credentials from AsyncStorage...');
         return Promise.all([
             AsyncStorage.getItem('@Auth:token'),
             AsyncStorage.getItem('@Auth:user'),
         ])
             .then(([storedToken, storedUser]) => {
+                console.log('[AuthContext] AsyncStorage loaded:', { hasToken: !!storedToken, hasUser: !!storedUser });
                 if (storedToken && storedUser) {
                     let parsedUser: AuthUser | null = null;
                     try {
@@ -56,14 +58,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 applySession(null, null, false);
             })
             .catch((e) => {
-                console.error(e);
+                console.error('[AuthContext] loadStorageData error:', e);
                 applySession(null, null, false);
             })
             ;
     }, [applySession]);
 
     useEffect(() => {
+        console.log('[AuthContext] Calling loadStorageData...');
         void loadStorageData();
+
+        // Safety fallback: if AsyncStorage takes longer than 3 seconds, force isLoading to false
+        const safetyTimer = setTimeout(() => {
+            setAuthState(prev => {
+                if (prev.isLoading) {
+                    console.warn('[AuthContext] Safety timeout: AsyncStorage took > 3s. Forcing isLoading to false.');
+                    return { ...prev, isLoading: false };
+                }
+                return prev;
+            });
+        }, 3000);
+
+        return () => clearTimeout(safetyTimer);
     }, [loadStorageData]);
 
     useEffect(() => {

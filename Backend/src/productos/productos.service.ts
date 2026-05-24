@@ -89,11 +89,12 @@ export class ProductosService {
 		return this.repo.delete(productoId);
 	}
 
-	async createVariante(productoId: number, nombre: string, precio: number, descripcion?: string) {
+	async createVariante(productoId: number, nombre: string, precio: number, descripcion?: string, precioLeche?: number | null) {
 		const variante = this.variantesRepo.create({
 			productoId,
 			nombre,
 			precio,
+			precioLeche: precioLeche ?? null,
 			descripcion,
 			activo: true,
 		});
@@ -107,10 +108,12 @@ export class ProductosService {
 		});
 	}
 
-	async updateVariante(varianteId: number, nombre?: string, precio?: number, descripcion?: string, activo?: boolean) {
+	async updateVariante(varianteId: number, nombre?: string, precio?: number, descripcion?: string, activo?: boolean, precioLeche?: number | null) {
 		const updateData: any = {};
 		if (nombre !== undefined) updateData.nombre = nombre;
 		if (precio !== undefined) updateData.precio = precio;
+		// precioLeche can be explicitly null (to clear it) or a number
+		if (precioLeche !== undefined) updateData.precioLeche = precioLeche;
 		if (descripcion !== undefined) updateData.descripcion = descripcion;
 		if (activo !== undefined) updateData.activo = activo;
 
@@ -120,5 +123,12 @@ export class ProductosService {
 
 	async deleteVariante(varianteId: number) {
 		return this.variantesRepo.delete(varianteId);
+	}
+
+	async ajustarStockBebida(varianteId: number, delta: number): Promise<ProductoVariantes> {
+		const variante = await this.variantesRepo.findOne({where: {varianteId}});
+		if (!variante) throw new NotFoundException(`Variante con ID ${varianteId} no encontrada`);
+		variante.stockBebida = Math.max(0, (variante.stockBebida ?? 0) + delta);
+		return this.variantesRepo.save(variante);
 	}
 }

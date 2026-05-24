@@ -1,8 +1,9 @@
 import { Platform } from 'react-native';
-import type { FacturaPago, FacturaVenta, Cliente } from '@monorepo/shared';
+import type { FacturaPago, FacturaVenta, Cliente } from '@/src/shared';
 import type { FacturaItem } from '../components/facturas/FacturaShared';
 import { api } from '../services/api';
-import { formatCurrency } from '@monorepo/shared';
+import { formatCurrency } from '@/src/shared';
+import { getLocalDateString } from '../src/shared/utils/dateRange';
 
 type BalanceGastoItem = FacturaPago;
 
@@ -31,9 +32,14 @@ export function downloadCsv(csv: string, filename: string) {
 
 function formatDateForCsv(value?: string): string {
   if (!value) return '';
+  // If it's a date-only string YYYY-MM-DD, parse directly to avoid TZ shift
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-');
+    return `${day}/${month}/${year}`;
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString('es-CO');
+  return getLocalDateString(date).split('-').reverse().join('/');
 }
 
 function normalizePhone(value?: string): string {
@@ -63,9 +69,9 @@ export async function buildFacturasBackupCsv(facturas: FacturaItem[]): Promise<s
   const clientes = await fetchClientesSafe();
   // ── Headers must match exactly what the backend controller reads ──────────
   // Backend lookup keys (after normalize + lowercase):
-  //   id, cliente, tipo documento, no. documento, correo, fecha, total, estado, metodo, notas, productos
+  //   id, cliente, tipo documento, no. documento, correo, fecha, total, estado, metodo, pago efectivo, pago transferencia, notas, productos
   const rows: string[] = [
-    'ID,Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total,Estado,Metodo,Notas,Productos',
+    'ID,Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total,Estado,Metodo,Pago Efectivo,Pago Transferencia,Notas,Productos',
   ];
 
   for (const f of facturas) {
@@ -81,13 +87,15 @@ export async function buildFacturasBackupCsv(facturas: FacturaItem[]): Promise<s
     // ISO date (YYYY-MM-DD) — backend can always parse this reliably
     const rawFecha = f.fechaFactura ? new Date(f.fechaFactura) : null;
     const fecha = rawFecha && !isNaN(rawFecha.getTime())
-      ? rawFecha.toISOString().split('T')[0]
+      ? getLocalDateString(rawFecha)
       : '';
 
     // Plain number — backend strips non-numeric chars anyway, but let's be clean
     const total  = String(Number(f.total ?? 0));
     const estado = f.estado || 'pendiente';
     const metodo = f.metodo || 'efectivo';
+    const pagoEfectivo = f.pagoEfectivo !== undefined && f.pagoEfectivo !== null ? String(f.pagoEfectivo) : '';
+    const pagoTransferencia = f.pagoTransferencia !== undefined && f.pagoTransferencia !== null ? String(f.pagoTransferencia) : '';
     const notas  = escapeCsvValue(f.descripcion || '');
 
     // Compact product summary in a single quoted cell
@@ -97,7 +105,7 @@ export async function buildFacturasBackupCsv(facturas: FacturaItem[]): Promise<s
       .join(' | ');
 
     rows.push(
-      `${id},${clienteNom},${tipoDoc},${documento},${correo},${fecha},${total},${estado},${metodo},${notas},${escapeCsvValue(productos)}`,
+      `${id},${clienteNom},${tipoDoc},${documento},${correo},${fecha},${total},${estado},${metodo},${pagoEfectivo},${pagoTransferencia},${notas},${escapeCsvValue(productos)}`,
     );
   }
 
@@ -107,7 +115,7 @@ export async function buildFacturasBackupCsv(facturas: FacturaItem[]): Promise<s
 
 export async function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: BalanceGastoItem[]): Promise<string> {
   const clientes = await fetchClientesSafe();
-  const rows: string[] = ['Tipo,ID,Nombre/Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total,Estado,Método,Tipo Pedido,Costo Domicilio,Notas,Productos'];
+  const rows: string[] = ['Tipo,ID,Nombre/Cliente,Tipo Documento,No. Documento,Correo,Fecha,Total,Estado,Método,Pago Efectivo,Pago Transferencia,Tipo Pedido,Costo Domicilio,Notas,Productos'];
 
   let ingresosPagados = 0;
   let ingresosPendientes = 0;
@@ -148,14 +156,24 @@ export async function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: B
       ? Number(factura.domicilios[0].costoDomicilio) 
       : 0;
 
+    const pagoEf = factura.pagoEfectivo !== undefined && factura.pagoEfectivo !== null ? `"$${formatCurrency(factura.pagoEfectivo)}"` : '""';
+    const pagoTrans = factura.pagoTransferencia !== undefined && factura.pagoTransferencia !== null ? `"$${formatCurrency(factura.pagoTransferencia)}"` : '""';
+
     rows.push(
-      `Factura,${factura.facturaId ?? ''},${escapeCsvValue(factura.clienteNombre || '')},${escapeCsvValue(cliente?.tipoDocumento || '')},${escapeCsvValue(cliente?.documento || '')},${escapeCsvValue(cliente?.correo || '')},${fecha},"$${formatCurrency(factura.total ?? 0)}",${factura.estado || ''},${factura.metodo || ''},${escapeCsvValue(tipoPedido)},"$${formatCurrency(costoDomicilio)}",${escapeCsvValue(factura.descripcion || '')},${escapeCsvValue(productos)}`,
+      `Factura,${factura.facturaId ?? ''},${escapeCsvValue(factura.clienteNombre || '')},${escapeCsvValue(cliente?.tipoDocumento || '')},${escapeCsvValue(cliente?.documento || '')},${escapeCsvValue(cliente?.correo || '')},${fecha},"$${formatCurrency(factura.total ?? 0)}",${factura.estado || ''},${factura.metodo || ''},${pagoEf},${pagoTrans},${escapeCsvValue(tipoPedido)},"$${formatCurrency(costoDomicilio)}",${escapeCsvValue(factura.descripcion || '')},${escapeCsvValue(productos)}`,
     );
 
     if (factura.estado === 'pagado') {
       ingresosPagados += factura.total ?? 0;
-      const metodo = factura.metodo || 'Sin método';
-      metodosPago[metodo] = (metodosPago[metodo] || 0) + (factura.total ?? 0);
+      if (factura.metodo === 'efectivo_transferencia') {
+        const ef = Number(factura.pagoEfectivo) || 0;
+        const trans = Number(factura.pagoTransferencia) || 0;
+        metodosPago['efectivo'] = (metodosPago['efectivo'] || 0) + ef;
+        metodosPago['transferencia'] = (metodosPago['transferencia'] || 0) + trans;
+      } else {
+        const metodo = factura.metodo || 'efectivo';
+        metodosPago[metodo] = (metodosPago[metodo] || 0) + (factura.total ?? 0);
+      }
     }
     else if (factura.estado !== 'cancelado') ingresosPendientes += factura.total ?? 0;
   }
@@ -163,7 +181,7 @@ export async function buildCombinedBalanceCsv(facturas: FacturaItem[], gastos: B
   for (const gasto of gastos) {
     const fecha = formatDateForCsv(gasto.fechaFactura);
     rows.push(
-      `Gasto,${gasto.pagosId ?? ''},${escapeCsvValue(gasto.nombreGasto || '')},"","","",${fecha},"$${formatCurrency(gasto.total ?? 0)}",${gasto.estado || ''},${gasto.metodo || ''},"","","",`,
+      `Gasto,${gasto.pagosId ?? ''},${escapeCsvValue(gasto.nombreGasto || '')},"","","",${fecha},"$${formatCurrency(gasto.total ?? 0)}",${gasto.estado || ''},${gasto.metodo || ''},"","","","","","",`,
     );
 
     if (gasto.estado === 'pagado') gastosPagados += gasto.total ?? 0;

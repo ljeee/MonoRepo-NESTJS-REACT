@@ -9,8 +9,8 @@ import type {
     MetodoPago,
     ResumenPeriodo,
     ClienteFrecuente,
-} from '@monorepo/shared';
-import { formatCompactCurrency as sharedFormatCompact } from '@monorepo/shared';
+} from '@/src/shared';
+import { formatCompactCurrency as sharedFormatCompact } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { View, Text, TouchableOpacity, ScrollView, TextInput } from '../../tw';
 import { PageContainer, PageHeader, Card, Icon, Button, ListSkeleton } from '../../components/ui';
@@ -48,7 +48,12 @@ function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
         if (Number.isNaN(hour)) continue;
         byHour.set(hour, { ...item, hora: hour });
     }
-    return Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
+    const full = Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
+    const firstActive = full.findIndex(v => v.cantidad > 0);
+    let lastActive = -1;
+    for (let i = full.length - 1; i >= 0; i--) { if (full[i].cantidad > 0) { lastActive = i; break; } }
+    if (firstActive === -1) return full;
+    return full.slice(Math.max(0, firstActive - 1), Math.min(23, lastActive + 1) + 1);
 }
 
 function KpiCard({ icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
@@ -232,22 +237,21 @@ export default function EstadisticasPage() {
                         </View>
                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>Actividad por Hora</Text>
                     </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 12, paddingHorizontal: 8, height: 180 }}>
-                        {ventasHoraFull.map((v) => {
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 160 }}>
+                        {ventasHoraFull.map((v, i) => {
                             const pct = maxVentaHora > 0 ? (v.cantidad / maxVentaHora) * 100 : 0;
+                            const showLabel = ventasHoraFull.length <= 14 || i % 2 === 0;
                             return (
-                                <View key={v.hora} style={{ alignItems: 'center', width: 32 }}>
-                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 9, marginBottom: 4 }}>{v.cantidad > 0 ? v.cantidad : ''}</Text>
-                                    <View style={{ width: 16, backgroundColor: 'rgba(0,0,0,0.4)', borderTopLeftRadius: 4, borderTopRightRadius: 4, justifyContent: 'flex-end', overflow: 'hidden', height: 120 }}>
-                                        <View style={{ width: '100%', backgroundColor: 'rgba(59,130,246,0.8)', borderTopLeftRadius: 4, borderTopRightRadius: 4, height: `${Math.max(pct, 2)}%` }} />
+                                <View key={v.hora} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 8, marginBottom: 3 }}>{v.cantidad > 0 ? v.cantidad : ''}</Text>
+                                    <View style={{ width: '100%', maxWidth: 24, backgroundColor: 'rgba(255,255,255,0.04)', borderTopLeftRadius: 4, borderTopRightRadius: 4, justifyContent: 'flex-end', overflow: 'hidden', height: 110 }}>
+                                        {pct > 0 && <View style={{ width: '100%', backgroundColor: 'rgba(59,130,246,0.85)', borderTopLeftRadius: 4, borderTopRightRadius: 4, height: `${Math.max(pct, 3)}%` }} />}
                                     </View>
-                                    <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, marginTop: 6, textTransform: 'uppercase' }}>{v.hora}h</Text>
+                                    <Text style={{ fontFamily: 'Outfit', color: showLabel ? '#475569' : 'transparent', fontSize: 8, marginTop: 5, textTransform: 'uppercase' }}>{v.hora}h</Text>
                                 </View>
                             );
                         })}
-                        </View>
-                    </ScrollView>
+                    </View>
                 </Card>
 
                 {/* Daily Evolution */}

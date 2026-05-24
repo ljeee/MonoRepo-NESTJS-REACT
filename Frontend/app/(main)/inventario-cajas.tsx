@@ -3,7 +3,7 @@ import { ActivityIndicator, TouchableOpacity, Platform, Modal } from 'react-nati
 import { View, Text, ScrollView, TextInput } from '../../tw';
 import { api } from '../../services/api';
 import { PageContainer, PageHeader, Card, Icon, Button, ConfirmModal } from '../../components/ui';
-import type { InventarioCaja, InventarioCajasMovimiento } from '@monorepo/shared';
+import type { InventarioCaja, InventarioCajasMovimiento } from '@/src/shared';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -205,8 +205,8 @@ export default function InventarioCajasScreen() {
     try {
       setLoading(true);
       const [est, movs] = await Promise.all([
-        (api as any).inventarioCajas.getEstado(),
-        (api as any).inventarioCajas.getMovimientos(30),
+        api.inventarioCajas.getEstado(),
+        api.inventarioCajas.getMovimientos(30),
       ]);
       setCajas(Array.isArray(est) ? est : []);
       setMovimientos(Array.isArray(movs) ? movs : []);
@@ -226,7 +226,7 @@ export default function InventarioCajasScreen() {
     if (adjustingId) return;
     setAdjustingId(cajaId);
     try {
-      await (api as any).inventarioCajas.ajustar(cajaId, { delta, tipo });
+      await api.inventarioCajas.ajustar(cajaId, { delta, tipo });
       await fetchData();
     } catch {
       setError('Error al ajustar. Intenta de nuevo.');
@@ -237,7 +237,7 @@ export default function InventarioCajasScreen() {
 
   const handleConfigurarAlerta = useCallback(async (cajaId: number, alertaMinimo: number) => {
     try {
-      await (api as any).inventarioCajas.configurarAlerta(cajaId, alertaMinimo);
+      await api.inventarioCajas.configurarAlerta(cajaId, alertaMinimo);
       setCajas((prev: InventarioCaja[]) => prev.map((c: InventarioCaja) => c.id === cajaId ? { ...c, alertaMinimo, enAlerta: c.cantidad <= alertaMinimo } : c));
     } catch {
       setError('Error al guardar alerta.');
@@ -247,7 +247,7 @@ export default function InventarioCajasScreen() {
   const handleCrear = async () => {
     if (!newName.trim()) return;
     try {
-      await (api as any).inventarioCajas.crear({ nombre: newName.trim(), cantidad: parseInt(newInit) || 0 });
+      await api.inventarioCajas.crear({ nombre: newName.trim(), cantidad: parseInt(newInit) || 0 });
       setShowCreateModal(false);
       setNewName('');
       setNewInit('0');
@@ -260,7 +260,7 @@ export default function InventarioCajasScreen() {
   const handleEliminar = async () => {
     if (!deleteTarget) return;
     try {
-      await (api as any).inventarioCajas.eliminar(deleteTarget.id);
+      await api.inventarioCajas.eliminar(deleteTarget.id);
       setDeleteTarget(null);
       fetchData();
     } catch {

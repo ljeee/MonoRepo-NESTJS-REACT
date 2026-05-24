@@ -27,6 +27,7 @@ export class ProductProcessingService {
 		if (item.sabor1) nombre += ` ${item.sabor1}`;
 		if (item.sabor2) nombre += ` y ${item.sabor2}`;
 		if (item.sabor3) nombre += ` y ${item.sabor3}`;
+		if (item.base) nombre += ` (${item.base === 'leche' ? 'Leche' : 'Agua'})`;
 		return nombre;
 	}
 
@@ -36,6 +37,7 @@ export class ProductProcessingService {
 		cantidad: number,
 		precioUnitario?: number,
 		varianteId?: number,
+		base?: 'leche' | 'agua' | null,
 		manager?: EntityManager,
 	): Promise<void> {
 		const repo = manager ? manager.getRepository(OrdenesProductos) : this.ordenesProductosRepo;
@@ -45,6 +47,7 @@ export class ProductProcessingService {
 		item.cantidad = cantidad;
 		item.precioUnitario = precioUnitario ?? null;
 		item.varianteId = varianteId ?? null;
+		item.base = base ?? null;
 		await repo.save(item);
 	}
 
@@ -74,8 +77,19 @@ export class ProductProcessingService {
 			}
 			
 			let precioBase = Number(variante.precio);
+			// Recargo fijo por base leche (+$1.000)
+			const RECARGO_LECHE = 1000;
+			if (item.base === 'leche') {
+				precioBase += RECARGO_LECHE;
+			}
+
 			let nombre = (variante.producto?.productoNombre || item.tipo || 'Producto').trim();
 			nombre = `${nombre} - ${variante.nombre}`;
+
+			// Base del jugo (leche / agua)
+			if (item.base) {
+				nombre += ` (${item.base === 'leche' ? 'Leche' : 'Agua'})`;
+			}
 
 			// --- Lógica de Recargos para Pizzas ---
 			let recargoTotal = 0;
@@ -117,7 +131,7 @@ export class ProductProcessingService {
 			const cantidad = Number(item.cantidad) || 1;
 			total += precioFinalItem * cantidad;
 
-			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precioFinalItem, item.varianteId, manager);
+			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precioFinalItem, item.varianteId, item.base ?? null, manager);
 			items.push({nombre, cantidad, precioUnitario: precioFinalItem});
 		}
 

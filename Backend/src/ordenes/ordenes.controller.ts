@@ -137,8 +137,11 @@ export class OrdenesController {
 		@Body('lastUpdatedAt') lastUpdatedAt: string,
 		@GetUser() user: User,
 		@Ip() ip: string,
+		@Body('pagoEfectivo') pagoEfectivo?: number,
+		@Body('pagoTransferencia') pagoTransferencia?: number,
+		@Body('denominaciones') denominaciones?: Record<string, number>,
 	) {
-		return this.service.completar(id, metodo, user.id, ip, idempotencyKey, lastUpdatedAt);
+		return this.service.completar(id, metodo, user.id, ip, idempotencyKey, lastUpdatedAt, pagoEfectivo, pagoTransferencia, denominaciones);
 	}
 
 	@Patch(':id/cancel')

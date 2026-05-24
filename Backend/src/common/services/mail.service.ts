@@ -97,12 +97,15 @@ export class MailService {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${data.metodosPago?.map(m => `
+                                ${data.metodosPago?.map(m => {
+                                    const metodoStr = m.metodo ? String(m.metodo).replace(/_/g, ' ').toUpperCase() : 'SIN MÉTODO';
+                                    return `
                                     <tr>
-                                        <td style="font-weight: 700;">${m.metodo.toUpperCase()}</td>
+                                        <td style="font-weight: 700;">${metodoStr}</td>
                                         <td style="text-align: right; font-weight: 900; color: #F5A524;">$${m.total.toLocaleString()}</td>
                                     </tr>
-                                `).join('') || '<tr><td colspan="2" style="text-align:center; opacity:0.5;">No hay datos de métodos</td></tr>'}
+                                    `;
+                                }).join('') || '<tr><td colspan="2" style="text-align:center; opacity:0.5;">No hay datos de métodos</td></tr>'}
                             </tbody>
                         </table>
  
@@ -118,13 +121,16 @@ export class MailService {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${data.facturas?.map(f => `
+                                ${data.facturas?.map(f => {
+                                    const metodoStr = f.metodo ? String(f.metodo).replace(/_/g, ' ').toUpperCase() : 'SIN MÉTODO';
+                                    return `
                                     <tr class="small-text">
                                         <td>${f.facturaId}</td>
-                                        <td>${f.metodo.toUpperCase()}</td>
+                                        <td>${metodoStr}</td>
                                         <td style="text-align: right; font-weight: 700; color: #F1F5F9;">$${f.total.toLocaleString()}</td>
                                     </tr>
-                                `).join('') || '<tr><td colspan="3" style="text-align:center; opacity:0.5;">No hay transacciones registradas</td></tr>'}
+                                    `;
+                                }).join('') || '<tr><td colspan="3" style="text-align:center; opacity:0.5;">No hay transacciones registradas</td></tr>'}
                             </tbody>
                         </table>
                     </div>

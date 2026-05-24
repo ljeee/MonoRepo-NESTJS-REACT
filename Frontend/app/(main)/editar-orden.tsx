@@ -6,11 +6,11 @@ import { Animated } from '../../tw/animated';
 import { FadeInUp, FadeInRight, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Easing, useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, withSpring, withDelay } from 'react-native-reanimated';
 import { api } from '../../services/api';
-import { useToast } from '@monorepo/shared';
+import { useToast } from '@/src/shared';
 import { Icon, PageContainer, PageHeader, Card, Button } from '../../components/ui';
 import { ErrorState } from '../../components/states/ErrorState';
 import MenuPicker from '../../components/orderForm/MenuPicker';
-import type { Producto, ProductoVariante } from '@monorepo/shared';
+import type { Producto, ProductoVariante } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -170,10 +170,13 @@ function AddProductPanel({ onAdd, onClose }: { onAdd: (p: ProductoEdit) => void;
     };
 
     return (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
-            <TouchableOpacity className="flex-1" onPress={onClose} activeOpacity={1} />
-            <View className="bg-(--color-pos-surface) rounded-t-[32px] border border-white/10 min-h-[70%] pb-10">
-                <View className="flex-row justify-between items-center p-6 border-b border-white/5">
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+            <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={onClose} activeOpacity={1} />
+            <View 
+                className="bg-(--color-pos-surface) rounded-[32px] border border-white/10 pb-6"
+                style={{ maxHeight: '85%', minHeight: '70%', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 700 }}
+            >
+                <View className="flex-row justify-between items-center p-6 border-b border-white/5 w-full">
                     <Text className="font-black text-white text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
                         Añadir Producto
                     </Text>
@@ -181,7 +184,11 @@ function AddProductPanel({ onAdd, onClose }: { onAdd: (p: ProductoEdit) => void;
                         <Icon name="close" size={20} color="#94A3B8" />
                     </TouchableOpacity>
                 </View>
-                <ScrollView contentContainerClassName="p-4" showsVerticalScrollIndicator={false}>
+                <ScrollView 
+                    contentContainerClassName="p-4" 
+                    showsVerticalScrollIndicator={false}
+                    className="flex-1"
+                >
                     <MenuPicker onAdd={handleAdd} />
                 </ScrollView>
             </View>
@@ -313,9 +320,24 @@ export default function EditarOrdenScreen() {
                        }
                    />
                </Animated.View>
-               <Animated.Text entering={FadeInDown.delay(100).springify()} className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-[-8px] mb-6">
-                    {clienteName} • {orden.tipoPedido}
-               </Animated.Text>
+                <Animated.View 
+                    entering={FadeInDown.delay(100).springify()} 
+                    className="flex-row flex-wrap items-center gap-3 mt-[-8px] mb-6"
+                >
+                    <View className="flex-row items-center bg-white/5 px-4 py-2.5 rounded-2xl border border-white/5 shadow-sm shadow-black/20">
+                        <Icon name="account-circle-outline" size={20} color="#F5A524" style={{ marginRight: 8 }} />
+                        <Text className="text-white text-[15px] font-black uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
+                            {clienteName}
+                        </Text>
+                    </View>
+                    
+                    <View className="flex-row items-center bg-white/5 px-4 py-2.5 rounded-2xl border border-white/5 shadow-sm shadow-black/20">
+                        <Icon name={orden.tipoPedido?.toLowerCase() === 'domicilio' ? 'truck-delivery-outline' : 'storefront-outline'} size={20} color="#10B981" style={{ marginRight: 8 }} />
+                        <Text className="text-emerald-400 text-[15px] font-black uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
+                            {orden.tipoPedido || 'Local'}
+                        </Text>
+                    </View>
+                </Animated.View>
             </View>
 
             <ScrollView 
@@ -446,34 +468,16 @@ export default function EditarOrdenScreen() {
                             </Animated.View>
 
                             {/* ── Actions ── */}
-                            <Animated.View entering={FadeInUp.delay(600)}>
-                                {isPaid ? (
+                            {isPaid && (
+                                <Animated.View entering={FadeInUp.delay(600)}>
                                     <View className="flex-row items-center justify-center gap-3 bg-red-500/10 rounded-2xl py-6 border border-red-500/20">
                                         <Icon name="lock-outline" size={24} color="#F43F5E" />
                                         <Text className="font-black text-red-500 text-[13px] uppercase tracking-[2px]" style={{ fontFamily: 'Space Grotesk' }}>
                                             Orden Bloqueada
                                         </Text>
                                     </View>
-                                ) : (
-                                    <View className="flex-col gap-3">
-                                        <Button
-                                            title="Guardar Cambios"
-                                            icon="check-circle-outline"
-                                            variant="primary"
-                                            size="lg"
-                                            loading={saving}
-                                            onPress={handleSave}
-                                            className="h-14 rounded-2xl"
-                                        />
-                                        <Button
-                                            title="Cancelar"
-                                            variant="ghost"
-                                            onPress={() => router.back()}
-                                            className="h-12"
-                                        />
-                                    </View>
-                                )}
-                            </Animated.View>
+                                </Animated.View>
+                            )}
                         </View>
                     </View>
                 </View>

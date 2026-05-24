@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshControl } from 'react-native';
-import { useGestionProductosScreen } from '@monorepo/shared';
+import { useGestionProductosScreen } from '@/src/shared';
 import {
     PageContainer,
     PageHeader,
@@ -27,8 +27,8 @@ export default function GestionProductosScreen() {
         deleteLoading,
         editingSabor,
         prodName,
-        prodCategory,
         prodDesc,
+        prodEmoji,
         prodError,
         varName,
         varPrice,
@@ -105,8 +105,8 @@ export default function GestionProductosScreen() {
                 showProductModal={showProductModal}
                 editingProduct={editingProduct}
                 prodName={prodName}
-                prodCategory={prodCategory}
                 prodDesc={prodDesc}
+                prodEmoji={prodEmoji}
                 prodError={prodError}
                 showVariantModal={showVariantModal}
                 editingVariant={editingVariant}
@@ -134,8 +134,8 @@ export default function GestionProductosScreen() {
                     });
                 }}
                 onProdNameChange={(name) => patchUi({ prodName: name })}
-                onProdCategoryChange={(category) => patchUi({ prodCategory: category })}
                 onProdDescriptionChange={(description) => patchUi({ prodDesc: description })}
+                onProdEmojiChange={(emoji) => patchUi({ prodEmoji: emoji })}
                 onVarNameChange={(name) => patchUi({ varName: name })}
                 onVarPriceChange={(price) => patchUi({ varPrice: price })}
                 onVarDescriptionChange={(description) => patchUi({ varDesc: description })}

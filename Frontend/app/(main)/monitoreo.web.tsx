@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity } from '../../tw';
 import { ActivityIndicator } from 'react-native';
-import { useOfflineQueue, useToast } from '@monorepo/shared';
+import { useOfflineQueue, useToast } from '@/src/shared';
 import { FadeInUp, FadeInDown } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
 import { api } from '../../services/api';
@@ -14,6 +14,8 @@ import {
     Button
 } from '../../components/ui';
 import { buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
+
+import { getLocalDateString } from '../../src/shared/utils/dateRange';
 
 export default function MonitoreoScreen() {
     const { queue, isSyncing, syncPayments, hasItems } = useOfflineQueue();
@@ -68,13 +70,14 @@ export default function MonitoreoScreen() {
         setExporting(true);
         try {
             // Fetch all invoices for a full backup
-            const data = await api.facturas.getAll();
-            if (!data || data.length === 0) {
+            const response = await api.facturas.getAll({ limit: 1000000 });
+            const facturasList = response?.data || [];
+            if (facturasList.length === 0) {
                 showToast('No hay facturas para exportar', 'warning');
                 return;
             }
-            const csv = await buildFacturasBackupCsv(data);
-            const today = new Date().toISOString().slice(0, 10);
+            const csv = await buildFacturasBackupCsv(facturasList);
+            const today = getLocalDateString();
             downloadCsv(csv, `backup_facturas_${today}.csv`);
             showToast('Copia de seguridad descargada', 'success');
         } catch (error) {

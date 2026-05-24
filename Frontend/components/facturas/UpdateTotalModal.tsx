@@ -33,14 +33,17 @@ export default function UpdateTotalModal({
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
             <Pressable 
-                className="flex-1 bg-black/85 justify-center items-center p-6"
+                className="flex-1 bg-black/90 justify-center items-center p-6"
                 onPress={onCancel}
             >
                 <Pressable 
                     className="w-full max-w-sm"
                     onPress={(e) => e.stopPropagation()}
                 >
-                    <Card className="bg-slate-900 border border-white/10 p-6 overflow-hidden relative">
+                    <View 
+                        className="bg-slate-900 border border-white/10 rounded-3xl p-6 overflow-hidden relative shadow-2xl"
+                        style={{ backgroundColor: '#0F172A' }}
+                    >
                          {/* Background Pattern */}
                         <View className="absolute -top-10 -right-10 w-32 h-32 bg-(--color-pos-primary)/10 rounded-full blur-3xl" />
                         
@@ -93,7 +96,7 @@ export default function UpdateTotalModal({
                                 />
                             </View>
                         </View>
-                    </Card>
+                    </View>
                 </Pressable>
             </Pressable>
         </Modal>

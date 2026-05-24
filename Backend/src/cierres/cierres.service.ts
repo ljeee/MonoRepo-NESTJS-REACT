@@ -7,6 +7,7 @@ import { MailService } from '../common/services/mail.service';
 import { ConfigService } from '@nestjs/config';
 import { EmpresaService } from '../empresa/empresa.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { getBogotaDateString } from '../common/utils/date.utils';
 
 @Injectable()
 export class CierresService {
@@ -83,7 +84,7 @@ export class CierresService {
      */
     @Cron('59 23 * * *')
     async handleAutomaticDailyClosing() {
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = getBogotaDateString();
         this.logger.log(`Iniciando cierre automático programado para: ${hoy}`);
         
         const systemId = '00000000-0000-0000-0000-000000000000';

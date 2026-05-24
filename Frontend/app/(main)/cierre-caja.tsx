@@ -3,7 +3,7 @@ import { RefreshControl } from 'react-native';
 import { View, Text, ScrollView, TextInput } from '../../tw';
 import { PageContainer, PageHeader, Button, Icon, Card, Badge, ConfirmModal, ListSkeleton } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, formatCurrency, formatDate, Role } from '@monorepo/shared';
+import { useToast, formatCurrency, formatDate, Role } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBreakpoint } from '../../styles/responsive';
 

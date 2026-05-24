@@ -38,7 +38,27 @@ export class ClientesService {
 		return this.repo.save(data);
 	}
 
-	update(telefono: string, data: Partial<CreateClientesDto>) {
+	async update(telefono: string, data: Partial<CreateClientesDto>) {
+		if (data.clienteNombre !== undefined) {
+			const current = await this.repo.findOne({ where: { telefono } });
+			if (current?.clienteNombre && current.clienteNombre !== data.clienteNombre) {
+				// 1. Backfill telefono_cliente en facturas legacy vinculadas por nombre
+				await this.repo.manager.query(
+					`UPDATE facturas_ventas
+					 SET telefono_cliente = $1
+					 WHERE telefono_cliente IS NULL AND cliente_nombre = $2`,
+					[telefono, current.clienteNombre],
+				);
+				// 2. Propagar el nuevo nombre a TODAS las facturas del cliente
+				//    (vinculadas por teléfono después del backfill anterior)
+				await this.repo.manager.query(
+					`UPDATE facturas_ventas
+					 SET cliente_nombre = $1
+					 WHERE telefono_cliente = $2`,
+					[data.clienteNombre, telefono],
+				);
+			}
+		}
 		return this.repo.update(telefono, data);
 	}
 

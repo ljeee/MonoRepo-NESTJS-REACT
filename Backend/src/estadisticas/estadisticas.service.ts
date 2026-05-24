@@ -5,6 +5,7 @@ import { Ordenes } from '../ordenes/esquemas/ordenes.entity';
 import { OrdenesProductos } from '../ordenes-productos/esquemas/ordenes-productos.entity';
 import { FacturasVentas } from '../facturas-ventas/esquemas/facturas-ventas.entity';
 import { FacturasPagos } from '../facturas-pagos/esquemas/facturas-pagos.entity';
+import { getBogotaDateString } from '../common/utils/date.utils';
 
 @Injectable()
 export class EstadisticasService {
@@ -20,8 +21,8 @@ export class EstadisticasService {
 	) {}
 
 	private buildDayBounds(from: string, to: string) {
-		const start = from.includes('T') ? new Date(from) : new Date(`${from}T00:00:00`);
-		const end = to.includes('T') ? new Date(to) : new Date(`${to}T23:59:59.999`);
+		const start = from.includes('T') ? new Date(from) : new Date(`${from}T00:00:00-05:00`);
+		const end = to.includes('T') ? new Date(to) : new Date(`${to}T23:59:59.999-05:00`);
 		return { start, end };
 	}
 
@@ -100,7 +101,7 @@ export class EstadisticasService {
 	async ventasPorHora(fecha?: string, from?: string, to?: string) {
 		const qb = this.ordenesRepo
 			.createQueryBuilder('o')
-			.select("EXTRACT(HOUR FROM o.fecha_orden)", 'hora')
+			.select("EXTRACT(HOUR FROM o.fecha_orden AT TIME ZONE 'America/Bogota')", 'hora')
 			.addSelect('COUNT(*)', 'cantidad')
 			.addSelect('SUM(f.total)', 'total')
 			.innerJoin('o.factura', 'f')
@@ -108,14 +109,14 @@ export class EstadisticasService {
 
 		if (from && to) {
 			qb.where('o.fecha_orden BETWEEN :from AND :to', {
-				from: new Date(`${from}T00:00:00`),
-				to: new Date(`${to}T23:59:59`),
+				from: new Date(`${from}T00:00:00-05:00`),
+				to: new Date(`${to}T23:59:59-05:00`),
 			});
 		} else if (fecha) {
-			qb.where("o.fecha_orden::date = :fecha", { fecha });
+			qb.where("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date = :fecha", { fecha });
 		} else {
-			const hoy = new Date().toISOString().slice(0, 10);
-			qb.where("o.fecha_orden::date = :fecha", { fecha: hoy });
+			const hoy = getBogotaDateString();
+			qb.where("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date = :fecha", { fecha: hoy });
 		}
 
 		const result = await qb
@@ -135,7 +136,7 @@ export class EstadisticasService {
 		const { start, end } = this.buildDayBounds(from, to);
 		const result = await this.ordenesRepo
 			.createQueryBuilder('o')
-			.select("o.fecha_orden::date", 'fecha')
+			.select("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date", 'fecha')
 			.addSelect('COUNT(*)', 'cantidad')
 			.addSelect('SUM(f.total)', 'total')
 			.innerJoin('o.factura', 'f')
@@ -156,28 +157,57 @@ export class EstadisticasService {
 	// ─── Métodos de Pago ──────────────────────────────────────────────────────────
 	async metodosPago(from: string, to: string) {
 		const { start, end } = this.buildDayBounds(from, to);
-		const result = await this.facturasRepo
+		const facturas = await this.facturasRepo
 			.createQueryBuilder('f')
-			.select('f.metodo', 'metodo')
-			.addSelect('COUNT(*)', 'cantidad')
-			.addSelect('SUM(f.total)', 'total')
 			.where("f.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
 			.andWhere("f.estado != 'cancelado'")
-			.groupBy('f.metodo')
-			.orderBy('"total"', 'DESC')
-			.getRawMany();
+			.getMany();
 
-		const grandTotal = result.reduce((sum, r) => sum + (Number(r.total) || 0), 0);
+		const counts: Record<string, { cantidad: number; total: number }> = {};
 
-		return result.map((r) => ({
-			metodo: r.metodo || 'sin método',
-			cantidad: Number(r.cantidad),
-			total: Number(r.total) || 0,
-			porcentaje: grandTotal > 0 ? Math.round(((Number(r.total) || 0) / grandTotal) * 100) : 0,
+		for (const f of facturas) {
+			const metodo = f.metodo ? f.metodo.toLowerCase().trim() : 'sin método';
+			const total = Number(f.total) || 0;
+
+			if (metodo === 'efectivo_transferencia') {
+				const efectivo = Number(f.pagoEfectivo) || 0;
+				const transferencia = Number(f.pagoTransferencia) || 0;
+
+				if (efectivo > 0) {
+					if (!counts['efectivo']) counts['efectivo'] = { cantidad: 0, total: 0 };
+					counts['efectivo'].total += efectivo;
+					counts['efectivo'].cantidad += 1;
+				}
+				if (transferencia > 0) {
+					if (!counts['transferencia']) counts['transferencia'] = { cantidad: 0, total: 0 };
+					counts['transferencia'].total += transferencia;
+					counts['transferencia'].cantidad += 1;
+				}
+			} else {
+				if (!counts[metodo]) counts[metodo] = { cantidad: 0, total: 0 };
+				counts[metodo].total += total;
+				counts[metodo].cantidad += 1;
+			}
+		}
+
+		const list = Object.entries(counts).map(([metodo, data]) => ({
+			metodo,
+			cantidad: data.cantidad,
+			total: data.total,
+		}));
+
+		const grandTotal = list.reduce((sum, r) => sum + r.total, 0);
+
+		list.sort((a, b) => b.total - a.total);
+
+		return list.map((r) => ({
+			metodo: r.metodo,
+			cantidad: r.cantidad,
+			total: r.total,
+			porcentaje: grandTotal > 0 ? Math.round((r.total / grandTotal) * 100) : 0,
 		}));
 	}
 
-	// ─── Resumen del Período ──────────────────────────────────────────────────────
 	async resumenPeriodo(from: string, to: string) {
 		const { start, end } = this.buildDayBounds(from, to);
 		const [ventasResult, egresosResult, ordenesResult, canceladosResult] = await Promise.all([
@@ -185,12 +215,20 @@ export class EstadisticasService {
 				.createQueryBuilder('f')
 				.select('COUNT(*)', 'count')
 				.addSelect('COALESCE(SUM(f.total), 0)', 'total')
+				.addSelect("COALESCE(SUM(CASE WHEN f.estado = 'pagado' OR f.estado = 'pagada' THEN f.total ELSE 0 END), 0)", 'totalPagado')
+				.addSelect("COALESCE(SUM(CASE WHEN f.estado = 'pendiente' OR f.estado IS NULL THEN f.total ELSE 0 END), 0)", 'totalPendiente')
+				.addSelect("COUNT(CASE WHEN f.estado = 'pagado' OR f.estado = 'pagada' THEN 1 END)", 'countPagado')
+				.addSelect("COUNT(CASE WHEN f.estado = 'pendiente' OR f.estado IS NULL THEN 1 END)", 'countPendiente')
 				.where("f.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
 				.andWhere("f.estado != 'cancelado'")
 				.getRawOne(),
 			this.pagosRepo
 				.createQueryBuilder('p')
 				.select('COALESCE(SUM(p.total), 0)', 'total')
+				.addSelect("COALESCE(SUM(CASE WHEN p.estado = 'pagado' OR p.estado = 'pagada' THEN p.total ELSE 0 END), 0)", 'totalPagado')
+				.addSelect("COALESCE(SUM(CASE WHEN p.estado = 'pendiente' OR p.estado IS NULL THEN p.total ELSE 0 END), 0)", 'totalPendiente')
+				.addSelect("COUNT(CASE WHEN p.estado = 'pagado' OR p.estado = 'pagada' THEN 1 END)", 'countPagado')
+				.addSelect("COUNT(CASE WHEN p.estado = 'pendiente' OR p.estado IS NULL THEN 1 END)", 'countPendiente')
 				.where("p.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
 				.getRawOne(),
 			this.ordenesRepo
@@ -214,6 +252,16 @@ export class EstadisticasService {
 		const cancelados = Number(canceladosResult?.count) || 0;
 		const totalOrdenes = ordenes + cancelados;
 
+		const totalIngresosPagados = Number(ventasResult?.totalPagado) || 0;
+		const totalIngresosPendientes = Number(ventasResult?.totalPendiente) || 0;
+		const countIngresosPagados = Number(ventasResult?.countPagado) || 0;
+		const countIngresosPendientes = Number(ventasResult?.countPendiente) || 0;
+
+		const totalEgresosPagados = Number(egresosResult?.totalPagado) || 0;
+		const totalEgresosPendientes = Number(egresosResult?.totalPendiente) || 0;
+		const countEgresosPagados = Number(egresosResult?.countPagado) || 0;
+		const countEgresosPendientes = Number(egresosResult?.countPendiente) || 0;
+
 		return {
 			totalVentas,
 			totalEgresos,
@@ -223,25 +271,43 @@ export class EstadisticasService {
 			cancelados,
 			ticketPromedio: facturas > 0 ? Math.round(totalVentas / facturas) : 0,
 			tasaCancelacion: totalOrdenes > 0 ? Math.round((cancelados / totalOrdenes) * 1000) / 10 : 0,
+
+			totalIngresosPagados,
+			totalIngresosPendientes,
+			countIngresosPagados,
+			countIngresosPendientes,
+
+			totalEgresosPagados,
+			totalEgresosPendientes,
+			countEgresosPagados,
+			countEgresosPendientes,
 		};
 	}
 
 	// ─── Clientes Frecuentes ──────────────────────────────────────────────────────
-	async clientesFrecuentes(limit = 10) {
-		const result = await this.facturasRepo
+	async clientesFrecuentes(limit = 10, from?: string, to?: string) {
+		let qb = this.facturasRepo
 			.createQueryBuilder('f')
 			.select('f.cliente_nombre', 'clienteNombre')
 			.addSelect('COUNT(*)', 'totalOrdenes')
 			.addSelect('SUM(f.total)', 'gastoTotal')
+			.addSelect('MAX(f.total)', 'pedidoMaximo')
 			.addSelect('MAX(f.fechaFactura)', 'ultimaVisita')
 			.where("f.cliente_nombre IS NOT NULL")
 			.andWhere("f.cliente_nombre != ''")
 			.andWhere("f.cliente_nombre NOT ILIKE 'mesa %'")
 			.andWhere("f.cliente_nombre NOT ILIKE 'mesa'")
 			.andWhere("f.cliente_nombre !~ '^[0-9]+$'")
-			.andWhere("f.estado != 'cancelado'")
+			.andWhere("f.estado != 'cancelado'");
+
+		if (from && to) {
+			const { start, end } = this.buildDayBounds(from, to);
+			qb = qb.andWhere('f.fechaFactura BETWEEN :from AND :to', { from: start, to: end });
+		}
+
+		const result = await qb
 			.groupBy('f.cliente_nombre')
-			.orderBy('"totalOrdenes"', 'DESC')
+			.orderBy('"gastoTotal"', 'DESC')
 			.limit(limit)
 			.getRawMany();
 
@@ -249,6 +315,7 @@ export class EstadisticasService {
 			clienteNombre: r.clienteNombre,
 			totalOrdenes: Number(r.totalOrdenes),
 			gastoTotal: Number(r.gastoTotal) || 0,
+			pedidoMaximo: Number(r.pedidoMaximo) || 0,
 			ultimaVisita: r.ultimaVisita,
 		}));
 	}
@@ -298,12 +365,13 @@ export class EstadisticasService {
 			.take(50)
 			.getMany();
 
-		// 2. Find orders via factura that has clienteNombre matching
-		//    the client name from clientes table
+		// 2. Find orders via factura that has telefonoCliente matching
+		//    (fallback: also match by clienteNombre via clientes table for legacy records without telefonoCliente)
 		const ordenesViaFactura = await this.ordenesRepo
 			.createQueryBuilder('o')
 			.innerJoin('o.factura', 'f')
-			.innerJoin('clientes', 'c', 'c.cliente_nombre = f.cliente_nombre AND c.telefono = :tel', { tel: telefono })
+			.leftJoin('clientes', 'c', 'c.telefono = :tel AND c.cliente_nombre = f.cliente_nombre', { tel: telefono })
+			.where('f.telefono_cliente = :tel OR c.telefono = :tel', { tel: telefono })
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('o.factura', 'fv')
 			.orderBy('o.fechaOrden', 'DESC')

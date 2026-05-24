@@ -4,9 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TextInput } from '../../tw';
 import { ActivityIndicator, Modal, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { api } from '../../services/api';
-import { formatCurrency, formatDate } from '@monorepo/shared';
+import { formatCurrency, formatDate } from '@/src/shared';
 import { getEstadoColor } from '../../constants/estados';
-import { useToast } from '@monorepo/shared';
+import { useToast } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import type { IconName } from '../../components/ui';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
@@ -312,7 +312,7 @@ export default function OrdenDetalleScreen() {
   const ec = getEstadoColor(orden.estadoOrden);
 
   return (
-    <PageContainer>
+    <PageContainer scrollable={false}>
       <PageHeader
         title={`Detalle #${orden.ordenId}`}
         icon="receipt-text-outline"
@@ -355,7 +355,7 @@ export default function OrdenDetalleScreen() {
         }
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerClassName="pb-10">
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
           {/* ── Status Banner ── */}
           <View className="mb-6 p-1 rounded-3xl bg-white/5 border border-white/5 overflow-hidden">
                 <View className={`flex-row items-center justify-between p-5 rounded-[22px] bg-white/5`}>

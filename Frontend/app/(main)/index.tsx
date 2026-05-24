@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform } from 'react-native';
+import { ActivityIndicator, Platform, useWindowDimensions, RefreshControl } from 'react-native';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
-import type { VentaHora, ResumenPeriodo, Orden } from '@monorepo/shared';
+import type { VentaHora, ResumenPeriodo, Orden } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import { PageContainer, Card, Icon } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
@@ -80,14 +80,19 @@ function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
         if (Number.isNaN(hour)) continue;
         byHour.set(hour, { ...item, hora: hour });
     }
-    return Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
+    const full = Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
+    const firstActive = full.findIndex(v => v.cantidad > 0);
+    let lastActive = -1;
+    for (let i = full.length - 1; i >= 0; i--) { if (full[i].cantidad > 0) { lastActive = i; break; } }
+    if (firstActive === -1) return full;
+    return full.slice(Math.max(0, firstActive - 1), Math.min(23, lastActive + 1) + 1);
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatCard({ count, label, color, urgent }: { count: number; label: string; color: string; urgent?: boolean }) {
+function StatCard({ count, label, color, urgent, cardWidth }: { count: number; label: string; color: string; urgent?: boolean; cardWidth?: number }) {
     return (
-        <Card className="flex-row items-center gap-3 p-4 bg-white/5 border-white/10" style={{ flex: 1, minWidth: 130 }}>
+        <Card className="flex-row items-center gap-3 p-4 bg-white/5 border-white/10" style={cardWidth ? { width: cardWidth } : { flex: 1, minWidth: 130 }}>
             <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: color }} />
             <View>
                 <Text style={{ fontFamily: 'Space Grotesk', color: urgent && count > 0 ? color : '#F8FAFC', fontSize: 22, fontWeight: '900' }}>
@@ -101,9 +106,12 @@ function StatCard({ count, label, color, urgent }: { count: number; label: strin
     );
 }
 
-function KpiCard({ label, value, color, bg, border }: { label: string; value: string; color: string; bg: string; border: string }) {
+function KpiCard({ label, value, color, bg, border, cardWidth }: { label: string; value: string; color: string; bg: string; border: string; cardWidth?: number }) {
     return (
-        <Card style={{ flex: 1, minWidth: 130, padding: 16, alignItems: 'center', backgroundColor: bg, borderColor: border }}>
+        <Card style={[
+            { padding: 16, alignItems: 'center', backgroundColor: bg, borderColor: border },
+            cardWidth ? { width: cardWidth } : { flex: 1, minWidth: 130 },
+        ]}>
             <Text style={{ color: '#64748B', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
                 {label}
             </Text>
@@ -115,33 +123,39 @@ function KpiCard({ label, value, color, bg, border }: { label: string; value: st
 }
 
 function HourChart({ ventasHoraFull, maxHora }: { ventasHoraFull: VentaHora[]; maxHora: number }) {
-    // Usa alturas en px — height:'%' no funciona con flex:1 en RN native
     return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: CHART_H, gap: 1 }}>
-            {ventasHoraFull.map(v => {
-                const barH = v.cantidad > 0 ? Math.max((v.cantidad / maxHora) * CHART_H, 4) : 0;
-                return (
-                    <View key={v.hora} style={{ flex: 1, height: CHART_H, alignItems: 'center', justifyContent: 'flex-end' }}>
-                        <View style={{
-                            flex: 1, width: '100%', maxWidth: 18,
-                            backgroundColor: 'rgba(255,255,255,0.04)',
-                            borderTopLeftRadius: 4, borderTopRightRadius: 4,
-                            justifyContent: 'flex-end', overflow: 'hidden',
-                        }}>
-                            {barH > 0 && (
+        <View style={{ width: '100%', flex: 1 }}>
+            {/* Fila de Barras */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', flex: 1, gap: 1 }}>
+                {ventasHoraFull.map(v => {
+                    const pct = v.cantidad > 0 ? Math.max((v.cantidad / maxHora) * 100, 3) : 0;
+                    return (
+                        <View key={v.hora} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                            {pct > 0 && (
                                 <View style={{
-                                    width: '100%', height: barH,
+                                    width: '100%', maxWidth: 18,
+                                    height: `${pct}%` as any,
                                     backgroundColor: '#F5A524',
-                                    borderTopLeftRadius: 4, borderTopRightRadius: 4,
+                                    borderTopLeftRadius: 4,
+                                    borderTopRightRadius: 4,
                                 }} />
                             )}
                         </View>
-                        {v.hora % 4 === 0 && (
-                            <Text style={{ fontSize: 7, color: '#475569', marginTop: 2 }}>{v.hora}h</Text>
-                        )}
-                    </View>
-                );
-            })}
+                    );
+                })}
+            </View>
+
+            {/* Fila de Etiquetas */}
+            <View style={{ flexDirection: 'row', marginTop: 4, gap: 1 }}>
+                {ventasHoraFull.map((v, i) => {
+                    const showLabel = ventasHoraFull.length <= 14 || i % 2 === 0;
+                    return (
+                        <View key={v.hora} style={{ flex: 1, alignItems: 'center' }}>
+                            <Text style={{ fontSize: 7, color: showLabel ? '#475569' : 'transparent', fontWeight: 'bold' }}>{v.hora}h</Text>
+                        </View>
+                    );
+                })}
+            </View>
         </View>
     );
 }
@@ -152,6 +166,14 @@ export default function DashboardPage() {
     const router = useRouter();
     const { user } = useAuth();
     const { isMobile } = useBreakpoint();
+    const { width: screenWidth } = useWindowDimensions();
+
+    // Calcula ancho exacto de tarjeta para cuadrícula de 2 columnas en móvil.
+    // PageContainer usa px-4 (16px c/lado) en móvil; gap entre tarjetas = 10px.
+    const cardGap = 10;
+    const hPad = isMobile ? 16 : 24;
+    const col2Width = isMobile ? Math.floor((screenWidth - hPad * 2 - cardGap) / 2) : undefined;
+
     const [clock, setClock] = useState(() =>
         new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
     );
@@ -169,6 +191,7 @@ export default function DashboardPage() {
         ordenes: [], pendientes: 0, sinPagar: 0, completadas: 0, sinAsignar: 0,
     });
     const { loading, resumen, ventasHora, ordenes, pendientes, sinPagar, completadas, sinAsignar } = dashboard;
+    const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
         const id = setInterval(() => {
@@ -179,6 +202,7 @@ export default function DashboardPage() {
 
     const fetchData = useCallback(async () => {
         setDashboard((prev) => ({ ...prev, loading: true }));
+        setHasError(false);
         const hoy = todayStr();
         try {
             const [r, vh, ords, facts, domSinAsignar] = await Promise.allSettled([
@@ -188,6 +212,16 @@ export default function DashboardPage() {
                 api.facturas.getDay(),
                 api.domicilios.getSinAsignar(),
             ]);
+
+            const allFailed = r.status === 'rejected' && 
+                             vh.status === 'rejected' && 
+                             ords.status === 'rejected' && 
+                             facts.status === 'rejected';
+
+            if (allFailed) {
+                setHasError(true);
+            }
+
             const ordData = ords.status === 'fulfilled' ? ords.value : [];
             const factsData = facts.status === 'fulfilled' ? facts.value : [];
             const sorted = [...ordData].sort((a, b) =>
@@ -207,6 +241,7 @@ export default function DashboardPage() {
         } catch (err) {
             console.error('Dashboard fetch error', err);
             setDashboard((prev) => ({ ...prev, loading: false }));
+            setHasError(true);
         }
     }, []);
 
@@ -230,7 +265,30 @@ export default function DashboardPage() {
     if (!ready) return null;
 
     return (
-        <PageContainer>
+        <PageContainer refreshControl={
+            <RefreshControl
+                refreshing={loading}
+                onRefresh={fetchData}
+                colors={['#F5A524']}
+                tintColor="#F5A524"
+            />
+        }>
+            {/* Banner de error de conexión */}
+            {hasError && (
+                <View className="mb-4 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex-row items-center gap-3">
+                    <View className="w-8 h-8 rounded-full bg-red-500/20 items-center justify-center">
+                        <Icon name="wifi-off" size={18} color="#EF4444" />
+                    </View>
+                    <View className="flex-1">
+                        <Text style={{ fontFamily: 'Space Grotesk', color: '#FCA5A5', fontSize: 13, fontWeight: '700' }}>
+                            Error de conexión
+                        </Text>
+                        <Text style={{ color: '#F87171', fontSize: 11, marginTop: 1 }}>
+                            No se pudieron cargar algunos datos en tiempo real. Desliza hacia abajo para reintentar.
+                        </Text>
+                    </View>
+                </View>
+            )}
             {/* ── Header ── */}
             <View className={`flex-row items-center border border-white/5 bg-white/5 overflow-hidden rounded-2xl mb-4 ${isMobile ? 'px-4 py-3' : 'px-6 py-4'}`}>
                 <View className="flex-1">
@@ -290,12 +348,12 @@ export default function DashboardPage() {
             </View>
 
             {/* ── Stat counters ── */}
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-                <StatCard count={pendientes} label="Pendientes" color={pendientes > 0 ? '#EF4444' : '#10B981'} urgent />
-                <StatCard count={sinPagar} label="Por Pagar" color={sinPagar > 0 ? '#F5A524' : '#10B981'} urgent />
-                <StatCard count={completadas} label="Entregadas" color="#10B981" />
-                <TouchableOpacity style={{ flex: 1, minWidth: 130 }} onPress={() => router.push('/asignar-domiciliarios' as any)}>
-                    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, flex: 1,
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap, marginBottom: 16 }}>
+                <StatCard count={pendientes} label="Pendientes" color={pendientes > 0 ? '#EF4444' : '#10B981'} urgent cardWidth={col2Width} />
+                <StatCard count={sinPagar} label="Por Pagar" color={sinPagar > 0 ? '#F5A524' : '#10B981'} urgent cardWidth={col2Width} />
+                <StatCard count={completadas} label="Entregadas" color="#10B981" cardWidth={col2Width} />
+                <TouchableOpacity style={col2Width ? { width: col2Width } : { flex: 1, minWidth: 130 }} onPress={() => router.push('/asignar-domiciliarios' as any)}>
+                    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16,
                         backgroundColor: sinAsignar > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.05)',
                         borderColor: sinAsignar > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.1)' }}>
                         <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: sinAsignar > 0 ? '#F59E0B' : '#10B981' }} />
@@ -318,11 +376,11 @@ export default function DashboardPage() {
 
             {/* ── KPIs ── */}
             {resumen && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap, marginBottom: 20 }}>
                     <KpiCard label="Ventas Hoy" value={formatCurrency(resumen.totalVentas)}
-                        color="#34D399" bg="rgba(16,185,129,0.08)" border="rgba(16,185,129,0.2)" />
+                        color="#34D399" bg="rgba(16,185,129,0.08)" border="rgba(16,185,129,0.2)" cardWidth={col2Width} />
                     <KpiCard label="Ticket Promedio" value={formatCurrency(resumen.ticketPromedio)}
-                        color="#A78BFA" bg="rgba(139,92,246,0.08)" border="rgba(139,92,246,0.2)" />
+                        color="#A78BFA" bg="rgba(139,92,246,0.08)" border="rgba(139,92,246,0.2)" cardWidth={col2Width} />
                     <KpiCard label="Órdenes" value={String(resumen.ordenes)}
                         color="#F5A524" bg="rgba(245,165,36,0.08)" border="rgba(245,165,36,0.2)" />
                 </View>
@@ -331,7 +389,7 @@ export default function DashboardPage() {
             {/* ── Chart + Recent ── */}
             <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
                 {/* Hourly chart */}
-                <Card style={{ flex: isMobile ? undefined : 1, padding: 16, marginBottom: isMobile ? 12 : 0 }}>
+                <Card style={{ flex: isMobile ? undefined : 1, padding: 16, marginBottom: isMobile ? 12 : 0, flexDirection: 'column' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' }}>
                         <Icon name="chart-bar" size={14} color="#64748B" />
                         <Text style={{ fontFamily: 'Space Grotesk', color: '#F8FAFC', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 }}>
@@ -341,7 +399,7 @@ export default function DashboardPage() {
                     {ventasHora.length > 0 ? (
                         <HourChart ventasHoraFull={ventasHoraFull} maxHora={maxHora} />
                     ) : (
-                        <View style={{ height: CHART_H, alignItems: 'center', justifyContent: 'center' }}>
+                        <View style={{ flex: 1, minHeight: CHART_H, alignItems: 'center', justifyContent: 'center' }}>
                             <Text style={{ color: '#475569', fontSize: 13, fontStyle: 'italic' }}>Sin actividad registrada hoy</Text>
                         </View>
                     )}

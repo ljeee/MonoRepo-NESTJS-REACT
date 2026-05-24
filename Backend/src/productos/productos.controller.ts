@@ -1,7 +1,7 @@
 import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@nestjs/common";
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {ProductosService} from "./productos.service";
-import {CreateProductosDto, FindProductosDto} from "./esquemas/productos.dto";
+import {CreateProductosDto, CreateProductoVarianteDto, FindProductosDto} from "./esquemas/productos.dto";
 import {Public} from "../auth/decorators/public.decorator";
 
 @ApiTags('Productos')
@@ -45,9 +45,9 @@ export class ProductosController {
 	@ApiResponse({ status: 201, description: 'Variante agregada.' })
 	addVariante(
 		@Param("id") id: number,
-		@Body() body: {nombre: string; precio: number; descripcion?: string}
+		@Body() body: CreateProductoVarianteDto
 	) {
-		return this.service.createVariante(id, body.nombre, body.precio, body.descripcion);
+		return this.service.createVariante(id, body.nombre, body.precio, body.descripcion, body.precioLeche);
 	}
 
 	@Patch(":id")
@@ -64,14 +64,24 @@ export class ProductosController {
 		return this.service.remove(id);
 	}
 
+	@Patch("variantes/:id/stock-bebida")
+	@ApiOperation({ summary: 'Ajustar stock de bebida de una variante (+delta o -delta)' })
+	@ApiResponse({ status: 200, description: 'Stock ajustado.' })
+	ajustarStockBebida(
+		@Param("id") id: number,
+		@Body() body: { delta: number }
+	) {
+		return this.service.ajustarStockBebida(id, body.delta);
+	}
+
 	@Patch("variantes/:id")
 	@ApiOperation({ summary: 'Actualizar una variante' })
 	@ApiResponse({ status: 200, description: 'Variante actualizada.' })
 	updateVariante(
 		@Param("id") id: number,
-		@Body() body: {nombre?: string; precio?: number; descripcion?: string; activo?: boolean}
+		@Body() body: {nombre?: string; precio?: number; precioLeche?: number | null; descripcion?: string; activo?: boolean}
 	) {
-		return this.service.updateVariante(id, body.nombre, body.precio, body.descripcion, body.activo);
+		return this.service.updateVariante(id, body.nombre, body.precio, body.descripcion, body.activo, body.precioLeche);
 	}
 
 	@Delete("variantes/:id")

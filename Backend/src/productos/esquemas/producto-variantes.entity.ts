@@ -20,6 +20,12 @@ export class ProductoVariantes {
 	@Column({name: 'descripcion', type: 'text', nullable: true})
 	descripcion: string;
 
+	@Column({name: 'precio_leche', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
+	precioLeche: number | null;
+
+	@Column({name: 'stock_bebida', type: 'integer', default: 0})
+	stockBebida: number;
+
 	@Column({name: 'activo', type: 'boolean', default: true})
 	activo: boolean;
 

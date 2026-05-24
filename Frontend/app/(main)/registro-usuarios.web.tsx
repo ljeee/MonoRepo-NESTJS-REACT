@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView, View, Text } from '../../tw';
-import { PageContainer, PageHeader, Button, Icon, Card, Input } from '../../components/ui';
+import { PageContainer, PageHeader, Button, Icon, Card, Input, Picker, PickerItem } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, Role, RegisterDto } from '@monorepo/shared';
-import { Picker } from '@react-native-picker/picker';
+import { useToast, Role, RegisterDto } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ROLES = [
@@ -110,7 +109,7 @@ export default function RegistroUsuariosScreen() {
                                     dropdownIconColor="#94A3B8"
                                 >
                                     {ROLES.map(r => (
-                                        <Picker.Item 
+                                        <PickerItem 
                                             key={r.value} 
                                             label={r.label} 
                                             value={r.value} 

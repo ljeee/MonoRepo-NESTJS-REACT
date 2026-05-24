@@ -1,4 +1,4 @@
-import { createHttpClient, createApi, setAuthToken as sharedSetAuthToken } from '@monorepo/shared';
+import { createHttpClient, createApi, setAuthToken as sharedSetAuthToken } from '@/src/shared';
 
 // ─── Platform-specific base URL ───────────────────────────────────────────────
 

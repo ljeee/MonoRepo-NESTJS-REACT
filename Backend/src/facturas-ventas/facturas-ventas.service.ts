@@ -1,50 +1,71 @@
 import {Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {Repository} from 'typeorm';
+import {Repository, SelectQueryBuilder} from 'typeorm';
 import {FacturasVentas} from './esquemas/facturas-ventas.entity';
 import {CreateFacturasVentasDto} from './esquemas/facturas-ventas.dto';
 import {Ordenes} from '../ordenes/esquemas/ordenes.entity';
+import {getBogotaDayBoundaries, getBogotaDateString} from '../common/utils/date.utils';
+import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
 
 @Injectable()
 export class FacturasVentasService {
 	constructor(
 		@InjectRepository(FacturasVentas)
 		private readonly repo: Repository<FacturasVentas>,
-		@InjectRepository(Ordenes)
-		private readonly ordenesRepo: Repository<Ordenes>,
+		private readonly cajaMovimientosService: CajaMovimientosService,
 	) {}
 
-	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number } = {}) {
-		const { from, to, page = 1, limit = 50 } = opts;
-		const qb = this.repo
+	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string } = {}) {
+		const { from, to, page = 1, limit = 50, estado, clienteNombre } = opts;
+
+		// Apply all WHERE filters — uses explicit Bogotá offset so Alpine Docker
+		// (no tzdata) gives the same result as an environment with TZ=America/Bogota.
+		const addFilters = (qb: SelectQueryBuilder<FacturasVentas>) => {
+			if (from && to) {
+				const { start } = getBogotaDayBoundaries(from);
+				const { end } = getBogotaDayBoundaries(to);
+				qb.where('f.fechaFactura BETWEEN :from AND :to', { from: start, to: end });
+			} else if (from) {
+				const { start } = getBogotaDayBoundaries(from);
+				qb.where('f.fechaFactura >= :from', { from: start });
+			} else if (to) {
+				const { end } = getBogotaDayBoundaries(to);
+				qb.where('f.fechaFactura <= :to', { to: end });
+			}
+
+			if (estado) {
+				if (estado === 'pendiente') {
+					qb.andWhere('(f.estado = :estado OR f.estado IS NULL)', { estado: 'pendiente' });
+				} else {
+					qb.andWhere('f.estado = :estado', { estado });
+				}
+			}
+
+			if (clienteNombre && clienteNombre.trim()) {
+				qb.andWhere('f.clienteNombre ILIKE :clienteNombre', { clienteNombre: `%${clienteNombre.trim()}%` });
+			}
+		};
+
+		// Separate count query (no joins) — avoids TypeORM COUNT+leftJoinAndSelect issues
+		const countQb = this.repo.createQueryBuilder('f');
+		addFilters(countQb);
+		const total = await countQb.getCount();
+
+		// Data query with full joins + pagination
+		const dataQb = this.repo
 			.createQueryBuilder('f')
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
 			.leftJoinAndSelect('ordenes.productos', 'op')
 			.leftJoinAndSelect('f.domicilios', 'domicilios')
 			.orderBy('f.fechaFactura', 'DESC');
-
-		if (from && to) {
-			qb.where('f.fechaFactura BETWEEN :from AND :to', {
-				from: new Date(from + 'T00:00:00'),
-				to: new Date(to + 'T23:59:59'),
-			});
-		} else if (from) {
-			qb.where('f.fechaFactura >= :from', { from: new Date(from + 'T00:00:00') });
-		} else if (to) {
-			qb.where('f.fechaFactura <= :to', { to: new Date(to + 'T23:59:59') });
-		}
-
-		const total = await qb.getCount();
-		const data = await qb.take(limit).skip((page - 1) * limit).getMany();
+		addFilters(dataQb);
+		const data = await dataQb.take(limit).skip((page - 1) * limit).getMany();
 
 		return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
 	}
 
 	async findByDay() {
-		const start = new Date();
-		start.setHours(0, 0, 0, 0);
-		const end = new Date();
-		end.setHours(23, 59, 59, 999);
+		const { start, end } = getBogotaDayBoundaries();
 		const result = await this.repo
 			.createQueryBuilder('f')
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
@@ -56,10 +77,7 @@ export class FacturasVentasService {
 	}
 
 	findPendingByDay() {
-		const start = new Date();
-		start.setHours(0, 0, 0, 0);
-		const end = new Date();
-		end.setHours(23, 59, 59, 999);
+		const { start, end } = getBogotaDayBoundaries();
 		return this.repo
 			.createQueryBuilder('f')
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
@@ -70,10 +88,7 @@ export class FacturasVentasService {
 	}
 
 	async getDayStats() {
-		const start = new Date();
-		start.setHours(0, 0, 0, 0);
-		const end = new Date();
-		end.setHours(23, 59, 59, 999);
+		const { start, end } = getBogotaDayBoundaries();
 
 		const facturas = await this.repo
 			.createQueryBuilder('f')
@@ -82,9 +97,11 @@ export class FacturasVentasService {
 			.getMany();
 
 		const totalDia = facturas.reduce((sum, f) => sum + (Number(f.total) || 0), 0);
-		const totalPagado = facturas.filter((f) => f.estado === 'pagado').reduce((sum, f) => sum + (Number(f.total) || 0), 0);
+		const totalPagado = facturas
+			.filter((f) => f.estado === 'pagada' || f.estado === 'pagado')
+			.reduce((sum, f) => sum + (Number(f.total) || 0), 0);
 		const totalPendiente = facturas
-			.filter((f) => f.estado !== 'pagado')
+			.filter((f) => f.estado !== 'pagado' && f.estado !== 'pagada')
 			.reduce((sum, f) => sum + (Number(f.total) || 0), 0);
 
 		return {
@@ -111,32 +128,59 @@ export class FacturasVentasService {
 	}
 
 	async update(id: number, data: Partial<CreateFacturasVentasDto>) {
-		const completing = data.estado === 'pagada';
+		const completing = data.estado === 'pagada' || data.estado === 'pagado';
 
 		if (!completing) {
-			// Simple update without side-effects
 			return this.repo.update(id, data);
 		}
 
 		// Transactional: complete factura + all linked orders atomically
-		return this.repo.manager.transaction(async (manager) => {
+		const result = await this.repo.manager.transaction(async (manager) => {
 			const facturasRepo = manager.getRepository(FacturasVentas);
 			const ordenesRepo = manager.getRepository(Ordenes);
 
-			// 1. Update factura
 			await facturasRepo.update(id, data);
 
-			// 2. Mark all pending orders linked to this factura as completada
 			await ordenesRepo
 				.createQueryBuilder()
 				.update(Ordenes)
 				.set({ estadoOrden: 'completada' })
 				.where('factura_id = :facturaId', { facturaId: id })
-				.andWhere('estado_orden = :pendiente', { pendiente: 'pendiente' })
+				.andWhere('estado_orden NOT IN (:...estados)', { estados: ['completada', 'cancelada'] })
 				.execute();
 
 			return facturasRepo.findOne({ where: { facturaId: id } });
 		});
+
+		// Register caja entry if paid in cash with denomination breakdown
+		if (
+			(data.metodo === 'efectivo' || data.metodo === 'efectivo_transferencia') &&
+			data.denominaciones && Object.keys(data.denominaciones).length > 0 &&
+			(data.pagoEfectivo ?? 0) > 0
+		) {
+			await this.cajaMovimientosService.registrarEntrada({
+				denominaciones: data.denominaciones,
+				facturaVentaId: id,
+				descripcion: `Cobro factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
+				fecha: getBogotaDateString(),
+				metodo: data.metodo,
+				pagoTransferencia: data.pagoTransferencia,
+			});
+		}
+
+		// Register caja exit (change given back to customer)
+		if (
+			data.cambioDenominaciones &&
+			Object.keys(data.cambioDenominaciones).length > 0
+		) {
+			await this.cajaMovimientosService.registrarSalida({
+				denominaciones: data.cambioDenominaciones,
+				descripcion: `Cambio factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
+				fecha: getBogotaDateString(),
+			});
+		}
+
+		return result;
 	}
 
 	remove(id: number) {

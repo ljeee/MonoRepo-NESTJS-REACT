@@ -95,10 +95,16 @@ export class EstadisticasController {
 	}
 
 	@Get('clientes-frecuentes')
-	@ApiOperation({ summary: 'Clientes con más órdenes' })
+	@ApiOperation({ summary: 'Clientes con más gasto (optionally filtered by date range)' })
 	@ApiQuery({ name: 'limit', required: false })
-	clientesFrecuentes(@Query('limit') limit?: string) {
-		return this.service.clientesFrecuentes(limit ? Number(limit) : 10);
+	@ApiQuery({ name: 'from', required: false, example: '2026-05-01' })
+	@ApiQuery({ name: 'to', required: false, example: '2026-05-31' })
+	clientesFrecuentes(
+		@Query('limit') limit?: string,
+		@Query('from') from?: string,
+		@Query('to') to?: string,
+	) {
+		return this.service.clientesFrecuentes(limit ? Number(limit) : 10, from, to);
 	}
 
 	@Get('domiciliarios')

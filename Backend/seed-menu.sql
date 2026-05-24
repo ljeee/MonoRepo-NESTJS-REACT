@@ -5,6 +5,7 @@
 -- Modo dev: borra y recrea todos los productos y variantes
 -- =============================================================================
 
+DELETE FROM variantes_ingredientes;
 DELETE FROM producto_variantes;
 DELETE FROM productos;
 

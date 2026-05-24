@@ -1,5 +1,5 @@
 import {Entity, PrimaryGeneratedColumn, Column, Index} from 'typeorm';
-import {NumericTransformer} from '../../common/utils/numeric.transformer';
+import {ColumnNumericTransformer as NumericTransformer} from '../../common/utils/numeric.transformer';
 
 @Entity('facturas_pagos')
 export class FacturasPagos {
@@ -27,4 +27,7 @@ export class FacturasPagos {
 
 	@Column({name: 'categoria', type: 'text', nullable: true, default: 'general'})
 	categoria: string;
+
+	@Column({name: 'denominaciones', type: 'jsonb', nullable: true})
+	denominaciones: Record<string, number> | null;
 }

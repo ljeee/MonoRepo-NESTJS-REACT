@@ -62,16 +62,20 @@ module.exports = function withNodeExecFix(config) {
       console.log(`[withNodeExecFix] Injected nodeExec helper, replaced ${callCount} inline call(s) ✓`);
     }
 
-    // Final patch: hermes-compiler is no longer a standalone npm package in RN 0.81+.
-    // hermesc is now bundled inside react-native/sdks/hermesc/.
-    // The generated template still references hermes-compiler → require.resolve fails →
-    // empty string → new File("").getParentFile() → null → getAbsolutePath() NPE.
-    if (contents.includes('hermes-compiler')) {
+    // NOTE: hermesCommand override intentionally removed.
+    // hermes-compiler is not a standard npm package and cannot be resolved at build time.
+    // Expo SDK 55 + RN 0.83 manage hermesc automatically via the React Native build toolchain.
+    // Overriding hermesCommand here caused EAS Build (Linux) to fail with:
+    //   "Cannot find module 'hermes-compiler/package.json'"
+
+    // Embed the JS bundle in all variants (including debug) so the APK works standalone
+    // without a running Metro server. Essential for installing on physical devices.
+    if (!contents.includes('debuggableVariants = []')) {
       contents = contents.replace(
-        /[ \t]*hermesCommand\s*=[^\n]*hermes-compiler[^\n]+/,
-        '    hermesCommand = new File(nodeExec(["node", "--print", "require.resolve(\'react-native/package.json\')"])).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"'
+        /(autolinkLibrariesWithApp\(\))/,
+        'debuggableVariants = [] // embed JS bundle in all builds\n    $1'
       );
-      console.log('[withNodeExecFix] Fixed hermesCommand: hermes-compiler → react-native/sdks/hermesc ✓');
+      console.log('[withNodeExecFix] Added debuggableVariants = [] ✓');
     }
 
     // Fix hermesc execute permissions: npm on Windows strips +x bits from binaries.

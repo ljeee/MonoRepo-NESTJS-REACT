@@ -12,6 +12,9 @@ export class FacturasVentas {
 	@Column({name: 'cliente_nombre', type: 'text', nullable: true})
 	clienteNombre: string;
 
+	@Column({name: 'telefono_cliente', type: 'text', nullable: true})
+	telefonoCliente: string | null;
+
 	@Column({name: 'descripcion', type: 'text', nullable: true})
 	descripcion: string;
 
@@ -24,6 +27,12 @@ export class FacturasVentas {
 
 	@Column({name: 'metodo', type: 'text', nullable: true})
 	metodo: string;
+
+	@Column({name: 'pago_efectivo', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
+	pagoEfectivo: number;
+
+	@Column({name: 'pago_transferencia', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
+	pagoTransferencia: number;
 
 	@Column({name: 'total', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	total: number;
@@ -40,6 +49,12 @@ export class FacturasVentas {
 	@Column({name: 'idempotency_key', type: 'text', nullable: true, unique: true})
 	@Index({unique: true})
 	idempotencyKey: string;
+
+	@Column({name: 'denominaciones', type: 'jsonb', nullable: true})
+	denominaciones: Record<string, number> | null;
+
+	@Column({name: 'cambio_denominaciones', type: 'jsonb', nullable: true})
+	cambioDenominaciones: Record<string, number> | null;
 
 	@OneToMany(() => Ordenes, (orden) => orden.factura)
 	ordenes: Ordenes[];

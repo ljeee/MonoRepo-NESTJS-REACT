@@ -11,10 +11,20 @@ export class CreateProductoVarianteDto {
 	@IsNumber()
 	precio: number;
 
+	@ApiProperty({example: 18000, required: false, description: 'Precio cuando el jugo se prepara con leche. Null = no aplica'})
+	@IsOptional()
+	@IsNumber()
+	precioLeche?: number | null;
+
 	@ApiProperty({example: 'Pizza pequeña', required: false})
 	@IsOptional()
 	@IsString()
 	descripcion?: string;
+
+	@ApiProperty({example: true, required: false})
+	@IsOptional()
+	@IsBoolean()
+	activo?: boolean;
 }
 
 export class FindProductosDto {

@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { ScrollView, View, Text, TouchableOpacity, Pressable } from '../../tw';
 import { Button, Icon, ListSkeleton, Badge, PageContainer } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, Role } from '@monorepo/shared';
+import { useToast, Role } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 import {
     useSharedValue, useAnimatedStyle, withTiming, withSpring,

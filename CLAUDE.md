@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Dfiru POS** — a point-of-sale system for a pizza restaurant. npm workspaces monorepo with three packages:
+**Dfiru POS** — a point-of-sale system for a pizza restaurant. npm workspaces monorepo with two packages:
 
 | Package | Purpose |
 |---|---|
 | `Backend/` | NestJS REST API + WebSocket server |
 | `Frontend/` | Expo app (React Native + web) |
-| `packages/shared/` | Shared TypeScript types, API client, and React hooks |
+
+Shared code (types, API client, React hooks, contexts) lives in `Frontend/src/shared/` — imported via the `@/src/shared` path alias.
 
 ## Commands
 
@@ -54,10 +55,10 @@ For full Docker stack: set `DB_PASSWORD`, `JWT_SECRET`, `EXPO_PUBLIC_API_BASE_UR
 
 ## Architecture
 
-### Shared Package (`packages/shared/`)
-All type definitions live in `src/types/models.ts` and are the single source of truth for both backend and frontend. The API client is a factory (`createApi(http)`) that wraps axios and returns namespaced methods (`api.ordenes.*`, `api.facturas.*`, etc.). The frontend instantiates this once in `Frontend/services/api.ts` and injects it via `<ApiProvider>`.
+### Shared code (`Frontend/src/shared/`)
+All type definitions live in `src/shared/types/models.ts` and are the single source of truth for the frontend. The API client is a factory (`createApi(http)`) that wraps axios and returns namespaced methods (`api.ordenes.*`, `api.facturas.*`, etc.). The frontend instantiates this once in `Frontend/services/api.ts` and injects it via `<ApiProvider>`.
 
-React contexts in `packages/shared/src/contexts/`:
+React contexts in `Frontend/src/shared/contexts/`:
 - `ApiContext` — provides the `Api` instance to all screens via `useApi()`
 - `OrderContext` — order creation form state with AsyncStorage persistence
 - `OfflineQueueContext` — queues payment completions when offline, retries on reconnect
@@ -83,4 +84,4 @@ Expo Router file-based routing under `Frontend/app/(main)/`. Files ending in `.w
 
 **UI components**: `Frontend/components/ui/` — reusable primitives (Button, Card, Input, Badge, Icon, Toast, PageContainer, etc.). Domain components live alongside their screens in `Frontend/components/`.
 
-**API access in screens**: use `useApi()` hook (from `@monorepo/shared`) inside components wrapped by `<ApiProvider>`. The root layout (`Frontend/app/_layout.tsx`) wires up all providers: `ApiProvider → AuthProvider → ToastProvider → OfflineQueueProvider → OrderProvider`.
+**API access in screens**: use `useApi()` hook (from `@/src/shared`) inside components wrapped by `<ApiProvider>`. The root layout (`Frontend/app/_layout.tsx`) wires up all providers: `ApiProvider → AuthProvider → ToastProvider → OfflineQueueProvider → OrderProvider`.

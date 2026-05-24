@@ -1,19 +1,18 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, TouchableOpacity } from 'react-native';
-import { View, Text } from '../../tw';
-import { useFacturasRango, calcStats } from '@monorepo/shared';
+import { TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView } from '../../tw';
+import { useFacturasRango, calcStats } from '@/src/shared';
+import type { DenominacionesMap } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
-import { validateFlexibleDateRange } from '@monorepo/shared';
+import { validateFlexibleDateRange } from '@/src/shared';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
-import {
-  PageContainer,
-  PageHeader,
-  Button,
-  Input,
-  Icon,
-  ListSkeleton,
-} from '../../components/ui';
+import PageContainer from '../../components/ui/PageContainer';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Icon from '../../components/ui/Icon';
+import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Tipos de filtro local ──────────────────────────────────────────────────
@@ -35,7 +34,7 @@ export default function FacturasRangoScreen() {
     from, to, setFrom, setTo,
     fetchData, search,
     stats, updateEstado, updateFactura, deleteFactura,
-  } = useFacturasRango({ limit: 5000 });
+  } = useFacturasRango(5000);
 
   const [localPage, setLocalPage] = useState(1);
   const itemsPerPage = 50;
@@ -65,18 +64,24 @@ export default function FacturasRangoScreen() {
     setLocalPage(1);
   }, [from, to, setFrom, setTo, search]);
 
-  const handleChangeEstado = useCallback(async (facturaId: number, nuevoEstado: string, metodo?: string) => {
+  const handleChangeEstado = useCallback(async (
+    facturaId: number,
+    nuevoEstado: string,
+    metodo?: string,
+    pagoEfectivo?: number,
+    pagoTransferencia?: number,
+    denominaciones?: DenominacionesMap,
+    cambioDenominaciones?: DenominacionesMap,
+  ) => {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-         await updateFactura(facturaId, { estado: 'pagado', metodo });
+        await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones });
       } else {
-         await updateEstado(facturaId, nuevoEstado);
+        await updateEstado(facturaId, nuevoEstado);
       }
-      setUpdating(null);
-    } catch {
-      setUpdating(null);
-    }
+    } catch { /* silent */ }
+    setUpdating(null);
   }, [updateEstado, updateFactura]);
 
   const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
@@ -121,19 +126,6 @@ export default function FacturasRangoScreen() {
     const csv = await buildCombinedBalanceCsv(filteredData, []);
     downloadCsv(csv, `contabilidad_${from || 'inicio'}_${to || 'fin'}.csv`);
   }, [filteredData, from, to]);
-
-  const renderFacturaItem = useCallback(({ item }: { item: FacturaItem }) => (
-    <View className="flex-1 pb-4">
-      <FacturaCard
-        item={item}
-        isUpdating={updating === item.facturaId}
-        onToggleEstado={handleChangeEstado}
-        onUpdateTotal={handleUpdateTotal}
-        onUpdate={updateFactura}
-        onDelete={handleDeleteFactura}
-      />
-    </View>
-  ), [handleChangeEstado, handleUpdateTotal, handleDeleteFactura, updating]);
 
   // ── Pagination bar ──────────────────────────────────────────────────────────
   const PaginationBar = totalLocalPages > 1 ? (
@@ -180,216 +172,242 @@ export default function FacturasRangoScreen() {
   ) : null;
 
   return (
+    /*
+     * scrollable={false} + ScrollView from ../../tw inside is the proven pattern.
+     * FlatList className="flex-1" (old code) was silently ignored — FlatList is a
+     * raw RN component, not a tw wrapper, so className never became style={{ flex:1 }}.
+     * Result: FlatList had no height → invisible. Fixed by using ScrollView from tw,
+     * which converts className via useCssElement (same as all other working list screens).
+     */
     <PageContainer scrollable={false} contentContainerClassName="flex-1">
-      <FlatList
-        data={paginatedData}
-        className="flex-1"
-        keyExtractor={(item: FacturaItem, idx: number) => item.facturaId?.toString() || idx.toString()}
-        key={isMobile ? 'col_1' : 'col_2'}
-        numColumns={isMobile ? 1 : 2}
-        contentContainerClassName="pb-4"
-        columnWrapperStyle={!isMobile ? { gap: 16 } : undefined}
-        ListHeaderComponent={
-          <>
-            <PageHeader
-              title="Facturas por Fechas"
-              subtitle="Facturación"
-              icon="calendar-range"
-              rightContent={
-                <Button
-                  title="Refrescar"
-                  icon="refresh"
-                  variant="ghost"
-                  size="sm"
-                  onPress={() => fetchData()}
-                />
-              }
+      <ScrollView className="flex-1" contentContainerClassName="pb-4">
+
+        <PageHeader
+          title="Facturas por Fechas"
+          subtitle="Facturación"
+          icon="calendar-range"
+          rightContent={
+            <Button
+              title="Refrescar"
+              icon="refresh"
+              variant="ghost"
+              size="sm"
+              onPress={() => fetchData()}
+            />
+          }
+        />
+
+        {/* ── Filtro de fechas ────────────────────────────────────── */}
+        <View className="flex-row gap-4 mb-4 flex-wrap items-end">
+          <Input
+            label="Desde"
+            value={from}
+            onChangeText={setFrom}
+            placeholder="2025-01-01"
+            containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
+            size="sm"
+            leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
+          />
+          <Input
+            label="Hasta"
+            value={to}
+            onChangeText={setTo}
+            placeholder="2026-12-31"
+            containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
+            size="sm"
+            leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
+          />
+          <Button
+            title={loading ? '...' : 'Buscar'}
+            icon="magnify"
+            variant="primary"
+            size="sm"
+            onPress={handleSearch}
+            disabled={!from || !to || loading}
+            loading={loading}
+          />
+        </View>
+
+        {filterError ? (
+          <View className="flex-row items-center gap-2 bg-(--color-pos-danger)/10 p-4 rounded-xl mb-4 border border-(--color-pos-danger)/20">
+            <Icon name="alert-circle-outline" size={14} color="#F43F5E" />
+            <Text className="text-(--color-pos-danger) flex-1">{filterError}</Text>
+          </View>
+        ) : null}
+
+        {/* ── Filtros locales + Exportar (solo post-búsqueda) ─────── */}
+        {hasSearched && !loading && (
+          <View
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.03)',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.07)',
+              borderRadius: 16,
+              padding: 12,
+              marginBottom: 16,
+              gap: 10,
+            }}
+          >
+            {/* Fila 1: chips de estado */}
+            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+              {ESTADO_TABS.map((tab) => {
+                const isActive = estadoFilter === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    onPress={() => { setEstadoFilter(tab.key); setLocalPage(1); }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 5,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 20,
+                      borderWidth: 1,
+                      backgroundColor: isActive ? 'rgba(245,165,36,0.15)' : 'rgba(255,255,255,0.04)',
+                      borderColor: isActive ? 'rgba(245,165,36,0.35)' : 'rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    <Icon name={tab.icon} size={12} color={isActive ? '#F5A524' : tab.color} />
+                    <Text style={{
+                      fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5,
+                      color: isActive ? '#F5A524' : '#64748B',
+                    }}>
+                      {tab.label}
+                    </Text>
+                    {tab.key === 'todas' && (
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
+                        <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>{data.length}</Text>
+                      </View>
+                    )}
+                    {tab.key !== 'todas' && (
+                      <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
+                        <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>
+                          {data.filter(f => f.estado === tab.key).length}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Fila 2: buscador por nombre */}
+            <Input
+              placeholder="Buscar por nombre de cliente..."
+              value={nombreFilter}
+              onChangeText={(t) => { setNombreFilter(t); setLocalPage(1); }}
+              size="sm"
+              containerStyle={{ marginBottom: 0 }}
+              leftIcon={<Icon name="account-search-outline" size={15} color="#475569" />}
             />
 
-            {/* ── Filtro de fechas ────────────────────────────────────── */}
-            <View className="flex-row gap-4 mb-4 flex-wrap items-end">
-              <Input
-                label="Desde"
-                value={from}
-                onChangeText={setFrom}
-                placeholder="2025-01-01"
-                containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
+            {/* Fila 3: botones exportar */}
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+              <Button
+                title="Exportar PDF"
+                icon="file-pdf-outline"
+                variant="secondary"
                 size="sm"
-                leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
-              />
-              <Input
-                label="Hasta"
-                value={to}
-                onChangeText={setTo}
-                placeholder="2026-12-31"
-                containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
-                size="sm"
-                leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
+                onPress={handleExportPdf}
+                disabled={filteredData.length === 0}
+                className="bg-purple-600/20 border-purple-500/30"
               />
               <Button
-                title={loading ? '...' : 'Buscar'}
-                icon="magnify"
-                variant="primary"
+                title="CSV Contable"
+                icon="table-large"
+                variant="secondary"
                 size="sm"
-                onPress={handleSearch}
-                disabled={!from || !to || loading}
-                loading={loading}
+                onPress={handleExportContabilidad}
+                disabled={filteredData.length === 0}
+                className="bg-emerald-600/20 border-emerald-500/30"
               />
-            </View>
-
-            {filterError ? (
-              <View className="flex-row items-center gap-2 bg-(--color-pos-danger)/10 p-4 rounded-xl mb-4 border border-(--color-pos-danger)/20">
-                <Icon name="alert-circle-outline" size={14} color="#F43F5E" />
-                <Text className="text-(--color-pos-danger) flex-1">{filterError}</Text>
-              </View>
-            ) : null}
-
-            {/* ── Filtros locales + Exportar (solo post-búsqueda) ─────── */}
-            {hasSearched && !loading && (
-              <View
-                style={{
-                  backgroundColor: 'rgba(255,255,255,0.03)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.07)',
-                  borderRadius: 16,
-                  padding: 12,
-                  marginBottom: 16,
-                  gap: 10,
-                }}
-              >
-                {/* Fila 1: chips de estado */}
-                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                  {ESTADO_TABS.map((tab) => {
-                    const isActive = estadoFilter === tab.key;
-                    return (
-                      <TouchableOpacity
-                        key={tab.key}
-                        onPress={() => { setEstadoFilter(tab.key); setLocalPage(1); }}
-                        style={{
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          gap: 5,
-                          paddingHorizontal: 12,
-                          paddingVertical: 6,
-                          borderRadius: 20,
-                          borderWidth: 1,
-                          backgroundColor: isActive ? 'rgba(245,165,36,0.15)' : 'rgba(255,255,255,0.04)',
-                          borderColor: isActive ? 'rgba(245,165,36,0.35)' : 'rgba(255,255,255,0.08)',
-                        }}
-                      >
-                        <Icon name={tab.icon} size={12} color={isActive ? '#F5A524' : tab.color} />
-                        <Text style={{
-                          fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5,
-                          color: isActive ? '#F5A524' : '#64748B',
-                        }}>
-                          {tab.label}
-                        </Text>
-                        {tab.key === 'todas' && (
-                          <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
-                            <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>{data.length}</Text>
-                          </View>
-                        )}
-                        {tab.key !== 'todas' && (
-                          <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
-                            <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>
-                              {data.filter(f => f.estado === tab.key).length}
-                            </Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
+              {/* Contador de resultados filtrados */}
+              {filteredData.length !== data.length && (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
+                  <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
+                    {filteredData.length} de {data.length} resultados
+                  </Text>
                 </View>
-
-                {/* Fila 2: buscador por nombre */}
-                <Input
-                  placeholder="Buscar por nombre de cliente..."
-                  value={nombreFilter}
-                  onChangeText={(t) => { setNombreFilter(t); setLocalPage(1); }}
-                  size="sm"
-                  containerStyle={{ marginBottom: 0 }}
-                  leftIcon={<Icon name="account-search-outline" size={15} color="#475569" />}
-                />
-
-                {/* Fila 3: botones exportar */}
-                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
-                  <Button
-                    title="Exportar PDF"
-                    icon="file-pdf-outline"
-                    variant="secondary"
-                    size="sm"
-                    onPress={handleExportPdf}
-                    disabled={filteredData.length === 0}
-                    className="bg-purple-600/20 border-purple-500/30"
-                  />
-                  <Button
-                    title="CSV Contable"
-                    icon="table-large"
-                    variant="secondary"
-                    size="sm"
-                    onPress={handleExportContabilidad}
-                    disabled={filteredData.length === 0}
-                    className="bg-emerald-600/20 border-emerald-500/30"
-                  />
-                  {/* Contador de resultados filtrados */}
-                  {filteredData.length !== data.length && (
-                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
-                      <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
-                        {filteredData.length} de {data.length} resultados
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-            )}
-
-            {/* Stats */}
-            {data.length > 0 && (
-              <StatsHeader
-                stats={computedStats}
-                periodLabel={`Mostrando ${filteredData.length} de ${data.length} facturas`}
-              />
-            )}
-
-            {/* Error */}
-            {error && (
-              <View className="flex-row items-center gap-2 bg-(--color-pos-danger)/10 p-4 rounded-xl mb-8 border border-(--color-pos-danger)/20">
-                <Icon name="alert-circle-outline" size={18} color="#F43F5E" />
-                <Text className="text-(--color-pos-danger) flex-1">{error}</Text>
-              </View>
-            )}
-
-            {/* Loading */}
-            {loading && <ListSkeleton count={4} />}
-          </>
-        }
-        ListFooterComponent={PaginationBar}
-        ListEmptyComponent={
-          !loading && !error ? (
-            <View className="items-center justify-center py-20 gap-4">
-              <Icon
-                name={from && to ? 'email-off-outline' : 'calendar-search'}
-                size={48}
-                color="#64748B"
-              />
-              <Text className="text-white font-black text-xl text-center">
-                {from && to
-                  ? (nombreFilter || estadoFilter !== 'todas')
-                    ? 'Sin resultados con estos filtros'
-                    : 'Sin facturas en este rango'
-                  : 'Selecciona fechas para buscar'}
-              </Text>
-              <Text className="text-(--color-pos-text-muted) text-center">
-                {from && to
-                  ? (nombreFilter || estadoFilter !== 'todas')
-                    ? 'Prueba con otros filtros de nombre o estado.'
-                    : 'No se encontraron facturas en el período.'
-                  : 'Ingresa las fechas y presiona Buscar.'}
-              </Text>
+              )}
             </View>
-          ) : null}
-        renderItem={renderFacturaItem}
-      />
+          </View>
+        )}
+
+        {/* Stats */}
+        {data.length > 0 && (
+          <StatsHeader
+            stats={computedStats}
+            periodLabel={`Mostrando ${filteredData.length} de ${data.length} facturas`}
+          />
+        )}
+
+        {/* Error */}
+        {error && (
+          <View className="flex-row items-center gap-2 bg-(--color-pos-danger)/10 p-4 rounded-xl mb-8 border border-(--color-pos-danger)/20">
+            <Icon name="alert-circle-outline" size={18} color="#F43F5E" />
+            <Text className="text-(--color-pos-danger) flex-1">{error}</Text>
+          </View>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && <ListSkeleton count={4} />}
+
+        {/* Empty state */}
+        {!loading && !error && paginatedData.length === 0 && (
+          <View className="items-center justify-center py-20 gap-4">
+            <Icon
+              name={from && to ? 'email-off-outline' : 'calendar-search'}
+              size={48}
+              color="#64748B"
+            />
+            <Text className="text-white font-black text-xl text-center">
+              {from && to
+                ? (nombreFilter || estadoFilter !== 'todas')
+                  ? 'Sin resultados con estos filtros'
+                  : 'Sin facturas en este rango'
+                : 'Selecciona fechas para buscar'}
+            </Text>
+            <Text className="text-(--color-pos-text-muted) text-center">
+              {from && to
+                ? (nombreFilter || estadoFilter !== 'todas')
+                  ? 'Prueba con otros filtros de nombre o estado.'
+                  : 'No se encontraron facturas en el período.'
+                : 'Ingresa las fechas y presiona Buscar.'}
+            </Text>
+          </View>
+        )}
+
+        {/* ── Items grid — same flex-wrap pattern as facturas-dia.tsx ────────── */}
+        {!loading && paginatedData.length > 0 && (
+          <View className="flex-row flex-wrap justify-between gap-y-4">
+            {paginatedData.map((item: FacturaItem, idx: number) => {
+              const isLastOddDesktop = !isMobile && paginatedData.length % 2 === 1 && idx === paginatedData.length - 1;
+              return (
+                <View
+                  key={item.facturaId?.toString() || idx.toString()}
+                  className={isMobile ? 'w-full' : isLastOddDesktop ? 'w-full' : 'w-[48.5%]'}
+                >
+                  <View className="flex-1 pb-4">
+                    <FacturaCard
+                      item={item}
+                      isUpdating={updating === item.facturaId}
+                      onToggleEstado={handleChangeEstado}
+                      onUpdateTotal={handleUpdateTotal}
+                      onUpdate={updateFactura}
+                      onDelete={handleDeleteFactura}
+                    />
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Pagination */}
+        {PaginationBar}
+
+      </ScrollView>
     </PageContainer>
   );
 }

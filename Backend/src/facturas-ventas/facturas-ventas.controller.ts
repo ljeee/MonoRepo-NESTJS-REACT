@@ -14,11 +14,15 @@ export class FacturasVentasController {
 	@ApiQuery({ name: 'to', required: false })
 	@ApiQuery({ name: 'page', required: false, type: Number })
 	@ApiQuery({ name: 'limit', required: false, type: Number })
+	@ApiQuery({ name: 'estado', required: false })
+	@ApiQuery({ name: 'clienteNombre', required: false })
 	async findAll(
 		@Query('from') from?: string,
 		@Query('to') to?: string,
 		@Query('page') page?: string,
 		@Query('limit') limit?: string,
+		@Query('estado') estado?: string,
+		@Query('clienteNombre') clienteNombre?: string,
 	) {
 		const limitNum = limit ? Number(limit) : undefined;
 		
@@ -38,6 +42,8 @@ export class FacturasVentasController {
 			to,
 			page: page ? Number(page) : undefined,
 			limit: limitNum,
+			estado,
+			clienteNombre,
 		});
 	}
 

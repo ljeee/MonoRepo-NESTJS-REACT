@@ -24,6 +24,9 @@ export class OrdenesProductos {
 	@Column({name: 'variante_id', type: 'integer', nullable: true})
 	varianteId: number | null;
 
+	@Column({name: 'base', type: 'text', nullable: true})
+	base: 'leche' | 'agua' | null;
+
 	@ManyToOne(() => Ordenes, (orden) => orden.productos, {onDelete: 'CASCADE'})
 	@JoinColumn({name: 'orden_id', referencedColumnName: 'ordenId'})
 	orden: Ordenes;

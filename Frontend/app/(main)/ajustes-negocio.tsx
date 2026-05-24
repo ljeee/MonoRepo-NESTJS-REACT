@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text } from '../../tw';
-import { EmpresaConfig, UpdateEmpresaDto, useToast } from '@monorepo/shared';
+import { EmpresaConfig, UpdateEmpresaDto, useToast } from '@/src/shared';
 import { FadeInUp } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
 import { api as apiService } from '../../services/api';

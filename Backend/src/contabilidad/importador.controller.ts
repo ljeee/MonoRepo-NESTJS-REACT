@@ -74,6 +74,8 @@ export class ImportadorController {
 				const rawMetodo = row['metodo'] || row['metodo de pago'] || row['metodopago'] || 'efectivo';
 				const rawEstado = row['estado'] || 'pagado';
 				const rawCliente = row['cliente'] || row['nombre/cliente'] || 'Importado';
+				const rawPagoEfectivo = row['pagoefectivo'] || row['pago efectivo'] || null;
+				const rawPagoTransferencia = row['pagotransferencia'] || row['pago transferencia'] || null;
 
 				// Parse currency format string ($20,000) or raw (20000)
 				const cleanTotal = rawTotal.replace(/[^0-9.-]+/g, '');
@@ -95,6 +97,13 @@ export class ImportadorController {
 				}
 				if (isNaN(parsedFecha.getTime())) parsedFecha = new Date();
 
+				const cleanPagoEfectivo = rawPagoEfectivo !== null && rawPagoEfectivo !== ''
+					? parseFloat(rawPagoEfectivo.replace(/[^0-9.-]+/g, ''))
+					: undefined;
+				const cleanPagoTransferencia = rawPagoTransferencia !== null && rawPagoTransferencia !== ''
+					? parseFloat(rawPagoTransferencia.replace(/[^0-9.-]+/g, ''))
+					: undefined;
+
 				const factura = {
 					facturaId: id ? parseInt(id, 10) : undefined,
 					fechaFactura: parsedFecha,
@@ -103,6 +112,8 @@ export class ImportadorController {
 					total: parseFloat(cleanTotal) || 0,
 					metodo: rawMetodo.toLowerCase() || 'efectivo',
 					estado: rawEstado.toLowerCase() || 'pagado',
+					pagoEfectivo: isNaN(cleanPagoEfectivo as any) ? undefined : cleanPagoEfectivo,
+					pagoTransferencia: isNaN(cleanPagoTransferencia as any) ? undefined : cleanPagoTransferencia,
 					ordenes: [],
 				};
 

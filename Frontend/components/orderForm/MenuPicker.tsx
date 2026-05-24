@@ -1,15 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { Text, TextInput, TouchableOpacity, View } from '../../tw';
-import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@monorepo/shared';
-import type { Producto, ProductoVariante } from '@monorepo/shared';
+import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@/src/shared';
+import type { Producto, ProductoVariante } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import PizzaPersonalizadaModal from './PizzaPersonalizadaModal';
+import JugoBaseModal from './JugoBaseModal';
 import Icon from '../ui/Icon';
 import { Button } from '../ui';
 
 interface MenuPickerProps {
-  onAdd: (producto: Producto, variante: ProductoVariante, sabores?: string[]) => void;
+  onAdd: (producto: Producto, variante: ProductoVariante, sabores?: string[], base?: 'leche' | 'agua') => void;
 }
 
 export default function MenuPicker({ onAdd }: MenuPickerProps) {
@@ -20,6 +21,9 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
   const [selectedVariante, setSelectedVariante] = useState<ProductoVariante | null>(null);
+  const [jugoModalVisible, setJugoModalVisible] = useState(false);
+  const [selectedJugoProducto, setSelectedJugoProducto] = useState<Producto | null>(null);
+  const [selectedJugoVariante, setSelectedJugoVariante] = useState<ProductoVariante | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -174,11 +178,16 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                     onPress={() => {
                       const nameLower = producto.productoNombre.toLowerCase();
                       const isPizza = nameLower.includes('pizza') && !nameLower.includes('burguer');
-                      
+                      const isJugo  = nameLower.includes('jugo');
+
                       if (isPizza) {
                         setSelectedProducto(producto);
                         setSelectedVariante(variante);
                         setModalVisible(true);
+                      } else if (isJugo) {
+                        setSelectedJugoProducto(producto);
+                        setSelectedJugoVariante(variante);
+                        setJugoModalVisible(true);
                       } else {
                         onAdd(producto, variante);
                       }
@@ -204,6 +213,25 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
             </View>
           </View>
         </View>
+      )}
+
+      {selectedJugoProducto && selectedJugoVariante && (
+        <JugoBaseModal
+          visible={jugoModalVisible}
+          producto={selectedJugoProducto}
+          variante={selectedJugoVariante}
+          onAdd={(p, v, base) => {
+            onAdd(p, v, undefined, base);
+            setJugoModalVisible(false);
+            setSelectedJugoProducto(null);
+            setSelectedJugoVariante(null);
+          }}
+          onClose={() => {
+            setJugoModalVisible(false);
+            setSelectedJugoProducto(null);
+            setSelectedJugoVariante(null);
+          }}
+        />
       )}
 
       {selectedProducto && selectedVariante && (

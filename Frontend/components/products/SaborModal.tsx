@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Modal, Platform } from 'react-native';
 import { View, Text, ScrollView, KeyboardAvoidingView } from '../../tw';
-import type { PizzaSabor } from '@monorepo/shared';
+import type { PizzaSabor } from '@/src/shared';
 import { Input, Button, Icon, Card } from '../ui';
 
 interface SaborModalProps {

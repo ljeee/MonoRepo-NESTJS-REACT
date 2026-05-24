@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
 import { api as apiService } from '../../services/api';
-import { PizzaSabor, useToast } from '@monorepo/shared';
+import { PizzaSabor, useToast } from '@/src/shared';
 import { FadeInUp } from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
 import { useBreakpoint } from '../../styles/responsive';

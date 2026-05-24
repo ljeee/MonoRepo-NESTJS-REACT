@@ -1,13 +1,47 @@
-import React from 'react';
-import { Modal } from 'react-native';
-import { View, Text, ScrollView } from '../../tw';
-import { Button, Input, Icon, Card } from '../ui';
+import React, { useState } from 'react';
+import { Modal, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from '../../tw';
+import Button from '../ui/Button';
+import Input from '../ui/Input';
+import Icon from '../ui/Icon';
+
+// ─── Emoji catalogue ──────────────────────────────────────────────────────────
+
+const EMOJI_GROUPS = [
+    {
+        label: 'Pizzas',
+        emojis: ['🍕', '🫕', '🍝', '🧀', '🫙', '🌶️'],
+    },
+    {
+        label: 'Carnes & Burgers',
+        emojis: ['🍔', '🥩', '🍖', '🌮', '🌯', '🥪', '🫔', '🍗'],
+    },
+    {
+        label: 'Snacks & Sides',
+        emojis: ['🍟', '🫕', '🥗', '🥙', '🧆', '🥚', '🧇', '🥞'],
+    },
+    {
+        label: 'Bebidas',
+        emojis: ['🥤', '🧃', '☕', '🍵', '🧋', '🍺', '🍹', '💧'],
+    },
+    {
+        label: 'Postres',
+        emojis: ['🍰', '🎂', '🧁', '🍦', '🍩', '🍪', '🍫', '🍬'],
+    },
+    {
+        label: 'Otros',
+        emojis: ['🌽', '🫑', '🧅', '🥕', '🍱', '🥡', '🫙', '⭐'],
+    },
+] as const;
+
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface ProductModalProps {
     visible: boolean;
     editing: boolean;
     name: string;
     description: string;
+    emoji: string;
     error: string;
     loading: boolean;
     onClose: () => void;
@@ -15,6 +49,7 @@ interface ProductModalProps {
     onDelete?: () => void;
     onNameChange: (value: string) => void;
     onDescriptionChange: (value: string) => void;
+    onEmojiChange: (value: string) => void;
 }
 
 export function ProductModal({
@@ -22,6 +57,7 @@ export function ProductModal({
     editing,
     name,
     description,
+    emoji,
     error,
     loading,
     onClose,
@@ -29,28 +65,199 @@ export function ProductModal({
     onDelete,
     onNameChange,
     onDescriptionChange,
+    onEmojiChange,
 }: ProductModalProps) {
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+    const displayEmoji = emoji || (name.toLowerCase().includes('pizza') ? '🍕' : '🍔');
+
     return (
-        <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
-            <View style={{ flex: 1, backgroundColor: 'rgba(5, 9, 20, 1)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
-                <Card className="w-full max-w-[500px] bg-[#0F172A] border border-white/10 overflow-hidden rounded-[40px]">
-                    <ScrollView contentContainerStyle={{ padding: 32 }}>
-                        <View className="flex-row items-center gap-4 mb-8">
-                            <View className="w-12 h-12 rounded-2xl bg-orange-500/10 items-center justify-center border border-orange-500/20">
-                                <Icon
-                                    name={editing ? 'pencil' : 'plus'}
-                                    size={24}
-                                    color="#F5A524"
-                                />
+        <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={{ flex: 1 }}>
+                <Pressable
+                    style={{ flex: 1, backgroundColor: 'rgba(5,9,20,0.92)', justifyContent: 'flex-end' }}
+                    onPress={onClose}
+                >
+                    <Pressable
+                        style={{
+                            backgroundColor: '#0F172A',
+                            borderTopLeftRadius: 32,
+                            borderTopRightRadius: 32,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.07)',
+                            maxHeight: '92%',
+                        }}
+                        onPress={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 14,
+                                padding: 20,
+                                borderBottomWidth: 1,
+                                borderBottomColor: 'rgba(255,255,255,0.05)',
+                            }}
+                        >
+                            {/* Emoji preview — tap to open picker */}
+                            <TouchableOpacity
+                                onPress={() => setShowEmojiPicker((v) => !v)}
+                                style={{
+                                    width: 52,
+                                    height: 52,
+                                    borderRadius: 16,
+                                    backgroundColor: showEmojiPicker
+                                        ? 'rgba(245,165,36,0.15)'
+                                        : 'rgba(245,165,36,0.08)',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderWidth: 1,
+                                    borderColor: showEmojiPicker
+                                        ? 'rgba(245,165,36,0.4)'
+                                        : 'rgba(245,165,36,0.2)',
+                                }}
+                            >
+                                <Text style={{ fontSize: 26 }}>{displayEmoji}</Text>
+                            </TouchableOpacity>
+
+                            <View style={{ flex: 1 }}>
+                                <Text
+                                    style={{
+                                        fontFamily: 'SpaceGrotesk-Bold',
+                                        color: '#F8FAFC',
+                                        fontSize: 16,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: 1,
+                                    }}
+                                >
+                                    {editing ? 'Editar Producto' : 'Nuevo Producto'}
+                                </Text>
+                                <Text style={{ color: '#475569', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', marginTop: 2 }}>
+                                    Toca el icono para cambiarlo
+                                </Text>
                             </View>
-                            <Text className="text-white font-black text-2xl uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>
-                                {editing ? 'Editar Producto' : 'Nuevo Producto'}
-                            </Text>
+
+                            <TouchableOpacity
+                                onPress={onClose}
+                                style={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 12,
+                                    backgroundColor: 'rgba(255,255,255,0.04)',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(255,255,255,0.06)',
+                                }}
+                            >
+                                <Icon name="close" size={16} color="#64748B" />
+                            </TouchableOpacity>
                         </View>
 
-                        <View className="gap-y-6">
+                        <ScrollView
+                            style={{ maxHeight: 520 }}
+                            contentContainerStyle={{ padding: 20, gap: 16 }}
+                            keyboardShouldPersistTaps="handled"
+                            showsVerticalScrollIndicator={false}
+                        >
+                            {/* ── Emoji picker ── */}
+                            {showEmojiPicker && (
+                                <View
+                                    style={{
+                                        backgroundColor: 'rgba(0,0,0,0.3)',
+                                        borderRadius: 20,
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(245,165,36,0.2)',
+                                        padding: 14,
+                                        marginBottom: 4,
+                                    }}
+                                >
+                                    <View
+                                        style={{
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            marginBottom: 12,
+                                        }}
+                                    >
+                                        <Icon name="emoticon-outline" size={14} color="#F5A524" />
+                                        <Text
+                                            style={{
+                                                color: '#F5A524',
+                                                fontSize: 9,
+                                                fontFamily: 'SpaceGrotesk-Bold',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: 1,
+                                            }}
+                                        >
+                                            Selecciona un icono
+                                        </Text>
+                                        {emoji ? (
+                                            <TouchableOpacity
+                                                onPress={() => { onEmojiChange(''); setShowEmojiPicker(false); }}
+                                                style={{
+                                                    marginLeft: 'auto',
+                                                    paddingHorizontal: 8,
+                                                    paddingVertical: 3,
+                                                    borderRadius: 8,
+                                                    backgroundColor: 'rgba(255,255,255,0.05)',
+                                                    borderWidth: 1,
+                                                    borderColor: 'rgba(255,255,255,0.08)',
+                                                }}
+                                            >
+                                                <Text style={{ color: '#64748B', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                                                    Restablecer
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ) : null}
+                                    </View>
+
+                                    {EMOJI_GROUPS.map((group) => (
+                                        <View key={group.label} style={{ marginBottom: 10 }}>
+                                            <Text
+                                                style={{
+                                                    color: '#334155',
+                                                    fontSize: 8,
+                                                    fontFamily: 'SpaceGrotesk-Bold',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: 0.5,
+                                                    marginBottom: 6,
+                                                }}
+                                            >
+                                                {group.label}
+                                            </Text>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                                {group.emojis.map((e) => (
+                                                    <TouchableOpacity
+                                                        key={e}
+                                                        onPress={() => { onEmojiChange(e); setShowEmojiPicker(false); }}
+                                                        style={{
+                                                            width: 44,
+                                                            height: 44,
+                                                            borderRadius: 12,
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            backgroundColor: emoji === e
+                                                                ? 'rgba(245,165,36,0.15)'
+                                                                : 'rgba(255,255,255,0.04)',
+                                                            borderWidth: 1,
+                                                            borderColor: emoji === e
+                                                                ? 'rgba(245,165,36,0.4)'
+                                                                : 'rgba(255,255,255,0.06)',
+                                                        }}
+                                                    >
+                                                        <Text style={{ fontSize: 22 }}>{e}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* ── Fields ── */}
                             <Input
-                                label="Nombre Producto"
+                                label="Nombre del Producto"
                                 value={name}
                                 onChangeText={onNameChange}
                                 placeholder="Ej: Pizza Hawaiana"
@@ -65,44 +272,74 @@ export function ProductModal({
                                 numberOfLines={3}
                             />
 
+                            {/* Error */}
                             {error ? (
-                                <View className="flex-row items-center gap-2 bg-red-500/10 p-4 rounded-2xl border border-red-500/20">
-                                    <Icon name="alert-circle" size={16} color="#EF4444" />
-                                    <Text className="text-red-400 font-bold text-xs">{error}</Text>
+                                <View
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        backgroundColor: 'rgba(239,68,68,0.08)',
+                                        padding: 12,
+                                        borderRadius: 14,
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(239,68,68,0.2)',
+                                    }}
+                                >
+                                    <Icon name="alert-circle" size={14} color="#EF4444" />
+                                    <Text style={{ color: '#F87171', fontSize: 12, fontFamily: 'SpaceGrotesk-Bold', flex: 1 }}>
+                                        {error}
+                                    </Text>
                                 </View>
                             ) : null}
+                        </ScrollView>
 
-                            <View className="flex-row gap-4 mt-2">
-                                <Button
-                                    title="Cancelar"
-                                    variant="ghost"
-                                    onPress={onClose}
-                                    style={{ flex: 1 }}
-                                />
-                                <Button
-                                    title={loading ? 'Salvando...' : 'Guardar'}
-                                    variant="primary"
-                                    onPress={onSave}
-                                    loading={loading}
-                                    style={{ flex: 1 }}
-                                />
-                            </View>
-
+                        {/* Footer */}
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                gap: 10,
+                                padding: 16,
+                                borderTopWidth: 1,
+                                borderTopColor: 'rgba(255,255,255,0.05)',
+                            }}
+                        >
                             {editing && onDelete && (
-                                <Button
-                                    title="Eliminar Producto"
-                                    variant="danger"
-                                    icon="trash-can-outline"
+                                <TouchableOpacity
                                     onPress={onDelete}
-                                    className="mt-4 border-dashed border-red-500/20"
-                                />
+                                    style={{
+                                        width: 44,
+                                        height: 44,
+                                        borderRadius: 14,
+                                        backgroundColor: 'rgba(239,68,68,0.08)',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(239,68,68,0.2)',
+                                    }}
+                                >
+                                    <Icon name="trash-can-outline" size={18} color="#EF4444" />
+                                </TouchableOpacity>
                             )}
+                            <Button
+                                title="Cancelar"
+                                variant="ghost"
+                                onPress={onClose}
+                                style={{ flex: 1 }}
+                            />
+                            <Button
+                                title={loading ? 'Guardando...' : editing ? 'Actualizar' : 'Crear'}
+                                variant="primary"
+                                icon="content-save-outline"
+                                onPress={onSave}
+                                loading={loading}
+                                disabled={!name.trim()}
+                                style={{ flex: 2 }}
+                            />
                         </View>
-                    </ScrollView>
-                </Card>
-            </View>
+                    </Pressable>
+                </Pressable>
+            </KeyboardAvoidingView>
         </Modal>
     );
 }
-
-

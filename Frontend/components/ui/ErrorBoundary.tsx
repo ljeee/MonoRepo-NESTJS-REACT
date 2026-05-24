@@ -46,8 +46,11 @@ export class ErrorBoundary extends Component<Props, State> {
 
             {this.state.error && (
                 <View className="bg-black/30 rounded-2xl p-4 mb-8 w-full border border-white/5">
-                    <Text className="text-rose-500 font-mono text-xs text-center" numberOfLines={3}>
+                    <Text className="text-rose-400 font-mono text-xs text-center mb-2" numberOfLines={2}>
                         {this.state.error.message}
+                    </Text>
+                    <Text className="text-slate-500 font-mono text-[9px] leading-4" numberOfLines={20} selectable>
+                        {this.state.error.stack || 'No stack trace available'}
                     </Text>
                 </View>
             )}

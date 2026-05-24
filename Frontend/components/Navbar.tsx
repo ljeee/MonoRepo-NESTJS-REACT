@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBreakpoint } from '../styles/responsive';
 import Icon, { IconName } from './ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
-import { Role } from '@monorepo/shared';
+import { Role } from '@/src/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Section definitions ──
@@ -33,7 +33,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { label: 'Balance Caja', route: '/balance-dia', icon: 'currency-usd' },
       { label: 'Facturación', route: '/facturas-dia', icon: 'file-document-outline' },
-      { label: 'Gastos / Egresos', route: '/facturas-pagos', icon: 'cash-minus' },
+      { label: 'Balance gastos', route: '/facturas-pagos', icon: 'cash-minus' },
       { label: 'Cierre de Turno', route: '/cierre-caja', icon: 'lock-outline' },
     ],
   },
@@ -64,6 +64,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Catálogo Productos', route: '/gestion-productos', icon: 'food-variant' },
       { label: 'Gestión Sabores', route: '/gestion-sabores', icon: 'pizza' },
       { label: 'Inventario Cajas', route: '/inventario-cajas', icon: 'package-variant' },
+      { label: 'Inventario Bebidas', route: '/inventario-bebidas', icon: 'bottle-soda-outline' },
       { label: 'Configuración POS', route: '/ajustes-negocio', icon: 'storefront-outline' },
       { label: 'Monitoreo de Sistema', route: '/monitoreo', icon: 'pulse' },
     ],
@@ -92,7 +93,7 @@ function AccordionSection({
   return (
     <View className="mb-2">
       <Pressable
-        className={`flex-row items-center justify-between px-4 py-3.5 rounded-2xl mx-3 transition-colors active:opacity-70 ${hasActive ? 'bg-orange-500/5' : ''}`}
+        className={`flex-row items-center justify-between px-4 py-3.5 rounded-2xl mx-3 active:opacity-70 ${hasActive ? 'bg-orange-500/5' : ''}`}
         onPress={onToggle}
       >
         <View className="flex-row items-center gap-3">
@@ -171,7 +172,7 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
     setExpanded((prev: Record<number, boolean>) => ({ ...prev, [idx]: !prev[idx] }));
   }, []);
   const navigate = useCallback((route: string) => {
-    router.push(route as any);
+    router.replace(route as any);
     if (onClose) onClose();
   }, [router, onClose]);
 
@@ -196,7 +197,7 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
           <Pressable
             className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${pathname === '/mis-domicilios' ? 'bg-orange-500/10' : ''}`}
             onPress={() => {
-              router.push('/mis-domicilios' as any);
+              router.replace('/mis-domicilios' as any);
               if (onClose) onClose();
             }}
           >
@@ -237,7 +238,7 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
                 key={item.route}
                 className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
                 onPress={() => {
-                  router.push(item.route as any);
+                  router.replace(item.route as any);
                   if (onClose) onClose();
                 }}
               >
