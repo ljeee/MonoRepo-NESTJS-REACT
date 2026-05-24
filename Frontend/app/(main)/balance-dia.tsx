@@ -300,7 +300,6 @@ export default function BalanceDiaScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterPending, setFilterPending] = useState(false);
     const [filterMethod, setFilterMethod] = useState<string>('todos');
 
     // --- ESTADO DE BASE DE CAJA Y ARQUEO ---
@@ -498,9 +497,10 @@ export default function BalanceDiaScreen() {
 
     const filteredFacturas = facturas.filter((f: FacturaItem) => {
         const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesPending = !filterPending || f.estado === 'pendiente';
-        const matchesMethod = filterMethod === 'todos' || f.metodo === filterMethod;
-        return matchesSearch && matchesPending && matchesMethod;
+        if (!matchesSearch) return false;
+        if (filterMethod === 'todos') return true;
+        if (filterMethod === 'pendiente') return f.estado === 'pendiente';
+        return f.metodo === filterMethod && f.estado !== 'pendiente';
     });
 
     return (
@@ -887,16 +887,9 @@ export default function BalanceDiaScreen() {
                                 </TouchableOpacity>
                             )}
                         </View>
-                        <TouchableOpacity 
-                            onPress={() => setFilterPending(!filterPending)}
-                            className={`px-3 h-12 rounded-xl border flex-row items-center gap-1 ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
-                        >
-                            <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
-                            {!isMobile && <Text className={`font-bold text-[10px] uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pend.</Text>}
-                        </TouchableOpacity>
                     </View>
                     <View className="flex-row flex-wrap gap-2">
-                        {['todos', 'efectivo', 'transferencia', 'qr'].map((method) => {
+                        {['todos', 'efectivo', 'transferencia', 'pendiente'].map((method) => {
                             const isSelected = filterMethod === method;
                             return (
                                 <TouchableOpacity
