@@ -285,21 +285,29 @@ export class EstadisticasService {
 	}
 
 	// ─── Clientes Frecuentes ──────────────────────────────────────────────────────
-	async clientesFrecuentes(limit = 10) {
-		const result = await this.facturasRepo
+	async clientesFrecuentes(limit = 10, from?: string, to?: string) {
+		let qb = this.facturasRepo
 			.createQueryBuilder('f')
 			.select('f.cliente_nombre', 'clienteNombre')
 			.addSelect('COUNT(*)', 'totalOrdenes')
 			.addSelect('SUM(f.total)', 'gastoTotal')
+			.addSelect('MAX(f.total)', 'pedidoMaximo')
 			.addSelect('MAX(f.fechaFactura)', 'ultimaVisita')
 			.where("f.cliente_nombre IS NOT NULL")
 			.andWhere("f.cliente_nombre != ''")
 			.andWhere("f.cliente_nombre NOT ILIKE 'mesa %'")
 			.andWhere("f.cliente_nombre NOT ILIKE 'mesa'")
 			.andWhere("f.cliente_nombre !~ '^[0-9]+$'")
-			.andWhere("f.estado != 'cancelado'")
+			.andWhere("f.estado != 'cancelado'");
+
+		if (from && to) {
+			const { start, end } = this.buildDayBounds(from, to);
+			qb = qb.andWhere('f.fechaFactura BETWEEN :from AND :to', { from: start, to: end });
+		}
+
+		const result = await qb
 			.groupBy('f.cliente_nombre')
-			.orderBy('"totalOrdenes"', 'DESC')
+			.orderBy('"gastoTotal"', 'DESC')
 			.limit(limit)
 			.getRawMany();
 
@@ -307,6 +315,7 @@ export class EstadisticasService {
 			clienteNombre: r.clienteNombre,
 			totalOrdenes: Number(r.totalOrdenes),
 			gastoTotal: Number(r.gastoTotal) || 0,
+			pedidoMaximo: Number(r.pedidoMaximo) || 0,
 			ultimaVisita: r.ultimaVisita,
 		}));
 	}
@@ -356,12 +365,13 @@ export class EstadisticasService {
 			.take(50)
 			.getMany();
 
-		// 2. Find orders via factura that has clienteNombre matching
-		//    the client name from clientes table
+		// 2. Find orders via factura that has telefonoCliente matching
+		//    (fallback: also match by clienteNombre via clientes table for legacy records without telefonoCliente)
 		const ordenesViaFactura = await this.ordenesRepo
 			.createQueryBuilder('o')
 			.innerJoin('o.factura', 'f')
-			.innerJoin('clientes', 'c', 'c.cliente_nombre = f.cliente_nombre AND c.telefono = :tel', { tel: telefono })
+			.leftJoin('clientes', 'c', 'c.telefono = :tel AND c.cliente_nombre = f.cliente_nombre', { tel: telefono })
+			.where('f.telefono_cliente = :tel OR c.telefono = :tel', { tel: telefono })
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('o.factura', 'fv')
 			.orderBy('o.fechaOrden', 'DESC')

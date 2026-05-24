@@ -161,7 +161,21 @@ export class FacturasVentasService {
 			await this.cajaMovimientosService.registrarEntrada({
 				denominaciones: data.denominaciones,
 				facturaVentaId: id,
-				descripcion: `Cobro factura #${id}`,
+				descripcion: `Cobro factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
+				fecha: getBogotaDateString(),
+				metodo: data.metodo,
+				pagoTransferencia: data.pagoTransferencia,
+			});
+		}
+
+		// Register caja exit (change given back to customer)
+		if (
+			data.cambioDenominaciones &&
+			Object.keys(data.cambioDenominaciones).length > 0
+		) {
+			await this.cajaMovimientosService.registrarSalida({
+				denominaciones: data.cambioDenominaciones,
+				descripcion: `Cambio factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
 				fecha: getBogotaDateString(),
 			});
 		}

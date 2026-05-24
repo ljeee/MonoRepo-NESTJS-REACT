@@ -28,6 +28,7 @@ export default function GestionProductosScreen() {
         editingSabor,
         prodName,
         prodDesc,
+        prodEmoji,
         prodError,
         varName,
         varPrice,
@@ -104,6 +105,7 @@ export default function GestionProductosScreen() {
                 editingProduct={editingProduct}
                 prodName={prodName}
                 prodDesc={prodDesc}
+                prodEmoji={prodEmoji}
                 prodError={prodError}
                 showVariantModal={showVariantModal}
                 editingVariant={editingVariant}
@@ -132,6 +134,7 @@ export default function GestionProductosScreen() {
                 }}
                 onProdNameChange={(name) => patchUi({ prodName: name })}
                 onProdDescriptionChange={(description) => patchUi({ prodDesc: description })}
+                onProdEmojiChange={(emoji) => patchUi({ prodEmoji: emoji })}
                 onVarNameChange={(name) => patchUi({ varName: name })}
                 onVarPriceChange={(price) => patchUi({ varPrice: price })}
                 onVarDescriptionChange={(description) => patchUi({ varDesc: description })}

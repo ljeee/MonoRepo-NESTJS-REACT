@@ -11,7 +11,11 @@ export class CajaMovimiento {
     fecha: string; // yyyy-mm-dd Bogotá
 
     @Column({ type: 'varchar', length: 20 })
-    tipo: 'entrada' | 'salida' | 'apertura';
+    tipo: 'entrada' | 'salida' | 'apertura' | 'cambio';
+
+    @Column({ name: 'caja_origen', type: 'varchar', length: 20, default: 'principal' })
+    @Index()
+    cajaOrigen: 'principal' | 'gastos';
 
     // { "100000": 2, "50000": 1, "10000": 3, ... } — denomination: count
     @Column({ type: 'jsonb' })
@@ -28,6 +32,12 @@ export class CajaMovimiento {
 
     @Column({ type: 'text', nullable: true })
     descripcion: string | null;
+
+    @Column({ type: 'text', nullable: true })
+    metodo: string | null;
+
+    @Column({ name: 'pago_transferencia', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer() })
+    pagoTransferencia: number | null;
 
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

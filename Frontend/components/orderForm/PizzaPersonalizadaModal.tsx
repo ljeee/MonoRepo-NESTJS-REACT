@@ -98,11 +98,11 @@ export default function PizzaPersonalizadaModal({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       {/* Backdrop */}
-      <View className="flex-1 bg-black/85" style={{ justifyContent: 'flex-end' }}>
-        {/* Bottom-sheet card — className carries static styles, style only for dynamic maxHeight */}
+      <View className="flex-1 bg-black/85 p-4" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        {/* Modal card */}
         <View
           className="bg-(--color-pos-surface) w-full border border-white/5 shadow-2xl overflow-hidden"
-          style={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: screenHeight * 0.88 }}
+          style={{ borderRadius: 24, maxHeight: screenHeight * 0.88, maxWidth: 700 }}
         >
           {/* Drag handle */}
           <View className="items-center pt-3 pb-1">

@@ -10,6 +10,7 @@ import {OrdenesGateway} from './ordenes.gateway';
 import {CierresService} from '../cierres/cierres.service';
 import {InventarioCajasService} from '../inventario-cajas/inventario-cajas.service';
 import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
+import {InventarioBebidasService} from '../inventario-bebidas/inventario-bebidas.service';
 import {getBogotaDateString} from '../common/utils/date.utils';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class OrdenesService {
 		private readonly cierresService: CierresService,
 		private readonly inventarioCajasService: InventarioCajasService,
 		private readonly cajaMovimientosService: CajaMovimientosService,
+		private readonly inventarioBebidasService: InventarioBebidasService,
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
@@ -132,7 +134,7 @@ export class OrdenesService {
 				: '';
 
 			// 1. Crear factura (metodo se guarda desde el inicio para pedidos con pago conocido, ej. WhatsApp bot)
-			const factura = await this.facturaCreationService.crearFactura(data.nombreCliente || '', data.metodo, descripcion, manager);
+			const factura = await this.facturaCreationService.crearFactura(data.nombreCliente || '', data.metodo, descripcion, manager, data.telefonoCliente || undefined);
 
 			// 2. Crear orden
 			const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden, data.observaciones, manager);
@@ -367,6 +369,26 @@ export class OrdenesService {
 			orden.estadoOrden = 'completada';
 			await oRepo.save(orden);
 
+			// 5. Descontar stock de bebidas (best-effort, no bloquea el pago)
+			try {
+				const opRepo = manager.getRepository('ordenes_productos');
+				const raw = await opRepo
+					.createQueryBuilder('op')
+					.select(['op.variante_id AS "varianteId"', 'op.cantidad AS cantidad'])
+					.where('op.orden_id = :id', { id })
+					.getRawMany();
+				// getRawMany returns DB column values as strings — normalize here
+				const items: Array<{ varianteId: number | null; cantidad: number }> = raw.map(
+					(r: Record<string, unknown>) => ({
+						varianteId: r['varianteId'] != null ? Number(r['varianteId']) : (r['variante_id'] != null ? Number(r['variante_id']) : null),
+						cantidad: Number(r['cantidad']) || 0,
+					}),
+				);
+				await this.inventarioBebidasService.deductForOrden(items, manager);
+			} catch {
+				// Non-critical — never break the payment flow
+			}
+
 			const updated = await this.findOne(id, manager);
 			this.ordenesGateway.emitirOrdenActualizada(updated);
 
@@ -381,6 +403,8 @@ export class OrdenesService {
 					facturaVentaId: orden.facturaId,
 					descripcion: `Cobro orden #${id}`,
 					fecha: fechaStr,
+					metodo,
+					pagoTransferencia,
 				});
 			}
 

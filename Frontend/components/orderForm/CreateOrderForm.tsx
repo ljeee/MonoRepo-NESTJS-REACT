@@ -75,7 +75,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const router = useRouter();
   const { isMobile, isTablet } = useBreakpoint();
   const isCompact = isMobile || isTablet;
-  const { formState: globalFormState, updateForm: globalUpdateForm, clearCart, isHydrated: globalIsHydrated } = useOrder();
+  const { formState: globalFormState, updateForm: globalUpdateForm, clearCart, isHydrated: globalIsHydrated, activeSlot, setActiveSlot, slotSummaries } = useOrder();
   const { showToast } = useToast();
 
   const pendingTimers = React.useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -121,21 +121,28 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const { debounce } = useAntiDebounce();
 
   // ==================== CARRITO ====================
-  const addToCart = useCallback((producto: Producto, variante: ProductoVariante, sabores?: string[]) => {
+  const addToCart = useCallback((producto: Producto, variante: ProductoVariante, sabores?: string[], base?: 'leche' | 'agua') => {
+    // Use base-aware price: leche siempre suma $1.000 fijo
+    const RECARGO_LECHE = 1000;
+    const precioUnitario = base === 'leche'
+      ? Number(variante.precio) + RECARGO_LECHE
+      : Number(variante.precio);
+
     const newItem: CartItem = {
       id: nextCartId(),
       productoNombre: producto.productoNombre,
       varianteNombre: variante.nombre,
       varianteId: variante.varianteId,
-      precioUnitario: Number(variante.precio),
+      precioUnitario,
       cantidad: 1,
       sabores: sabores,
+      base,
     };
 
-    // Pizzas with sabores always get their own line (different combos shouldn't merge)
-    const existing = sabores?.length
+    // Pizzas with sabores, or items with a base, always get their own line (never merge)
+    const existing = (sabores?.length || base)
       ? undefined
-      : formState.cart.find(i => i.varianteId === variante.varianteId);
+      : formState.cart.find(i => i.varianteId === variante.varianteId && !i.base && !i.sabores?.length);
 
     if (existing) {
       // Merge with existing - update cart with updated item
@@ -277,6 +284,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         sabor1: item.sabores?.[0],
         sabor2: item.sabores?.[1],
         sabor3: item.sabores?.[2],
+        base: item.base,
       })),
     };
 
@@ -285,6 +293,19 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         await api.ordenes.update(ordenId, payload as any);
       } else {
         await api.ordenes.create(payload);
+        // Persistir nombre editado en el registro del cliente si fue modificado
+        if (
+          formState.telefonoCliente &&
+          client &&
+          resolvedNombreCliente &&
+          resolvedNombreCliente !== client.clienteNombre
+        ) {
+          try {
+            await api.clientes.update(formState.telefonoCliente, { clienteNombre: resolvedNombreCliente });
+          } catch {
+            // No crítico — no romper el flujo si falla
+          }
+        }
       }
     } catch (error: unknown) {
       showToast(extractErrorMessage(error), 'error', 5000);
@@ -296,7 +317,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       const costoDom = formState.costoDomicilio ? Number(formState.costoDomicilio) : 0;
       const total = formState.cart.reduce((s, i) => s + i.precioUnitario * i.cantidad, 0) + costoDom;
       const receiptProducts = formState.cart.map(i => ({
-        nombre: `${i.productoNombre}${i.varianteNombre ? ' - ' + i.varianteNombre : ''}${i.sabores?.length ? ' (' + i.sabores.join(', ') + ')' : ''}`,
+        nombre: `${i.productoNombre}${i.varianteNombre ? ' - ' + i.varianteNombre : ''}${i.base ? ` (${i.base})` : ''}${i.sabores?.length ? ' (' + i.sabores.join(', ') + ')' : ''}`,
         cantidad: i.cantidad,
         precioUnitario: i.precioUnitario,
       }));
@@ -328,7 +349,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
 
     showToast(mode === 'edit' ? '¡Orden actualizada!' : '¡Orden creada exitosamente!', 'success', 2000);
     const navTimer = setTimeout(() => {
-      router.push(mode === 'edit' ? (`/orden-detalle?ordenId=${ordenId}` as any) : '/ordenes');
+      router.push(mode === 'edit' ? (`/orden-detalle?ordenId=${ordenId}` as any) : '/balance-dia');
     }, 2000);
     pendingTimers.current.push(navTimer);
     setLoading(false);
@@ -359,6 +380,52 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         automaticallyAdjustKeyboardInsets={true}
         contentContainerClassName="pt-2 px-5 pb-32 max-w-7xl mx-auto w-full"
       >
+        {/* ── Slot tabs — solo en modo creación ── */}
+        {mode !== 'edit' && (
+          <View className="flex-row gap-2 mb-4">
+            {slotSummaries.map((s) => {
+              const isActive = s.slot === activeSlot;
+              return (
+                <TouchableOpacity
+                  key={s.slot}
+                  onPress={() => setActiveSlot(s.slot)}
+                  className={`flex-1 py-2 px-2 rounded-xl border flex-col items-center justify-center gap-0.5 md:flex-row md:gap-1.5 md:py-2.5 md:px-3 ${
+                    isActive
+                      ? 'bg-amber-500/20 border-amber-500/40'
+                      : 'bg-white/[0.03] border-white/10 active:bg-white/10'
+                  }`}
+                >
+                  <View className={`w-4 h-4 rounded-full items-center justify-center ${isActive ? 'bg-amber-500' : 'bg-white/10'}`}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 8, color: isActive ? '#000' : '#64748B' }}>
+                      {s.slot + 1}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0, alignItems: 'center' }}>
+                    {s.isEmpty ? (
+                      <Text style={{ fontFamily: 'Outfit', color: '#334155', fontSize: 10, textTransform: 'uppercase' }} numberOfLines={1}>
+                        Vacía
+                      </Text>
+                    ) : s.nombreCliente ? (
+                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: isActive ? '#F5A524' : '#94A3B8', fontSize: 10 }} numberOfLines={1}>
+                        {s.nombreCliente}
+                      </Text>
+                    ) : (
+                      <Text style={{ fontFamily: 'Outfit', color: isActive ? '#F5A524' : '#64748B', fontSize: 10, textTransform: 'uppercase' }} numberOfLines={1}>
+                        {s.tipoPedido}
+                      </Text>
+                    )}
+                    {s.itemCount > 0 && (
+                      <Text style={{ fontFamily: 'Outfit', color: isActive ? '#F59E0B' : '#475569', fontSize: 9 }}>
+                        {s.itemCount} ítem{s.itemCount !== 1 ? 's' : ''}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
         <View className="flex-row flex-wrap -mx-3 items-start">
           {/* LEFT COLUMN: Header & Menu */}
           <View className={`px-3 ${isMobile ? 'w-full' : isTablet ? 'w-[60%]' : 'w-[65%]'}`}>
@@ -443,7 +510,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         onChangeText={(val) => updateForm({ nombreCliente: val })}
                         placeholder="Nombre"
                         placeholderTextColor="#475569"
-                        editable={!client || !client.clienteNombre}
+                        editable={true}
                         onBlur={() => {
                           const t = setTimeout(() => setNameSuggestions([]), 150);
                           pendingTimers.current.push(t);

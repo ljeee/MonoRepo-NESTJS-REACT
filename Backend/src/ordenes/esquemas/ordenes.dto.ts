@@ -114,6 +114,11 @@ export class CreateOrdenItemDto {
 	@ApiProperty({example: 1})
 	@IsNumber()
 	cantidad: number;
+
+	@ApiProperty({example: 'leche', required: false, description: 'Base del jugo: leche o agua'})
+	@IsOptional()
+	@IsIn(['leche', 'agua'])
+	base?: 'leche' | 'agua';
 }
 
 export class FindOrdenesDto {

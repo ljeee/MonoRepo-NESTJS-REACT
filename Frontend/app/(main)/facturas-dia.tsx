@@ -5,7 +5,11 @@ import { useFacturasDia, calcStats } from '@/src/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
-import { PageContainer, PageHeader, Button, ListSkeleton, Icon } from '../../components/ui';
+import PageContainer from '../../components/ui/PageContainer';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
+import { ListSkeleton } from '../../components/ui/SkeletonLoader';
+import Icon from '../../components/ui/Icon';
 import { useBreakpoint } from '../../styles/responsive';
 
 export default function FacturasDiaScreen() {
@@ -21,12 +25,13 @@ export default function FacturasDiaScreen() {
     metodo?: string,
     pagoEfectivo?: number,
     pagoTransferencia?: number,
-    denominaciones?: Record<string, number>
+    denominaciones?: Record<string, number>,
+    cambioDenominaciones?: Record<string, number>,
   ) => {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-         await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones });
+         await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones });
       } else {
          await updateEstado(facturaId, nuevoEstado);
       }

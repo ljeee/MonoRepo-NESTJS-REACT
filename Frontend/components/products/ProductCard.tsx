@@ -1,16 +1,21 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Producto, PizzaSabor } from '@/src/shared';
 import { formatCurrency } from '@/src/shared';
 import { View, Text, TouchableOpacity } from '../../tw';
-import { Button, Card, Icon, Badge } from '../ui';
+import Card from '../ui/Card';
+import Icon from '../ui/Icon';
+
+/** How many variants to show before collapsing the rest */
+const VARIANTS_INITIAL = 5;
 
 interface ProductCardProps {
     product: Producto;
+    isStarred?: boolean;
     onEdit: () => void;
+    onToggleStar?: () => void;
     onEditVariant: (variantId: number) => void;
     onDeleteVariant: (variantId: number, variantName: string) => void;
     onAddVariant: () => void;
-    /** Custom product styling or handling could go here */
     sabores?: PizzaSabor[];
     onEditSabor?: (sabor: PizzaSabor) => void;
     onAddSabor?: () => void;
@@ -19,7 +24,9 @@ interface ProductCardProps {
 
 function ProductCardImpl({
     product,
+    isStarred = false,
     onEdit,
+    onToggleStar,
     onEditVariant,
     onDeleteVariant,
     onAddVariant,
@@ -29,92 +36,350 @@ function ProductCardImpl({
     onDeleteSabor,
 }: ProductCardProps) {
     const isPizza = product.productoNombre.toLowerCase().includes('pizza');
- 
+    const totalVariants = product.variantes?.length ?? 0;
+    const hasOverflow = totalVariants > VARIANTS_INITIAL;
+    const [showAllVariants, setShowAllVariants] = useState(false);
+
+    const visibleVariants = hasOverflow && !showAllVariants
+        ? (product.variantes ?? []).slice(0, VARIANTS_INITIAL)
+        : (product.variantes ?? []);
+
     return (
-        <Card className="bg-white/5 border border-white/5 overflow-hidden rounded-[40px]">
-            {/* Product header */}
-            <View className="flex-row items-center justify-between p-4 md:p-6 bg-white/5 border-b border-white/5">
-                <View className="flex-row items-center flex-1 mr-4">
-                    <View className="w-14 h-14 rounded-2xl bg-orange-500/10 items-center justify-center mr-4 border border-orange-500/20">
-                        <Text className="text-2xl">{product.emoji || (isPizza ? '🍕' : '🍔')}</Text>
+        <Card
+            padding="none"
+            className="overflow-hidden rounded-[40px]"
+            style={{
+                borderWidth: 1,
+                borderColor: isStarred ? 'rgba(245,165,36,0.25)' : 'rgba(255,255,255,0.05)',
+                backgroundColor: isStarred ? 'rgba(245,165,36,0.03)' : 'rgba(255,255,255,0.03)',
+            }}
+        >
+            {/* ── Product header ──────────────────────────────────────────── */}
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 12,
+                    backgroundColor: isStarred ? 'rgba(245,165,36,0.06)' : 'rgba(255,255,255,0.03)',
+                    borderBottomWidth: 1,
+                    borderBottomColor: 'rgba(255,255,255,0.05)',
+                }}
+            >
+                {/* Left: emoji + name */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 }}>
+                    <View
+                        style={{
+                            width: 52,
+                            height: 52,
+                            borderRadius: 16,
+                            backgroundColor: 'rgba(245,165,36,0.1)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: 12,
+                            borderWidth: 1,
+                            borderColor: 'rgba(245,165,36,0.2)',
+                        }}
+                    >
+                        <Text style={{ fontSize: 24 }}>{product.emoji || (isPizza ? '🍕' : '🍔')}</Text>
                     </View>
-                    <View className="flex-1">
-                        <View className="flex-row flex-wrap items-center gap-2 mb-1">
-                            <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>
-                                {product.productoNombre}
-                            </Text>
-                        </View>
+                    <View style={{ flex: 1 }}>
+                        <Text
+                            className="text-white font-black text-base uppercase tracking-widest"
+                            style={{ fontFamily: 'Space Grotesk' }}
+                            numberOfLines={1}
+                        >
+                            {product.productoNombre}
+                        </Text>
                         {product.descripcion ? (
-                            <Text className="text-slate-500 text-[10px] font-bold italic leading-tight uppercase tracking-tighter" numberOfLines={1}>
+                            <Text
+                                className="text-slate-500 text-[10px] font-bold italic tracking-tighter"
+                                numberOfLines={1}
+                            >
                                 {product.descripcion}
                             </Text>
                         ) : null}
+                        {/* Variant count badge */}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                            <View
+                                style={{
+                                    backgroundColor: 'rgba(255,255,255,0.05)',
+                                    borderRadius: 6,
+                                    paddingHorizontal: 6,
+                                    paddingVertical: 2,
+                                    borderWidth: 1,
+                                    borderColor: 'rgba(255,255,255,0.08)',
+                                }}
+                            >
+                                <Text style={{ color: '#64748B', fontSize: 8, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    {totalVariants} variante{totalVariants !== 1 ? 's' : ''}
+                                </Text>
+                            </View>
+                            {!product.activo && (
+                                <View
+                                    style={{
+                                        backgroundColor: 'rgba(239,68,68,0.1)',
+                                        borderRadius: 6,
+                                        paddingHorizontal: 6,
+                                        paddingVertical: 2,
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(239,68,68,0.2)',
+                                    }}
+                                >
+                                    <Text style={{ color: '#EF4444', fontSize: 8, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                                        Inactivo
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
                     </View>
                 </View>
-                <TouchableOpacity 
-                    onPress={onEdit} 
-                    className="w-12 h-12 rounded-[20px] bg-orange-500/10 items-center justify-center active:bg-orange-500/20 border border-orange-500/20"
-                >
-                    <Icon name="pencil-outline" size={20} color="#F5A524" />
-                </TouchableOpacity>
+
+                {/* Right: star + edit */}
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {/* Star / Picstar button */}
+                    {onToggleStar && (
+                        <TouchableOpacity
+                            onPress={onToggleStar}
+                            style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 16,
+                                backgroundColor: isStarred ? 'rgba(245,165,36,0.15)' : 'rgba(255,255,255,0.05)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderWidth: 1,
+                                borderColor: isStarred ? 'rgba(245,165,36,0.3)' : 'rgba(255,255,255,0.08)',
+                            }}
+                            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                        >
+                            <Icon
+                                name={isStarred ? 'star' : 'star-outline'}
+                                size={20}
+                                color={isStarred ? '#F5A524' : '#475569'}
+                            />
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Edit button */}
+                    <TouchableOpacity
+                        onPress={onEdit}
+                        style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 16,
+                            backgroundColor: 'rgba(245,165,36,0.1)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: 1,
+                            borderColor: 'rgba(245,165,36,0.2)',
+                        }}
+                    >
+                        <Icon name="pencil-outline" size={18} color="#F5A524" />
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {/* Variants */}
-            <View className="p-4 md:p-6">
-                <View className="flex-row items-center justify-between mb-4 px-1">
-                    <View className="flex-row items-center gap-2">
-                        <Icon name="format-list-bulleted-type" size={14} color="#64748B" />
-                        <Text className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Variantes de Presentación</Text>
+            {/* ── Variants ────────────────────────────────────────────────── */}
+            <View style={{ padding: 12 }}>
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 8,
+                        paddingHorizontal: 4,
+                    }}
+                >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Icon name="format-list-bulleted-type" size={13} color="#64748B" />
+                        <Text className="text-slate-500 font-black text-[10px] uppercase tracking-widest">
+                            Presentaciones
+                        </Text>
                     </View>
-                    <TouchableOpacity onPress={onAddVariant} className="bg-white/5 px-3 py-1.5 rounded-xl border border-white/10 active:bg-white/10">
-                         <Text className="text-white font-black text-[9px] uppercase tracking-widest">+ Agregar</Text>
+                    <TouchableOpacity
+                        onPress={onAddVariant}
+                        style={{
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.08)',
+                        }}
+                    >
+                        <Text style={{ color: '#F8FAFC', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            + Agregar
+                        </Text>
                     </TouchableOpacity>
                 </View>
 
-                <View className="gap-y-3 mb-2">
-                    {product.variantes &&
-                        product.variantes.map((v) => (
-                            <View key={v.varianteId} className="flex-row items-center bg-black/20 p-4 rounded-3xl border border-white/5">
-                                <View className="flex-1 mr-2">
-                                    <View className="flex-row items-center gap-2">
-                                        <Text className="text-white font-black text-xs uppercase" numberOfLines={1}>{v.nombre}</Text>
-                                        <View className="w-1 h-1 rounded-full bg-slate-700" />
-                                        <Text className="text-orange-400 font-black text-xs" style={{ fontFamily: 'Space Grotesk' }}>
-                                             ${formatCurrency(v.precio)}
-                                        </Text>
-                                    </View>
-                                    {v.descripcion ? (
-                                        <Text className="text-slate-600 text-[9px] font-bold mt-0.5" numberOfLines={1}>{v.descripcion}</Text>
-                                    ) : null}
-                                </View>
-                                
-                                <View className="flex-row gap-2">
-                                    <TouchableOpacity
-                                        onPress={() => onEditVariant(v.varianteId)}
-                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                        className="w-9 h-9 rounded-xl bg-white/5 active:bg-white/10 items-center justify-center border border-white/10"
+                {totalVariants === 0 && (
+                    <View
+                        style={{
+                            alignItems: 'center',
+                            padding: 20,
+                            backgroundColor: 'rgba(255,255,255,0.02)',
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.04)',
+                            borderStyle: 'dashed',
+                            marginBottom: 8,
+                        }}
+                    >
+                        <Icon name="plus-circle-outline" size={24} color="#1E293B" />
+                        <Text style={{ color: '#475569', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', marginTop: 6, textTransform: 'uppercase' }}>
+                            Sin variantes
+                        </Text>
+                    </View>
+                )}
+
+                <View style={{ gap: 4, marginBottom: 2 }}>
+                    {visibleVariants.map((v) => (
+                        <View
+                            key={v.varianteId}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: 'rgba(0,0,0,0.2)',
+                                paddingVertical: 7,
+                                paddingHorizontal: 12,
+                                borderRadius: 16,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.04)',
+                            }}
+                        >
+                            <View style={{ flex: 1, marginRight: 8 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <Text
+                                        className="text-white font-black text-xs uppercase"
+                                        numberOfLines={1}
+                                        style={{ maxWidth: '65%' }}
                                     >
-                                        <Icon name="pencil" size={14} color="#64748B" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => onDeleteVariant(v.varianteId, v.nombre)}
-                                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                        className="w-9 h-9 rounded-xl bg-red-500/10 active:bg-red-500/20 items-center justify-center border border-red-500/20"
+                                        {v.nombre}
+                                    </Text>
+                                    <View
+                                        style={{
+                                            width: 3,
+                                            height: 3,
+                                            borderRadius: 2,
+                                            backgroundColor: '#334155',
+                                        }}
+                                    />
+                                    <Text
+                                        className="text-orange-400 font-black text-xs"
+                                        style={{ fontFamily: 'Space Grotesk' }}
                                     >
-                                        <Icon name="trash-can-outline" size={14} color="#EF4444" />
-                                    </TouchableOpacity>
+                                        ${formatCurrency(v.precio)}
+                                    </Text>
+                                    {!v.activo && (
+                                        <View
+                                            style={{
+                                                backgroundColor: 'rgba(239,68,68,0.1)',
+                                                borderRadius: 4,
+                                                paddingHorizontal: 4,
+                                                borderWidth: 1,
+                                                borderColor: 'rgba(239,68,68,0.2)',
+                                            }}
+                                        >
+                                            <Text style={{ color: '#EF4444', fontSize: 7, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                                                off
+                                            </Text>
+                                        </View>
+                                    )}
                                 </View>
+                                {v.descripcion ? (
+                                    <Text
+                                        className="text-slate-600 text-[9px] font-bold mt-0.5"
+                                        numberOfLines={1}
+                                    >
+                                        {v.descripcion}
+                                    </Text>
+                                ) : null}
                             </View>
-                        ))}
+
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                                <TouchableOpacity
+                                    onPress={() => onEditVariant(v.varianteId)}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    style={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: 10,
+                                        backgroundColor: 'rgba(255,255,255,0.04)',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(255,255,255,0.08)',
+                                    }}
+                                >
+                                    <Icon name="pencil" size={13} color="#64748B" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => onDeleteVariant(v.varianteId, v.nombre)}
+                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                    style={{
+                                        width: 34,
+                                        height: 34,
+                                        borderRadius: 10,
+                                        backgroundColor: 'rgba(239,68,68,0.08)',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        borderWidth: 1,
+                                        borderColor: 'rgba(239,68,68,0.15)',
+                                    }}
+                                >
+                                    <Icon name="trash-can-outline" size={13} color="#EF4444" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ))}
                 </View>
+
+                {/* Show more / show less toggle */}
+                {hasOverflow && (
+                    <TouchableOpacity
+                        onPress={() => setShowAllVariants((s) => !s)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            paddingVertical: 10,
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.06)',
+                            backgroundColor: 'rgba(255,255,255,0.02)',
+                            marginTop: 4,
+                        }}
+                    >
+                        <Icon
+                            name={showAllVariants ? 'chevron-up' : 'chevron-down'}
+                            size={14}
+                            color="#64748B"
+                        />
+                        <Text style={{ color: '#64748B', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            {showAllVariants
+                                ? 'Ocultar variantes'
+                                : `Ver todas (${totalVariants - VARIANTS_INITIAL} más)`}
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
-            {/* Pizza Flavors Section */}
+            {/* ── Pizza Flavors Section ────────────────────────────────────── */}
             {isPizza && sabores && (
-                <View className="border-t border-white/5 p-4 md:p-6 bg-orange-500/5">
-                    <PizzaFlavorsSection 
-                        sabores={sabores} 
-                        onEditSabor={onEditSabor} 
+                <View
+                    style={{
+                        borderTopWidth: 1,
+                        borderTopColor: 'rgba(255,255,255,0.05)',
+                        padding: 12,
+                        backgroundColor: 'rgba(245,165,36,0.03)',
+                    }}
+                >
+                    <PizzaFlavorsSection
+                        sabores={sabores}
+                        onEditSabor={onEditSabor}
                         onAddSabor={onAddSabor}
                         onDeleteSabor={onDeleteSabor}
                     />
@@ -126,19 +391,33 @@ function ProductCardImpl({
 
 export const ProductCard = React.memo(ProductCardImpl);
 
+// ─── PizzaFlavorsSection ──────────────────────────────────────────────────────
+
+const SABORES_INITIAL = 8;
+
 function PizzaFlavorsSection({
-    sabores, 
+    sabores,
     onEditSabor,
     onAddSabor,
-    onDeleteSabor
-}: { 
-    sabores: PizzaSabor[]; 
+    onDeleteSabor,
+}: {
+    sabores: PizzaSabor[];
     onEditSabor?: (sabor: PizzaSabor) => void;
     onAddSabor?: () => void;
     onDeleteSabor?: (saborId: number, name: string) => void;
 }) {
-    const tradicionales = sabores.filter(s => s.tipo === 'tradicional' && s.activo);
-    const especiales = sabores.filter(s => s.tipo === 'especial' && s.activo);
+    const tradicionales = sabores.filter((s) => s.tipo === 'tradicional' && s.activo);
+    const especiales = sabores.filter((s) => s.tipo === 'especial' && s.activo);
+    const [showAllTrad, setShowAllTrad] = useState(false);
+    const [showAllEsp, setShowAllEsp] = useState(false);
+
+    const visibleTrad = showAllTrad ? tradicionales : tradicionales.slice(0, SABORES_INITIAL);
+    const visibleEsp = showAllEsp ? especiales : especiales.slice(0, SABORES_INITIAL);
+
+    const config3Sabores = sabores.find(
+        (s) => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES',
+    );
+    const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
 
     const renderChip = (sabor: PizzaSabor) => {
         const isEspecial = sabor.tipo === 'especial';
@@ -149,65 +428,159 @@ function PizzaFlavorsSection({
                 onLongPress={() => onDeleteSabor?.(sabor.saborId, sabor.nombre)}
                 activeOpacity={0.7}
                 hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                className={`flex-row items-center gap-1 px-3 py-2.5 min-h-[44px] rounded-xl mb-2 mr-2 border ${isEspecial ? 'bg-orange-500/10 border-orange-500/30' : 'bg-white/5 border-white/10'}`}
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 4,
+                    paddingHorizontal: 10,
+                    paddingVertical: 8,
+                    minHeight: 36,
+                    borderRadius: 10,
+                    marginBottom: 6,
+                    marginRight: 6,
+                    borderWidth: 1,
+                    backgroundColor: isEspecial ? 'rgba(245,165,36,0.08)' : 'rgba(255,255,255,0.04)',
+                    borderColor: isEspecial ? 'rgba(245,165,36,0.25)' : 'rgba(255,255,255,0.08)',
+                }}
             >
-                {isEspecial && <Icon name="star" size={9} color="#FB923C" />}
-                <Text className={`text-[9px] font-black uppercase tracking-widest ${isEspecial ? 'text-orange-400' : 'text-slate-400'}`} numberOfLines={1}>
+                {isEspecial && <Icon name="star" size={8} color="#FB923C" />}
+                <Text
+                    style={{
+                        fontSize: 9,
+                        fontFamily: 'SpaceGrotesk-Bold',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                        color: isEspecial ? '#FB923C' : '#94A3B8',
+                    }}
+                    numberOfLines={1}
+                >
                     {sabor.nombre}
                 </Text>
             </TouchableOpacity>
         );
     };
 
-    const config3Sabores = sabores.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
-    const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
-
     return (
         <View>
-            <View className="flex-row items-center justify-between mb-4">
-                <View className="flex-row items-center gap-2">
-                    <Icon name="pizza-slice" size={14} color="#F5A524" />
-                    <Text className="text-orange-400/80 font-black text-[10px] uppercase tracking-widest">Personalización de Sabores</Text>
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 14,
+                }}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Icon name="pizza-slice" size={13} color="#F5A524" />
+                    <Text className="text-orange-400/80 font-black text-[10px] uppercase tracking-widest">
+                        Sabores
+                    </Text>
                 </View>
                 {onAddSabor && (
-                    <TouchableOpacity onPress={onAddSabor} className="bg-orange-500/10 px-3 py-1.5 rounded-xl border border-orange-500/30">
-                        <Text className="text-orange-400 font-black text-[9px] uppercase">+ Sabor</Text>
+                    <TouchableOpacity
+                        onPress={onAddSabor}
+                        style={{
+                            backgroundColor: 'rgba(245,165,36,0.1)',
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            borderRadius: 10,
+                            borderWidth: 1,
+                            borderColor: 'rgba(245,165,36,0.25)',
+                        }}
+                    >
+                        <Text style={{ color: '#FB923C', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                            + Sabor
+                        </Text>
                     </TouchableOpacity>
                 )}
             </View>
 
-            <View className="mb-4">
-                <Text className="text-slate-600 text-[8px] font-black uppercase tracking-widest mb-2 ml-1">Variedades Tradicionales</Text>
-                <View className="flex-row flex-wrap">
-                    {tradicionales.map(s => renderChip(s))}
+            {/* Tradicionales */}
+            <View style={{ marginBottom: 10 }}>
+                <Text className="text-slate-600 text-[8px] font-black uppercase tracking-widest mb-2 ml-1">
+                    Tradicionales ({tradicionales.length})
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                    {visibleTrad.map((s) => renderChip(s))}
                 </View>
+                {tradicionales.length > SABORES_INITIAL && (
+                    <TouchableOpacity
+                        onPress={() => setShowAllTrad((v) => !v)}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
+                    >
+                        <Icon name={showAllTrad ? 'chevron-up' : 'chevron-down'} size={11} color="#475569" />
+                        <Text style={{ color: '#475569', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                            {showAllTrad ? 'Ocultar' : `+${tradicionales.length - SABORES_INITIAL} más`}
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
-            <View className="mb-4">
-                <View className="flex-row items-center gap-1 mb-2 ml-1">
-                    <Icon name="star" size={9} color="rgba(249,115,22,0.4)" />
-                    <Text className="text-orange-500/40 text-[8px] font-black uppercase tracking-widest">Especialidades de la Casa</Text>
+            {/* Especiales */}
+            <View style={{ marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
+                    <Icon name="star" size={8} color="rgba(249,115,22,0.4)" />
+                    <Text className="text-orange-500/40 text-[8px] font-black uppercase tracking-widest">
+                        Especialidades ({especiales.length})
+                    </Text>
                 </View>
-                <View className="flex-row flex-wrap">
-                    {especiales.map(s => renderChip(s))}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                    {visibleEsp.map((s) => renderChip(s))}
                 </View>
+                {especiales.length > SABORES_INITIAL && (
+                    <TouchableOpacity
+                        onPress={() => setShowAllEsp((v) => !v)}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
+                    >
+                        <Icon name={showAllEsp ? 'chevron-up' : 'chevron-down'} size={11} color="#475569" />
+                        <Text style={{ color: '#475569', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                            {showAllEsp ? 'Ocultar' : `+${especiales.length - SABORES_INITIAL} más`}
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             {config3Sabores && (
                 <TouchableOpacity
                     onPress={() => onEditSabor?.(config3Sabores)}
-                    className="flex-row items-center justify-between bg-black/30 p-4 rounded-2xl border border-white/5"
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        padding: 14,
+                        borderRadius: 16,
+                        borderWidth: 1,
+                        borderColor: 'rgba(255,255,255,0.05)',
+                    }}
                 >
-                    <View className="flex-row items-center gap-3">
-                         <View className="w-8 h-8 rounded-full bg-blue-500/10 items-center justify-center border border-blue-500/20">
-                             <Icon name="information-outline" size={14} color="#60A5FA" />
-                         </View>
-                         <View>
-                            <Text className="text-blue-400 text-[10px] font-black uppercase tracking-widest">Combinación 3 Sabores</Text>
-                            <Text className="text-slate-500 text-[8px] font-bold">Recargo aplicado por unidad</Text>
-                         </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        <View
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 10,
+                                backgroundColor: 'rgba(96,165,250,0.1)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderWidth: 1,
+                                borderColor: 'rgba(96,165,250,0.2)',
+                            }}
+                        >
+                            <Icon name="information-outline" size={14} color="#60A5FA" />
+                        </View>
+                        <View>
+                            <Text style={{ color: '#60A5FA', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                Combinación 3 Sabores
+                            </Text>
+                            <Text style={{ color: '#475569', fontSize: 8, fontFamily: 'SpaceGrotesk-Bold' }}>
+                                Recargo por unidad
+                            </Text>
+                        </View>
                     </View>
-                    <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>+${formatCurrency(extra3SaboresAmount)}</Text>
+                    <Text style={{ fontFamily: 'Space Grotesk', color: '#F8FAFC', fontSize: 14, fontWeight: 'bold' }}>
+                        +${formatCurrency(extra3SaboresAmount)}
+                    </Text>
                 </TouchableOpacity>
             )}
         </View>

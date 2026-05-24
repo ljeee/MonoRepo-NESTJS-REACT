@@ -224,6 +224,9 @@ export function createApi(http: AxiosInstance) {
 
     deleteVariante: (varianteId: number) =>
       http.delete(`/productos/variantes/${varianteId}`).then((r) => r.data),
+
+    ajustarStockBebida: (varianteId: number, delta: number) =>
+      http.patch<ProductoVariante>(`/productos/variantes/${varianteId}/stock-bebida`, { delta }).then((r) => r.data),
   };
 
   // ─── Pizza Sabores ──────────────────────────────────────────────────
@@ -273,8 +276,8 @@ export function createApi(http: AxiosInstance) {
     resumenPeriodo: (from: string, to: string) =>
       http.get<ResumenPeriodo>('/estadisticas/resumen-periodo', { params: { from, to } }).then((r) => r.data),
 
-    clientesFrecuentes: (limit = 10) =>
-      http.get<ClienteFrecuente[]>('/estadisticas/clientes-frecuentes', { params: { limit } }).then((r) => arr<ClienteFrecuente>(r.data)),
+    clientesFrecuentes: (limit = 10, from?: string, to?: string) =>
+      http.get<ClienteFrecuente[]>('/estadisticas/clientes-frecuentes', { params: { limit, from, to } }).then((r) => arr<ClienteFrecuente>(r.data)),
 
     domiciliariosStats: (from: string, to: string) =>
       http.get<any[]>('/estadisticas/domiciliarios', { params: { from, to } }).then((r) => arr<any>(r.data)),
@@ -332,17 +335,39 @@ export function createApi(http: AxiosInstance) {
   };
 
   const cajaDenominaciones = {
-    getEstado: (fecha?: string) =>
-      http.get<DenominacionesMap>('/caja-movimientos/estado', { params: fecha ? { fecha } : {} }).then((r) => r.data),
+    getEstado: (fecha?: string, cajaOrigen: 'principal' | 'gastos' = 'principal') =>
+      http.get<DenominacionesMap>('/caja-movimientos/estado', { params: { ...(fecha ? { fecha } : {}), cajaOrigen } }).then((r) => r.data),
 
-    getResumen: (fecha?: string) =>
-      http.get<CajaResumen>('/caja-movimientos/resumen', { params: fecha ? { fecha } : {} }).then((r) => r.data),
+    getResumen: (fecha?: string, cajaOrigen: 'principal' | 'gastos' = 'principal') =>
+      http.get<CajaResumen>('/caja-movimientos/resumen', { params: { ...(fecha ? { fecha } : {}), cajaOrigen } }).then((r) => r.data),
 
-    getMovimientos: (fecha?: string) =>
-      http.get<CajaMovimiento[]>('/caja-movimientos', { params: fecha ? { fecha } : {} }).then((r) => arr<CajaMovimiento>(r.data)),
+    getMovimientos: (fecha?: string, cajaOrigen: 'principal' | 'gastos' = 'principal') =>
+      http.get<CajaMovimiento[]>('/caja-movimientos', { params: { ...(fecha ? { fecha } : {}), cajaOrigen } }).then((r) => arr<CajaMovimiento>(r.data)),
 
-    apertura: (denominaciones: DenominacionesMap, descripcion?: string) =>
-      http.post<CajaMovimiento>('/caja-movimientos/apertura', { denominaciones, descripcion }).then((r) => r.data),
+    apertura: (denominaciones: DenominacionesMap, descripcion?: string, cajaOrigen: 'principal' | 'gastos' = 'principal') =>
+      http.post<CajaMovimiento>('/caja-movimientos/apertura', { denominaciones, descripcion, cajaOrigen }).then((r) => r.data),
+
+    ajuste: (data: { tipo: 'entrada' | 'salida' | 'cambio'; denominaciones: DenominacionesMap; descripcion: string; fecha?: string; cajaOrigen?: 'principal' | 'gastos' }) =>
+      http.post<CajaMovimiento>('/caja-movimientos/ajuste', { cajaOrigen: 'principal', ...data }).then((r) => r.data),
+  };
+
+  const inventarioBebidas = {
+    findAll: () =>
+      http.get<import('../types/models').Ingrediente[]>('/inventario-bebidas').then((r) => r.data),
+    create: (dto: import('../types/models').CreateIngredienteDto) =>
+      http.post<import('../types/models').Ingrediente>('/inventario-bebidas', dto).then((r) => r.data),
+    update: (id: number, dto: Partial<import('../types/models').CreateIngredienteDto> & { activo?: boolean; rendimientoPorUnidad?: number; alertaMinimo?: number }) =>
+      http.patch<import('../types/models').Ingrediente>(`/inventario-bebidas/${id}`, dto).then((r) => r.data),
+    remove: (id: number) =>
+      http.delete(`/inventario-bebidas/${id}`).then((r) => r.data),
+    ajustar: (id: number, delta: number, descripcion?: string) =>
+      http.patch<import('../types/models').Ingrediente>(`/inventario-bebidas/${id}/ajustar`, { delta, descripcion }).then((r) => r.data),
+    getVinculos: () =>
+      http.get<import('../types/models').VarianteIngrediente[]>('/inventario-bebidas/vinculos/all').then((r) => r.data),
+    vincular: (dto: import('../types/models').VincularVarianteDto) =>
+      http.post<import('../types/models').VarianteIngrediente>('/inventario-bebidas/vinculos', dto).then((r) => r.data),
+    desvincular: (varianteId: number) =>
+      http.delete(`/inventario-bebidas/vinculos/${varianteId}`).then((r) => r.data),
   };
 
   return {
@@ -360,6 +385,7 @@ export function createApi(http: AxiosInstance) {
     empresa,
     inventarioCajas,
     cajaDenominaciones,
+    inventarioBebidas,
     http,
   };
 }

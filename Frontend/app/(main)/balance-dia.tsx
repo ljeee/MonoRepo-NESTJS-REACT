@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, Platform } from 'react-native';
+import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ScrollView } from '../../tw';
-import { useFacturasDia, useFacturasPagosDia, useDeleteFacturaPago, useApi } from '@/src/shared';
+import { useFacturasDia, useFacturasPagosDia, useApi } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportPdf } from '../../utils/exportData';
 import type { FacturaPago, CajaResumen, DenominacionesMap } from '@/src/shared';
@@ -12,17 +13,14 @@ import { View, Text, TouchableOpacity, TextInput } from '../../tw';
 import { getLocalDateString } from '../../src/shared/utils/dateRange';
 
 import { FacturaCard, FacturaItem } from '../../components/facturas/FacturaShared';
-import {
-    PageContainer,
-    PageHeader,
-    Button,
-    Icon,
-    ListSkeleton,
-    ConfirmModal,
-    Badge,
-    Card,
-    DenominacionSelector,
-} from '../../components/ui';
+import PageContainer from '../../components/ui/PageContainer';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
+import Icon from '../../components/ui/Icon';
+import { ListSkeleton } from '../../components/ui/SkeletonLoader';
+import Badge from '../../components/ui/Badge';
+import Card from '../../components/ui/Card';
+import CajaMovimientosWidget from '../../components/ui/CajaMovimientosWidget';
 
 // ─── Balance card ─────────────────────────────────────────────────────────────
 
@@ -91,51 +89,190 @@ function BalanceCard({ ingresos, gastos }: { ingresos: number; gastos: number })
     );
 }
 
-// ─── Gasto item row (Modernizado) ─────────────────────────────────────────────
+// ─── Métodos de Pago Card ─────────────────────────────────────────────────────
 
-function GastoRow({ item, onDelete, deleting }: {
-    item: FacturaPago;
-    onDelete: () => void;
-    deleting: boolean;
+function MetodosPagoCard({
+    efectivoVentas,
+    qrVentas,
+    gastosEfectivo,
+    gastosQr,
+}: {
+    efectivoVentas: number;
+    qrVentas: number;
+    gastosEfectivo: number;
+    gastosQr: number;
 }) {
-    return (
-        <Card className="flex-row items-center gap-4 p-5 bg-white/5 border border-white/5 rounded-[24px]">
-            <View className="w-12 h-12 rounded-2xl bg-white/5 items-center justify-center border border-white/10">
-                <Icon
-                    name={item.metodo === 'efectivo' ? 'cash-multiple' : 'bank-transfer'}
-                    size={22}
-                    color="#F5A524"
-                />
-            </View>
+    const { isMobile } = useBreakpoint();
+    const netoEfectivo = efectivoVentas - gastosEfectivo;
+    const netoQr = qrVentas - gastosQr;
 
-            <View className="flex-1">
-                <Text className="text-white font-black text-sm uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>
-                    {item.nombreGasto || 'Gasto General'}
-                </Text>
-                <View className="flex-row items-center gap-2 mt-1">
-                    <Text className="text-slate-500 font-bold text-[9px] uppercase tracking-widest">{item.fechaFactura}</Text>
-                    <View className="bg-(--color-pos-primary)/10 px-2 py-0.5 rounded-md border border-(--color-pos-primary)/20">
-                        <Text className="text-(--color-pos-primary) font-black text-[8px] uppercase">{item.metodo || '—'}</Text>
+    return (
+        <Card className="mb-8 overflow-hidden border-0 p-0 bg-transparent rounded-[32px]">
+            <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
+                {/* ── Efectivo ── */}
+                <View
+                    style={{
+                        flex: isMobile ? undefined : 1,
+                        backgroundColor: '#0F172A',
+                        borderRadius: 28,
+                        borderWidth: 1,
+                        borderColor: 'rgba(16,185,129,0.18)',
+                        padding: 20,
+                        gap: 14,
+                    }}
+                >
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <View
+                            style={{
+                                width: 38,
+                                height: 38,
+                                borderRadius: 12,
+                                backgroundColor: 'rgba(16,185,129,0.1)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderWidth: 1,
+                                borderColor: 'rgba(16,185,129,0.2)',
+                            }}
+                        >
+                            <Icon name="cash-multiple" size={18} color="#10B981" />
+                        </View>
+                        <View>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                Efectivo
+                            </Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                del día
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Ventas */}
+                    <View>
+                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
+                            Ventas
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, letterSpacing: -0.5 }}>
+                            ${formatCurrency(efectivoVentas)}
+                        </Text>
+                    </View>
+
+                    {/* Divider */}
+                    <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+
+                    {/* Gastos */}
+                    <View>
+                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
+                            Gastos
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 16 }}>
+                            −${formatCurrency(gastosEfectivo)}
+                        </Text>
+                    </View>
+
+                    {/* Neto */}
+                    <View
+                        style={{
+                            backgroundColor: netoEfectivo >= 0 ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+                            borderRadius: 14,
+                            padding: 12,
+                            borderWidth: 1,
+                            borderColor: netoEfectivo >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+                        }}
+                    >
+                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                            Neto efectivo
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: netoEfectivo >= 0 ? '#10B981' : '#EF4444', fontSize: 18, letterSpacing: -0.5 }}>
+                            ${formatCurrency(Math.abs(netoEfectivo))}
+                        </Text>
+                    </View>
+                </View>
+
+                {/* ── QR / Transferencia ── */}
+                <View
+                    style={{
+                        flex: isMobile ? undefined : 1,
+                        backgroundColor: '#0F172A',
+                        borderRadius: 28,
+                        borderWidth: 1,
+                        borderColor: 'rgba(96,165,250,0.18)',
+                        padding: 20,
+                        gap: 14,
+                    }}
+                >
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                        <View
+                            style={{
+                                width: 38,
+                                height: 38,
+                                borderRadius: 12,
+                                backgroundColor: 'rgba(96,165,250,0.1)',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderWidth: 1,
+                                borderColor: 'rgba(96,165,250,0.2)',
+                            }}
+                        >
+                            <Icon name="qrcode-scan" size={18} color="#60A5FA" />
+                        </View>
+                        <View>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#60A5FA', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>
+                                QR / Transfer
+                            </Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                del día
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Ventas */}
+                    <View>
+                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
+                            Ventas
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, letterSpacing: -0.5 }}>
+                            ${formatCurrency(qrVentas)}
+                        </Text>
+                    </View>
+
+                    {/* Divider */}
+                    <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+
+                    {/* Gastos */}
+                    <View>
+                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 }}>
+                            Gastos
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 16 }}>
+                            −${formatCurrency(gastosQr)}
+                        </Text>
+                    </View>
+
+                    {/* Neto */}
+                    <View
+                        style={{
+                            backgroundColor: netoQr >= 0 ? 'rgba(96,165,250,0.08)' : 'rgba(239,68,68,0.08)',
+                            borderRadius: 14,
+                            padding: 12,
+                            borderWidth: 1,
+                            borderColor: netoQr >= 0 ? 'rgba(96,165,250,0.2)' : 'rgba(239,68,68,0.2)',
+                        }}
+                    >
+                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                            Neto digital
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: netoQr >= 0 ? '#60A5FA' : '#EF4444', fontSize: 18, letterSpacing: -0.5 }}>
+                            ${formatCurrency(Math.abs(netoQr))}
+                        </Text>
                     </View>
                 </View>
             </View>
-
-            <View className="items-end mr-2">
-                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 16 }}>
-                    −${formatCurrency(item.total ?? 0)}
-                </Text>
-            </View>
-
-            <TouchableOpacity
-                onPress={onDelete}
-                disabled={deleting}
-                className="w-10 h-10 items-center justify-center rounded-xl bg-red-500/10 active:bg-red-500/20 border border-red-500/20"
-            >
-                <Icon name="trash-can-outline" size={18} color="#EF4444" />
-            </TouchableOpacity>
         </Card>
     );
 }
+
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -160,23 +297,15 @@ export default function BalanceDiaScreen() {
         fetchData: fetchGastos,
     } = useFacturasPagosDia();
 
-    const { deletePago, loading: deleting } = useDeleteFacturaPago();
-
     const [refreshing, setRefreshing] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
-    const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterPending, setFilterPending] = useState(false);
 
     // --- ESTADO DE BASE DE CAJA Y ARQUEO ---
     const dateKey = getLocalDateString();
 
-    const [baseCaja, setBaseCaja] = useState<number>(0);
-    const [baseCajaInput, setBaseCajaInput] = useState<string>('');
-    const [baseGastos, setBaseGastos] = useState<number>(0);
-    const [baseGastosInput, setBaseGastosInput] = useState<string>('');
     const [isArqueoCollapsed, setIsArqueoCollapsed] = useState<boolean>(true);
-    const [isArqueoGastosCollapsed, setIsArqueoGastosCollapsed] = useState<boolean>(true);
 
     const DEFAULT_BILL_COUNTS = {
         '200000': 0,
@@ -189,44 +318,16 @@ export default function BalanceDiaScreen() {
         'coins': 0,
     };
     const [billCounts, setBillCounts] = useState<Record<string, number>>(DEFAULT_BILL_COUNTS);
-    const [billCountsGastos, setBillCountsGastos] = useState<Record<string, number>>(DEFAULT_BILL_COUNTS);
 
     // Load from storage on mount/dateKey change
     useEffect(() => {
         const loadPersistedData = async () => {
             try {
-                const storedBase = await AsyncStorage.getItem(`@base_caja_${dateKey}`);
-                if (storedBase !== null) {
-                    const parsedBase = Number(storedBase) || 0;
-                    setBaseCaja(parsedBase);
-                    setBaseCajaInput(parsedBase.toString());
-                } else {
-                    setBaseCaja(0);
-                    setBaseCajaInput('');
-                }
-
-                const storedBaseGastos = await AsyncStorage.getItem(`@base_gastos_${dateKey}`);
-                if (storedBaseGastos !== null) {
-                    const parsedBaseGastos = Number(storedBaseGastos) || 0;
-                    setBaseGastos(parsedBaseGastos);
-                    setBaseGastosInput(parsedBaseGastos.toString());
-                } else {
-                    setBaseGastos(0);
-                    setBaseGastosInput('');
-                }
-
                 const storedCounts = await AsyncStorage.getItem(`@conteo_billetes_${dateKey}`);
                 if (storedCounts !== null) {
                     setBillCounts(JSON.parse(storedCounts));
                 } else {
                     setBillCounts(DEFAULT_BILL_COUNTS);
-                }
-
-                const storedCountsGastos = await AsyncStorage.getItem(`@conteo_gastos_${dateKey}`);
-                if (storedCountsGastos !== null) {
-                    setBillCountsGastos(JSON.parse(storedCountsGastos));
-                } else {
-                    setBillCountsGastos(DEFAULT_BILL_COUNTS);
                 }
             } catch (err) {
                 console.error('Error loading finance metrics from AsyncStorage:', err);
@@ -235,30 +336,6 @@ export default function BalanceDiaScreen() {
 
         loadPersistedData();
     }, [dateKey]);
-
-    const handleSaveBase = async (text: string) => {
-        const cleanText = text.replace(/[^0-9]/g, '');
-        setBaseCajaInput(cleanText);
-        const numValue = Number(cleanText) || 0;
-        setBaseCaja(numValue);
-        try {
-            await AsyncStorage.setItem(`@base_caja_${dateKey}`, numValue.toString());
-        } catch (err) {
-            console.error('Error saving base to AsyncStorage:', err);
-        }
-    };
-
-    const handleSaveBaseGastos = async (text: string) => {
-        const cleanText = text.replace(/[^0-9]/g, '');
-        setBaseGastosInput(cleanText);
-        const numValue = Number(cleanText) || 0;
-        setBaseGastos(numValue);
-        try {
-            await AsyncStorage.setItem(`@base_gastos_${dateKey}`, numValue.toString());
-        } catch (err) {
-            console.error('Error saving base gastos to AsyncStorage:', err);
-        }
-    };
 
     const handleUpdateBillCount = async (denomination: string, countText: string) => {
         const cleanText = countText.replace(/[^0-9]/g, '');
@@ -275,21 +352,6 @@ export default function BalanceDiaScreen() {
         }
     };
 
-    const handleUpdateBillCountGastos = async (denomination: string, countText: string) => {
-        const cleanText = countText.replace(/[^0-9]/g, '');
-        const value = Number(cleanText) || 0;
-        const updated = {
-            ...billCountsGastos,
-            [denomination]: value
-        };
-        setBillCountsGastos(updated);
-        try {
-            await AsyncStorage.setItem(`@conteo_gastos_${dateKey}`, JSON.stringify(updated));
-        } catch (err) {
-            console.error('Error saving bill counts gastos to AsyncStorage:', err);
-        }
-    };
-
     const handleClearConteo = async () => {
         setBillCounts(DEFAULT_BILL_COUNTS);
         try {
@@ -299,19 +361,13 @@ export default function BalanceDiaScreen() {
         }
     };
 
-    const handleClearConteoGastos = async () => {
-        setBillCountsGastos(DEFAULT_BILL_COUNTS);
-        try {
-            await AsyncStorage.setItem(`@conteo_gastos_${dateKey}`, JSON.stringify(DEFAULT_BILL_COUNTS));
-        } catch (err) {
-            console.error('Error clearing bill counts gastos in AsyncStorage:', err);
-        }
-    };
-
     const api = useApi();
     const [cajaResumen, setCajaResumen] = useState<CajaResumen | null>(null);
-    const [aperturaDenominaciones, setAperturaDenominaciones] = useState<DenominacionesMap>({});
-    const [showApertura, setShowApertura] = useState(false);
+    const [confirmandoApertura, setConfirmandoApertura] = useState(false);
+    const [aperturaError, setAperturaError] = useState<string | null>(null);
+
+    // Apertura de caja already done today when the backend has recorded entries
+    const aperturaHecha = (cajaResumen?.totalEntradas ?? 0) > 0;
 
     const fetchCajaResumen = useCallback(async () => {
         try {
@@ -324,20 +380,38 @@ export default function BalanceDiaScreen() {
 
     useEffect(() => { fetchGastos(); fetchCajaResumen(); }, [fetchGastos, fetchCajaResumen]);
 
-    const handleRefresh = async () => {
-        setRefreshing(refreshing);
-        await Promise.all([refetchFacturas(), fetchGastos(), fetchCajaResumen()]);
-    };
+    // Refresh caja resumen every time the screen comes into focus
+    useFocusEffect(useCallback(() => { fetchCajaResumen(); }, [fetchCajaResumen]));
 
-    const handleApertura = async () => {
-        if (Object.keys(aperturaDenominaciones).length === 0) return;
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await Promise.all([refetchFacturas(), fetchGastos(), fetchCajaResumen()]);
+        setRefreshing(false);
+    }, [refetchFacturas, fetchGastos, fetchCajaResumen]);
+
+    /** Confirms the arqueo by sending current billCounts to the backend as apertura */
+    const handleConfirmarApertura = useCallback(async () => {
+        setConfirmandoApertura(true);
+        setAperturaError(null);
         try {
-            await api.cajaDenominaciones.apertura(aperturaDenominaciones, 'Apertura de caja');
-            setAperturaDenominaciones({});
-            setShowApertura(false);
+            const denomMap: DenominacionesMap = {};
+            for (const [key, count] of Object.entries(billCounts)) {
+                if (count > 0) denomMap[key] = count;
+            }
+            if (Object.keys(denomMap).length === 0) {
+                setAperturaError('Ingresa al menos un billete o monto en monedas.');
+                return;
+            }
+            await api.cajaDenominaciones.apertura(denomMap, 'Apertura de caja');
             await fetchCajaResumen();
-        } catch {}
-    };
+        } catch (err: any) {
+            console.error('[BalanceDia] Error en apertura:', err);
+            const msg = err?.response?.data?.message ?? err?.message ?? 'Error al confirmar apertura';
+            setAperturaError(typeof msg === 'string' ? msg : 'Error al confirmar apertura');
+        } finally {
+            setConfirmandoApertura(false);
+        }
+    }, [api, billCounts, fetchCajaResumen]);
 
     const handleToggleEstado = async (
         facturaId: number,
@@ -345,12 +419,13 @@ export default function BalanceDiaScreen() {
         metodo?: string,
         pagoEfectivo?: number,
         pagoTransferencia?: number,
-        denominaciones?: Record<string, number>
+        denominaciones?: Record<string, number>,
+        cambioDenominaciones?: Record<string, number>
     ) => {
         setUpdatingId(facturaId);
         try {
             if (nuevoEstado === 'pagado' && metodo) {
-                await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones });
+                await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones });
             } else {
                 await updateEstado(facturaId, nuevoEstado);
             }
@@ -362,13 +437,6 @@ export default function BalanceDiaScreen() {
 
     const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
         await updateFactura(facturaId, { total: newTotal });
-    };
-
-    const handleDeleteGasto = async () => {
-        if (!deleteTarget) return;
-        const ok = await deletePago(deleteTarget.id);
-        if (ok) fetchGastos();
-        setDeleteTarget(null);
     };
 
     const ingresos = stats?.totalPagado ?? 0;
@@ -390,8 +458,29 @@ export default function BalanceDiaScreen() {
         .filter((g: FacturaPago) => g.metodo === 'efectivo')
         .reduce((sum: number, g: FacturaPago) => sum + (Number(g.total) || 0), 0);
 
-    const efectivoEsperado = baseCaja + efectivoVentas;
-    const efectivoEsperadoGastos = baseGastos - gastosEfectivo;
+    // ─── QR / transferencia breakdown ────────────────────────────────────────
+    const qrVentas = facturas
+        .filter((f: FacturaItem) => f.estado === 'pagado' || f.estado === 'pagada')
+        .reduce((sum: number, f: FacturaItem) => {
+            if (f.metodo === 'qr' || f.metodo === 'transferencia') {
+                return sum + (f.total ?? 0);
+            } else if (f.metodo === 'efectivo_transferencia') {
+                return sum + (f.pagoTransferencia ?? 0);
+            }
+            return sum;
+        }, 0);
+
+    const gastosQr = gastos
+        .filter((g: FacturaPago) => g.metodo === 'qr' || g.metodo === 'transferencia')
+        .reduce((sum: number, g: FacturaPago) => sum + (Number(g.total) || 0), 0);
+
+    const totalApertura = (cajaResumen?.movimientos ?? [])
+        .filter((m: any) => m.tipo === 'apertura')
+        .reduce((sum: number, m: any) => sum + (Number(m.total) || 0), 0);
+
+    const efectivoEsperado = aperturaHecha
+        ? totalApertura + efectivoVentas
+        : efectivoVentas;
 
     const conteoFisico = (billCounts['200000'] || 0) * 200000 +
         (billCounts['100000'] || 0) * 100000 +
@@ -403,17 +492,6 @@ export default function BalanceDiaScreen() {
         (billCounts['coins'] || 0);
 
     const diferencia = conteoFisico - efectivoEsperado;
-
-    const conteoFisicoGastos = (billCountsGastos['200000'] || 0) * 200000 +
-        (billCountsGastos['100000'] || 0) * 100000 +
-        (billCountsGastos['50000'] || 0) * 50000 +
-        (billCountsGastos['20000'] || 0) * 20000 +
-        (billCountsGastos['10000'] || 0) * 10000 +
-        (billCountsGastos['5000'] || 0) * 5000 +
-        (billCountsGastos['2000'] || 0) * 2000 +
-        (billCountsGastos['coins'] || 0);
-
-    const diferenciaGastos = conteoFisicoGastos - efectivoEsperadoGastos;
 
     const loading = loadingFacturas || loadingGastos;
 
@@ -484,20 +562,6 @@ export default function BalanceDiaScreen() {
                             icon={diferencia === 0 ? 'check-circle' : 'alert-circle'}
                             size="sm"
                         />
-                        <Badge
-                            label={
-                                diferenciaGastos === 0
-                                    ? 'Caja Gastos: OK'
-                                    : diferenciaGastos > 0
-                                    ? `Gastos: +$${formatCurrency(diferenciaGastos)}`
-                                    : `Gastos: -$${formatCurrency(Math.abs(diferenciaGastos))}`
-                            }
-                            variant={
-                                diferenciaGastos === 0 ? 'success' : diferenciaGastos > 0 ? 'warning' : 'danger'
-                            }
-                            icon={diferenciaGastos === 0 ? 'check-circle' : 'alert-circle'}
-                            size="sm"
-                        />
                     </View>
                 </View>
 
@@ -522,48 +586,29 @@ export default function BalanceDiaScreen() {
                             size="sm"
                         />
                     </View>
-                    <View className="flex-row flex-wrap gap-4 mb-4">
-                        {/* Dinero Base */}
-                        <View className={`${isMobile ? 'w-full' : 'flex-1'} bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4`}>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                                Dinero Base (Cambio)
-                            </Text>
-                            <View className="flex-row items-center bg-white/5 rounded-xl border border-white/10 px-3 py-2">
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 18, marginRight: 4 }}>$</Text>
-                                <TextInput
-                                    className="text-white flex-1 font-bold text-lg p-0 h-8"
-                                    style={{ color: '#FFFFFF' }}
-                                    placeholder="0"
-                                    placeholderTextColor="#64748B"
-                                    keyboardType="numeric"
-                                    value={baseCajaInput}
-                                    onChangeText={handleSaveBase}
-                                />
-                                {baseCajaInput.length > 0 && (
-                                    <TouchableOpacity onPress={() => handleSaveBase('')}>
-                                        <Icon name="close-circle" size={18} color="#64748B" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                            <Text className="text-slate-500 text-[10px] mt-1.5">
-                                Efectivo inicial disponible para cambio.
-                            </Text>
-                        </View>
-
+                    <View className="mb-4">
                         {/* Efectivo Esperado en Caja */}
-                        <View className={`${isMobile ? 'w-full' : 'flex-1'} bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 justify-between`}>
+                        <View className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 justify-between">
                             <View>
                                 <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
                                     Efectivo Esperado en Caja
                                 </Text>
                                 <View className="flex-row items-center gap-1 mt-1 flex-wrap">
-                                    <Text className="text-slate-500 text-[10px]">
-                                        Base: ${formatCurrency(baseCaja)}
-                                    </Text>
-                                    <Text className="text-slate-500 text-[10px]">•</Text>
-                                    <Text className="text-emerald-500 text-[10px]">
-                                        Ventas Ef.: +${formatCurrency(efectivoVentas)}
-                                    </Text>
+                                    {aperturaHecha ? (
+                                        <>
+                                            <Text className="text-slate-500 text-[10px]">
+                                                Apertura: ${formatCurrency(totalApertura)}
+                                            </Text>
+                                            <Text className="text-slate-500 text-[10px]">•</Text>
+                                            <Text className="text-emerald-500 text-[10px]">
+                                                Ventas Ef.: +${formatCurrency(efectivoVentas)}
+                                            </Text>
+                                        </>
+                                    ) : (
+                                        <Text className="text-emerald-500 text-[10px]">
+                                            Ventas Ef.: ${formatCurrency(efectivoVentas)}
+                                        </Text>
+                                    )}
                                 </View>
                             </View>
                             <View className="mt-3 flex-row justify-between items-center">
@@ -583,389 +628,232 @@ export default function BalanceDiaScreen() {
                         className="flex-row justify-between items-center bg-white/5 border border-white/5 rounded-2xl p-4 active:bg-white/10"
                     >
                         <View className="flex-row items-center gap-3 flex-1 mr-2">
-                            <Icon name="cash-multiple" size={20} color="#F5A524" />
+                            <Icon
+                                name={aperturaHecha ? 'check-circle' : 'cash-multiple'}
+                                size={20}
+                                color={aperturaHecha ? '#10B981' : '#F5A524'}
+                            />
                             <View style={{ flex: 1, minWidth: 0 }}>
                                 <Text style={{ fontFamily: 'Outfit', color: '#E2E8F0', fontSize: 14, fontWeight: 'bold' }} numberOfLines={1} ellipsizeMode="tail">
-                                    Arqueo de Billetes (Caja de Cambio)
+                                    Arqueo de Apertura
                                 </Text>
                                 <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11 }} numberOfLines={1} ellipsizeMode="tail">
-                                    Conteo físico: ${formatCurrency(conteoFisico)}
+                                    {aperturaHecha
+                                        ? `Registrada — $${formatCurrency(totalApertura)} en caja`
+                                        : `Pendiente — conteo actual: $${formatCurrency(conteoFisico)}`
+                                    }
                                 </Text>
                             </View>
                         </View>
+                        {!aperturaHecha && (
+                            <View className="mr-2 bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded-lg">
+                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 9, textTransform: 'uppercase' }}>Requerido</Text>
+                            </View>
+                        )}
                         <Icon name={isArqueoCollapsed ? 'chevron-down' : 'chevron-up'} size={20} color="#E2E8F0" />
                     </TouchableOpacity>
 
                     {/* Contenido desplegable (Cambio) */}
                     {!isArqueoCollapsed && (
-                        <View className="mt-2 pt-4 border-t border-white/5 bg-black/10 p-4 rounded-2xl border border-white/5">
-                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                                Cantidades de Denominaciones (Cambio)
-                            </Text>
-                            
-                            <View className="flex-row flex-wrap gap-2.5">
-                                {[
-                                    { key: '200000', label: '$200K' },
-                                    { key: '100000', label: '$100K' },
-                                    { key: '50000', label: '$50K' },
-                                    { key: '20000', label: '$20K' },
-                                    { key: '10000', label: '$10K' },
-                                    { key: '5000', label: '$5K' },
-                                    { key: '2000', label: '$2K' },
-                                ].map((den) => {
-                                    const qty = billCounts[den.key] || 0;
-                                    const subtotal = qty * Number(den.key);
-                                    return (
-                                        <View key={den.key} className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
-                                            <View className="flex-row justify-between items-center mb-1">
-                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11 }}>{den.label}</Text>
-                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>x {Number(den.key) / 1000}k</Text>
-                                            </View>
-                                            <TextInput
-                                                className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
-                                                placeholder="0"
-                                                placeholderTextColor="#475569"
-                                                keyboardType="numeric"
-                                                value={qty ? qty.toString() : ''}
-                                                onChangeText={(val) => handleUpdateBillCount(den.key, val)}
-                                            />
-                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                                                ${formatCurrency(subtotal)}
-                                            </Text>
-                                        </View>
-                                    );
-                                })}
-
-                                <View className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
-                                    <View className="flex-row justify-between items-center mb-1">
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 11 }}>Monedas</Text>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>Monto total</Text>
-                                    </View>
-                                    <TextInput
-                                        className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
-                                        placeholder="0"
-                                        placeholderTextColor="#475569"
-                                        keyboardType="numeric"
-                                        value={billCounts['coins'] ? billCounts['coins'].toString() : ''}
-                                        onChangeText={(val) => handleUpdateBillCount('coins', val)}
-                                    />
-                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                                        ${formatCurrency(billCounts['coins'] || 0)}
+                        aperturaHecha ? (
+                            /* ── Live state: shows current denominations after all movements ── */
+                            <View className="mt-2 bg-emerald-500/5 border border-emerald-500/15 p-4 rounded-2xl">
+                                <View className="flex-row items-center gap-2 mb-4">
+                                    <Icon name="check-circle" size={16} color="#10B981" />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Estado actual de caja
                                     </Text>
                                 </View>
-                            </View>
 
-                            <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-white/5 flex-wrap gap-2">
-                                <TouchableOpacity
-                                    onPress={handleClearConteo}
-                                    className="flex-row items-center gap-1.5 px-3 py-2 bg-red-500/10 active:bg-red-500/20 rounded-xl border border-red-500/20"
-                                >
-                                    <Icon name="trash-can-outline" size={14} color="#EF4444" />
-                                    <Text
-                                        className="uppercase text-[11px]"
-                                        style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444' }}
-                                        numberOfLines={1}
-                                        ellipsizeMode="tail"
-                                        adjustsFontSizeToFit
-                                        minimumFontScale={0.8}
-                                    >
-                                        Limpiar Cambio
-                                    </Text>
-                                </TouchableOpacity>
+                                <View className="gap-1.5">
+                                    {/* Billetes */}
+                                    {DENOMINACIONES_COP.map(({ valor, tipo, label }) => {
+                                        const qty = cajaResumen?.estadoActual[String(valor)] ?? 0;
+                                        if (qty === 0) return null;
+                                        return (
+                                            <View key={valor} className="flex-row items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03]">
+                                                <View className="flex-row items-center gap-2">
+                                                    <View className={`w-1.5 h-1.5 rounded-full ${tipo === 'billete' ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                                                    <Text className="text-sm text-slate-300 w-20">{label}</Text>
+                                                </View>
+                                                <View className="flex-row items-center gap-3">
+                                                    <Text className="text-slate-500 text-xs">×{qty}</Text>
+                                                    <Text className="text-sm text-emerald-400 font-bold w-24 text-right">${formatCurrency(qty * valor)}</Text>
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
 
-                                <View className="flex-row items-center gap-3 flex-wrap">
-                                    <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 12 }}>
-                                        Arqueado: <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC' }}>${formatCurrency(conteoFisico)}</Text>
-                                    </Text>
+                                    {/* Monedas — stored as total value directly under 'coins' key */}
+                                    {(cajaResumen?.estadoActual?.['coins'] ?? 0) > 0 && (
+                                        <View className="flex-row items-center justify-between px-3 py-2 rounded-xl bg-yellow-500/5 border border-yellow-500/10">
+                                            <View className="flex-row items-center gap-2">
+                                                <View className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                                                <Text className="text-sm text-slate-300 w-20">Monedas</Text>
+                                            </View>
+                                            <View className="flex-row items-center gap-3">
+                                                <Text className="text-slate-500 text-xs">total</Text>
+                                                <Text className="text-sm text-yellow-400 font-bold w-24 text-right">${formatCurrency(cajaResumen!.estadoActual['coins'])}</Text>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {(!cajaResumen?.estadoActual || Object.values(cajaResumen.estadoActual).every(v => (v ?? 0) <= 0)) && (
+                                        <Text className="text-slate-600 text-xs text-center py-2">Sin denominaciones en caja</Text>
+                                    )}
+                                </View>
+
+                                <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-white/5 flex-wrap gap-2">
+                                    <View>
+                                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 12 }}>
+                                            Total en caja:{' '}
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981' }}>
+                                                ${formatCurrency(cajaResumen?.totalEfectivo ?? 0)}
+                                            </Text>
+                                        </Text>
+                                        <Text style={{ fontFamily: 'Outfit', color: '#334155', fontSize: 10 }}>
+                                            Entradas: ${formatCurrency(cajaResumen?.totalEntradas ?? 0)}  •  Salidas: ${formatCurrency(cajaResumen?.totalSalidas ?? 0)}
+                                        </Text>
+                                    </View>
                                     <TouchableOpacity
                                         onPress={() => setIsArqueoCollapsed(true)}
                                         className="px-3 py-2 bg-white/5 active:bg-white/10 rounded-xl border border-white/10"
                                     >
-                                        <Text className="uppercase text-[11px]" style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8' }} numberOfLines={1} ellipsizeMode="tail">
-                                            Cerrar
+                                        <Text className="uppercase text-[11px]" style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8' }}>Cerrar</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        ) : (
+                            /* ── Editable: fill counts and confirm apertura ── */
+                            <View className="mt-2 pt-4 border-t border-white/5 bg-black/10 p-4 rounded-2xl border border-white/5">
+                                {/* Warning if facturas already paid without arqueo */}
+                                {(stats?.totalPagado ?? 0) > 0 && (
+                                    <View className="flex-row items-start gap-2 mb-4 p-3 bg-red-500/10 rounded-xl border border-red-500/20">
+                                        <Icon name="alert-circle-outline" size={14} color="#F43F5E" />
+                                        <Text style={{ fontFamily: 'Outfit', color: '#F87171', fontSize: 11, flex: 1, lineHeight: 16 }}>
+                                            Hay facturas cobradas sin apertura de caja. El estado no es congruente — realiza el arqueo ahora.
                                         </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </View>
-                    )}
-                </View>
-
-                {/* Línea divisoria */}
-                <View className="h-[1px] bg-white/5 my-5" />
-
-                {/* Caja de Gastos Operativos */}
-                <View className="mb-2">
-                    <View className="flex-row justify-between items-center mb-3 mt-1 flex-wrap gap-2">
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5 }}>
-                            Caja de Gastos Operativos
-                        </Text>
-                        <Badge
-                            label={
-                                diferenciaGastos === 0
-                                    ? 'Gastos Cuadrados'
-                                    : diferenciaGastos > 0
-                                    ? `Sobrante: +$${formatCurrency(diferenciaGastos)}`
-                                    : `Faltante: -$${formatCurrency(Math.abs(diferenciaGastos))}`
-                            }
-                            variant={
-                                diferenciaGastos === 0 ? 'success' : diferenciaGastos > 0 ? 'warning' : 'danger'
-                            }
-                            icon={diferenciaGastos === 0 ? 'check-circle' : 'alert-circle'}
-                            size="sm"
-                        />
-                    </View>
-                    <View className="flex-row flex-wrap gap-4 mb-4">
-                        {/* Dinero Base Gastos */}
-                        <View className={`${isMobile ? 'w-full' : 'flex-1'} bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4`}>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-                                Dinero Base (Gastos)
-                            </Text>
-                            <View className="flex-row items-center bg-white/5 rounded-xl border border-white/10 px-3 py-2">
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 18, marginRight: 4 }}>$</Text>
-                                <TextInput
-                                    className="text-white flex-1 font-bold text-lg p-0 h-8"
-                                    style={{ color: '#FFFFFF' }}
-                                    placeholder="0"
-                                    placeholderTextColor="#64748B"
-                                    keyboardType="numeric"
-                                    value={baseGastosInput}
-                                    onChangeText={handleSaveBaseGastos}
-                                />
-                                {baseGastosInput.length > 0 && (
-                                    <TouchableOpacity onPress={() => handleSaveBaseGastos('')}>
-                                        <Icon name="close-circle" size={18} color="#64748B" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                            <Text className="text-slate-500 text-[10px] mt-1.5">
-                                Fondo inicial destinado estrictamente para gastos.
-                            </Text>
-                        </View>
-
-                        {/* Efectivo Restante de Gastos */}
-                        <View className={`${isMobile ? 'w-full' : 'flex-1'} bg-white/[0.02] border border-white/[0.05] rounded-2xl p-4 justify-between`}>
-                            <View>
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                    Efectivo Restante de Gastos
-                                </Text>
-                                <View className="flex-row items-center gap-1 mt-1 flex-wrap">
-                                    <Text className="text-slate-500 text-[10px]">
-                                        Base Gastos: ${formatCurrency(baseGastos)}
-                                    </Text>
-                                    <Text className="text-slate-500 text-[10px]">•</Text>
-                                    <Text className="text-red-500 text-[10px]">
-                                        Gastos Ef.: -${formatCurrency(gastosEfectivo)}
-                                    </Text>
-                                </View>
-                            </View>
-                            <View className="mt-3 flex-row justify-between items-center">
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, color: efectivoEsperadoGastos >= 0 ? '#F8FAFC' : '#EF4444', letterSpacing: -0.5 }}>
-                                    ${formatCurrency(efectivoEsperadoGastos)}
-                                </Text>
-                                <View className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 items-center justify-center">
-                                    <Icon name="cash-remove" size={16} color="#94A3B8" />
-                                </View>
-                            </View>
-                        </View>
-                    </View>
-
-                    {/* Acordeón Arqueo de Billetes (Gastos) */}
-                    <TouchableOpacity
-                        onPress={() => setIsArqueoGastosCollapsed(!isArqueoGastosCollapsed)}
-                        className="flex-row justify-between items-center bg-white/5 border border-white/5 rounded-2xl p-4 active:bg-white/10"
-                    >
-                        <View className="flex-row items-center gap-3 flex-1 mr-2">
-                            <Icon name="cash-multiple" size={20} color="#EF4444" />
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                                <Text style={{ fontFamily: 'Outfit', color: '#E2E8F0', fontSize: 14, fontWeight: 'bold' }} numberOfLines={1} ellipsizeMode="tail">
-                                    Arqueo de Billetes (Caja de Gastos)
-                                </Text>
-                                <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11 }} numberOfLines={1} ellipsizeMode="tail">
-                                    Conteo físico: ${formatCurrency(conteoFisicoGastos)}
-                                </Text>
-                            </View>
-                        </View>
-                        <Icon name={isArqueoGastosCollapsed ? 'chevron-down' : 'chevron-up'} size={20} color="#E2E8F0" />
-                    </TouchableOpacity>
-
-                    {/* Contenido desplegable (Gastos) */}
-                    {!isArqueoGastosCollapsed && (
-                        <View className="mt-2 pt-4 border-t border-white/5 bg-black/10 p-4 rounded-2xl border border-white/5">
-                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
-                                Cantidades de Denominaciones (Gastos)
-                            </Text>
-                            
-                            <View className="flex-row flex-wrap gap-2.5">
-                                {[
-                                    { key: '200000', label: '$200K' },
-                                    { key: '100000', label: '$100K' },
-                                    { key: '50000', label: '$50K' },
-                                    { key: '20000', label: '$20K' },
-                                    { key: '10000', label: '$10K' },
-                                    { key: '5000', label: '$5K' },
-                                    { key: '2000', label: '$2K' },
-                                ].map((den) => {
-                                    const qty = billCountsGastos[den.key] || 0;
-                                    const subtotal = qty * Number(den.key);
-                                    return (
-                                        <View key={den.key} className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
-                                            <View className="flex-row justify-between items-center mb-1">
-                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11 }}>{den.label}</Text>
-                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>x {Number(den.key) / 1000}k</Text>
-                                            </View>
-                                            <TextInput
-                                                className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
-                                                placeholder="0"
-                                                placeholderTextColor="#475569"
-                                                keyboardType="numeric"
-                                                value={qty ? qty.toString() : ''}
-                                                onChangeText={(val) => handleUpdateBillCountGastos(den.key, val)}
-                                            />
-                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                                                ${formatCurrency(subtotal)}
-                                            </Text>
-                                        </View>
-                                    );
-                                })}
-
-                                <View className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
-                                    <View className="flex-row justify-between items-center mb-1">
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 11 }}>Monedas</Text>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>Monto total</Text>
                                     </View>
-                                    <TextInput
-                                        className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
-                                        placeholder="0"
-                                        placeholderTextColor="#475569"
-                                        keyboardType="numeric"
-                                        value={billCountsGastos['coins'] ? billCountsGastos['coins'].toString() : ''}
-                                        onChangeText={(val) => handleUpdateBillCountGastos('coins', val)}
-                                    />
-                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                                        ${formatCurrency(billCountsGastos['coins'] || 0)}
-                                    </Text>
+                                )}
+
+                                <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+                                    Ingresa las cantidades de billetes que hay en la caja
+                                </Text>
+
+                                <View className="flex-row flex-wrap gap-2.5">
+                                    {[
+                                        { key: '200000', label: '$200K' },
+                                        { key: '100000', label: '$100K' },
+                                        { key: '50000', label: '$50K' },
+                                        { key: '20000', label: '$20K' },
+                                        { key: '10000', label: '$10K' },
+                                        { key: '5000', label: '$5K' },
+                                        { key: '2000', label: '$2K' },
+                                    ].map((den) => {
+                                        const qty = billCounts[den.key] || 0;
+                                        const subtotal = qty * Number(den.key);
+                                        return (
+                                            <View key={den.key} className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
+                                                <View className="flex-row justify-between items-center mb-1">
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11 }}>{den.label}</Text>
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>x {Number(den.key) / 1000}k</Text>
+                                                </View>
+                                                <TextInput
+                                                    className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
+                                                    placeholder="0"
+                                                    placeholderTextColor="#475569"
+                                                    keyboardType="numeric"
+                                                    value={qty ? qty.toString() : ''}
+                                                    onChangeText={(val) => handleUpdateBillCount(den.key, val)}
+                                                />
+                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
+                                                    ${formatCurrency(subtotal)}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })}
+
+                                    <View className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
+                                        <View className="flex-row justify-between items-center mb-1">
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 11 }}>Monedas</Text>
+                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>Monto total</Text>
+                                        </View>
+                                        <TextInput
+                                            className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
+                                            placeholder="0"
+                                            placeholderTextColor="#475569"
+                                            keyboardType="numeric"
+                                            value={billCounts['coins'] ? billCounts['coins'].toString() : ''}
+                                            onChangeText={(val) => handleUpdateBillCount('coins', val)}
+                                        />
+                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
+                                            ${formatCurrency(billCounts['coins'] || 0)}
+                                        </Text>
+                                    </View>
                                 </View>
-                            </View>
 
-                            <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-white/5 flex-wrap gap-2">
-                                <TouchableOpacity
-                                    onPress={handleClearConteoGastos}
-                                    className="flex-row items-center gap-1.5 px-3 py-2 bg-red-500/10 active:bg-red-500/20 rounded-xl border border-red-500/20"
-                                >
-                                    <Icon name="trash-can-outline" size={14} color="#EF4444" />
-                                    <Text
-                                        className="uppercase text-[11px]"
-                                        style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444' }}
-                                        numberOfLines={1}
-                                        ellipsizeMode="tail"
-                                        adjustsFontSizeToFit
-                                        minimumFontScale={0.8}
-                                    >
-                                        Limpiar Gastos
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <View className="flex-row items-center gap-3 flex-wrap">
-                                    <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 12 }}>
-                                        Arqueado: <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC' }}>${formatCurrency(conteoFisicoGastos)}</Text>
-                                    </Text>
+                                {aperturaError && (
+                                    <View className="flex-row items-center gap-2 mt-3 p-3 bg-red-500/10 rounded-xl border border-red-500/20">
+                                        <Icon name="alert-circle-outline" size={14} color="#F43F5E" />
+                                        <Text style={{ fontFamily: 'Outfit', color: '#F87171', fontSize: 11, flex: 1 }}>{aperturaError}</Text>
+                                    </View>
+                                )}
+                                <View className="flex-row justify-between items-center mt-4 pt-4 border-t border-white/5 flex-wrap gap-2">
                                     <TouchableOpacity
-                                        onPress={() => setIsArqueoGastosCollapsed(true)}
-                                        className="px-3 py-2 bg-white/5 active:bg-white/10 rounded-xl border border-white/10"
+                                        onPress={handleClearConteo}
+                                        className="flex-row items-center gap-1.5 px-3 py-2 bg-red-500/10 active:bg-red-500/20 rounded-xl border border-red-500/20"
                                     >
-                                        <Text className="uppercase text-[11px]" style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8' }} numberOfLines={1} ellipsizeMode="tail">
-                                            Cerrar
+                                        <Icon name="trash-can-outline" size={14} color="#EF4444" />
+                                        <Text
+                                            className="uppercase text-[11px]"
+                                            style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444' }}
+                                            numberOfLines={1}
+                                            ellipsizeMode="tail"
+                                        >
+                                            Limpiar
                                         </Text>
                                     </TouchableOpacity>
+
+                                    <View className="flex-row items-center gap-3 flex-wrap">
+                                        <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 12 }}>
+                                            Total: <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC' }}>${formatCurrency(conteoFisico)}</Text>
+                                        </Text>
+                                        <Button
+                                            title={confirmandoApertura ? 'Confirmando...' : 'Confirmar Apertura'}
+                                            icon="check-circle-outline"
+                                            variant="primary"
+                                            size="sm"
+                                            onPress={handleConfirmarApertura}
+                                            loading={confirmandoApertura}
+                                            disabled={confirmandoApertura || conteoFisico === 0}
+                                        />
+                                    </View>
                                 </View>
                             </View>
-                        </View>
+                        )
                     )}
                 </View>
+
+
             </Card>
 
             {/* Balance summary card */}
             <BalanceCard ingresos={ingresos} gastos={totalGastos} />
 
-            {/* ── ARQUEADA DE CAJA (TRACKING) ────────────────────────────────── */}
-            <Card className="mb-8 p-5">
-                <View className="flex-row justify-between items-center mb-4">
-                    <View className="flex-row items-center gap-3">
-                        <Icon name="cash-register" size={20} color="#F5A524" />
-                        <Text className="text-white font-black text-base uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
-                            Arqueada de Caja
-                        </Text>
-                    </View>
-                    <View className="flex-row gap-2">
-                        <Button
-                            title={showApertura ? 'Cancelar' : 'Apertura'}
-                            icon={showApertura ? 'close' : 'bank-plus'}
-                            variant="ghost"
-                            size="sm"
-                            onPress={() => { setShowApertura(!showApertura); setAperturaDenominaciones({}); }}
-                        />
-                        <Button title="" icon="refresh" variant="ghost" size="sm" onPress={fetchCajaResumen} />
-                    </View>
-                </View>
+            {/* Efectivo vs QR breakdown */}
+            <MetodosPagoCard
+                efectivoVentas={efectivoVentas}
+                qrVentas={qrVentas}
+                gastosEfectivo={gastosEfectivo}
+                gastosQr={gastosQr}
+            />
 
-                {showApertura && (
-                    <View className="mb-4 p-4 bg-orange-500/5 rounded-2xl border border-orange-500/15">
-                        <Text className="text-orange-300 text-xs font-bold mb-3 uppercase tracking-widest">Cargar billetes en caja</Text>
-                        <DenominacionSelector value={aperturaDenominaciones} onChange={setAperturaDenominaciones} titulo="" />
-                        <Button
-                            title="Registrar Apertura"
-                            icon="check"
-                            variant="primary"
-                            size="sm"
-                            onPress={handleApertura}
-                            disabled={Object.keys(aperturaDenominaciones).length === 0}
-                            className="mt-3"
-                        />
-                    </View>
-                )}
-
-                {cajaResumen ? (
-                    <View>
-                        <View className="flex-row justify-between items-center mb-3 px-1">
-                            <Text className="text-slate-400 text-xs font-bold uppercase tracking-widest">Estado actual en caja</Text>
-                            <Text className="text-orange-400 font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>
-                                ${formatCurrency(cajaResumen.totalEfectivo)}
-                            </Text>
-                        </View>
-
-                        <View className="gap-1.5">
-                            {DENOMINACIONES_COP.map(({ valor, tipo, label }) => {
-                                const qty = cajaResumen.estadoActual[String(valor)] ?? 0;
-                                if (qty === 0) return null;
-                                return (
-                                    <View key={valor} className="flex-row items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03]">
-                                        <View className="flex-row items-center gap-2">
-                                            <View className={`w-1.5 h-1.5 rounded-full ${tipo === 'billete' ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                                            <Text className="text-sm text-slate-300 w-20">{label}</Text>
-                                        </View>
-                                        <View className="flex-row items-center gap-3">
-                                            <Text className="text-slate-500 text-xs">×{qty}</Text>
-                                            <Text className="text-sm text-emerald-400 font-bold w-20 text-right">{formatCurrency(qty * valor)}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            })}
-                        </View>
-
-                        {cajaResumen.totalEfectivo === 0 && (
-                            <Text className="text-slate-600 text-xs text-center py-4">Sin movimientos de caja registrados hoy</Text>
-                        )}
-
-                        <View className="flex-row justify-between mt-3 pt-3 border-t border-white/5">
-                            <Text className="text-slate-500 text-xs">Entradas: <Text className="text-emerald-400 font-bold">${formatCurrency(cajaResumen.totalEntradas)}</Text></Text>
-                            <Text className="text-slate-500 text-xs">Salidas: <Text className="text-red-400 font-bold">${formatCurrency(cajaResumen.totalSalidas)}</Text></Text>
-                        </View>
-                    </View>
-                ) : (
-                    <Text className="text-slate-600 text-xs text-center py-4">No se pudo cargar el estado de caja</Text>
-                )}
-            </Card>
+            {/* ── MOVIMIENTOS DE CAJA (tracking de entradas/salidas durante el día) ── */}
+            <CajaMovimientosWidget 
+                cajaResumen={cajaResumen}
+                onRefresh={fetchCajaResumen}
+                isLoading={loadingFacturas}
+            />
 
             {/* ── FACTURAS ───────────────────────────────────────────────────────── */}
             <View className={`mb-6 mt-4 gap-4 ${isMobile ? 'flex-col items-stretch' : 'flex-row items-center justify-between'}`}>
@@ -978,7 +866,7 @@ export default function BalanceDiaScreen() {
                 </View>
 
                 {/* Buscador y Filtro */}
-                <View className={`flex-row items-center gap-2 ${isMobile ? 'w-full' : 'flex-1 max-w-md'}`}>
+                <View className={`flex-row items-center gap-2 ${isMobile ? '' : 'flex-1 max-w-md'}`}>
                     <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 border border-white/10">
                         <Icon name="magnify" size={20} color="#94A3B8" />
                         <TextInput
@@ -1031,62 +919,12 @@ export default function BalanceDiaScreen() {
                             onToggleEstado={handleToggleEstado}
                             onUpdateTotal={handleUpdateTotal}
                             showPrint
+                            aperturaHecha={aperturaHecha}
                         />
                     </View>
                 ))}
             </View>
 
-            {/* ── GASTOS ─────────────────────────────────────────────────────────── */}
-             <View className="flex-row items-center justify-between mb-6">
-                <View className="flex-row items-center gap-3">
-                    <View className="w-1.5 h-6 bg-red-500 rounded-full" />
-                    <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Gastos de Operación</Text>
-                </View>
-                <View className="bg-white/5 px-3 py-1 rounded-full border border-white/5">
-                    <Text className="text-slate-500 font-bold text-xs">{gastos.length} items</Text>
-                </View>
-            </View>
-
-            {errorGastos && (
-                <View className="flex-row items-center gap-3 bg-red-500/10 p-5 rounded-3xl mb-8 border border-red-500/20">
-                    <Icon name="alert-circle-outline" size={20} color="#EF4444" />
-                    <Text className="text-red-400 text-xs font-bold leading-tight">{errorGastos}</Text>
-                </View>
-            )}
-
-            {loadingGastos && !gastos.length && <ListSkeleton count={3} />}
-
-            {!loadingGastos && gastos.length === 0 && !errorGastos && (
-                <View className="items-center py-16 bg-white/5 rounded-[40px] border border-white/5 mb-10">
-                    <Icon name="cash-remove" size={56} color="#1E293B" />
-                    <Text className="text-slate-600 font-black mt-4 uppercase text-[10px] tracking-widest">No hay gastos reportados</Text>
-                </View>
-            )}
-
-            <View className="flex-row flex-wrap gap-4 pb-20">
-                {gastos.map((item: FacturaPago, idx: number) => (
-                    <View key={item.pagosId?.toString() || idx.toString()} className={`${isWeb ? 'w-full lg:w-[49%]' : 'w-full'}`}>
-                        <GastoRow
-                            item={item}
-                            onDelete={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })}
-                            deleting={deleting}
-                        />
-                    </View>
-                ))}
-            </View>
-
-            {/* Delete confirmation */}
-            <ConfirmModal
-                visible={!!deleteTarget}
-                title="¿Eliminar registro de gasto?"
-                message={`Estás a punto de borrar "${deleteTarget?.name}". Esta acción actualizará los balances diarios de forma permanente.`}
-                icon="trash-can-outline"
-                variant="danger"
-                confirmText="Eliminar"
-                loading={deleting}
-                onConfirm={handleDeleteGasto}
-                onCancel={() => setDeleteTarget(null)}
-            />
         </PageContainer>
     );
 }

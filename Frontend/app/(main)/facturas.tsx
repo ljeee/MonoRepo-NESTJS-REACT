@@ -7,14 +7,12 @@ import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { validateFlexibleDateRange } from '@/src/shared';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
-import {
-  PageContainer,
-  PageHeader,
-  Button,
-  Input,
-  Icon,
-  ListSkeleton,
-} from '../../components/ui';
+import PageContainer from '../../components/ui/PageContainer';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Icon from '../../components/ui/Icon';
+import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Tipos de filtro local ──────────────────────────────────────────────────
@@ -73,11 +71,12 @@ export default function FacturasRangoScreen() {
     pagoEfectivo?: number,
     pagoTransferencia?: number,
     denominaciones?: DenominacionesMap,
+    cambioDenominaciones?: DenominacionesMap,
   ) => {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-        await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones });
+        await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones });
       } else {
         await updateEstado(facturaId, nuevoEstado);
       }

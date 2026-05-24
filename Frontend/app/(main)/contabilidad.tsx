@@ -329,7 +329,7 @@ export default function ContabilidadScreen() {
                         label="Desde"
                         value={from}
                         onChangeText={setFrom}
-                        placeholder="YYYY-MM-DD · hoy · semana"
+                        placeholder="Ej: 2024-05-24"
                         size={isMobile ? 'md' : 'sm'}
                         leftIcon={<Icon name="calendar-start" size={14} color="#475569" />}
                         containerStyle={{ marginBottom: 0 }}
@@ -340,7 +340,7 @@ export default function ContabilidadScreen() {
                         label="Hasta"
                         value={to}
                         onChangeText={setTo}
-                        placeholder="YYYY-MM-DD"
+                        placeholder="Ej: 2024-05-31"
                         size={isMobile ? 'md' : 'sm'}
                         leftIcon={<Icon name="calendar-end" size={14} color="#475569" />}
                         containerStyle={{ marginBottom: 0 }}
@@ -442,13 +442,11 @@ export default function ContabilidadScreen() {
                     {loadingF ? <ListSkeleton count={6} /> : (
                         <Card className="p-0 overflow-hidden mb-4">
                             <TableHeader cols={isMobile ? ['#', 'Cliente', 'Est.', 'Total'] : ['#', 'Cliente', 'Fecha', 'Método', 'Estado', 'Total']} />
-                            <FlatList
-                                data={facturas}
-                                keyExtractor={f => String(f.facturaId)}
-                                renderItem={({ item }) => <VentaRow f={item} isMobile={isMobile} />}
-                                scrollEnabled={false}
-                                ListEmptyComponent={<View style={{ padding: 32, alignItems: 'center' }}><Text style={{ color: '#334155', fontSize: 13 }}>Sin ventas en el período</Text></View>}
-                            />
+                            {facturas.length === 0 ? (
+                                <View style={{ padding: 32, alignItems: 'center' }}><Text style={{ color: '#334155', fontSize: 13 }}>Sin ventas en el período</Text></View>
+                            ) : (
+                                facturas.map(f => <VentaRow key={String(f.facturaId)} f={f} isMobile={isMobile} />)
+                            )}
                         </Card>
                     )}
                     {totalPagesF > 1 && (
@@ -475,13 +473,11 @@ export default function ContabilidadScreen() {
                     {loadingG ? <ListSkeleton count={6} /> : (
                         <Card className="p-0 overflow-hidden mb-4">
                             <TableHeader cols={isMobile ? ['#', 'Concepto', 'Est.', 'Total'] : ['#', 'Concepto', 'Fecha', 'Método', 'Estado', 'Total']} />
-                            <FlatList
-                                data={gastos}
-                                keyExtractor={g => String(g.pagosId)}
-                                renderItem={({ item }) => <GastoRow g={item} isMobile={isMobile} />}
-                                scrollEnabled={false}
-                                ListEmptyComponent={<View style={{ padding: 32, alignItems: 'center' }}><Text style={{ color: '#334155', fontSize: 13 }}>Sin egresos en el período</Text></View>}
-                            />
+                            {gastos.length === 0 ? (
+                                <View style={{ padding: 32, alignItems: 'center' }}><Text style={{ color: '#334155', fontSize: 13 }}>Sin egresos en el período</Text></View>
+                            ) : (
+                                gastos.map(g => <GastoRow key={String(g.pagosId)} g={g} isMobile={isMobile} />)
+                            )}
                         </Card>
                     )}
                     {totalPagesG > 1 && (

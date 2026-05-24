@@ -33,7 +33,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { label: 'Balance Caja', route: '/balance-dia', icon: 'currency-usd' },
       { label: 'Facturación', route: '/facturas-dia', icon: 'file-document-outline' },
-      { label: 'Gastos / Egresos', route: '/facturas-pagos', icon: 'cash-minus' },
+      { label: 'Balance gastos', route: '/facturas-pagos', icon: 'cash-minus' },
       { label: 'Cierre de Turno', route: '/cierre-caja', icon: 'lock-outline' },
     ],
   },
@@ -64,6 +64,7 @@ const SECTIONS: NavSection[] = [
       { label: 'Catálogo Productos', route: '/gestion-productos', icon: 'food-variant' },
       { label: 'Gestión Sabores', route: '/gestion-sabores', icon: 'pizza' },
       { label: 'Inventario Cajas', route: '/inventario-cajas', icon: 'package-variant' },
+      { label: 'Inventario Bebidas', route: '/inventario-bebidas', icon: 'bottle-soda-outline' },
       { label: 'Configuración POS', route: '/ajustes-negocio', icon: 'storefront-outline' },
       { label: 'Monitoreo de Sistema', route: '/monitoreo', icon: 'pulse' },
     ],

@@ -11,6 +11,7 @@ export interface CartItem {
   precioUnitario: number;
   cantidad: number;
   sabores?: string[]; // Optional: for Pizza Personalizada
+  base?: 'leche' | 'agua'; // Optional: for juices
 }
 
 interface CartPanelProps {
@@ -86,6 +87,21 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
                 ${formatCurrency(item.precioUnitario * item.cantidad)}
               </Text>
             </View>
+
+            {/* Base del jugo */}
+            {item.base && (
+              <View className="flex-row mt-1.5 gap-1">
+                <View
+                  className={`px-2 py-0.5 rounded-full ${item.base === 'leche' ? 'bg-amber-500/15' : 'bg-sky-500/15'}`}
+                >
+                  <Text
+                    className={`text-[9px] font-black uppercase tracking-widest ${item.base === 'leche' ? 'text-amber-400' : 'text-sky-400'}`}
+                  >
+                    {item.base === 'leche' ? '🥛 Leche' : '💧 Agua'}
+                  </Text>
+                </View>
+              </View>
+            )}
 
             {/* Flavors (if any) */}
             {item.sabores && item.sabores.length > 0 && (

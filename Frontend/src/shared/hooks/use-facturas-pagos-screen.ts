@@ -223,5 +223,6 @@ export function useFacturasPagosScreen() {
     displayData,
     displayLoading,
     displayError,
+    dataDia,
   };
 }

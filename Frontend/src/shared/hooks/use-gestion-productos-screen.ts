@@ -18,6 +18,7 @@ type UiState = {
   editingSabor: Partial<PizzaSabor> | null;
   prodName: string;
   prodDesc: string;
+  prodEmoji: string;
   prodActive: boolean;
   prodError: string;
   varName: string;
@@ -39,6 +40,7 @@ const initialUiState: UiState = {
   editingSabor: null,
   prodName: '',
   prodDesc: '',
+  prodEmoji: '',
   prodActive: true,
   prodError: '',
   varName: '',
@@ -83,6 +85,7 @@ export function useGestionProductosScreen() {
     editingSabor,
     prodName,
     prodDesc,
+    prodEmoji,
     prodActive,
     prodError,
     varName,
@@ -110,6 +113,7 @@ export function useGestionProductosScreen() {
     patchUi({
       prodName: '',
       prodDesc: '',
+      prodEmoji: '',
       prodActive: true,
       editingProduct: null,
       prodError: '',
@@ -139,6 +143,7 @@ export function useGestionProductosScreen() {
         editingProduct: product,
         prodName: product.productoNombre,
         prodDesc: product.descripcion || '',
+        prodEmoji: product.emoji || '',
         prodActive: product.activo,
       });
     } else {
@@ -172,6 +177,7 @@ export function useGestionProductosScreen() {
     const payload = {
       productoNombre: prodName,
       descripcion: prodDesc,
+      emoji: prodEmoji || undefined,
       activo: prodActive,
     };
 
@@ -277,6 +283,7 @@ export function useGestionProductosScreen() {
     editingSabor,
     prodName,
     prodDesc,
+    prodEmoji,
     prodError,
     varName,
     varPrice,

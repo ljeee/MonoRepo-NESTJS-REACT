@@ -16,6 +16,7 @@ interface GestionProductosModalsProps {
     editingProduct: Producto | null;
     prodName: string;
     prodDesc: string;
+    prodEmoji: string;
     prodError: string;
     showVariantModal: boolean;
     editingVariant: ProductoVariante | null;
@@ -35,6 +36,7 @@ interface GestionProductosModalsProps {
     onAskDeleteProduct: (product: Producto) => void;
     onProdNameChange: (name: string) => void;
     onProdDescriptionChange: (description: string) => void;
+    onProdEmojiChange: (emoji: string) => void;
     onVarNameChange: (name: string) => void;
     onVarPriceChange: (price: string) => void;
     onVarDescriptionChange: (description: string) => void;
@@ -49,6 +51,7 @@ export function GestionProductosModals({
     editingProduct,
     prodName,
     prodDesc,
+    prodEmoji,
     prodError,
     showVariantModal,
     editingVariant,
@@ -68,6 +71,7 @@ export function GestionProductosModals({
     onAskDeleteProduct,
     onProdNameChange,
     onProdDescriptionChange,
+    onProdEmojiChange,
     onVarNameChange,
     onVarPriceChange,
     onVarDescriptionChange,
@@ -83,6 +87,7 @@ export function GestionProductosModals({
                 editing={!!editingProduct}
                 name={prodName}
                 description={prodDesc}
+                emoji={prodEmoji}
                 error={prodError}
                 loading={opLoading}
                 onClose={onCloseProductModal}
@@ -90,6 +95,7 @@ export function GestionProductosModals({
                 onDelete={editingProduct ? () => onAskDeleteProduct(editingProduct) : undefined}
                 onNameChange={onProdNameChange}
                 onDescriptionChange={onProdDescriptionChange}
+                onEmojiChange={onProdEmojiChange}
             />
 
             <VariantModal

@@ -8,7 +8,9 @@ import { useBreakpoint } from '../../styles/responsive';
 import { printReceipt } from '../../utils/printReceipt';
 import UpdateTotalModal from './UpdateTotalModal';
 import PaymentSelectionModal from '../orders/PaymentSelectionModal';
-import { Badge, Card, Icon } from '../ui';
+import Badge from '../ui/Badge';
+import Card from '../ui/Card';
+import Icon from '../ui/Icon';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,14 +143,17 @@ export function FacturaCard({
   onUpdate,
   onDelete,
   showPrint = false,
+  aperturaHecha,
 }: {
   item: FacturaItem;
   isUpdating: boolean;
-  onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap) => void;
+  onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => void;
   onUpdateTotal?: (facturaId: number, newTotal: number) => Promise<void>;
   onUpdate?: (facturaId: number, data: Partial<FacturaItem>) => Promise<void>;
   onDelete?: (facturaId: number) => Promise<boolean>;
   showPrint?: boolean;
+  /** When explicitly false, the Cobrar button is disabled until apertura is done */
+  aperturaHecha?: boolean;
 }) {
   const [editing, setEditing] = React.useState(false);
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
@@ -173,6 +178,10 @@ export function FacturaCard({
   const isPagado = item.estado === 'pagado';
   const isCancelado = item.estado === 'cancelado';
   const variant = isCancelado ? 'danger' : isPagado ? 'success' : 'warning';
+
+  // aperturaHecha === false (explicit) blocks Cobrar; undefined keeps backward-compat (open)
+  const cobrarBloqueado = !isCancelado && aperturaHecha === false && !isPagado;
+  const cobrarDisabled = isUpdating || cobrarBloqueado;
   
   const esDomicilio = item.ordenes?.some(o => o.tipoPedido === 'domicilio');
   const costoDomicilio = item.domicilios?.[0]?.costoDomicilio
@@ -230,9 +239,34 @@ export function FacturaCard({
               ${formatCurrency(item.total ?? 0)}
             </RNText>
             {item.metodo ? (
-              <Badge label={item.metodo} variant="info" size="sm" />
+              <Badge
+                label={item.metodo === 'efectivo_transferencia' ? 'Mixto' : item.metodo}
+                variant="info"
+                size="sm"
+              />
             ) : (
               <Badge label="Sin método" variant="neutral" size="sm" />
+            )}
+            {/* Desglose pago mixto */}
+            {item.metodo === 'efectivo_transferencia' && (
+              <RNView style={{ alignItems: 'flex-end', gap: 2, marginTop: 2, maxWidth: '100%' }}>
+                {(item.pagoEfectivo ?? 0) > 0 && (
+                  <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+                    <RNText style={{ fontFamily: 'Outfit', color: '#10B981', fontSize: 10 }}>💵</RNText>
+                    <RNText numberOfLines={1} style={{ fontFamily: 'Outfit', color: '#10B981', fontSize: 10, flexShrink: 1 }}>
+                      ${formatCurrency(item.pagoEfectivo!)}
+                    </RNText>
+                  </RNView>
+                )}
+                {(item.pagoTransferencia ?? 0) > 0 && (
+                  <RNView style={{ flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+                    <RNText style={{ fontFamily: 'Outfit', color: '#60A5FA', fontSize: 10 }}>🔁</RNText>
+                    <RNText numberOfLines={1} style={{ fontFamily: 'Outfit', color: '#60A5FA', fontSize: 10, flexShrink: 1 }}>
+                      ${formatCurrency(item.pagoTransferencia!)}
+                    </RNText>
+                  </RNView>
+                )}
+              </RNView>
             )}
           </RNView>
         </RNView>
@@ -347,19 +381,25 @@ export function FacturaCard({
             {!isCancelado && (
               <TouchableOpacity
                 onPress={() => {
+                  if (cobrarBloqueado) return;
                   if (isPagado) {
                     item.facturaId && onToggleEstado(item.facturaId, 'pendiente');
                   } else {
                     setShowPaymentModal(true);
                   }
                 }}
-                disabled={isUpdating}
+                disabled={cobrarDisabled}
                 style={{
                   flexDirection: 'row', alignItems: 'center', gap: 6,
                   paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
-                  backgroundColor: isPagado ? 'rgba(245,165,36,0.1)' : 'rgba(16,185,129,0.12)',
+                  backgroundColor: cobrarBloqueado
+                    ? 'rgba(100,116,139,0.08)'
+                    : isPagado ? 'rgba(245,165,36,0.1)' : 'rgba(16,185,129,0.12)',
                   borderWidth: 1,
-                  borderColor: isPagado ? 'rgba(245,165,36,0.2)' : 'rgba(16,185,129,0.25)',
+                  borderColor: cobrarBloqueado
+                    ? 'rgba(100,116,139,0.15)'
+                    : isPagado ? 'rgba(245,165,36,0.2)' : 'rgba(16,185,129,0.25)',
+                  opacity: cobrarDisabled && !cobrarBloqueado ? 0.5 : 1,
                 }}
               >
                 {isUpdating ? (
@@ -367,12 +407,12 @@ export function FacturaCard({
                 ) : (
                   <>
                     <Icon
-                      name={isPagado ? 'undo-variant' : 'check-circle-outline'}
+                      name={cobrarBloqueado ? 'lock-outline' : isPagado ? 'undo-variant' : 'check-circle-outline'}
                       size={14}
-                      color={isPagado ? '#F5A524' : '#10B981'}
+                      color={cobrarBloqueado ? '#475569' : isPagado ? '#F5A524' : '#10B981'}
                     />
-                    <RNText style={{ fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: isPagado ? '#F5A524' : '#10B981' }} numberOfLines={1} ellipsizeMode="tail">
-                      {isPagado ? 'Revertir' : 'Cobrar'}
+                    <RNText style={{ fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: cobrarBloqueado ? '#475569' : isPagado ? '#F5A524' : '#10B981' }} numberOfLines={1} ellipsizeMode="tail">
+                      {cobrarBloqueado ? 'Sin arqueo' : isPagado ? 'Revertir' : 'Cobrar'}
                     </RNText>
                   </>
                 )}
@@ -397,10 +437,10 @@ export function FacturaCard({
         visible={showPaymentModal}
         total={item.total ?? 0}
         onClose={() => setShowPaymentModal(false)}
-        onSelect={(method, pagoEfectivo, pagoTransferencia, denominaciones) => {
+        onSelect={(method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones) => {
           setShowPaymentModal(false);
           if (item.facturaId) {
-            onToggleEstado(item.facturaId, 'pagado', method, pagoEfectivo, pagoTransferencia, denominaciones);
+            onToggleEstado(item.facturaId, 'pagado', method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones);
           }
         }}
         loading={isUpdating}

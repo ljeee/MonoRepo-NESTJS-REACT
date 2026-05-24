@@ -4,8 +4,12 @@ export interface ProductoVariante {
   varianteId: number;
   nombre: string;
   precio: number;
+  /** Precio cuando el jugo se pide con leche. Si es null/undefined, la variante no ofrece opción de base. */
+  precioLeche?: number | null;
   descripcion?: string;
   activo: boolean;
+  /** Stock físico de unidades de bebida (gaseosas/jugos) */
+  stockBebida?: number;
 }
 
 export interface Producto {
@@ -119,6 +123,7 @@ export interface FacturaDomicilio {
 export interface FacturaVenta {
   facturaId?: number;
   clienteNombre?: string;
+  telefonoCliente?: string | null;
   descripcion?: string;
   fechaFactura?: string;
   estado?: string;
@@ -128,6 +133,8 @@ export interface FacturaVenta {
   total?: number;
   totalFactura?: number;
   denominaciones?: DenominacionesMap | null;
+  /** Denominaciones entregadas como cambio al cliente (salida de caja) */
+  cambioDenominaciones?: DenominacionesMap | null;
   ordenes?: FacturaOrden[];
   domicilios?: FacturaDomicilio[];
 }
@@ -145,6 +152,7 @@ export interface FacturaStats {
 export type DenominacionesMap = Record<string, number>;
 
 export const DENOMINACIONES_COP = [
+  { valor: 200000, tipo: 'billete' as const, label: '$200.000' },
   { valor: 100000, tipo: 'billete' as const, label: '$100.000' },
   { valor: 50000,  tipo: 'billete' as const, label: '$50.000' },
   { valor: 20000,  tipo: 'billete' as const, label: '$20.000' },
@@ -162,6 +170,8 @@ export interface CajaMovimiento {
   facturaVentaId?: number | null;
   facturaPagoId?: number | null;
   descripcion?: string | null;
+  metodo?: string | null;
+  pagoTransferencia?: number | null;
   createdAt: string;
 }
 
@@ -198,6 +208,8 @@ export interface OrderCartItem {
   precioUnitario: number;
   cantidad: number;
   sabores?: string[];
+  /** Base del jugo: 'leche' | 'agua'. Undefined para productos que no son jugo. */
+  base?: 'leche' | 'agua';
 }
 
 /** @deprecated Use OrderCartItem instead */
@@ -214,6 +226,7 @@ export interface CreateOrdenProductoDto {
   sabor2?: string;
   sabor3?: string;
   cantidad: number;
+  base?: 'leche' | 'agua';
 }
 
 export interface CreateOrdenDto {
@@ -363,6 +376,8 @@ export interface ClienteFrecuente {
   clienteNombre: string;
   totalOrdenes: number;
   gastoTotal: number;
+  /** Valor del pedido individual más alto del cliente */
+  pedidoMaximo: number;
   ultimaVisita: string;
 }
 
@@ -449,4 +464,46 @@ export interface AjustarCajasDto {
   delta: number;
   tipo?: 'entrada' | 'salida' | 'ajuste';
   nota?: string;
+}
+
+// ─── Inventario Bebidas ────────────────────────────────────────────────────────
+
+export type CategoriaBebida = 'pulpa' | 'jugo_directo' | 'gaseosa' | 'agua' | 'otro';
+
+export interface Ingrediente {
+  id: number;
+  nombre: string;
+  categoria: CategoriaBebida;
+  unidad: string;
+  stockActual: number;
+  rendimientoPorUnidad: number;
+  porcionesDisponibles: number;
+  alertaMinimo: number | null;
+  enAlerta: boolean;
+  costo: number | null;
+  activo: boolean;
+  variantes?: VarianteIngrediente[];
+}
+
+export interface VarianteIngrediente {
+  id: number;
+  varianteId: number;
+  ingredienteId: number;
+  cantidadPorVenta: number;
+}
+
+export interface CreateIngredienteDto {
+  nombre: string;
+  categoria?: CategoriaBebida;
+  unidad?: string;
+  stockActual?: number;
+  rendimientoPorUnidad?: number;
+  alertaMinimo?: number;
+  costo?: number;
+}
+
+export interface VincularVarianteDto {
+  varianteId: number;
+  ingredienteId: number;
+  cantidadPorVenta: number;
 }

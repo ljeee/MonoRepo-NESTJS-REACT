@@ -23,6 +23,7 @@ import { SocketGateway } from './common/gateways/socket.gateway';
 import { ScheduleModule } from '@nestjs/schedule';
 import { InventarioCajasModule } from './inventario-cajas/inventario-cajas.module';
 import { CajaMovimientosModule } from './caja-movimientos/caja-movimientos.module';
+import { InventarioBebidasModule } from './inventario-bebidas/inventario-bebidas.module';
 
 import * as Joi from 'joi';
 
@@ -96,6 +97,7 @@ import * as Joi from 'joi';
 		ContabilidadModule,
 		InventarioCajasModule,
 		CajaMovimientosModule,
+		InventarioBebidasModule,
 	],
 	controllers: [],
 	providers: [

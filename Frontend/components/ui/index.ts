@@ -13,5 +13,7 @@ export { default as ConfirmModal } from './ConfirmModal';
 export { Skeleton, CardSkeleton, ListSkeleton } from './SkeletonLoader';
 export { ToastContainer } from './Toast';
 export { DenominacionSelector } from './DenominacionSelector';
+export { BillCounter, COLOMBIAN_BILLS } from './BillCounter';
 export { Picker, PickerItem } from './Picker';
+export { AjusteCajaModal } from './AjusteCajaModal';
 

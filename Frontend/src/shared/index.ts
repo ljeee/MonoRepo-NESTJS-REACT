@@ -10,7 +10,7 @@ export { ToastProvider, useToast } from './contexts/ToastContext';
 export type { Toast, ToastVariant } from './contexts/ToastContext';
 
 export { OrderProvider, useOrder, defaultOrderFormState } from './contexts/OrderContext';
-export type { OrderFormState, OrderContextType, OrderStorageAdapter } from './contexts/OrderContext';
+export type { OrderFormState, OrderContextType, OrderStorageAdapter, SlotSummary } from './contexts/OrderContext';
 
 export { ApiProvider, useApi } from './contexts/ApiContext';
 export type { ApiProviderProps } from './contexts/ApiContext';

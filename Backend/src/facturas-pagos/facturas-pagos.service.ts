@@ -70,6 +70,7 @@ export class FacturasPagosService {
 				facturaPagoId: gasto.pagosId,
 				descripcion: data.nombreGasto ?? 'Gasto en efectivo',
 				fecha: data.fechaFactura,
+				cajaOrigen: 'gastos',
 			});
 		}
 

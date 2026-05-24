@@ -16,7 +16,15 @@ type DomicilioSinAsignar = {
     costoDomicilio?: number;
     estadoDomicilio?: string;
     telefono?: string;
-    factura?: { clienteNombre?: string; total?: number; estado?: string };
+    factura?: {
+        clienteNombre?: string;
+        total?: number;
+        estado?: string;
+        /** Método de pago: 'efectivo' | 'qr' | 'transferencia' | 'efectivo_transferencia' */
+        metodo?: string;
+        pagoEfectivo?: number;
+        pagoTransferencia?: number;
+    };
     orden?: { ordenId: number; estadoOrden?: string; productos?: Array<{ producto: string; cantidad: number }> };
     cliente?: { clienteNombre?: string; telefono?: string };
 };
@@ -24,6 +32,189 @@ type DomicilioSinAsignar = {
 function formatCurrency(n?: number) {
     if (!n) return '$0';
     return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
+}
+
+// ─── PagoBanner ───────────────────────────────────────────────────────────────
+// Shows payment state prominently so the dispatcher knows if cash is needed.
+
+function PagoBanner({
+    estado,
+    metodo,
+    total,
+    pagoEfectivo,
+    pagoTransferencia,
+}: {
+    estado?: string;
+    metodo?: string;
+    total?: number;
+    pagoEfectivo?: number;
+    pagoTransferencia?: number;
+}) {
+    const isPagado = estado === 'pagado' || estado === 'pagada';
+
+    if (isPagado) {
+        // ── Paid — show method breakdown ──────────────────────────────────
+        if (metodo === 'efectivo_transferencia') {
+            // Mixed: partial cash + partial QR
+            return (
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                        backgroundColor: 'rgba(16,185,129,0.08)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(16,185,129,0.2)',
+                        borderRadius: 14,
+                        padding: 10,
+                        marginBottom: 10,
+                    }}
+                >
+                    <Icon name="check-circle" size={16} color="#10B981" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Pagado — Mixto
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+                            {(pagoEfectivo ?? 0) > 0 && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <Icon name="cash" size={10} color="#34D399" />
+                                    <Text style={{ color: '#34D399', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold' }}>
+                                        Ef. {formatCurrency(pagoEfectivo)}
+                                    </Text>
+                                </View>
+                            )}
+                            {(pagoTransferencia ?? 0) > 0 && (
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <Icon name="qrcode-scan" size={10} color="#60A5FA" />
+                                    <Text style={{ color: '#60A5FA', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold' }}>
+                                        QR {formatCurrency(pagoTransferencia)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                    </View>
+                </View>
+            );
+        }
+
+        if (metodo === 'qr' || metodo === 'transferencia') {
+            return (
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                        backgroundColor: 'rgba(96,165,250,0.08)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(96,165,250,0.2)',
+                        borderRadius: 14,
+                        padding: 10,
+                        marginBottom: 10,
+                    }}
+                >
+                    <Icon name="qrcode-scan" size={16} color="#60A5FA" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#60A5FA', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Pagado — QR / Transferencia
+                        </Text>
+                        <Text style={{ color: '#94A3B8', fontSize: 9, marginTop: 2 }}>
+                            No cobrar al entregar
+                        </Text>
+                    </View>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#60A5FA', fontSize: 13 }}>
+                        {formatCurrency(total)}
+                    </Text>
+                </View>
+            );
+        }
+
+        if (metodo === 'efectivo') {
+            return (
+                <View
+                    style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                        backgroundColor: 'rgba(16,185,129,0.08)',
+                        borderWidth: 1,
+                        borderColor: 'rgba(16,185,129,0.2)',
+                        borderRadius: 14,
+                        padding: 10,
+                        marginBottom: 10,
+                    }}
+                >
+                    <Icon name="cash-check" size={16} color="#10B981" />
+                    <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Pagado — Efectivo
+                        </Text>
+                        <Text style={{ color: '#94A3B8', fontSize: 9, marginTop: 2 }}>
+                            No cobrar al entregar
+                        </Text>
+                    </View>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 13 }}>
+                        {formatCurrency(total)}
+                    </Text>
+                </View>
+            );
+        }
+
+        // pagado, method unknown
+        return (
+            <View
+                style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    backgroundColor: 'rgba(16,185,129,0.08)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(16,185,129,0.2)',
+                    borderRadius: 14,
+                    padding: 10,
+                    marginBottom: 10,
+                }}
+            >
+                <Icon name="check-circle" size={16} color="#10B981" />
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5, flex: 1 }}>
+                    Pagado
+                </Text>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 13 }}>
+                    {formatCurrency(total)}
+                </Text>
+            </View>
+        );
+    }
+
+    // ── Pending — must collect on delivery ───────────────────────────────
+    return (
+        <View
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: 'rgba(245,165,36,0.08)',
+                borderWidth: 1,
+                borderColor: 'rgba(245,165,36,0.25)',
+                borderRadius: 14,
+                padding: 10,
+                marginBottom: 10,
+            }}
+        >
+            <Icon name="cash-clock" size={16} color="#F5A524" />
+            <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    Pendiente de cobro
+                </Text>
+                <Text style={{ color: '#94A3B8', fontSize: 9, marginTop: 2 }}>
+                    El repartidor debe cobrar al entregar
+                </Text>
+            </View>
+            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 15 }}>
+                {formatCurrency(total)}
+            </Text>
+        </View>
+    );
 }
 
 function timeAgo(dateStr: string): string {
@@ -212,7 +403,14 @@ export default function AsignarDomiciliariosScreen() {
                                         </Text>
                                     </View>
                                     <View className="items-end">
-                                        <Text className="text-emerald-400 font-black text-sm">
+                                        <Text
+                                            className="font-black text-sm"
+                                            style={{
+                                                color: (d.factura?.estado === 'pagado' || d.factura?.estado === 'pagada')
+                                                    ? '#10B981'
+                                                    : '#F5A524',
+                                            }}
+                                        >
                                             {formatCurrency(total)}
                                         </Text>
                                         <Text className="text-slate-600 text-[9px] mt-0.5">
@@ -220,6 +418,15 @@ export default function AsignarDomiciliariosScreen() {
                                         </Text>
                                     </View>
                                 </View>
+
+                                {/* Payment status banner */}
+                                <PagoBanner
+                                    estado={d.factura?.estado}
+                                    metodo={d.factura?.metodo}
+                                    total={d.factura?.total}
+                                    pagoEfectivo={d.factura?.pagoEfectivo}
+                                    pagoTransferencia={d.factura?.pagoTransferencia}
+                                />
 
                                 {/* Dirección */}
                                 {d.direccionEntrega ? (

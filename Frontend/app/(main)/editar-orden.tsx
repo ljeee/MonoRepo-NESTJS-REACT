@@ -170,13 +170,13 @@ function AddProductPanel({ onAdd, onClose }: { onAdd: (p: ProductoEdit) => void;
     };
 
     return (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}>
-            <TouchableOpacity className="flex-1" onPress={onClose} activeOpacity={1} />
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' }}>
+            <TouchableOpacity style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} onPress={onClose} activeOpacity={1} />
             <View 
-                className="bg-(--color-pos-surface) rounded-t-[32px] border border-white/10 pb-10"
-                style={{ maxHeight: '85%', minHeight: '70%', display: 'flex', flexDirection: 'column' }}
+                className="bg-(--color-pos-surface) rounded-[32px] border border-white/10 pb-6"
+                style={{ maxHeight: '85%', minHeight: '70%', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: 700 }}
             >
-                <View className="flex-row justify-between items-center p-6 border-b border-white/5">
+                <View className="flex-row justify-between items-center p-6 border-b border-white/5 w-full">
                     <Text className="font-black text-white text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
                         Añadir Producto
                     </Text>

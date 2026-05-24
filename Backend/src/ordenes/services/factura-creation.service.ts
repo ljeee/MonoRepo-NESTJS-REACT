@@ -14,13 +14,14 @@ export class FacturaCreationService {
 		return productos.map((p) => `${p.cantidad ?? 1} ${construirNombreProducto(p)}`).join(', ');
 	}
 
-	async crearFactura(clienteNombre: string, metodo?: string, descripcion?: string, manager?: EntityManager): Promise<FacturasVentas> {
+	async crearFactura(clienteNombre: string, metodo?: string, descripcion?: string, manager?: EntityManager, telefonoCliente?: string): Promise<FacturasVentas> {
 		const repo = manager ? manager.getRepository(FacturasVentas) : this.facturasRepo;
 		return repo.save(
 			repo.create({
 				clienteNombre,
 				metodo: metodo ?? undefined,
 				descripcion: descripcion || undefined,
+				telefonoCliente: telefonoCliente ?? null,
 			}),
 		);
 	}

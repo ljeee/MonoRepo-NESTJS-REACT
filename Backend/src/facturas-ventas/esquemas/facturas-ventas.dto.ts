@@ -8,6 +8,10 @@ export class CreateFacturasVentasDto {
 
 	@IsOptional()
 	@IsString()
+	telefonoCliente?: string;
+
+	@IsOptional()
+	@IsString()
 	descripcion?: string;
 
 	@IsOptional()
@@ -37,4 +41,9 @@ export class CreateFacturasVentasDto {
 	@IsOptional()
 	@IsObject()
 	denominaciones?: Record<string, number>;
+
+	/** Denominaciones entregadas como cambio al cliente — dispara registrarSalida en caja */
+	@IsOptional()
+	@IsObject()
+	cambioDenominaciones?: Record<string, number>;
 }
