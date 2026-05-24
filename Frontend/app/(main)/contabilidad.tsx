@@ -33,9 +33,9 @@ import { useBreakpoint } from '../../styles/responsive';
 type TabId = 'resumen' | 'ventas' | 'egresos' | 'reportes';
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
-    { id: 'resumen',  label: 'Resumen',  icon: 'chart-box-outline' },
-    { id: 'ventas',   label: 'Ventas',   icon: 'receipt' },
-    { id: 'egresos',  label: 'Egresos',  icon: 'cash-minus' },
+    { id: 'resumen', label: 'Resumen', icon: 'chart-box-outline' },
+    { id: 'ventas', label: 'Ventas', icon: 'receipt' },
+    { id: 'egresos', label: 'Egresos', icon: 'cash-minus' },
     { id: 'reportes', label: 'Reportes', icon: 'file-chart-outline' },
 ];
 
@@ -100,8 +100,8 @@ function BalanceBanner({ ingresos, gastos }: { ingresos: number; gastos: number 
                 <View style={{ flexDirection: 'row', gap: 14 }}>
                     {[
                         { label: 'Ingresos', value: `$${formatCurrency(ingresos)}`, color: '#10B981' },
-                        { label: 'Egresos',  value: `−$${formatCurrency(gastos)}`,   color: '#EF4444' },
-                        { label: 'Margen',   value: `${margen}%`,                    color: isPos ? '#F5A524' : '#EF4444' },
+                        { label: 'Egresos', value: `−$${formatCurrency(gastos)}`, color: '#EF4444' },
+                        { label: 'Margen', value: `${margen}%`, color: isPos ? '#F5A524' : '#EF4444' },
                     ].map(({ label, value, color }) => (
                         <View key={label} style={{ flex: 1 }}>
                             <Text style={{ color: '#475569', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 }}>{label}</Text>
@@ -283,26 +283,26 @@ export default function ContabilidadScreen() {
         searchF(f, t);
         fetchGastos(f, t, 1);
         setSearched(true);
-        
+
         setLoadingStats(true);
         Promise.all([
             api.estadisticas.resumenPeriodo(f, t),
             api.estadisticas.metodosPago(f, t)
         ])
-        .then(([statsRes, metodosRes]) => {
-            setPeriodStats(statsRes);
-            setMetodosData(metodosRes);
-        })
-        .catch((err) => {
-            console.error('Error fetching period statistics/methods:', err);
-        })
-        .finally(() => setLoadingStats(false));
+            .then(([statsRes, metodosRes]) => {
+                setPeriodStats(statsRes);
+                setMetodosData(metodosRes);
+            })
+            .catch((err) => {
+                console.error('Error fetching period statistics/methods:', err);
+            })
+            .finally(() => setLoadingStats(false));
     }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, api]);
 
     const totalIngresos = periodStats?.totalIngresosPagados ?? 0;
-    const totalGastos   = periodStats?.totalEgresosPagados ?? 0;
-    const pendientesF   = periodStats?.totalIngresosPendientes ?? 0;
-    const ticketProm    = periodStats?.countIngresosPagados && periodStats.countIngresosPagados > 0
+    const totalGastos = periodStats?.totalEgresosPagados ?? 0;
+    const pendientesF = periodStats?.totalIngresosPendientes ?? 0;
+    const ticketProm = periodStats?.countIngresosPagados && periodStats.countIngresosPagados > 0
         ? totalIngresos / periodStats.countIngresosPagados
         : 0;
 
@@ -329,7 +329,7 @@ export default function ContabilidadScreen() {
                         label="Desde"
                         value={from}
                         onChangeText={setFrom}
-                        placeholder="Ej: 2024-05-24"
+                        placeholder="Ej: 2026-05-24"
                         size={isMobile ? 'md' : 'sm'}
                         leftIcon={<Icon name="calendar-start" size={14} color="#475569" />}
                         containerStyle={{ marginBottom: 0 }}
@@ -340,7 +340,7 @@ export default function ContabilidadScreen() {
                         label="Hasta"
                         value={to}
                         onChangeText={setTo}
-                        placeholder="Ej: 2024-05-31"
+                        placeholder="Ej: 2026-05-31"
                         size={isMobile ? 'md' : 'sm'}
                         leftIcon={<Icon name="calendar-end" size={14} color="#475569" />}
                         containerStyle={{ marginBottom: 0 }}

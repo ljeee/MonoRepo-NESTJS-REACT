@@ -1,5 +1,5 @@
 # Monorepo Root GitIgnore
-
+memory/
 # Node
 node_modules/
 **/node_modules/
