@@ -18,6 +18,7 @@ export default function FacturasDiaScreen() {
   const [updating, setUpdating] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPending, setFilterPending] = useState(false);
+  const [filterMethod, setFilterMethod] = useState<string>('todos');
 
   const handleChangeEstado = async (
     facturaId: number,
@@ -74,7 +75,8 @@ export default function FacturasDiaScreen() {
   const filteredData = (data || []).filter((f: FacturaItem) => {
     const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesPending = !filterPending || f.estado === 'pendiente';
-    return matchesSearch && matchesPending;
+    const matchesMethod = filterMethod === 'todos' || f.metodo === filterMethod;
+    return matchesSearch && matchesPending && matchesMethod;
   });
 
   const computedStats = React.useMemo(() => calcStats(filteredData as any), [filteredData]);
@@ -109,32 +111,51 @@ export default function FacturasDiaScreen() {
       {/* Stats */}
       {data && data.length > 0 && <StatsHeader stats={computedStats} periodLabel="Total del Día (Filtrado)" />}
 
-      {/* Buscador y Filtro */}
-      <View className={`mb-6 ${isMobile ? 'flex-col gap-3' : 'flex-row items-center gap-3'}`}>
-        <View className={`flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10 ${isMobile ? 'w-full' : 'flex-1'}`}>
-            <Icon name="magnify" size={22} color="#94A3B8" />
-            <TextInput
-                className="text-white ml-3 flex-1 h-full font-bold"
-                placeholder="Buscar factura por cliente..."
-                placeholderTextColor="#64748B"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-            />
-            {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')} className="bg-white/10 rounded-full p-1 border border-white/20">
-                    <Icon name="close" size={14} color="#CBD5E1" />
-                </TouchableOpacity>
-            )}
-        </View>
+        {/* Buscador y Filtro */}
+        <View className={`mb-6 flex-col gap-3 ${isMobile ? 'w-full' : ''}`}>
+          <View className={`flex-row items-center gap-3 ${isMobile ? 'flex-col' : ''}`}>
+            <View className={`flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10 ${isMobile ? 'w-full' : 'flex-1'}`}>
+                <Icon name="magnify" size={22} color="#94A3B8" />
+                <TextInput
+                    className="text-white ml-3 flex-1 h-full font-bold"
+                    placeholder="Buscar factura por cliente..."
+                    placeholderTextColor="#64748B"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')} className="bg-white/10 rounded-full p-1 border border-white/20">
+                        <Icon name="close" size={14} color="#CBD5E1" />
+                    </TouchableOpacity>
+                )}
+            </View>
 
-        <TouchableOpacity 
-            onPress={() => setFilterPending(!filterPending)}
-            className={`px-4 min-h-[50px] rounded-2xl border flex-row items-center justify-center gap-2 ${isMobile ? 'w-full' : ''} ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
-        >
-            <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
-            <Text className={`font-bold text-xs uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pendientes</Text>
-        </TouchableOpacity>
-      </View>
+            <TouchableOpacity 
+                onPress={() => setFilterPending(!filterPending)}
+                className={`px-4 min-h-[50px] rounded-2xl border flex-row items-center justify-center gap-2 ${isMobile ? 'w-full' : ''} ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
+            >
+                <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
+                <Text className={`font-bold text-xs uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pendientes</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View className="flex-row flex-wrap gap-2">
+              {['todos', 'efectivo', 'transferencia', 'qr'].map((method) => {
+                  const isSelected = filterMethod === method;
+                  return (
+                      <TouchableOpacity
+                          key={method}
+                          onPress={() => setFilterMethod(method)}
+                          className={`px-4 py-2 rounded-full border ${isSelected ? 'bg-blue-500/20 border-blue-500/40' : 'bg-white/5 border-white/10'}`}
+                      >
+                          <Text className={`font-bold text-[11px] uppercase tracking-wider ${isSelected ? 'text-blue-400' : 'text-slate-400'}`}>
+                              {method}
+                          </Text>
+                      </TouchableOpacity>
+                  );
+              })}
+          </View>
+        </View>
 
       {/* Error */}
       {error && (

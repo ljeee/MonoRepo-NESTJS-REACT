@@ -301,6 +301,7 @@ export default function BalanceDiaScreen() {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterPending, setFilterPending] = useState(false);
+    const [filterMethod, setFilterMethod] = useState<string>('todos');
 
     // --- ESTADO DE BASE DE CAJA Y ARQUEO ---
     const dateKey = getLocalDateString();
@@ -498,7 +499,8 @@ export default function BalanceDiaScreen() {
     const filteredFacturas = facturas.filter((f: FacturaItem) => {
         const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesPending = !filterPending || f.estado === 'pendiente';
-        return matchesSearch && matchesPending;
+        const matchesMethod = filterMethod === 'todos' || f.metodo === filterMethod;
+        return matchesSearch && matchesPending && matchesMethod;
     });
 
     return (
@@ -573,16 +575,18 @@ export default function BalanceDiaScreen() {
                         </Text>
                         <Badge
                             label={
-                                diferencia === 0
-                                    ? 'Caja Cuadrada'
-                                    : diferencia > 0
-                                    ? `Sobrante: +$${formatCurrency(diferencia)}`
-                                    : `Faltante: -$${formatCurrency(Math.abs(diferencia))}`
+                                aperturaHecha
+                                    ? 'Caja Abierta'
+                                    : diferencia === 0
+                                        ? 'Caja Cuadrada'
+                                        : diferencia > 0
+                                            ? `Sobrante: +$${formatCurrency(diferencia)}`
+                                            : `Faltante: -$${formatCurrency(Math.abs(diferencia))}`
                             }
                             variant={
-                                diferencia === 0 ? 'success' : diferencia > 0 ? 'warning' : 'danger'
+                                aperturaHecha ? 'primary' : diferencia === 0 ? 'success' : diferencia > 0 ? 'warning' : 'danger'
                             }
-                            icon={diferencia === 0 ? 'check-circle' : 'alert-circle'}
+                            icon={aperturaHecha ? 'info' : diferencia === 0 ? 'check-circle' : 'alert-circle'}
                             size="sm"
                         />
                     </View>
@@ -866,29 +870,47 @@ export default function BalanceDiaScreen() {
                 </View>
 
                 {/* Buscador y Filtro */}
-                <View className={`flex-row items-center gap-2 ${isMobile ? '' : 'flex-1 max-w-md'}`}>
-                    <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 border border-white/10">
-                        <Icon name="magnify" size={20} color="#94A3B8" />
-                        <TextInput
-                            className="text-white ml-3 flex-1 h-8 font-bold text-sm"
-                            placeholder="Buscar por cliente..."
-                            placeholderTextColor="#64748B"
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Icon name="close-circle" size={18} color="#64748B" />
-                            </TouchableOpacity>
-                        )}
+                <View className={`flex-col gap-3 ${isMobile ? 'w-full' : 'flex-1 max-w-xl'}`}>
+                    <View className="flex-row items-center gap-2">
+                        <View className="flex-row items-center bg-white/5 rounded-xl px-4 py-2 flex-1 border border-white/10 h-12">
+                            <Icon name="magnify" size={20} color="#94A3B8" />
+                            <TextInput
+                                className="text-white ml-3 flex-1 h-8 font-bold text-sm"
+                                placeholder="Buscar por cliente..."
+                                placeholderTextColor="#64748B"
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <Icon name="close-circle" size={18} color="#64748B" />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <TouchableOpacity 
+                            onPress={() => setFilterPending(!filterPending)}
+                            className={`px-3 h-12 rounded-xl border flex-row items-center gap-1 ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
+                        >
+                            <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
+                            {!isMobile && <Text className={`font-bold text-[10px] uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pend.</Text>}
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity 
-                        onPress={() => setFilterPending(!filterPending)}
-                        className={`px-3 h-12 rounded-xl border flex-row items-center gap-1 ${filterPending ? 'bg-orange-500/20 border-orange-500/40' : 'bg-white/5 border-white/10'}`}
-                    >
-                        <Icon name="alert-circle-outline" size={18} color={filterPending ? "#F5A524" : "#94A3B8"} />
-                        {!isMobile && <Text className={`font-bold text-[10px] uppercase tracking-widest ${filterPending ? 'text-orange-400' : 'text-slate-400'}`}>Pend.</Text>}
-                    </TouchableOpacity>
+                    <View className="flex-row flex-wrap gap-2">
+                        {['todos', 'efectivo', 'transferencia', 'qr'].map((method) => {
+                            const isSelected = filterMethod === method;
+                            return (
+                                <TouchableOpacity
+                                    key={method}
+                                    onPress={() => setFilterMethod(method)}
+                                    className={`px-3 py-1.5 rounded-full border ${isSelected ? 'bg-blue-500/20 border-blue-500/40' : 'bg-white/5 border-white/10'}`}
+                                >
+                                    <Text className={`font-bold text-[10px] uppercase tracking-wider ${isSelected ? 'text-blue-400' : 'text-slate-400'}`}>
+                                        {method}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </View>
                 </View>
             </View>
 
