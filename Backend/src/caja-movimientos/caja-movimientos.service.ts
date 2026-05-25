@@ -79,18 +79,21 @@ export class CajaMovimientosService {
         descripcion?: string;
         fecha?: string;
         cajaOrigen?: CajaOrigen;
+        skipValidation?: boolean;
     }) {
         const fecha = data.fecha ?? getBogotaDateString();
         const cajaOrigen = data.cajaOrigen ?? 'principal';
 
-        // Validar que hay suficiente efectivo para cada denominación
-        const estado = await this.getEstadoActual(fecha, cajaOrigen);
-        for (const [den, qty] of Object.entries(data.denominaciones)) {
-            const disponible = estado[den] ?? 0;
-            if (disponible < qty) {
-                throw new BadRequestException(
-                    `No hay suficientes billetes de $${Number(den).toLocaleString('es-CO')}. Disponibles: ${disponible}, requeridos: ${qty}`,
-                );
+        if (!data.skipValidation) {
+            // Validar que hay suficiente efectivo para cada denominación
+            const estado = await this.getEstadoActual(fecha, cajaOrigen);
+            for (const [den, qty] of Object.entries(data.denominaciones)) {
+                const disponible = estado[den] ?? 0;
+                if (disponible < qty) {
+                    throw new BadRequestException(
+                        `No hay suficientes billetes de $${Number(den).toLocaleString('es-CO')}. Disponibles: ${disponible}, requeridos: ${qty}`,
+                    );
+                }
             }
         }
 

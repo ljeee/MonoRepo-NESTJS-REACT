@@ -136,7 +136,7 @@ export default function PizzaPersonalizadaModal({
 
           {/* Scrollable chips */}
           <ScrollView
-            className="flex-1"
+            style={{ maxHeight: screenHeight * 0.55 }}
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"

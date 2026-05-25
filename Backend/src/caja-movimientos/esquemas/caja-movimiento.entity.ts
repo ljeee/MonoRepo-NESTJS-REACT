@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 
 import { ColumnNumericTransformer } from '../../common/utils/numeric.transformer';
 
 @Entity('caja_movimientos')
+@Index(['fecha', 'cajaOrigen'])
 export class CajaMovimiento {
     @PrimaryGeneratedColumn('uuid')
     id: string;

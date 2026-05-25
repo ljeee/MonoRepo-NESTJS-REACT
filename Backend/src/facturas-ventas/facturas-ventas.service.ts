@@ -152,33 +152,41 @@ export class FacturasVentasService {
 			return facturasRepo.findOne({ where: { facturaId: id } });
 		});
 
-		// Register caja entry if paid in cash with denomination breakdown
+		// Register caja entry + exit in parallel (independent INSERTs).
+		// skipValidation on salida: las denominaciones del cambio están garantizadas
+		// por la entrada que se inserta simultáneamente; saltarse getEstadoActual
+		// elimina una query O(N) sobre los movimientos del día.
+		const fecha = getBogotaDateString();
+		const cajaOps: Promise<unknown>[] = [];
+
 		if (
 			(data.metodo === 'efectivo' || data.metodo === 'efectivo_transferencia') &&
 			data.denominaciones && Object.keys(data.denominaciones).length > 0 &&
 			(data.pagoEfectivo ?? 0) > 0
 		) {
-			await this.cajaMovimientosService.registrarEntrada({
+			cajaOps.push(this.cajaMovimientosService.registrarEntrada({
 				denominaciones: data.denominaciones,
 				facturaVentaId: id,
 				descripcion: `Cobro factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
-				fecha: getBogotaDateString(),
+				fecha,
 				metodo: data.metodo,
 				pagoTransferencia: data.pagoTransferencia,
-			});
+			}));
 		}
 
-		// Register caja exit (change given back to customer)
 		if (
 			data.cambioDenominaciones &&
 			Object.keys(data.cambioDenominaciones).length > 0
 		) {
-			await this.cajaMovimientosService.registrarSalida({
+			cajaOps.push(this.cajaMovimientosService.registrarSalida({
 				denominaciones: data.cambioDenominaciones,
 				descripcion: `Cambio factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
-				fecha: getBogotaDateString(),
-			});
+				fecha,
+				skipValidation: true,
+			}));
 		}
+
+		if (cajaOps.length) await Promise.all(cajaOps);
 
 		return result;
 	}

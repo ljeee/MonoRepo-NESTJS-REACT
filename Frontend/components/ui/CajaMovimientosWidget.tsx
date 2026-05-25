@@ -173,9 +173,14 @@ export default function CajaMovimientosWidget({ cajaResumen, onRefresh, isLoadin
                     ${formatCurrency(displayResumen?.totalEfectivo ?? 0)}
                 </Text>
             </View>
-            <View className="flex-row justify-between pb-4 border-b border-white/5">
-                <Text className="text-slate-500 text-xs">Entradas: <Text className="text-emerald-400 font-bold">${formatCurrency(displayResumen?.totalEntradas ?? 0)}</Text></Text>
-                <Text className="text-slate-500 text-xs">Salidas: <Text className="text-red-400 font-bold">${formatCurrency(displayResumen?.totalSalidas ?? 0)}</Text></Text>
+            <View className="pb-4 border-b border-white/5">
+                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 2 }}>
+                    Flujo bruto (billetes que pasaron)
+                </Text>
+                <View className="flex-row justify-between flex-wrap gap-1">
+                    <Text className="text-slate-500 text-xs">Entradas: <Text className="text-emerald-400 font-bold">${formatCurrency(displayResumen?.totalEntradas ?? 0)}</Text></Text>
+                    <Text className="text-slate-500 text-xs">Salidas: <Text className="text-red-400 font-bold">${formatCurrency(displayResumen?.totalSalidas ?? 0)}</Text></Text>
+                </View>
             </View>
 
             {loadingPast && (

@@ -478,9 +478,14 @@ export default function BalanceDiaScreen() {
         .filter((m: any) => m.tipo === 'apertura')
         .reduce((sum: number, m: any) => sum + (Number(m.total) || 0), 0);
 
-    const efectivoEsperado = aperturaHecha
-        ? totalApertura + efectivoVentas
-        : efectivoVentas;
+    // Fuente de verdad: el neto de movimientos físicos en caja principal.
+    // Fallback a la fórmula derivada de facturas si aún no llegó el resumen.
+    const efectivoEsperado = cajaResumen?.totalEfectivo
+        ?? (aperturaHecha ? totalApertura + efectivoVentas : efectivoVentas);
+
+    // Residual = ajustes manuales / entradas-salidas no derivados de facturas.
+    // Si es ≠ 0 explica la diferencia entre la fórmula factura-based y el físico.
+    const ajustesResidual = (cajaResumen?.totalEfectivo ?? 0) - totalApertura - efectivoVentas;
 
     const conteoFisico = (billCounts['200000'] || 0) * 200000 +
         (billCounts['100000'] || 0) * 100000 +
@@ -607,6 +612,14 @@ export default function BalanceDiaScreen() {
                                             <Text className="text-emerald-500 text-[10px]">
                                                 Ventas Ef.: +${formatCurrency(efectivoVentas)}
                                             </Text>
+                                            {Math.abs(ajustesResidual) >= 1 && (
+                                                <>
+                                                    <Text className="text-slate-500 text-[10px]">•</Text>
+                                                    <Text className={`text-[10px] ${ajustesResidual >= 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                                                        Ajustes: {ajustesResidual >= 0 ? '+' : '-'}${formatCurrency(Math.abs(ajustesResidual))}
+                                                    </Text>
+                                                </>
+                                            )}
                                         </>
                                     ) : (
                                         <Text className="text-emerald-500 text-[10px]">
