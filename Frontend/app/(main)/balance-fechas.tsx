@@ -27,9 +27,9 @@ import {
 type EstadoFilter = 'todas' | 'pendiente' | 'pagado';
 
 const ESTADO_TABS: { key: EstadoFilter; label: string; icon: string }[] = [
-    { key: 'todas',     label: 'Todas',      icon: 'format-list-bulleted' },
+    { key: 'todas', label: 'Todas', icon: 'format-list-bulleted' },
     { key: 'pendiente', label: 'Pendientes', icon: 'clock-outline' },
-    { key: 'pagado',    label: 'Pagadas',    icon: 'check-circle-outline' },
+    { key: 'pagado', label: 'Pagadas', icon: 'check-circle-outline' },
 ];
 
 export default function BalanceFechasScreen() {
@@ -37,18 +37,18 @@ export default function BalanceFechasScreen() {
     const api = useApi();
 
     // ── State ──────────────────────────────────────────────────────────────────
-    const [from, setFrom]               = useState('');
-    const [to, setTo]                   = useState('');
+    const [from, setFrom] = useState('');
+    const [to, setTo] = useState('');
     /** Normalized dates used for API calls (validated on last Buscar) */
     const [searchedFrom, setSearchedFrom] = useState('');
-    const [searchedTo, setSearchedTo]     = useState('');
+    const [searchedTo, setSearchedTo] = useState('');
     const [filterError, setFilterError] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
     const [periodStats, setPeriodStats] = useState<any>(null);
-    const [exporting, setExporting]     = useState(false);
+    const [exporting, setExporting] = useState(false);
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todas');
     const [nombreFilter, setNombreFilter] = useState('');
-    const [updatingId, setUpdatingId]   = useState<number | null>(null);
+    const [updatingId, setUpdatingId] = useState<number | null>(null);
 
     // ── Data hooks ─────────────────────────────────────────────────────────────
     const {
@@ -145,7 +145,7 @@ export default function BalanceFechasScreen() {
             headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Total', 'Estado', 'Método'],
             rows: [
                 ...mf.map(f => ['Ingreso', f.facturaId ?? '', f.clienteNombre || '—', f.fechaFactura || '', `$${formatCurrency(Number(f.total) || 0)}`, f.estado || '', f.metodo || '']),
-                ...mg.map(g => ['Gasto',   g.pagosId   ?? '', g.nombreGasto  || '—', g.fechaFactura || '', `$${formatCurrency(Number(g.total) || 0)}`, g.estado || '', g.metodo || '']),
+                ...mg.map(g => ['Gasto', g.pagosId ?? '', g.nombreGasto || '—', g.fechaFactura || '', `$${formatCurrency(Number(g.total) || 0)}`, g.estado || '', g.metodo || '']),
             ],
         });
     }, [searchedFrom, searchedTo, estadoFilter, nombreFilter, api]);
@@ -158,10 +158,10 @@ export default function BalanceFechasScreen() {
     }, [searchedFrom, searchedTo, estadoFilter, nombreFilter, api]);
 
     // ── Derived values ─────────────────────────────────────────────────────────
-    const loading  = loadingFacturas || loadingGastos || exporting;
+    const loading = loadingFacturas || loadingGastos || exporting;
     const ingresos = periodStats?.totalIngresosPagados ?? 0;
-    const egresos  = periodStats?.totalEgresos ?? 0;
-    const neto     = ingresos - egresos;
+    const egresos = periodStats?.totalEgresos ?? 0;
+    const neto = ingresos - egresos;
 
     return (
         <PageContainer scrollable maxWidthVariant="full">

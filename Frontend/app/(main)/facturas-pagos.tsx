@@ -532,20 +532,24 @@ export default function FacturasPagosScreen() {
           <View className={`flex-row gap-6 mb-2 ${isMobile ? 'flex-col' : ''}`}>
             <View className={`mb-6 ${!isMobile ? 'flex-1 min-w-[300px]' : ''}`}>
               <Text className="text-[10px] font-black text-slate-400 mb-3 ml-1 uppercase tracking-widest">Método de Pago</Text>
-              <View className="flex-row gap-3">
-                {['efectivo', 'qr'].map((m) => (
+              <View className="flex-row flex-wrap gap-2">
+                {([
+                  { id: 'efectivo',        label: 'Efectivo',       icon: 'cash'               },
+                  { id: 'qr',              label: 'QR',             icon: 'qrcode'             },
+                  { id: 'efectivo_no_caja', label: 'Ef. No Caja',  icon: 'cash-off'           },
+                ] as { id: string; label: string; icon: string }[]).map((m) => (
                   <TouchableOpacity
-                    key={m}
-                    className={`flex-row items-center gap-3 py-2.5 px-8 rounded-full border ${metodo === m ? 'bg-amber-500/10 border-amber-500/20' : 'bg-black/20 border-white/5'}`}
-                    onPress={() => setMetodo(m)}
+                    key={m.id}
+                    className={`flex-row items-center gap-2 py-2.5 px-5 rounded-full border ${metodo === m.id ? 'bg-amber-500/10 border-amber-500/20' : 'bg-black/20 border-white/5'}`}
+                    onPress={() => setMetodo(m.id)}
                   >
                     <Icon
-                      name={m === 'efectivo' ? 'cash' : 'qrcode'}
+                      name={m.icon}
                       size={16}
-                      color={metodo === m ? '#F5A524' : '#64748B'}
+                      color={metodo === m.id ? '#F5A524' : '#64748B'}
                     />
-                    <Text className={`text-sm tracking-tight capitalize ${metodo === m ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'}`}>
-                      {m}
+                    <Text className={`text-sm tracking-tight ${metodo === m.id ? 'text-amber-500 font-black' : 'text-slate-500 font-bold'}`}>
+                      {m.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -553,7 +557,7 @@ export default function FacturasPagosScreen() {
             </View>
           </View>
 
-          {/* Denominaciones — solo efectivo, no edición */}
+          {/* Denominaciones — solo efectivo (de caja), no edición */}
           {metodo === 'efectivo' && !editingId && (
             <View className="mb-4 p-3 rounded-2xl border border-amber-500/20 bg-amber-500/5">
               <View className="flex-row items-center gap-2 mb-3">
@@ -766,8 +770,19 @@ export default function FacturasPagosScreen() {
                             )}
                             {item.metodo && (
                               <View className="flex-row items-center gap-1.5">
-                                <Icon name={item.metodo === 'efectivo' ? 'cash' : 'qrcode'} size={11} color="#64748B" />
-                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase' }}>{item.metodo}</Text>
+                                <Icon
+                                  name={
+                                    item.metodo === 'efectivo' ? 'cash' :
+                                    item.metodo === 'qr' ? 'qrcode' :
+                                    item.metodo === 'efectivo_no_caja' ? 'cash-off' :
+                                    'credit-card-outline'
+                                  }
+                                  size={11}
+                                  color="#64748B"
+                                />
+                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase' }}>
+                                  {item.metodo === 'efectivo_no_caja' ? 'Ef. No Caja' : item.metodo}
+                                </Text>
                               </View>
                             )}
                           </View>

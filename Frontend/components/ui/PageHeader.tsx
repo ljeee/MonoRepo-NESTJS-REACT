@@ -26,10 +26,10 @@ export default function PageHeader({
 
     return (
         <View 
-          className={`flex-row justify-between ${isMobile ? 'mb-4 flex-wrap items-start gap-y-3' : 'mb-6 items-center gap-3'} ${className}`} 
+          className={`flex-row justify-between items-center ${isMobile ? 'mb-4' : 'mb-6 gap-3'} ${className}`} 
           style={style}
         >
-            <View className={`flex-row items-center gap-3 ${isMobile ? 'w-full' : 'flex-1 min-w-0'}`}>
+            <View className="flex-row items-center gap-3 flex-1 min-w-0">
                 {icon && (
                     <View style={{
                         width: isMobile ? 38 : 44, height: isMobile ? 38 : 44,
@@ -62,7 +62,7 @@ export default function PageHeader({
             </View>
             
             {rightContent && (
-                <View className={`flex-row items-center gap-2 flex-shrink-0 ${isMobile ? 'w-full justify-end mt-1' : ''}`}>
+                <View className="flex-row items-center gap-2 flex-shrink-0 ml-2">
                     {rightContent}
                 </View>
             )}
