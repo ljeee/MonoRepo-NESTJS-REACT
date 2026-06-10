@@ -122,7 +122,8 @@ export class ProductosService {
 	}
 
 	async deleteVariante(varianteId: number) {
-		return this.variantesRepo.delete(varianteId);
+		await this.variantesRepo.update(varianteId, { activo: false });
+		return this.variantesRepo.findOne({where: {varianteId}});
 	}
 
 	async ajustarStockBebida(varianteId: number, delta: number): Promise<ProductoVariantes> {

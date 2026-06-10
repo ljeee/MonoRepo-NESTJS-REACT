@@ -1,11 +1,12 @@
 import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
 
+@Index(['tipo', 'nombre'], { unique: true })
 @Entity('pizza_sabores')
 export class PizzaSabor {
 	@PrimaryGeneratedColumn({ name: 'sabor_id' })
 	saborId: number;
 
-	@Column({ name: 'nombre', type: 'text', unique: true })
+	@Column({ name: 'nombre', type: 'text' })
 	@Index()
 	nombre: string;
 
