@@ -197,7 +197,7 @@ describe('EstadisticasService', () => {
 			expect(result.find(r => r.metodo === 'transferencia')?.total).toBe(30000);
 		});
 
-		it('divide efectivo_transferencia en dos entradas separadas', async () => {
+		it('agrupa efectivo_transferencia como su propio bucket "mixto" (total completo, cuenta 1 vez)', async () => {
 			const qb = makeQb({
 				getMany: jest.fn().mockResolvedValue([
 					{ metodo: 'efectivo_transferencia', total: 70000, pagoEfectivo: 50000, pagoTransferencia: 20000 },
@@ -207,8 +207,12 @@ describe('EstadisticasService', () => {
 
 			const result = await service.metodosPago('2025-01-01', '2025-01-01');
 
-			expect(result.find(r => r.metodo === 'efectivo')?.total).toBe(50000);
-			expect(result.find(r => r.metodo === 'transferencia')?.total).toBe(20000);
+			const mixto = result.find(r => r.metodo === 'mixto');
+			expect(mixto?.total).toBe(70000);
+			expect(mixto?.cantidad).toBe(1);
+			// No debe inflar los buckets de efectivo/transferencia
+			expect(result.find(r => r.metodo === 'efectivo')).toBeUndefined();
+			expect(result.find(r => r.metodo === 'transferencia')).toBeUndefined();
 		});
 
 		it('calcula porcentaje correcto', async () => {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseIntPipe } from '@nestjs/common';
 import { InventarioBebidasService } from './inventario-bebidas.service';
 import { CreateIngredienteDto, UpdateIngredienteDto, AjustarStockDto, VincularVarianteDto } from './esquemas/ingrediente.dto';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -25,6 +25,13 @@ export class InventarioBebidasController {
     @Roles(Role.Admin, Role.Cajero)
     desvincular(@Param('varianteId', ParseIntPipe) varianteId: number) {
         return this.service.desvincular(varianteId);
+    }
+
+    // ─── Movimientos de stock (historial) ─────────────────────────────────────────
+
+    @Get('movimientos')
+    getMovimientos(@Query('limit') limit?: string) {
+        return this.service.getMovimientosBebidas(limit ? Number(limit) : 20);
     }
 
     // ─── Ingredientes ───────────────────────────────────────────────────────────

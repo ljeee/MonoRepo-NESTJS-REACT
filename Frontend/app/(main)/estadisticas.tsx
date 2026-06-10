@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Platform,
     RefreshControl,
 } from 'react-native';
 import { api } from '../../services/api';
@@ -14,21 +13,17 @@ import type {
     ResumenPeriodo,
     ClienteFrecuente,
 } from '@/src/shared';
-import { formatCompactCurrency as sharedFormatCompact } from '@/src/shared';
+import { formatCompactCurrency as sharedFormatCompact, getLocalDateString } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
-import { View, Text, TouchableOpacity, ScrollView, TextInput } from '../../tw';
-import { PageContainer, PageHeader, Card, Icon, Button } from '../../components/ui';
+import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
+import { PageContainer, PageHeader, Card, Icon, Button, DateRangeFilter } from '../../components/ui';
 
 function formatCurrency(n: number) {
     return sharedFormatCompact(n);
 }
 
 function getDefaultDateRange() {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const today = `${y}-${m}-${d}`;
+    const today = getLocalDateString();
     return { from: today, to: today };
 }
 
@@ -108,16 +103,16 @@ export default function EstadisticasPage() {
     const [metodos, setMetodos] = useState<MetodoPago[]>([]);
     const [clientesFrec, setClientesFrec] = useState<ClienteFrecuente[]>([]);
 
-    const fetchAll = useCallback(async () => {
+    const fetchAll = useCallback(async (f = from, t = to) => {
         setLoading(true);
         try {
             const [r, pt, st, vd, vh, mp, cf] = await Promise.all([
-                api.estadisticas.resumenPeriodo(from, to),
-                api.estadisticas.productosTop(from, to),
-                api.estadisticas.saboresTop(from, to),
-                api.estadisticas.ventasPorDia(from, to),
-                api.estadisticas.ventasPorHora(undefined, from, to),
-                api.estadisticas.metodosPago(from, to),
+                api.estadisticas.resumenPeriodo(f, t),
+                api.estadisticas.productosTop(f, t),
+                api.estadisticas.saboresTop(f, t),
+                api.estadisticas.ventasPorDia(f, t),
+                api.estadisticas.ventasPorHora(undefined, f, t),
+                api.estadisticas.metodosPago(f, t),
                 api.estadisticas.clientesFrecuentes(8),
             ]);
             setResumen(r);
@@ -153,55 +148,14 @@ export default function EstadisticasPage() {
         >
             <PageHeader title="Analítica" subtitle="Rendimiento del negocio" icon="chart-areaspline" />
 
-            {/* ── Date Filters ── */}
-            <Card className="mb-6 p-4 bg-slate-900 border-white/5">
-                <View className={`${isMobile ? 'flex-col' : 'flex-row'} items-end gap-4`}>
-                    <View className="flex-1 w-full">
-                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Desde</Text>
-                        {Platform.OS === 'web' ? (
-                            <input
-                                type="date"
-                                value={from}
-                                onChange={(e: any) => setFrom(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-orange-500/50"
-                            />
-                        ) : (
-                            <TextInput 
-                                className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm"
-                                value={from} 
-                                onChangeText={setFrom} 
-                                placeholder="AAAA-MM-DD"
-                            />
-                        )}
-                    </View>
-                    <View className="flex-1 w-full">
-                        <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Hasta</Text>
-                        {Platform.OS === 'web' ? (
-                            <input
-                                type="date"
-                                value={to}
-                                onChange={(e: any) => setTo(e.target.value)}
-                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm outline-none focus:border-orange-500/50"
-                            />
-                        ) : (
-                            <TextInput 
-                                className="bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm"
-                                value={to} 
-                                onChangeText={setTo} 
-                                placeholder="AAAA-MM-DD"
-                            />
-                        )}
-                    </View>
-                    <Button
-                        title={loading ? '...' : 'Actualizar'}
-                        icon="refresh"
-                        variant="primary"
-                        onPress={fetchAll}
-                        loading={loading}
-                        className={isMobile ? 'w-full' : 'px-8'}
-                    />
-                </View>
-            </Card>
+            <DateRangeFilter
+                from={from}
+                to={to}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                onSearch={(f, t) => { setFrom(f); setTo(t); void fetchAll(f, t); }}
+                loading={loading}
+            />
 
             {loading && !resumen && (
                 <View className="py-20 items-center">

@@ -54,3 +54,14 @@ eslint-report.json
 # AI Skills
 skills/
 skills-lock.json
+
+# AI Assistant files
+CLAUDE.md
+.cursorrules
+.cursorignore
+.cursor/
+.gemini/
+.aider*
+.codeium/
+.copilot/
+.github/copilot-instructions.md

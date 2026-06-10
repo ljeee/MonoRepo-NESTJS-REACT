@@ -13,6 +13,11 @@ interface MenuPickerProps {
   onAdd: (producto: Producto, variante: ProductoVariante, sabores?: string[], base?: 'leche' | 'agua') => void;
 }
 
+// Normaliza para búsqueda: minúsculas, sin tildes, coma→punto (teclado numérico CO da coma).
+// Así "1,5" matchea "1.5 LITROS" y viceversa.
+const normalize = (s: string) =>
+  (s || '').toLowerCase().replace(/,/g, '.').normalize('NFD').replace(/[̀-ͯ]/g, '');
+
 export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
@@ -21,14 +26,23 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
   const [selectedVariante, setSelectedVariante] = useState<ProductoVariante | null>(null);
+  // Config del modal de sabores: pizza (catálogo, 3) vs calzone (sabores propios, 2)
+  const [modalCustomSabores, setModalCustomSabores] = useState<string[] | undefined>(undefined);
+  const [modalMaxSabores, setModalMaxSabores] = useState(3);
   const [jugoModalVisible, setJugoModalVisible] = useState(false);
   const [selectedJugoProducto, setSelectedJugoProducto] = useState<Producto | null>(null);
   const [selectedJugoVariante, setSelectedJugoVariante] = useState<ProductoVariante | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [varianteSearch, setVarianteSearch] = useState('');
 
   useEffect(() => {
     fetchProductos(true);
   }, [fetchProductos]);
+
+  // Limpiar la búsqueda de variante al cambiar/colapsar el producto expandido
+  useEffect(() => {
+    setVarianteSearch('');
+  }, [expandedProductId]);
 
   const sortedProducts = useMemo(() => {
     return [...productos].sort((a, b) => a.productoNombre.localeCompare(b.productoNombre));
@@ -67,6 +81,14 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
       .sort((a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50))
       .filter(v => v.activo);
   }, [expandedProducto]);
+
+  // Buscador de variante: solo cuando hay muchas (p. ej. gaseosas con muchos tamaños/marcas)
+  const showVarianteSearch = expandedVariantes.length > 6;
+  const visibleVariantes = useMemo(() => {
+    if (!varianteSearch.trim()) return expandedVariantes;
+    const q = normalize(varianteSearch);
+    return expandedVariantes.filter(v => normalize(v.nombre).includes(q));
+  }, [expandedVariantes, varianteSearch]);
 
   const handleSelectProduct = useCallback((id: number) => {
     setExpandedProductId(prev => (prev === id ? null : id));
@@ -165,11 +187,35 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
               </TouchableOpacity>
             </View>
 
+            {showVarianteSearch && (
+              <View className="px-4 pt-3">
+                <View className="flex-row items-center bg-black/20 rounded-xl border border-white/10">
+                  <View className="pl-3 pr-1">
+                    <Icon name="magnify" size={16} color="#64748B" />
+                  </View>
+                  <TextInput
+                    className="flex-1 pr-3 py-2.5 text-white text-sm font-medium"
+                    placeholder="Buscar variante (ej. 1,5)…"
+                    placeholderTextColor="#64748B"
+                    value={varianteSearch}
+                    onChangeText={setVarianteSearch}
+                  />
+                  {varianteSearch.length > 0 && (
+                    <TouchableOpacity onPress={() => setVarianteSearch('')} className="px-3" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Icon name="close" size={16} color="#64748B" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            )}
+
             <View className="flex-row flex-wrap p-4 gap-3">
-              {expandedVariantes.length === 0 ? (
-                <Text className="text-slate-500 italic py-2">Sin variantes disponibles</Text>
+              {visibleVariantes.length === 0 ? (
+                <Text className="text-slate-500 italic py-2">
+                  {varianteSearch ? `Sin coincidencias para "${varianteSearch}"` : 'Sin variantes disponibles'}
+                </Text>
               ) : (
-                expandedVariantes.map((variante) => {
+                visibleVariantes.map((variante) => {
                 const producto = expandedProducto;
                 return (
                   <TouchableOpacity
@@ -178,11 +224,15 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                     onPress={() => {
                       const nameLower = producto.productoNombre.toLowerCase();
                       const isPizza = nameLower.includes('pizza') && !nameLower.includes('burguer');
+                      const isCalzone = nameLower.includes('calzone');
                       const isJugo  = nameLower.includes('jugo');
 
-                      if (isPizza) {
+                      if (isPizza || isCalzone) {
                         setSelectedProducto(producto);
                         setSelectedVariante(variante);
+                        // Calzone: sabores del catálogo con tipo === 'calzone' (precio plano), tope 2.
+                        setModalCustomSabores(isCalzone ? (saboresCatalogo ?? []).filter(s => s.tipo === 'calzone' && s.activo).map(s => s.nombre) : undefined);
+                        setModalMaxSabores(isCalzone ? 2 : 3);
                         setModalVisible(true);
                       } else if (isJugo) {
                         setSelectedJugoProducto(producto);
@@ -241,6 +291,8 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
           variante={selectedVariante}
           saboresCatalogo={saboresCatalogo}
           loadingSabores={loadingSabores}
+          maxSabores={modalMaxSabores}
+          customSabores={modalCustomSabores}
           onAdd={(producto, variante, sabores) => {
             onAdd(producto, variante, sabores);
             setModalVisible(false);

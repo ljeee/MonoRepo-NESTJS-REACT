@@ -1,4 +1,4 @@
-import {IsString, IsNumber, IsOptional, IsDateString, IsObject} from "class-validator";
+import {IsString, IsNumber, IsOptional, IsDateString, IsObject, IsPositive} from "class-validator";
 
 export class CreateFacturasVentasDto {
 
@@ -43,6 +43,20 @@ export class CreateFacturasVentasDto {
 	denominaciones?: Record<string, number>;
 
 	/** Denominaciones entregadas como cambio al cliente — dispara registrarSalida en caja */
+	@IsOptional()
+	@IsObject()
+	cambioDenominaciones?: Record<string, number>;
+}
+
+export class AbonoDto {
+	@IsNumber()
+	@IsPositive()
+	monto: number;
+
+	@IsOptional()
+	@IsObject()
+	denominaciones?: Record<string, number>;
+
 	@IsOptional()
 	@IsObject()
 	cambioDenominaciones?: Record<string, number>;

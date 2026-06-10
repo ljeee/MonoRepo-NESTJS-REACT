@@ -20,11 +20,11 @@ import {
     PageContainer,
     PageHeader,
     Button,
-    Input,
     Icon,
     Card,
     Badge,
     ListSkeleton,
+    DateRangeFilter,
 } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 
@@ -49,7 +49,7 @@ function fmtDate(iso?: string) {
 }
 
 function metodoLabel(m?: string) {
-    const map: Record<string, string> = { efectivo: 'Efectivo', transferencia: 'Transfer.', tarjeta: 'Tarjeta', nequi: 'Nequi', daviplata: 'Daviplata' };
+    const map: Record<string, string> = { efectivo: 'Efectivo', transferencia: 'Transfer.', mixto: 'Mixto', efectivo_transferencia: 'Mixto', tarjeta: 'Tarjeta', nequi: 'Nequi', daviplata: 'Daviplata' };
     return map[m?.toLowerCase() ?? ''] ?? m ?? '—';
 }
 
@@ -273,8 +273,10 @@ export default function ContabilidadScreen() {
         return { allF: fRes.data, allG: gRes.data };
     }, [api, validRange]);
 
-    const handleSearch = useCallback(() => {
-        const { from: f, to: t, error } = validateFlexibleDateRange(from, to);
+    const handleSearch = useCallback((fromOverride?: string, toOverride?: string) => {
+        const fromInput = fromOverride ?? from;
+        const toInput = toOverride ?? to;
+        const { from: f, to: t, error } = validateFlexibleDateRange(fromInput, toInput);
         if (error) { setFilterError(error); return; }
         setFilterError('');
         setValidRange({ from: f, to: t });
@@ -320,36 +322,15 @@ export default function ContabilidadScreen() {
         } finally { setExportLoading(''); }
     }, [fetchAllPeriod]);
 
-    // ── Date range bar ──────────────────────────────────────────────────────────
     const DateBar = (
-        <Card className="mb-5 p-4">
-            <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 10, alignItems: isMobile ? 'stretch' : 'flex-end' }}>
-                <View style={{ flex: 1 }}>
-                    <Input
-                        label="Desde"
-                        value={from}
-                        onChangeText={setFrom}
-                        placeholder="Ej: 2026-05-24"
-                        size={isMobile ? 'md' : 'sm'}
-                        leftIcon={<Icon name="calendar-start" size={14} color="#475569" />}
-                        containerStyle={{ marginBottom: 0 }}
-                    />
-                </View>
-                <View style={{ flex: 1 }}>
-                    <Input
-                        label="Hasta"
-                        value={to}
-                        onChangeText={setTo}
-                        placeholder="Ej: 2026-05-31"
-                        size={isMobile ? 'md' : 'sm'}
-                        leftIcon={<Icon name="calendar-end" size={14} color="#475569" />}
-                        containerStyle={{ marginBottom: 0 }}
-                    />
-                </View>
-                <Button title="Consultar" icon="magnify" variant="primary" size={isMobile ? 'md' : 'sm'} onPress={handleSearch} loading={loading} />
-            </View>
-            {filterError ? <Text style={{ color: '#F87171', fontSize: 12, marginTop: 8 }}>{filterError}</Text> : null}
-        </Card>
+        <DateRangeFilter
+            from={from}
+            to={to}
+            onFromChange={setFrom}
+            onToChange={setTo}
+            onSearch={(f, t) => { setFrom(f); setTo(t); handleSearch(f, t); }}
+            loading={loading}
+        />
     );
 
     // ── Tab bar ─────────────────────────────────────────────────────────────────

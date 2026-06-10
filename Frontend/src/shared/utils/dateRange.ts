@@ -47,6 +47,20 @@ export function validateFlexibleDateRange(fromInput: string, toInput: string): D
   return { from, to, error: null };
 }
 
+export function getRangeDates(days: number): { from: string; to: string } {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  if (days === -1) {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return { from: toISO(yesterday), to: toISO(yesterday) };
+  }
+  const to = new Date();
+  const from = new Date();
+  if (days > 0) from.setDate(from.getDate() - days + 1);
+  return { from: toISO(from), to: toISO(to) };
+}
+
 export function getLocalDateString(dateInput: Date | string | number = new Date()): string {
   const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
   // Avoid NaN issues if invalid date passed

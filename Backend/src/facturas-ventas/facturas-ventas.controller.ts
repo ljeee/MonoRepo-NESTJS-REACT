@@ -1,7 +1,7 @@
 import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query, BadRequestException} from "@nestjs/common";
 import {ApiTags, ApiOperation, ApiResponse, ApiQuery} from '@nestjs/swagger';
 import {FacturasVentasService} from "./facturas-ventas.service";
-import {CreateFacturasVentasDto} from "./esquemas/facturas-ventas.dto";
+import {AbonoDto, CreateFacturasVentasDto} from "./esquemas/facturas-ventas.dto";
 
 @ApiTags('Facturas Ventas')
 @Controller("facturas-ventas")
@@ -87,6 +87,13 @@ export class FacturasVentasController {
 	@ApiResponse({ status: 200, description: 'Factura de venta actualizada.' })
 	update(@Param("id") id: number, @Body() dto: Partial<CreateFacturasVentasDto>) {
 		return this.service.update(id, dto);
+	}
+
+	@Patch(":id/abono")
+	@ApiOperation({ summary: 'Registrar abono parcial en efectivo a una factura pendiente' })
+	@ApiResponse({ status: 200, description: 'Abono registrado, factura actualizada.' })
+	registrarAbono(@Param("id") id: number, @Body() dto: AbonoDto) {
+		return this.service.registrarAbono(id, dto);
 	}
 
 	@Delete(":id")

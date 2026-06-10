@@ -124,6 +124,9 @@ export function createApi(http: AxiosInstance) {
     update: (id: number, data: Partial<FacturaVenta>) =>
       http.patch<FacturaVenta>(`/facturas-ventas/${id}`, data).then((r) => r.data),
 
+    abono: (id: number, monto: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) =>
+      http.patch<FacturaVenta>(`/facturas-ventas/${id}/abono`, { monto, denominaciones, cambioDenominaciones }).then((r) => r.data),
+
     delete: (id: number) =>
       http.delete(`/facturas-ventas/${id}`).then((r) => r.data),
   };
@@ -368,6 +371,8 @@ export function createApi(http: AxiosInstance) {
       http.post<import('../types/models').VarianteIngrediente>('/inventario-bebidas/vinculos', dto).then((r) => r.data),
     desvincular: (varianteId: number) =>
       http.delete(`/inventario-bebidas/vinculos/${varianteId}`).then((r) => r.data),
+    getMovimientos: (limit = 20) =>
+      http.get<import('../types/models').BebidaMovimiento[]>('/inventario-bebidas/movimientos', { params: { limit } }).then((r) => r.data),
   };
 
   return {

@@ -92,7 +92,7 @@ describe('ProductProcessingService', () => {
 			const managerRepo = { save: jest.fn().mockResolvedValue({}) };
 			const manager = { getRepository: jest.fn().mockReturnValue(managerRepo) };
 
-			await service.vincularProductoAOrden(1, 'Bebida', 1, undefined, undefined, manager as any);
+			await service.vincularProductoAOrden(1, 'Bebida', 1, undefined, undefined, null, manager as any);
 
 			expect(manager.getRepository).toHaveBeenCalledWith(OrdenesProductos);
 			expect(managerRepo.save).toHaveBeenCalled();

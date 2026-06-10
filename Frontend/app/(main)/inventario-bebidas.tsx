@@ -7,6 +7,7 @@ import PageContainer from '../../components/ui/PageContainer';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/ui/Icon';
+import { BebidaMovimientosWidget } from '../../components/ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -258,6 +259,7 @@ export default function InventarioBebidasScreen() {
                 keyExtractor={(item) => item.key}
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 60 }}
+                ListFooterComponent={hasData ? <BebidaMovimientosWidget /> : null}
                 renderItem={({ item }) => {
                     if (item.type === 'header') {
                         return (

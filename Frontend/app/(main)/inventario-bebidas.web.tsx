@@ -7,6 +7,7 @@ import PageContainer from '../../components/ui/PageContainer';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/ui/Icon';
+import { BebidaMovimientosWidget } from '../../components/ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -364,6 +365,8 @@ export default function InventarioBebidasScreen() {
                 onArrivalChange={(id, val) => setArrivals((prev) => ({ ...prev, [id]: val }))}
                 onRegisterArrival={handleRegisterArrival}
             />
+
+            {hasData && <BebidaMovimientosWidget />}
         </PageContainer>
     );
 }

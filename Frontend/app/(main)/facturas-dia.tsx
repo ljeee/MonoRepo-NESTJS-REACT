@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { RefreshControl, StyleSheet } from 'react-native';
+import { RefreshControl } from 'react-native';
 import { Text, View, TextInput, TouchableOpacity } from '../../tw';
-import { useFacturasDia, calcStats } from '@/src/shared';
+import { useFacturasDia, calcStats, useApi } from '@/src/shared';
+import type { DenominacionesMap } from '@/src/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
@@ -10,14 +11,16 @@ import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import Icon from '../../components/ui/Icon';
+import { MethodFilterChips, MethodFilterValue } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 
 export default function FacturasDiaScreen() {
   const { isMobile } = useBreakpoint();
+  const api = useApi();
   const { data, loading, error, refetch, stats, updateEstado, updateFactura } = useFacturasDia();
   const [updating, setUpdating] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterMethod, setFilterMethod] = useState<string>('todos');
+  const [filterMethod, setFilterMethod] = useState<MethodFilterValue>('todos');
 
   const handleChangeEstado = async (
     facturaId: number,
@@ -46,6 +49,16 @@ export default function FacturasDiaScreen() {
     await updateFactura(facturaId, { total: newTotal });
   };
 
+  const handleAbono = async (facturaId: number, monto: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => {
+    setUpdating(facturaId);
+    try {
+      await api.facturas.abono(facturaId, monto, denominaciones, cambioDenominaciones);
+      await refetch();
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   const handleExportPdf = () => {
     if (!data || data.length === 0) return;
     exportFacturasPdf(data, 'Hoy');
@@ -71,12 +84,24 @@ export default function FacturasDiaScreen() {
     downloadCsv(csv, `contabilidad_${today}.csv`);
   };
 
-  const filteredData = (data || []).filter((f: FacturaItem) => {
-    const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
-    if (!matchesSearch) return false;
+  const searchFiltered = (data || []).filter((f: FacturaItem) =>
+    !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const noPendiente = (f: FacturaItem) => f.estado !== 'pendiente' && f.estado !== 'parcial';
+  const methodCounts = {
+    todos:         searchFiltered.length,
+    efectivo:      searchFiltered.filter(f => f.metodo === 'efectivo' && noPendiente(f)).length,
+    transferencia: searchFiltered.filter(f => f.metodo === 'transferencia' && noPendiente(f)).length,
+    mixto:         searchFiltered.filter(f => f.metodo === 'efectivo_transferencia' && noPendiente(f)).length,
+    pendiente:     searchFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial').length,
+  };
+
+  const filteredData = searchFiltered.filter((f: FacturaItem) => {
     if (filterMethod === 'todos') return true;
-    if (filterMethod === 'pendiente') return f.estado === 'pendiente';
-    return f.metodo === filterMethod && f.estado !== 'pendiente';
+    if (filterMethod === 'pendiente') return f.estado === 'pendiente' || f.estado === 'parcial';
+    if (filterMethod === 'mixto') return f.metodo === 'efectivo_transferencia' && noPendiente(f);
+    return f.metodo === filterMethod && noPendiente(f);
   });
 
   const computedStats = React.useMemo(() => calcStats(filteredData as any), [filteredData]);
@@ -131,22 +156,7 @@ export default function FacturasDiaScreen() {
             </View>
           </View>
           
-          <View className="flex-row flex-wrap gap-2">
-              {['todos', 'efectivo', 'transferencia', 'pendiente'].map((method) => {
-                  const isSelected = filterMethod === method;
-                  return (
-                      <TouchableOpacity
-                          key={method}
-                          onPress={() => setFilterMethod(method)}
-                          className={`px-4 py-2 rounded-full border ${isSelected ? 'bg-blue-500/20 border-blue-500/40' : 'bg-white/5 border-white/10'}`}
-                      >
-                          <Text className={`font-bold text-[11px] uppercase tracking-wider ${isSelected ? 'text-blue-400' : 'text-slate-400'}`}>
-                              {method}
-                          </Text>
-                      </TouchableOpacity>
-                  );
-              })}
-          </View>
+          <MethodFilterChips value={filterMethod} onChange={setFilterMethod} counts={methodCounts} />
         </View>
 
       {/* Error */}
@@ -185,6 +195,7 @@ export default function FacturasDiaScreen() {
                 onToggleEstado={handleChangeEstado}
                 onUpdateTotal={handleUpdateTotal}
                 onUpdate={updateFactura}
+                onAbono={handleAbono}
                 showPrint
               />
             </View>

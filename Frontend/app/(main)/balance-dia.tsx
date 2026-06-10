@@ -21,6 +21,7 @@ import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import Badge from '../../components/ui/Badge';
 import Card from '../../components/ui/Card';
 import CajaMovimientosWidget from '../../components/ui/CajaMovimientosWidget';
+import { MethodFilterChips, MethodFilterValue } from '../../components/ui';
 
 // ─── Balance card ─────────────────────────────────────────────────────────────
 
@@ -300,7 +301,7 @@ export default function BalanceDiaScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterMethod, setFilterMethod] = useState<string>('todos');
+    const [filterMethod, setFilterMethod] = useState<MethodFilterValue>('todos');
 
     // --- ESTADO DE BASE DE CAJA Y ARQUEO ---
     const dateKey = getLocalDateString();
@@ -500,12 +501,22 @@ export default function BalanceDiaScreen() {
 
     const loading = loadingFacturas || loadingGastos;
 
-    const filteredFacturas = facturas.filter((f: FacturaItem) => {
-        const matchesSearch = !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()));
-        if (!matchesSearch) return false;
+    const noPendiente = (f: FacturaItem) => f.estado !== 'pendiente' && f.estado !== 'parcial';
+    const searchFilteredFacturas = facturas.filter((f: FacturaItem) =>
+        !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
+    const methodCounts = {
+        todos:         searchFilteredFacturas.length,
+        efectivo:      searchFilteredFacturas.filter((f: FacturaItem) => f.metodo === 'efectivo' && noPendiente(f)).length,
+        transferencia: searchFilteredFacturas.filter((f: FacturaItem) => f.metodo === 'transferencia' && noPendiente(f)).length,
+        mixto:         searchFilteredFacturas.filter((f: FacturaItem) => f.metodo === 'efectivo_transferencia' && noPendiente(f)).length,
+        pendiente:     searchFilteredFacturas.filter((f: FacturaItem) => f.estado === 'pendiente' || f.estado === 'parcial').length,
+    };
+    const filteredFacturas = searchFilteredFacturas.filter((f: FacturaItem) => {
         if (filterMethod === 'todos') return true;
-        if (filterMethod === 'pendiente') return f.estado === 'pendiente';
-        return f.metodo === filterMethod && f.estado !== 'pendiente';
+        if (filterMethod === 'pendiente') return f.estado === 'pendiente' || f.estado === 'parcial';
+        if (filterMethod === 'mixto') return f.metodo === 'efectivo_transferencia' && noPendiente(f);
+        return f.metodo === filterMethod && noPendiente(f);
     });
 
     return (
@@ -901,22 +912,7 @@ export default function BalanceDiaScreen() {
                             )}
                         </View>
                     </View>
-                    <View className="flex-row flex-wrap gap-2">
-                        {['todos', 'efectivo', 'transferencia', 'pendiente'].map((method) => {
-                            const isSelected = filterMethod === method;
-                            return (
-                                <TouchableOpacity
-                                    key={method}
-                                    onPress={() => setFilterMethod(method)}
-                                    className={`px-3 py-1.5 rounded-full border ${isSelected ? 'bg-blue-500/20 border-blue-500/40' : 'bg-white/5 border-white/10'}`}
-                                >
-                                    <Text className={`font-bold text-[10px] uppercase tracking-wider ${isSelected ? 'text-blue-400' : 'text-slate-400'}`}>
-                                        {method}
-                                    </Text>
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
+                    <MethodFilterChips value={filterMethod} onChange={setFilterMethod} counts={methodCounts} />
                 </View>
             </View>
 

@@ -183,6 +183,19 @@ export class OrdenesService {
 					.catch(err => console.warn('[InventarioCajas] Error al descontar cajas:', err?.message));
 			}
 
+			// 6. Descontar stock de bebidas (gaseosas/jugos) — aplica a TODO tipo de orden
+			//    (incl. mesa), fire-and-forget. Registra -1 en historial aunque no haya stock.
+			if (productos.length > 0) {
+				const drinkItems = fullOrden.productos?.map(p => ({
+					varianteId: (p as any).varianteId ?? (p as any).variante?.varianteId ?? null,
+					productoNombre: (p as any).productoObj?.productoNombre || p.producto || '',
+					cantidad: Number(p.cantidad) || 1,
+				})) ?? [];
+				this.inventarioBebidasService
+					.descontarBebidasParaOrden(drinkItems, orden.ordenId)
+					.catch(err => console.warn('[InventarioBebidas] Error al descontar stock:', err?.message));
+			}
+
 			return fullOrden;
 		});
 	}
@@ -309,6 +322,11 @@ export class OrdenesService {
 			// Actualizar cierre si existe para la fecha de la orden
 			const fechaStr = getBogotaDateString(new Date(fullUpdated.fechaOrden));
 			await this.cierresService.updateCierreIfExists(fechaStr);
+
+			// Restaurar stock de bebidas descontado al crear (idempotente, fire-and-forget)
+			this.inventarioBebidasService
+				.restaurarBebidasParaOrden(id)
+				.catch(err => console.warn('[InventarioBebidas] Error al restaurar stock:', err?.message));
 
 			return fullUpdated;
 		});

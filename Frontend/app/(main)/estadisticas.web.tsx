@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, RefreshControl } from 'react-native';
+import { RefreshControl } from 'react-native';
 import { api } from '../../services/api';
 import type {
     ProductoTop,
@@ -11,9 +11,8 @@ import type {
     ClienteFrecuente,
 } from '@/src/shared';
 import { formatCompactCurrency as sharedFormatCompact } from '@/src/shared';
-import { useBreakpoint } from '../../styles/responsive';
-import { View, Text, TouchableOpacity, ScrollView, TextInput } from '../../tw';
-import { PageContainer, PageHeader, Card, Icon, Button, ListSkeleton } from '../../components/ui';
+import { View, Text, ScrollView } from '../../tw';
+import { PageContainer, PageHeader, Card, Icon, ListSkeleton, DateRangeFilter } from '../../components/ui';
 
 function formatCurrency(n: number) {
     return sharedFormatCompact(n || 0);
@@ -96,7 +95,6 @@ export default function EstadisticasPage() {
     const [from, setFrom] = useState(defaults.from);
     const [to, setTo] = useState(defaults.to);
     const [loading, setLoading] = useState(true);
-    const { isMobile } = useBreakpoint();
 
     const [resumen, setResumen] = useState<ResumenPeriodo | null>(null);
     const [productosTop, setProductosTop] = useState<ProductoTop[]>([]);
@@ -106,16 +104,16 @@ export default function EstadisticasPage() {
     const [metodos, setMetodos] = useState<MetodoPago[]>([]);
     const [clientesFrec, setClientesFrec] = useState<ClienteFrecuente[]>([]);
 
-    const fetchAll = useCallback(async () => {
+    const fetchAll = useCallback(async (f = from, t = to) => {
         setLoading(true);
         try {
             const [r, pt, st, vd, vh, mp, cf] = await Promise.all([
-                api.estadisticas.resumenPeriodo(from, to),
-                api.estadisticas.productosTop(from, to),
-                api.estadisticas.saboresTop(from, to),
-                api.estadisticas.ventasPorDia(from, to),
-                api.estadisticas.ventasPorHora(undefined, from, to),
-                api.estadisticas.metodosPago(from, to),
+                api.estadisticas.resumenPeriodo(f, t),
+                api.estadisticas.productosTop(f, t),
+                api.estadisticas.saboresTop(f, t),
+                api.estadisticas.ventasPorDia(f, t),
+                api.estadisticas.ventasPorHora(undefined, f, t),
+                api.estadisticas.metodosPago(f, t),
                 api.estadisticas.clientesFrecuentes(8),
             ]);
             setResumen(r);
@@ -151,42 +149,14 @@ export default function EstadisticasPage() {
             <PageHeader title="Analítica" subtitle="Inteligencia de negocio y tendencias" icon="chart-areaspline" />
 
             {/* ── Filter Bar ── */}
-            <Card style={{ marginBottom: 16 }}>
-                <View style={{ flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-end', gap: 12 }}>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginLeft: 2 }}>Fecha Inicial</Text>
-                        <input
-                            type="date"
-                            value={from}
-                            onChange={(e: any) => setFrom(e.target.value)}
-                            style={{
-                                width: '100%', backgroundColor: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: 12, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', fontFamily: 'Outfit'
-                            }}
-                        />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6, marginLeft: 2 }}>Fecha Final</Text>
-                        <input
-                            type="date"
-                            value={to}
-                            onChange={(e: any) => setTo(e.target.value)}
-                            style={{
-                                width: '100%', backgroundColor: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: 12, padding: '10px 14px', color: '#fff', fontSize: 13, outline: 'none', fontFamily: 'Outfit'
-                            }}
-                        />
-                    </View>
-                    <Button
-                        title={loading ? 'Actualizando...' : 'Recargar'}
-                        icon="sync"
-                        variant="primary"
-                        onPress={fetchAll}
-                        loading={loading}
-                        className={isMobile ? 'w-full' : ''}
-                    />
-                </View>
-            </Card>
+            <DateRangeFilter
+                from={from}
+                to={to}
+                onFromChange={setFrom}
+                onToChange={setTo}
+                onSearch={(f, t) => { setFrom(f); setTo(t); void fetchAll(f, t); }}
+                loading={loading}
+            />
 
             {loading && !resumen && <View className="py-12"><ListSkeleton count={4} /></View>}
 
@@ -204,7 +174,7 @@ export default function EstadisticasPage() {
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, paddingBottom: 40 }}>
                 
                 {/* Products Ranking */}
-                <Card style={{ flex: isMobile ? undefined : 1, minWidth: isMobile ? '100%' : 300, width: isMobile ? '100%' : undefined }}>
+                <Card style={{ flex: 1, minWidth: 300 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>
                         <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(16,185,129,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                             <Icon name="trophy-outline" size={18} color="#10B981" />
@@ -217,7 +187,7 @@ export default function EstadisticasPage() {
                 </Card>
 
                 {/* Flavors Favoritos */}
-                <Card style={{ flex: isMobile ? undefined : 1, minWidth: isMobile ? '100%' : 300, width: isMobile ? '100%' : undefined }}>
+                <Card style={{ flex: 1, minWidth: 300 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>
                         <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(168,85,247,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                             <Icon name="pizza" size={18} color="#A855F7" />
@@ -283,7 +253,7 @@ export default function EstadisticasPage() {
                 </Card>
 
                 {/* VIP Customers */}
-                <Card style={{ flex: isMobile ? undefined : 1, minWidth: isMobile ? '100%' : 300, width: isMobile ? '100%' : undefined }}>
+                <Card style={{ flex: 1, minWidth: 300 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>
                         <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                             <Icon name="account-group-outline" size={18} color="#F5A524" />
@@ -308,7 +278,7 @@ export default function EstadisticasPage() {
                 </Card>
 
                 {/* Payment Methods */}
-                <Card style={{ flex: isMobile ? undefined : 1, minWidth: isMobile ? '100%' : 300, width: isMobile ? '100%' : undefined }}>
+                <Card style={{ flex: 1, minWidth: 300 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' }}>
                         <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.1)', alignItems: 'center', justifyContent: 'center' }}>
                             <Icon name="credit-card-outline" size={18} color="#F5A524" />

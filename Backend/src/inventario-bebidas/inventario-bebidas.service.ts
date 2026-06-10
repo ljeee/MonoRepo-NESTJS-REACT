@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager, In } from 'typeorm';
 import { Ingrediente } from './esquemas/ingrediente.entity';
 import { VarianteIngrediente } from './esquemas/variante-ingrediente.entity';
+import { BebidaMovimiento } from './esquemas/bebida-movimiento.entity';
+import { ProductoVariantes } from '../productos/esquemas/producto-variantes.entity';
 import { CreateIngredienteDto, UpdateIngredienteDto, AjustarStockDto, VincularVarianteDto } from './esquemas/ingrediente.dto';
 
 @Injectable()
@@ -12,6 +14,10 @@ export class InventarioBebidasService {
         private readonly repo: Repository<Ingrediente>,
         @InjectRepository(VarianteIngrediente)
         private readonly viRepo: Repository<VarianteIngrediente>,
+        @InjectRepository(BebidaMovimiento)
+        private readonly mvRepo: Repository<BebidaMovimiento>,
+        @InjectRepository(ProductoVariantes)
+        private readonly varRepo: Repository<ProductoVariantes>,
     ) {}
 
     // ─── CRUD Ingredientes ──────────────────────────────────────────────────────
@@ -151,6 +157,116 @@ export class InventarioBebidasService {
 
         const repo = manager ? manager.getRepository(Ingrediente) : this.repo;
         await repo.save(ingredientes);
+    }
+
+    // ─── Stock por variante (gaseosas/jugos) — espejo de inventario de cajas ──────
+
+    /** Una variante es "bebida" si su producto se llama gaseosa o jugo (igual que la pantalla). */
+    private esBebida(productoNombre?: string): boolean {
+        return /gaseosa|jugo/i.test(productoNombre || '');
+    }
+
+    /**
+     * Descuenta stock_bebida por variante al CREAR la orden.
+     * Registra SIEMPRE el movimiento (delta = -qty) aunque no haya stock → "-1 en historial".
+     * `aplicado` = lo realmente descontado tras el clamp a 0 (permite restaurar sin fantasma).
+     * Best-effort; pensado para llamarse fire-and-forget desde ordenes.service.
+     */
+    async descontarBebidasParaOrden(
+        items: Array<{ varianteId: number | null; productoNombre?: string; cantidad: number }>,
+        ordenId: number,
+    ) {
+        const drinkItems = items.filter(
+            (i) => i.varianteId != null && this.esBebida(i.productoNombre) && (Number(i.cantidad) || 0) > 0,
+        );
+        if (!drinkItems.length) return;
+
+        // Agrupar por variante (una orden puede repetir la misma variante)
+        const byVariante = new Map<number, number>();
+        for (const it of drinkItems) {
+            byVariante.set(it.varianteId!, (byVariante.get(it.varianteId!) ?? 0) + (Number(it.cantidad) || 0));
+        }
+
+        for (const [varianteId, qty] of byVariante) {
+            await this.varRepo.manager.transaction(async (m) => {
+                const vRepo = m.getRepository(ProductoVariantes);
+                const mvRepo = m.getRepository(BebidaMovimiento);
+                const variante = await vRepo.findOne({ where: { varianteId } });
+                if (!variante) return;
+                const anterior = Number(variante.stockBebida ?? 0);
+                const nueva = Math.max(0, anterior - qty);
+                const aplicado = anterior - nueva; // ≥0: lo realmente descontado
+                await mvRepo.save(mvRepo.create({
+                    varianteId,
+                    delta: -qty,
+                    aplicado: -aplicado,
+                    cantidadResultante: nueva,
+                    tipo: 'salida',
+                    nota: `Orden #${ordenId}`,
+                }));
+                variante.stockBebida = nueva;
+                await vRepo.save(variante);
+            });
+        }
+    }
+
+    /**
+     * Restaura stock al CANCELAR la orden. Idempotente: deriva de los movimientos de salida
+     * de esa orden y devuelve solo lo `aplicado` (no el delta), evitando stock fantasma.
+     * Si ya existe una cancelación registrada para la orden, no hace nada.
+     */
+    async restaurarBebidasParaOrden(ordenId: number) {
+        const salidas = await this.mvRepo.find({ where: { nota: `Orden #${ordenId}`, tipo: 'salida' } });
+        if (!salidas.length) return;
+
+        const yaCancelado = await this.mvRepo.count({ where: { nota: `Cancelación #${ordenId}`, tipo: 'entrada' } });
+        if (yaCancelado > 0) return;
+
+        for (const mov of salidas) {
+            const devolver = Math.abs(Number(mov.aplicado) || 0); // lo realmente descontado
+            if (devolver <= 0) continue;
+            await this.varRepo.manager.transaction(async (m) => {
+                const vRepo = m.getRepository(ProductoVariantes);
+                const mvRepo = m.getRepository(BebidaMovimiento);
+                const variante = await vRepo.findOne({ where: { varianteId: mov.varianteId } });
+                if (!variante) return;
+                const nueva = Number(variante.stockBebida ?? 0) + devolver;
+                await mvRepo.save(mvRepo.create({
+                    varianteId: mov.varianteId,
+                    delta: devolver,
+                    aplicado: devolver,
+                    cantidadResultante: nueva,
+                    tipo: 'entrada',
+                    nota: `Cancelación #${ordenId}`,
+                }));
+                variante.stockBebida = nueva;
+                await vRepo.save(variante);
+            });
+        }
+    }
+
+    /** Historial de movimientos de bebidas, con nombre de variante y producto resueltos. */
+    async getMovimientosBebidas(limit = 20) {
+        const movimientos = await this.mvRepo.find({ order: { creadoEn: 'DESC' }, take: limit });
+        if (!movimientos.length) return [];
+        const ids = [...new Set(movimientos.map((m) => m.varianteId))];
+        const variantes = await this.varRepo.find({ where: { varianteId: In(ids) }, relations: ['producto'] });
+        const byId = new Map(variantes.map((v) => [v.varianteId, v]));
+        return movimientos.map((m) => {
+            const v = byId.get(m.varianteId);
+            return {
+                id: m.id,
+                varianteId: m.varianteId,
+                varianteNombre: v?.nombre ?? 'Variante',
+                productoNombre: v?.producto?.productoNombre ?? '',
+                delta: m.delta,
+                aplicado: m.aplicado,
+                cantidadResultante: m.cantidadResultante,
+                tipo: m.tipo,
+                nota: m.nota,
+                creadoEn: m.creadoEn,
+            };
+        });
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────────

@@ -1,8 +1,8 @@
-import {Injectable, NotFoundException} from '@nestjs/common';
+import {Injectable, NotFoundException, BadRequestException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository, SelectQueryBuilder} from 'typeorm';
 import {FacturasVentas} from './esquemas/facturas-ventas.entity';
-import {CreateFacturasVentasDto} from './esquemas/facturas-ventas.dto';
+import {AbonoDto, CreateFacturasVentasDto} from './esquemas/facturas-ventas.dto';
 import {Ordenes} from '../ordenes/esquemas/ordenes.entity';
 import {getBogotaDayBoundaries, getBogotaDateString} from '../common/utils/date.utils';
 import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
@@ -189,6 +189,45 @@ export class FacturasVentasService {
 		if (cajaOps.length) await Promise.all(cajaOps);
 
 		return result;
+	}
+
+	async registrarAbono(id: number, dto: AbonoDto) {
+		const factura = await this.findOne(id);
+
+		if (factura.estado === 'pagado' || factura.estado === 'pagada' || factura.estado === 'cancelado') {
+			throw new BadRequestException('No se puede abonar a una factura ya pagada o cancelada');
+		}
+
+		const nuevoMonto = (factura.montoPagado ?? 0) + dto.monto;
+		const nuevoEstado = nuevoMonto >= factura.total ? 'pagado' : 'parcial';
+
+		await this.repo.update(id, { montoPagado: nuevoMonto, estado: nuevoEstado });
+
+		const fecha = getBogotaDateString();
+		const cajaOps: Promise<unknown>[] = [];
+
+		if (dto.denominaciones && Object.keys(dto.denominaciones).length > 0) {
+			cajaOps.push(this.cajaMovimientosService.registrarEntrada({
+				denominaciones: dto.denominaciones,
+				facturaVentaId: id,
+				descripcion: `Abono factura #${id}${factura.clienteNombre ? ` - ${factura.clienteNombre}` : ''}`,
+				fecha,
+				metodo: 'efectivo',
+			}));
+		}
+
+		if (dto.cambioDenominaciones && Object.keys(dto.cambioDenominaciones).length > 0) {
+			cajaOps.push(this.cajaMovimientosService.registrarSalida({
+				denominaciones: dto.cambioDenominaciones,
+				descripcion: `Cambio abono factura #${id}${factura.clienteNombre ? ` - ${factura.clienteNombre}` : ''}`,
+				fecha,
+				skipValidation: true,
+			}));
+		}
+
+		if (cajaOps.length) await Promise.all(cajaOps);
+
+		return this.findOne(id);
 	}
 
 	remove(id: number) {

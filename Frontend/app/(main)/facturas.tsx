@@ -1,11 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
 import { View, Text, ScrollView } from '../../tw';
-import { useFacturasRango, calcStats } from '@/src/shared';
+import { useFacturasRango, calcStats, useApi, getLocalDateString } from '@/src/shared';
 import type { DenominacionesMap } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
-import { validateFlexibleDateRange } from '@/src/shared';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
 import PageContainer from '../../components/ui/PageContainer';
 import PageHeader from '../../components/ui/PageHeader';
@@ -13,6 +12,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Icon from '../../components/ui/Icon';
 import { ListSkeleton } from '../../components/ui/SkeletonLoader';
+import { MethodFilterChips, MethodFilterValue, DateRangeFilter } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Tipos de filtro local ──────────────────────────────────────────────────
@@ -29,6 +29,7 @@ const ESTADO_TABS: { key: EstadoFilter; label: string; icon: string; color: stri
 
 export default function FacturasRangoScreen() {
   const { isMobile } = useBreakpoint();
+  const api = useApi();
   const {
     data, loading, error,
     from, to, setFrom, setTo,
@@ -40,29 +41,20 @@ export default function FacturasRangoScreen() {
   const itemsPerPage = 50;
 
   const [updating, setUpdating] = useState<number | null>(null);
-  const [filterError, setFilterError] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
 
   // ── Filtros locales ──
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todas');
+  const [metodoFilter, setMetodoFilter] = useState<MethodFilterValue>('todos');
   const [nombreFilter, setNombreFilter] = useState('');
 
-  const handleSearch = useCallback(() => {
-    const { from: fromParsed, to: toParsed, error } = validateFlexibleDateRange(from, to);
-    if (error) {
-      setFilterError(error);
-      return;
-    }
-    setFilterError('');
-    setFrom(fromParsed);
-    setTo(toParsed);
-    search(fromParsed, toParsed);
-    setHasSearched(true);
-    // Limpiar filtros locales al hacer nueva búsqueda
-    setEstadoFilter('todas');
-    setNombreFilter('');
-    setLocalPage(1);
-  }, [from, to, setFrom, setTo, search]);
+  // ── Inicializar fechas con hoy al montar ──
+  useEffect(() => {
+    const hoy = getLocalDateString();
+    if (!from) setFrom(hoy);
+    if (!to) setTo(hoy);
+  }, []);
+
 
   const handleChangeEstado = useCallback(async (
     facturaId: number,
@@ -92,11 +84,33 @@ export default function FacturasRangoScreen() {
     return deleteFactura(facturaId);
   }, [deleteFactura]);
 
+  const handleAbono = useCallback(async (facturaId: number, monto: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => {
+    setUpdating(facturaId);
+    try {
+      await api.facturas.abono(facturaId, monto, denominaciones, cambioDenominaciones);
+      // Refresh current search results
+      search(from, to);
+    } finally {
+      setUpdating(null);
+    }
+  }, [api, from, to, search]);
+
+  const metodoCounts = useMemo(() => ({
+    todos:         data.length,
+    efectivo:      data.filter(f => f.metodo === 'efectivo').length,
+    transferencia: data.filter(f => f.metodo === 'transferencia').length,
+    mixto:         data.filter(f => f.metodo === 'efectivo_transferencia').length,
+  }), [data]);
+
   // ── Filtrado local en cliente ──
   const filteredData = useMemo(() => {
     let result = data;
     if (estadoFilter !== 'todas') {
       result = result.filter(f => f.estado === estadoFilter);
+    }
+    if (metodoFilter !== 'todos') {
+      const target = metodoFilter === 'mixto' ? 'efectivo_transferencia' : metodoFilter;
+      result = result.filter(f => f.metodo === target);
     }
     if (nombreFilter.trim()) {
       const q = nombreFilter.trim().toLowerCase();
@@ -105,7 +119,7 @@ export default function FacturasRangoScreen() {
       );
     }
     return result;
-  }, [data, estadoFilter, nombreFilter]);
+  }, [data, estadoFilter, metodoFilter, nombreFilter]);
 
   const computedStats = useMemo(() => calcStats(filteredData as any), [filteredData]);
 
@@ -197,43 +211,25 @@ export default function FacturasRangoScreen() {
           }
         />
 
-        {/* ── Filtro de fechas ────────────────────────────────────── */}
-        <View className="flex-row gap-4 mb-4 flex-wrap items-end">
-          <Input
-            label="Desde"
-            value={from}
-            onChangeText={setFrom}
-            placeholder="2025-01-01"
-            containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
-            size="sm"
-            leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
-          />
-          <Input
-            label="Hasta"
-            value={to}
-            onChangeText={setTo}
-            placeholder="2026-12-31"
-            containerStyle={{ flex: 1, minWidth: 140, marginBottom: 0 }}
-            size="sm"
-            leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
-          />
-          <Button
-            title={loading ? '...' : 'Buscar'}
-            icon="magnify"
-            variant="primary"
-            size="sm"
-            onPress={handleSearch}
-            disabled={!from || !to || loading}
-            loading={loading}
-          />
-        </View>
 
-        {filterError ? (
-          <View className="flex-row items-center gap-2 bg-(--color-pos-danger)/10 p-4 rounded-xl mb-4 border border-(--color-pos-danger)/20">
-            <Icon name="alert-circle-outline" size={14} color="#F43F5E" />
-            <Text className="text-(--color-pos-danger) flex-1">{filterError}</Text>
-          </View>
-        ) : null}
+        {/* ── Filtro de fechas ────────────────────────────────────── */}
+        <DateRangeFilter
+          from={from}
+          to={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+          onSearch={(f, t) => {
+            setFrom(f);
+            setTo(t);
+            search(f, t);
+            setHasSearched(true);
+            setEstadoFilter('todas');
+            setMetodoFilter('todos');
+            setNombreFilter('');
+            setLocalPage(1);
+          }}
+          loading={loading}
+        />
 
         {/* ── Filtros locales + Exportar (solo post-búsqueda) ─────── */}
         {hasSearched && !loading && (
@@ -291,6 +287,9 @@ export default function FacturasRangoScreen() {
                 );
               })}
             </View>
+
+            {/* Fila 1b: chips por método de pago (incluye Mixto) */}
+            <MethodFilterChips value={metodoFilter} onChange={setMetodoFilter} counts={metodoCounts} includePendiente={false} />
 
             {/* Fila 2: buscador por nombre */}
             <Input
@@ -396,6 +395,7 @@ export default function FacturasRangoScreen() {
                       onUpdateTotal={handleUpdateTotal}
                       onUpdate={updateFactura}
                       onDelete={handleDeleteFactura}
+                      onAbono={handleAbono}
                     />
                   </View>
                 </View>

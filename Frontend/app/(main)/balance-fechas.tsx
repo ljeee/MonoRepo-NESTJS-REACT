@@ -22,7 +22,10 @@ import {
     ListSkeleton,
     Badge,
     Card,
+    DateRangeFilter,
+    MethodFilterChips,
 } from '../../components/ui';
+import type { MethodFilterValue } from '../../components/ui';
 
 type EstadoFilter = 'todas' | 'pendiente' | 'pagado';
 
@@ -42,11 +45,11 @@ export default function BalanceFechasScreen() {
     /** Normalized dates used for API calls (validated on last Buscar) */
     const [searchedFrom, setSearchedFrom] = useState('');
     const [searchedTo, setSearchedTo] = useState('');
-    const [filterError, setFilterError] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
     const [periodStats, setPeriodStats] = useState<any>(null);
     const [exporting, setExporting] = useState(false);
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todas');
+    const [metodoFilter, setMetodoFilter] = useState<MethodFilterValue>('todos');
     const [nombreFilter, setNombreFilter] = useState('');
     const [updatingId, setUpdatingId] = useState<number | null>(null);
 
@@ -54,7 +57,7 @@ export default function BalanceFechasScreen() {
     const {
         data: facturas, loading: loadingFacturas, error: errorFacturas,
         setFrom: setFromF, setTo: setToF,
-        search: searchF, updateEstado, updateFactura,
+        search: searchF, updateEstado, updateFactura, deleteFactura,
         page: pageF, totalPages: totalPagesF, total: totalF, goToPage: goToPageF,
     } = useFacturasRango(50);
 
@@ -72,11 +75,11 @@ export default function BalanceFechasScreen() {
         } catch { /* silent */ }
     }, [api]);
 
-    const handleSearch = useCallback(() => {
-        const { from: fp, to: tp, error } = validateFlexibleDateRange(from, to);
-        if (error) { setFilterError(error); return; }
-        setFilterError('');
-        // Store normalized dates so chip filters & debounce use validated values
+    const handleSearch = useCallback((fromOverride?: string, toOverride?: string) => {
+        const fromInput = fromOverride ?? from;
+        const toInput = toOverride ?? to;
+        const { from: fp, to: tp, error } = validateFlexibleDateRange(fromInput, toInput);
+        if (error) return;
         setSearchedFrom(fp);
         setSearchedTo(tp);
         setFromF(fp); setToF(tp);
@@ -124,6 +127,12 @@ export default function BalanceFechasScreen() {
         if (searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
     }, [updateFactura, searchedFrom, searchedTo, fetchStats]);
 
+    const handleDeleteFactura = useCallback(async (facturaId: number): Promise<boolean> => {
+        const ok = await deleteFactura(facturaId);
+        if (ok && searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
+        return ok;
+    }, [deleteFactura, searchedFrom, searchedTo, fetchStats]);
+
     const fetchAllForExport = async () => {
         setExporting(true);
         try {
@@ -163,6 +172,17 @@ export default function BalanceFechasScreen() {
     const egresos = periodStats?.totalEgresos ?? 0;
     const neto = ingresos - egresos;
 
+    // Filtro de método (client-side sobre las facturas ya cargadas; el estado se filtra server-side)
+    const metodoCounts = {
+        todos:         facturas.length,
+        efectivo:      facturas.filter((f: any) => f.metodo === 'efectivo').length,
+        transferencia: facturas.filter((f: any) => f.metodo === 'transferencia').length,
+        mixto:         facturas.filter((f: any) => f.metodo === 'efectivo_transferencia').length,
+    };
+    const facturasView = metodoFilter === 'todos'
+        ? facturas
+        : facturas.filter((f: any) => f.metodo === (metodoFilter === 'mixto' ? 'efectivo_transferencia' : metodoFilter));
+
     return (
         <PageContainer scrollable maxWidthVariant="full">
             <View className="px-4 pb-20">
@@ -173,47 +193,14 @@ export default function BalanceFechasScreen() {
                     icon="scale-balance"
                 />
 
-                {/* ── Date range form ─────────────────────────────────────── */}
-                <Card className="mb-6 p-4">
-                    <View className={isMobile ? 'flex-col gap-3' : 'flex-row gap-3 items-end'}>
-                        <Input
-                            label="Desde"
-                            value={from}
-                            onChangeText={setFrom}
-                            placeholder="2025-01-01"
-                            className="flex-1"
-                            size="sm"
-                            containerStyle={{ marginBottom: 0 }}
-                            leftIcon={<Icon name="calendar" size={16} color="#475569" />}
-                        />
-                        <Input
-                            label="Hasta"
-                            value={to}
-                            onChangeText={setTo}
-                            placeholder="2026-12-31"
-                            className="flex-1"
-                            size="sm"
-                            containerStyle={{ marginBottom: 0 }}
-                            leftIcon={<Icon name="calendar" size={16} color="#475569" />}
-                        />
-                        <Button
-                            title={loading ? '...' : 'Buscar'}
-                            icon="magnify"
-                            variant="primary"
-                            size="sm"
-                            onPress={handleSearch}
-                            disabled={!from || !to || loading}
-                            loading={loading}
-                            className={isMobile ? 'w-full h-12' : 'h-11 px-6'}
-                        />
-                    </View>
-                    {!!filterError && (
-                        <View className="flex-row items-center gap-2 bg-red-500/10 p-3 rounded-xl border border-red-500/20 mt-4">
-                            <Icon name="alert-circle-outline" size={14} color="#EF4444" />
-                            <Text className="text-red-400 text-xs font-bold">{filterError}</Text>
-                        </View>
-                    )}
-                </Card>
+                <DateRangeFilter
+                    from={from}
+                    to={to}
+                    onFromChange={setFrom}
+                    onToChange={setTo}
+                    onSearch={(f, t) => { setFrom(f); setTo(t); handleSearch(f, t); }}
+                    loading={loading}
+                />
 
                 {/* ── Empty prompt (before first search) ─────────────────── */}
                 {!hasSearched && (
@@ -263,6 +250,9 @@ export default function BalanceFechasScreen() {
                                     );
                                 })}
                             </View>
+
+                            {/* Chips por método de pago (incluye Mixto) */}
+                            <MethodFilterChips value={metodoFilter} onChange={setMetodoFilter} counts={metodoCounts} includePendiente={false} />
 
                             <Input
                                 placeholder="Buscar por nombre de cliente..."
@@ -356,7 +346,7 @@ export default function BalanceFechasScreen() {
 
                         {loadingFacturas ? (
                             <ListSkeleton count={4} />
-                        ) : facturas.length === 0 ? (
+                        ) : facturasView.length === 0 ? (
                             <View className="items-center py-16 opacity-30">
                                 <Icon name="email-off-outline" size={48} color="#64748B" />
                                 <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs px-10">
@@ -365,7 +355,7 @@ export default function BalanceFechasScreen() {
                             </View>
                         ) : (
                             <View style={{ flexDirection: isMobile ? 'column' : 'row', flexWrap: isMobile ? 'nowrap' : 'wrap', gap: 12, marginBottom: 4 }}>
-                                {facturas.map((item: any, idx: number) => (
+                                {facturasView.map((item: any, idx: number) => (
                                     <View
                                         key={item.facturaId?.toString() || String(idx)}
                                         style={isMobile ? { width: '100%' } : { width: '48%' }}
@@ -375,6 +365,7 @@ export default function BalanceFechasScreen() {
                                             isUpdating={updatingId === item.facturaId}
                                             onToggleEstado={handleToggleEstado}
                                             onUpdateTotal={handleUpdateTotal}
+                                            onDelete={handleDeleteFactura}
                                         />
                                     </View>
                                 ))}

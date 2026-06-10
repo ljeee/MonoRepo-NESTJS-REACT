@@ -135,6 +135,8 @@ export interface FacturaVenta {
   denominaciones?: DenominacionesMap | null;
   /** Denominaciones entregadas como cambio al cliente (salida de caja) */
   cambioDenominaciones?: DenominacionesMap | null;
+  /** Monto acumulado abonado en efectivo (parcial). Cuando alcanza total → estado pasa a pagado */
+  montoPagado?: number;
   ordenes?: FacturaOrden[];
   domicilios?: FacturaDomicilio[];
 }
@@ -311,7 +313,7 @@ export type AuthResponse = AuthTokens & AuthUser;
 export interface PizzaSabor {
   saborId: number;
   nombre: string;
-  tipo: 'tradicional' | 'especial' | 'configuracion';
+  tipo: 'tradicional' | 'especial' | 'configuracion' | 'calzone';
   recargoPequena: number | string;
   recargoMediana: number;
   recargoGrande: number;
@@ -490,6 +492,22 @@ export interface VarianteIngrediente {
   varianteId: number;
   ingredienteId: number;
   cantidadPorVenta: number;
+}
+
+/** Movimiento del ledger de stock por variante (gaseosas/jugos) */
+export interface BebidaMovimiento {
+  id: number;
+  varianteId: number;
+  varianteNombre: string;
+  productoNombre: string;
+  /** Lo solicitado (negativo en salida) */
+  delta: number;
+  /** Lo realmente movido tras clamp (si delta ≠ aplicado, se vendió sin stock) */
+  aplicado: number;
+  cantidadResultante: number;
+  tipo: string; // 'salida' | 'entrada' | 'ajuste'
+  nota: string | null;
+  creadoEn: string;
 }
 
 export interface CreateIngredienteDto {

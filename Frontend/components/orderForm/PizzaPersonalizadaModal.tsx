@@ -19,7 +19,7 @@ function calcularPrecio(variante: ProductoVariante | null, saboresSeleccionados:
   let precio = Number(variante.precio);
   const maxRecargo = saboresSeleccionados.reduce((max, nombre) => {
     const entry = saboresCatalogo.find(s => s.nombre === nombre);
-    if (!entry || entry.tipo !== 'especial') return max;
+    if (!entry) return max;
     return Math.max(max, getRecargo(entry, variante.nombre));
   }, 0);
   precio += maxRecargo;
@@ -40,27 +40,35 @@ interface PizzaPersonalizadaModalProps {
   loadingSabores?: boolean;
   onAdd: (producto: Producto, variante: ProductoVariante, sabores: string[]) => void;
   onClose: () => void;
+  /** Tope de sabores seleccionables (pizza=3, calzone=2). Por defecto 3. */
+  maxSabores?: number;
+  /** Si se provee, el modal usa estos nombres como sabores (precio plano, sin recargos) — para calzone. */
+  customSabores?: string[];
 }
 
 export default function PizzaPersonalizadaModal({
   visible, variante, producto, saboresCatalogo, loadingSabores, onAdd, onClose,
+  maxSabores = 3, customSabores,
 }: PizzaPersonalizadaModalProps) {
   const [selectedSabores, setSelectedSabores] = useState<string[]>([]);
   const { height: screenHeight } = useWindowDimensions();
 
-  const tradicionales = saboresCatalogo.filter(s => s.tipo === 'tradicional' && s.activo);
-  const especiales = saboresCatalogo.filter(s => s.tipo === 'especial' && s.activo);
-  const precioFinal = calcularPrecio(variante, selectedSabores, saboresCatalogo);
+  const isCustom = !!customSabores;
+  const pizzaSabores = saboresCatalogo
+    .filter(s => (s.tipo === 'tradicional' || s.tipo === 'especial') && s.activo)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  // Custom (calzone): precio plano de la variante; sin recargos.
+  const precioFinal = isCustom ? Number(variante?.precio ?? 0) : calcularPrecio(variante, selectedSabores, saboresCatalogo);
   const cfg3 = saboresCatalogo.find(s => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES');
   const extra3 = cfg3 ? getRecargo(cfg3, variante?.nombre ?? '') : 3000;
-  const recargoEspecial = saboresCatalogo
-    .filter(s => s.tipo === 'especial' && selectedSabores.includes(s.nombre))
+  const recargoEspecial = isCustom ? 0 : saboresCatalogo
+    .filter(s => selectedSabores.includes(s.nombre))
     .reduce((max, s) => Math.max(max, getRecargo(s, variante?.nombre ?? '')), 0);
 
   const handleSaborPress = (nombre: string) => {
     setSelectedSabores(prev => {
       if (prev.includes(nombre)) return prev.filter(s => s !== nombre);
-      if (prev.length >= 3) return prev;
+      if (prev.length >= maxSabores) return prev;
       return [...prev, nombre];
     });
   };
@@ -73,23 +81,42 @@ export default function PizzaPersonalizadaModal({
 
   const handleClose = () => { setSelectedSabores([]); onClose(); };
 
+  // Chip simple para sabores propios (calzone): sin estrella ni recargo
+  const renderCustomChip = (nombre: string) => {
+    const isSelected = selectedSabores.includes(nombre);
+    return (
+      <TouchableOpacity
+        key={nombre}
+        onPress={() => handleSaborPress(nombre)}
+        className={`px-3 py-1.5 rounded-xl mb-1.5 mr-1.5 border ${isSelected ? 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)' : 'bg-white/5 border-white/10'}`}
+      >
+        <Text
+          className={`font-bold text-sm ${isSelected ? 'text-(--color-pos-primary)' : 'text-slate-400'}`}
+          numberOfLines={2}
+        >
+          {nombre}{isSelected ? ' ✓' : ''}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   const renderChip = (sabor: PizzaSabor) => {
     const isSelected = selectedSabores.includes(sabor.nombre);
-    const isEspecial = sabor.tipo === 'especial';
     const recargo = variante ? getRecargo(sabor, variante.nombre) : 0;
+    const hasSurcharge = recargo > 0;
     return (
       <TouchableOpacity
         key={sabor.saborId}
         onPress={() => handleSaborPress(sabor.nombre)}
-        className={`px-3 py-1.5 rounded-xl mb-1.5 mr-1.5 border flex-row items-center gap-1.5 ${isSelected ? (isEspecial ? 'bg-white/5 border-white/20' : 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)') : 'bg-white/5 border-white/10'}`}
+        className={`px-3 py-1.5 rounded-xl mb-1.5 mr-1.5 border flex-row items-center gap-1.5 ${isSelected ? 'bg-(--color-pos-primary)/20 border-(--color-pos-primary)' : 'bg-white/5 border-white/10'}`}
       >
-        {isEspecial && <Icon name="star" size={10} color={isSelected ? '#94A3B8' : '#475569'} />}
+        {hasSurcharge && <Icon name="star" size={10} color={isSelected ? '#F5A524' : '#475569'} />}
         <Text
-          className={`font-bold text-sm ${isSelected ? (isEspecial ? 'text-slate-300' : 'text-(--color-pos-primary)') : 'text-slate-400'}`}
+          className={`font-bold text-sm ${isSelected ? 'text-(--color-pos-primary)' : 'text-slate-400'}`}
           numberOfLines={2}
         >
           {sabor.nombre}{isSelected ? ' ✓' : ''}
-          {isEspecial && recargo > 0 ? `  +$${formatCurrency(recargo)}` : ''}
+          {hasSurcharge ? `  +$${formatCurrency(recargo)}` : ''}
         </Text>
       </TouchableOpacity>
     );
@@ -116,17 +143,17 @@ export default function PizzaPersonalizadaModal({
             </View>
             <View className="flex-1">
               <Text className="text-white font-black text-xl tracking-tighter" style={{ fontFamily: 'Space Grotesk' }} numberOfLines={1}>
-                Pizza {variante?.nombre}
+                {isCustom ? (producto?.productoNombre ?? 'Calzone') : `${producto?.productoNombre ?? 'Pizza'} ${variante?.nombre ?? ''}`}
               </Text>
               <Text className="text-slate-400 text-xs mt-0.5">
-                Hasta 3 sabores • Base ${formatCurrency(Number(variante?.precio))}
+                Hasta {maxSabores} sabores • Base ${formatCurrency(Number(variante?.precio))}
               </Text>
             </View>
           </View>
 
           {/* Slot indicators */}
           <View className="flex-row gap-1.5 px-5 pb-3">
-            {[0, 1, 2].map(i => (
+            {Array.from({ length: maxSabores }, (_, i) => i).map(i => (
               <View
                 key={i}
                 className={`flex-1 h-1 rounded-full ${i < selectedSabores.length ? 'bg-(--color-pos-primary)' : 'bg-white/10'}`}
@@ -147,21 +174,13 @@ export default function PizzaPersonalizadaModal({
               </View>
             ) : (
               <>
-                <Text className="text-white font-black text-[10px] uppercase tracking-widest mb-2 mt-1 opacity-60">Tradicionales</Text>
-                <View className="flex-row flex-wrap mb-4">
-                  {tradicionales.map(sb => renderChip(sb))}
+                <Text className="text-white font-black text-[10px] uppercase tracking-widest mb-2 mt-1 opacity-60">Sabores Disponibles</Text>
+                <View className="flex-row flex-wrap">
+                  {isCustom 
+                    ? customSabores!.map(renderCustomChip)
+                    : pizzaSabores.map(sb => renderChip(sb))
+                  }
                 </View>
-                {especiales.length > 0 && (
-                  <>
-                    <View className="flex-row items-center gap-1.5 mb-2">
-                      <Icon name="star" size={10} color="#475569" />
-                      <Text className="text-slate-500 font-black text-[10px] uppercase tracking-widest">Especiales</Text>
-                    </View>
-                    <View className="flex-row flex-wrap">
-                      {especiales.map(sb => renderChip(sb))}
-                    </View>
-                  </>
-                )}
               </>
             )}
           </ScrollView>
@@ -173,7 +192,7 @@ export default function PizzaPersonalizadaModal({
                 <Text className="text-white font-bold text-xs" numberOfLines={1}>{selectedSabores.join(' + ')}</Text>
                 {recargoEspecial > 0 && (
                   <Text className="text-(--color-pos-secondary) text-[10px] font-bold mt-0.5">
-                    + ${formatCurrency(recargoEspecial)} sabor especial
+                    + ${formatCurrency(recargoEspecial)} recargo de sabor
                   </Text>
                 )}
                 {selectedSabores.length >= 3 && (

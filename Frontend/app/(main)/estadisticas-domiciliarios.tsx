@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from '../../tw';
-import { RefreshControl, ActivityIndicator } from 'react-native';
-import { PageContainer, PageHeader, Card, Icon, ListSkeleton, Button } from '../../components/ui';
+import { View, Text, ScrollView } from '../../tw';
+import { RefreshControl } from 'react-native';
+import { PageContainer, PageHeader, Card, Icon, ListSkeleton, Button, DateRangeFilter } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, formatCurrency } from '@/src/shared';
-import { useAuth } from '../../contexts/AuthContext';
+import { useToast, formatCurrency, getLocalDateString } from '@/src/shared';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -13,34 +12,6 @@ type DomiciliarioStat = {
     entregas: number;
     ganancia: number;
 };
-
-type DateRange = { label: string; days: number };
-
-const DATE_RANGES: DateRange[] = [
-    { label: 'Hoy', days: 0 },
-    { label: 'Ayer', days: -1 },
-    { label: '7 días', days: 7 },
-    { label: '15 días', days: 15 },
-    { label: '30 días', days: 30 },
-];
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function toISO(d: Date): string {
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function getRangeDates(days: number): { from: string; to: string } {
-    if (days === -1) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        return { from: toISO(yesterday), to: toISO(yesterday) };
-    }
-    const to = new Date();
-    const from = new Date();
-    if (days > 0) from.setDate(from.getDate() - days + 1);
-    return { from: toISO(from), to: toISO(to) };
-}
 
 function getInitials(name: string): string {
     return (name || '?')
@@ -182,27 +153,25 @@ function DomiciliarioCard({
 
 export default function EstadisticasDomiciliariosScreen() {
     const { showToast } = useToast();
-    const { user } = useAuth();
 
+    const today = getLocalDateString();
+    const [from, setFrom] = useState(today);
+    const [to, setTo] = useState(today);
     const [stats, setStats] = useState<DomiciliarioStat[]>([]);
     const [pendingOrders, setPendingOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [activeRange, setActiveRange] = useState(0); // index into DATE_RANGES
     const [confirmingId, setConfirmingId] = useState<number | null>(null);
     const [completingId, setCompletingId] = useState<number | null>(null);
 
-    const fetchStats = useCallback(async (rangeIdx: number) => {
+    const fetchStats = useCallback(async (fromDate: string, toDate: string) => {
         try {
-            const { from, to } = getRangeDates(DATE_RANGES[rangeIdx].days);
-            
-            // 1. Fetch Stats
-            const data = await api.estadisticas.domiciliariosStats(from, to);
+            const data = await api.estadisticas.domiciliariosStats(fromDate, toDate);
             const sorted = [...data].sort((a: DomiciliarioStat, b: DomiciliarioStat) => b.entregas - a.entregas);
             setStats(sorted);
 
-            // 2. Fetch Pending (only for "Hoy")
-            if (DATE_RANGES[rangeIdx].days === 0) {
+            const isToday = fromDate === toDate && fromDate === getLocalDateString();
+            if (isToday) {
                 const allToday = await api.domicilios.getAllDay();
                 setPendingOrders(allToday.filter(d => d.estado === 'pendiente'));
             } else {
@@ -226,7 +195,7 @@ export default function EstadisticasDomiciliariosScreen() {
             });
             showToast('Domicilio completado correctamente', 'success');
             setConfirmingId(null);
-            fetchStats(activeRange);
+            void fetchStats(from, to);
         } catch (error) {
             showToast('Error al completar domicilio', 'error');
         } finally {
@@ -235,17 +204,13 @@ export default function EstadisticasDomiciliariosScreen() {
     };
 
     useEffect(() => {
-        fetchStats(activeRange);
-    }, [fetchStats, activeRange]);
+        void fetchStats(from, to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fetchStats]);
 
     const onRefresh = () => {
         setRefreshing(true);
-        fetchStats(activeRange);
-    };
-
-    const handleRangeChange = (idx: number) => {
-        setActiveRange(idx);
-        setLoading(true);
+        void fetchStats(from, to);
     };
 
     // ── Computed ─────────────────────────────────────────────────────────────
@@ -256,7 +221,7 @@ export default function EstadisticasDomiciliariosScreen() {
     const maxEntregas = stats.length > 0 ? stats[0].entregas : 1;
     const avgPorDom = domiciliariosActivos > 0 ? Math.round(totalEntregas / domiciliariosActivos) : 0;
 
-    const rangeLabel = DATE_RANGES[activeRange].label;
+    const rangeLabel = from === to ? from : `${from} — ${to}`;
 
     if (loading && !refreshing) {
         return <PageContainer><ListSkeleton count={5} /></PageContainer>;
@@ -284,30 +249,14 @@ export default function EstadisticasDomiciliariosScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F5A524" />}
             >
                 {/* ── Date Range Selector ── */}
-                <View className="flex-row flex-wrap gap-2 mb-6">
-                    {DATE_RANGES.map((r, idx) => {
-                        const active = activeRange === idx;
-                        return (
-                            <TouchableOpacity
-                                key={r.label}
-                                className={`py-2.5 px-4 rounded-xl border items-center ${
-                                    active
-                                        ? 'bg-(--color-pos-primary)/10 border-(--color-pos-primary)/30'
-                                        : 'bg-white/5 border-white/5'
-                                }`}
-                                onPress={() => handleRangeChange(idx)}
-                            >
-                                <Text
-                                    className={`text-xs font-black uppercase tracking-wider ${
-                                        active ? 'text-(--color-pos-primary)' : 'text-slate-500'
-                                    }`}
-                                >
-                                    {r.label}
-                                </Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
+                <DateRangeFilter
+                    from={from}
+                    to={to}
+                    onFromChange={setFrom}
+                    onToChange={setTo}
+                    onSearch={(f, t) => { setFrom(f); setTo(t); setLoading(true); void fetchStats(f, t); }}
+                    loading={loading}
+                />
 
                 {/* ── KPI Row ── */}
                 <View className="flex-row gap-3 mb-6 flex-wrap">
@@ -346,7 +295,7 @@ export default function EstadisticasDomiciliariosScreen() {
                 </Card>
 
                 {/* ── Pending Deliveries (Today Only) ── */}
-                {activeRange === 0 && pendingOrders.length > 0 && (
+                {from === to && from === getLocalDateString() && pendingOrders.length > 0 && (
                     <View className="mb-8">
                         <View className="flex-row items-center gap-2 mb-4 px-1">
                             <View className="w-8 h-8 rounded-xl bg-orange-500/15 items-center justify-center">

@@ -166,28 +166,15 @@ export class EstadisticasService {
 		const counts: Record<string, { cantidad: number; total: number }> = {};
 
 		for (const f of facturas) {
-			const metodo = f.metodo ? f.metodo.toLowerCase().trim() : 'sin método';
+			const metodoRaw = f.metodo ? f.metodo.toLowerCase().trim() : 'sin método';
+			// Mixto es su propio bucket: cuenta la factura UNA vez con su total completo.
+			// (Antes se dividía en efectivo+transferencia inflando `cantidad` 2x por factura mixta.)
+			const metodo = metodoRaw === 'efectivo_transferencia' ? 'mixto' : metodoRaw;
 			const total = Number(f.total) || 0;
 
-			if (metodo === 'efectivo_transferencia') {
-				const efectivo = Number(f.pagoEfectivo) || 0;
-				const transferencia = Number(f.pagoTransferencia) || 0;
-
-				if (efectivo > 0) {
-					if (!counts['efectivo']) counts['efectivo'] = { cantidad: 0, total: 0 };
-					counts['efectivo'].total += efectivo;
-					counts['efectivo'].cantidad += 1;
-				}
-				if (transferencia > 0) {
-					if (!counts['transferencia']) counts['transferencia'] = { cantidad: 0, total: 0 };
-					counts['transferencia'].total += transferencia;
-					counts['transferencia'].cantidad += 1;
-				}
-			} else {
-				if (!counts[metodo]) counts[metodo] = { cantidad: 0, total: 0 };
-				counts[metodo].total += total;
-				counts[metodo].cantidad += 1;
-			}
+			if (!counts[metodo]) counts[metodo] = { cantidad: 0, total: 0 };
+			counts[metodo].total += total;
+			counts[metodo].cantidad += 1;
 		}
 
 		const list = Object.entries(counts).map(([metodo, data]) => ({

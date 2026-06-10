@@ -16,4 +16,9 @@ export { DenominacionSelector } from './DenominacionSelector';
 export { BillCounter, COLOMBIAN_BILLS } from './BillCounter';
 export { Picker, PickerItem } from './Picker';
 export { AjusteCajaModal } from './AjusteCajaModal';
+export { DateRangeFilter } from './DateRangeFilter';
+export type { DateRangeFilterProps } from './DateRangeFilter';
+export { MethodFilterChips } from './MethodFilterChips';
+export type { MethodFilterChipsProps, MethodFilterValue } from './MethodFilterChips';
+export { BebidaMovimientosWidget } from './BebidaMovimientosWidget';
 

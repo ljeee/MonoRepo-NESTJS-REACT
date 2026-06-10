@@ -10,6 +10,7 @@ import { ProductProcessingService } from '../../../src/ordenes/services/product-
 import { CierresService } from '../../../src/cierres/cierres.service';
 import { InventarioCajasService } from '../../../src/inventario-cajas/inventario-cajas.service';
 import { CajaMovimientosService } from '../../../src/caja-movimientos/caja-movimientos.service';
+import { InventarioBebidasService } from '../../../src/inventario-bebidas/inventario-bebidas.service';
 
 const makeQb = () => ({
 	leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -33,6 +34,7 @@ describe('OrdenesService', () => {
 	let mockCierresService: any;
 	let mockInventarioService: any;
 	let mockCajaMovimientosService: any;
+	let mockInventarioBebidasService: any;
 
 	beforeEach(async () => {
 		qb = makeQb();
@@ -85,6 +87,12 @@ describe('OrdenesService', () => {
 			registrarEntrada: jest.fn().mockResolvedValue(undefined),
 		};
 
+		mockInventarioBebidasService = {
+			deductForOrden: jest.fn().mockResolvedValue(undefined),
+			descontarBebidasParaOrden: jest.fn().mockResolvedValue(undefined),
+			restaurarBebidasParaOrden: jest.fn().mockResolvedValue(undefined),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				OrdenesService,
@@ -96,6 +104,7 @@ describe('OrdenesService', () => {
 				{ provide: CierresService, useValue: mockCierresService },
 				{ provide: InventarioCajasService, useValue: mockInventarioService },
 				{ provide: CajaMovimientosService, useValue: mockCajaMovimientosService },
+				{ provide: InventarioBebidasService, useValue: mockInventarioBebidasService },
 			],
 		}).compile();
 

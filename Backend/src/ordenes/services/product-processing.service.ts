@@ -84,7 +84,15 @@ export class ProductProcessingService {
 			}
 
 			let nombre = (variante.producto?.productoNombre || item.tipo || 'Producto').trim();
-			nombre = `${nombre} - ${variante.nombre}`;
+			const prodLower = nombre.toLowerCase();
+			const isPizza = prodLower.includes('pizza') && !prodLower.includes('burguer');
+			const isCalzone = prodLower.includes('calzone');
+
+			// Calzone: sus variantes SON los sabores; el descriptor de sabores ya basta,
+			// no agregamos "- variante" (sería redundante: "Calzone - De Casa (De Casa + ...)").
+			if (!isCalzone) {
+				nombre = `${nombre} - ${variante.nombre}`;
+			}
 
 			// Base del jugo (leche / agua)
 			if (item.base) {
@@ -97,33 +105,37 @@ export class ProductProcessingService {
 
 			if (saboresNames.length > 0) {
 				nombre += ` (${saboresNames.join(' + ')})`;
-				
-				// Buscamos los detalles de los sabores en la DB
-				const saboresInfo = await sRepo.createQueryBuilder('s')
-					.where('s.nombre IN (:...names)', { names: saboresNames })
-					.getMany();
 
-				// Identificar columna de recargo basada en el nombre de la variante
-				const vName = (variante.nombre || '').toLowerCase();
-				let sizeKey: 'recargoPequena' | 'recargoMediana' | 'recargoGrande' = 'recargoGrande';
-				if (vName.includes('pequeña') || vName.includes('pequena') || vName.includes('personal')) {
-					sizeKey = 'recargoPequena';
-				} else if (vName.includes('mediana')) {
-					sizeKey = 'recargoMediana';
-				}
+				// Los recargos por sabor especial / 3 sabores aplican SOLO a pizza.
+				// Calzone (y cualquier otro) mantienen su precio plano de variante.
+				if (isPizza) {
+					// Buscamos los detalles de los sabores en la DB
+					const saboresInfo = await sRepo.createQueryBuilder('s')
+						.where('s.nombre IN (:...names)', { names: saboresNames })
+						.getMany();
 
-				// 1. Recargo por Sabor Especial (Tomar el máximo)
-				const maxRecargoEspecial = saboresInfo
-					.filter(s => s.tipo === 'especial')
-					.reduce((max, s) => Math.max(max, Number(s[sizeKey]) || 0), 0);
-				
-				recargoTotal += maxRecargoEspecial;
+					// Identificar columna de recargo basada en el nombre de la variante
+					const vName = (variante.nombre || '').toLowerCase();
+					let sizeKey: 'recargoPequena' | 'recargoMediana' | 'recargoGrande' = 'recargoGrande';
+					if (vName.includes('pequeña') || vName.includes('pequena') || vName.includes('personal')) {
+						sizeKey = 'recargoPequena';
+					} else if (vName.includes('mediana')) {
+						sizeKey = 'recargoMediana';
+					}
 
-				// 2. Recargo por 3 Sabores (Si hay exactamente 3 nombres)
-				if (saboresNames.length >= 3) {
-					const config3 = await sRepo.findOne({ where: { nombre: 'RECARGO_3_SABORES', tipo: 'configuracion' } });
-					const extra3 = config3 ? (Number(config3[sizeKey]) || 3000) : 3000;
-					recargoTotal += extra3;
+					// 1. Recargo por Sabor Especial (Tomar el máximo)
+					const maxRecargoEspecial = saboresInfo
+						.filter(s => s.tipo === 'especial')
+						.reduce((max, s) => Math.max(max, Number(s[sizeKey]) || 0), 0);
+
+					recargoTotal += maxRecargoEspecial;
+
+					// 2. Recargo por 3 Sabores (Si hay exactamente 3 nombres)
+					if (saboresNames.length >= 3) {
+						const config3 = await sRepo.findOne({ where: { nombre: 'RECARGO_3_SABORES', tipo: 'configuracion' } });
+						const extra3 = config3 ? (Number(config3[sizeKey]) || 3000) : 3000;
+						recargoTotal += extra3;
+					}
 				}
 			}
 

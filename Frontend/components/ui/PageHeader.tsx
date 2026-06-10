@@ -25,9 +25,9 @@ export default function PageHeader({
     const { isMobile } = useBreakpoint();
 
     return (
-        <View 
-          className={`flex-row justify-between items-center ${isMobile ? 'mb-4' : 'mb-6 gap-3'} ${className}`} 
-          style={style}
+        <View
+            className={`flex-row justify-between items-center ${isMobile ? 'mb-4' : 'mb-6 gap-3'} ${className}`}
+            style={style}
         >
             <View className="flex-row items-center gap-3 flex-1 min-w-0">
                 {icon && (
@@ -60,7 +60,7 @@ export default function PageHeader({
                     </View>
                 </View>
             </View>
-            
+
             {rightContent && (
                 <View className="flex-row items-center gap-2 flex-shrink-0 ml-2">
                     {rightContent}

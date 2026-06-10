@@ -20,6 +20,12 @@ interface PaymentSelectionModalProps {
         cambioDenominaciones?: DenominacionesMap,
     ) => void;
     loading?: boolean;
+    /** 'partial' shows abono mode: single efectivo entry, monto libre ≤ totalPendiente */
+    mode?: 'full' | 'partial';
+    /** Monto pendiente — requerido cuando mode='partial' */
+    totalPendiente?: number;
+    /** IDs of methods that are locked (shown grayed-out). e.g. ['efectivo','efectivo_transferencia'] when no arqueo */
+    disabledMethods?: string[];
 }
 
 const METHODS: { id: string; label: string; shortLabel: string; icon: IconName; color: string }[] = [
@@ -28,10 +34,13 @@ const METHODS: { id: string; label: string; shortLabel: string; icon: IconName; 
     { id: 'efectivo_transferencia', label: 'Efectivo y Transferencia',  shortLabel: 'Mixto',    icon: 'swap-horizontal', color: '#F5A524' },
 ];
 
-export default function PaymentSelectionModal({ visible, total, onClose, onSelect, loading }: PaymentSelectionModalProps) {
+export default function PaymentSelectionModal({ visible, total, onClose, onSelect, loading, mode = 'full', totalPendiente, disabledMethods = [] }: PaymentSelectionModalProps) {
+    const isPartial = mode === 'partial';
     const api = useApi();
     const { height: screenHeight } = useWindowDimensions();
-    const [selected, setSelected] = useState('efectivo');
+    // Default to first non-disabled method
+    const firstAvailable = METHODS.find(m => !disabledMethods.includes(m.id))?.id ?? 'efectivo';
+    const [selected, setSelected] = useState(firstAvailable);
     const [cajaEstado, setCajaEstado] = useState<DenominacionesMap>({});
 
     // ── Efectivo ──────────────────────────────────────────────────────────────
@@ -67,6 +76,11 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
             setBillCountsCambio({});
             setMonedasCambio('');
             fetchCaja();
+            // Auto-switch if currently selected method is disabled
+            if (disabledMethods.includes(selected)) {
+                const available = METHODS.find(m => !disabledMethods.includes(m.id));
+                if (available) setSelected(available.id);
+            }
         }
     }, [visible, selected, fetchCaja]);
 
@@ -91,7 +105,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
         (sum, b) => sum + (billCountsMixto[String(b)] || 0) * b, 0,
     ) + (Number(monedaMixto) || 0);
 
-    const cashTarget   = selected === 'efectivo' ? total : montoEfectivoMixto;
+    const cashTarget   = isPartial ? (totalPendiente ?? total) : (selected === 'efectivo' ? total : montoEfectivoMixto);
     const cashReceived = selected === 'efectivo' ? totalEfectivoFisico : totalMixtoFisico;
     const cambio       = cashReceived > 0 ? cashReceived - cashTarget : 0;
 
@@ -126,6 +140,10 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
 
     const handleConfirm = () => {
         const cambioDens = buildDenominaciones(billCountsCambio, monedasCambio);
+        if (isPartial) {
+            onSelect('efectivo', totalEfectivoFisico, 0, buildDenominaciones(billCountsEfectivo, monedasEfectivo), cambioDens);
+            return;
+        }
         if (selected === 'efectivo') {
             onSelect('efectivo', total, 0, buildDenominaciones(billCountsEfectivo, monedasEfectivo), cambioDens);
         } else if (selected === 'transferencia') {
@@ -137,6 +155,11 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     };
 
     const isConfirmDisabled = (() => {
+        if (isPartial) {
+            if (!hasEnteredEfectivo) return true;
+            if (showCambioSection && !cambioMatch) return true;
+            return false;
+        }
         if (selected === 'efectivo') {
             if (hasEnteredEfectivo && totalEfectivoFisico < total) return true;
             if (showCambioSection && !cambioMatch) return true;
@@ -256,21 +279,20 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
             onRequestClose={onClose}
         >
             {/*
-             * On native, className inside a Modal uses the tw CSS path which
-             * can silently fail to apply flex/justify — use inline style here.
-             * KAV behavior="height" inside statusBarTranslucent modals on
-             * Android collapses the panel; "padding" is safer on both platforms.
+             * Bottom-sheet layout: KAV wraps the whole screen, panel slides up
+             * from the bottom. behavior="padding" with statusBarTranslucent
+             * collapses the panel on Android — use "height" on Android instead.
              */}
             <KeyboardAvoidingView
-                behavior="padding"
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={{ flex: 1 }}
             >
                 <Pressable
-                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'center', alignItems: 'center', padding: 16 }}
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'flex-end' }}
                     onPress={onClose}
                 >
                     <Pressable
-                        style={[styles.modalInner, { maxHeight: screenHeight * 0.92, width: '100%', maxWidth: 500, borderRadius: 24 }]}
+                        style={[styles.modalInner, { maxHeight: screenHeight * 0.88, width: '100%' }]}
                         onPress={e => e.stopPropagation()}
                     >
                         {/* ── Fixed header ── */}
@@ -279,30 +301,48 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
 
                             <View style={[styles.rowBetween, { marginBottom: compact ? 10 : 12 }]}>
                                 <View>
-                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>Cobrar Factura</Text>
-                                    <Text className="text-slate-400 text-xs">Total a pagar</Text>
+                                    <Text className="text-white font-black text-lg" style={{ fontFamily: 'Space Grotesk' }}>
+                                        {isPartial ? 'Registrar Abono' : 'Cobrar Factura'}
+                                    </Text>
+                                    <Text className="text-slate-400 text-xs">
+                                        {isPartial ? 'Saldo pendiente' : 'Total a pagar'}
+                                    </Text>
                                 </View>
-                                <Text className="text-[#F5A524] font-black text-2xl" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(total)}</Text>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text className="text-[#F5A524] font-black text-2xl" style={{ fontFamily: 'Space Grotesk' }}>
+                                        ${formatCurrency(isPartial ? (totalPendiente ?? total) : total)}
+                                    </Text>
+                                    {isPartial && (
+                                        <Text className="text-slate-500 text-[10px] font-bold">de ${formatCurrency(total)}</Text>
+                                    )}
+                                </View>
                             </View>
 
-                            {/* Method tab bar */}
+                            {/* Method tab bar — hidden in partial mode (efectivo only) */}
+                            {!isPartial && (
                             <View style={styles.tabBar}>
                                 {METHODS.map(m => {
                                     const isActive = selected === m.id;
+                                    const isDisabled = disabledMethods.includes(m.id);
                                     return (
                                         <TouchableOpacity
                                             key={m.id}
-                                            onPress={() => setSelected(m.id)}
-                                            style={[styles.tabBtn, { backgroundColor: isActive ? 'rgba(255,255,255,0.1)' : 'transparent' }]}
+                                            onPress={() => !isDisabled && setSelected(m.id)}
+                                            disabled={isDisabled}
+                                            style={[styles.tabBtn, {
+                                                backgroundColor: isActive && !isDisabled ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                                opacity: isDisabled ? 0.4 : 1,
+                                            }]}
                                         >
-                                            <Icon name={m.icon} size={13} color={isActive ? m.color : '#64748B'} />
-                                            <Text style={{ fontSize: 10, fontWeight: '800', color: isActive ? '#FFFFFF' : '#64748B' }} numberOfLines={1}>
+                                            <Icon name={isDisabled ? 'lock-outline' : m.icon} size={13} color={isDisabled ? '#475569' : isActive ? m.color : '#64748B'} />
+                                            <Text style={{ fontSize: 10, fontWeight: '800', color: isDisabled ? '#475569' : isActive ? '#FFFFFF' : '#64748B' }} numberOfLines={1}>
                                                 {m.shortLabel}
                                             </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
                             </View>
+                            )}
                         </View>
 
                         {/* ── Scrollable content ── */}
@@ -504,7 +544,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                     title={
                                         showCambioSection && !cambioMatch
                                             ? `Cambio: $${formatCurrency(cambio - totalCambioSeleccionado)} sin asignar`
-                                            : 'Confirmar Pago'
+                                            : isPartial ? 'Registrar Abono' : 'Confirmar Pago'
                                     }
                                     variant="primary"
                                     size="sm"

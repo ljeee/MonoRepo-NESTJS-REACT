@@ -56,6 +56,9 @@ export class FacturasVentas {
 	@Column({name: 'cambio_denominaciones', type: 'jsonb', nullable: true})
 	cambioDenominaciones: Record<string, number> | null;
 
+	@Column({name: 'monto_pagado', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
+	montoPagado: number;
+
 	@OneToMany(() => Ordenes, (orden) => orden.factura)
 	ordenes: Ordenes[];
 
