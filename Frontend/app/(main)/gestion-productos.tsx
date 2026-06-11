@@ -25,6 +25,7 @@ export default function GestionProductosScreen() {
         editingVariant,
         deleteTarget,
         deleteLoading,
+        deleteError,
         editingSabor,
         prodName,
         prodDesc,
@@ -117,6 +118,7 @@ export default function GestionProductosScreen() {
                 varError={varError}
                 deleteTarget={deleteTarget}
                 deleteLoading={deleteLoading}
+                deleteError={deleteError}
                 editingSabor={editingSabor as any}
                 opLoading={opLoading}
                 saborLoading={saborLoading}

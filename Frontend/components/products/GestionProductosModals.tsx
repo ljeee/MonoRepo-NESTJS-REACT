@@ -27,6 +27,7 @@ interface GestionProductosModalsProps {
     varError: string;
     deleteTarget: DeleteTarget | null;
     deleteLoading: boolean;
+    deleteError?: string;
     editingSabor: PizzaSabor | null;
     opLoading: boolean;
     saborLoading: boolean;
@@ -64,6 +65,7 @@ export function GestionProductosModals({
     varError,
     deleteTarget,
     deleteLoading,
+    deleteError,
     editingSabor,
     opLoading,
     saborLoading,
@@ -121,7 +123,7 @@ export function GestionProductosModals({
 
             <ConfirmModal
                 visible={!!deleteTarget}
-                title={`Eliminar ${deleteTarget?.type === 'product' ? 'producto' : 'variante'}`}
+                title={`Eliminar ${deleteTarget?.type === 'product' ? 'producto' : deleteTarget?.type === 'sabor' ? 'sabor' : 'variante'}`}
                 message={`¿Estas seguro de eliminar "${deleteTarget?.name}"? ${deleteTarget?.type === 'product'
                     ? 'Esto tambien eliminara todas sus variantes.'
                     : ''
@@ -130,6 +132,7 @@ export function GestionProductosModals({
                 variant="danger"
                 confirmText="Eliminar"
                 loading={deleteLoading}
+                error={deleteError}
                 onConfirm={onConfirmDelete}
                 onCancel={onCancelDelete}
             />

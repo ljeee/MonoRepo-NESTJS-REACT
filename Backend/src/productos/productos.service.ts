@@ -17,8 +17,9 @@ export class ProductosService {
 	async findAll(query: FindProductosDto = {}, page = 1, limit = 500) {
 		const {activo} = query;
 		const qb = this.repo.createQueryBuilder('p')
-			.leftJoinAndSelect('p.variantes', 'variantes')
+			.leftJoinAndSelect('p.variantes', 'variantes', 'variantes.activo = true')
 			.orderBy('p.productoNombre', 'ASC')
+			.addOrderBy('variantes.nombre', 'ASC')
 			.take(limit)
 			.skip((page - 1) * limit);
 
@@ -88,7 +89,19 @@ export class ProductosService {
 	}
 
 	async remove(productoId: number) {
-		return this.repo.delete(productoId);
+		// Borrado real. Antes de eliminar, rompemos la referencia de las variantes en el
+		// historial de órdenes (ordenes_productos.variante_id → NULL); el nombre y el precio
+		// quedan guardados como texto en esa misma fila, así no se pierde el historial.
+		return this.repo.manager.transaction(async (m) => {
+			const variantes = await m.getRepository(ProductoVariantes).find({ where: { productoId } });
+			const ids = variantes.map((v) => v.varianteId);
+			if (ids.length) {
+				await m.query('UPDATE ordenes_productos SET variante_id = NULL WHERE variante_id = ANY($1::int[])', [ids]);
+				await m.query('DELETE FROM variantes_ingredientes WHERE variante_id = ANY($1::int[])', [ids]);
+			}
+			await m.getRepository(ProductoVariantes).delete({ productoId });
+			return m.getRepository(Productos).delete(productoId);
+		});
 	}
 
 	async createVariante(productoId: number, nombre: string, precio: number, descripcion?: string, precioLeche?: number | null) {
@@ -124,8 +137,13 @@ export class ProductosService {
 	}
 
 	async deleteVariante(varianteId: number) {
-		await this.variantesRepo.update(varianteId, { activo: false });
-		return this.variantesRepo.findOne({where: {varianteId}});
+		// Hard-delete: rompe FK en historial de órdenes (conserva nombre+precio en texto)
+		// luego limpia vínculos de ingredientes y elimina la variante.
+		await this.variantesRepo.manager.transaction(async (m) => {
+			await m.query('UPDATE ordenes_productos SET variante_id = NULL WHERE variante_id = $1', [varianteId]);
+			await m.query('DELETE FROM variantes_ingredientes WHERE variante_id = $1', [varianteId]);
+			await m.getRepository(ProductoVariantes).delete(varianteId);
+		});
 	}
 
 	async ajustarStockBebida(varianteId: number, delta: number): Promise<ProductoVariantes> {

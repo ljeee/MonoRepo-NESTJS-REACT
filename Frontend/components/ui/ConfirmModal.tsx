@@ -14,6 +14,7 @@ interface ConfirmModalProps {
     cancelText?: string;
     variant?: 'danger' | 'warning' | 'info';
     loading?: boolean;
+    error?: string;
     onConfirm: () => void;
     onCancel: () => void;
     children?: React.ReactNode;
@@ -28,6 +29,7 @@ export default function ConfirmModal({
     cancelText = 'Cancelar',
     variant = 'danger',
     loading = false,
+    error,
     onConfirm,
     onCancel,
     children,
@@ -51,6 +53,11 @@ export default function ConfirmModal({
                     {/* Text */}
                     <Text className="text-white font-black text-xl text-center mb-2" style={{ fontFamily: 'Space Grotesk' }}>{title}</Text>
                     <Text className="text-slate-400 text-sm text-center mb-8 leading-5">{message}</Text>
+
+                    {/* Error message */}
+                    {!!error && (
+                        <Text className="text-red-400 text-xs text-center mb-4 font-bold">{error}</Text>
+                    )}
 
                     {children && (
                         <View className="w-full mb-6">

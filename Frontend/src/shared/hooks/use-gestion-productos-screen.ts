@@ -15,6 +15,7 @@ type UiState = {
   parentProductId: number | null;
   deleteTarget: DeleteTarget;
   deleteLoading: boolean;
+  deleteError: string;
   editingSabor: Partial<PizzaSabor> | null;
   prodName: string;
   prodDesc: string;
@@ -38,6 +39,7 @@ const initialUiState: UiState = {
   parentProductId: null,
   deleteTarget: null,
   deleteLoading: false,
+  deleteError: '',
   editingSabor: null,
   prodName: '',
   prodDesc: '',
@@ -84,6 +86,7 @@ export function useGestionProductosScreen() {
     parentProductId,
     deleteTarget,
     deleteLoading,
+    deleteError,
     editingSabor,
     prodName,
     prodDesc,
@@ -230,7 +233,7 @@ export function useGestionProductosScreen() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    patchUi({ deleteLoading: true });
+    patchUi({ deleteLoading: true, deleteError: '' });
     try {
       if (deleteTarget.type === 'product') {
         await deleteProducto(deleteTarget.id);
@@ -245,10 +248,9 @@ export function useGestionProductosScreen() {
         void fetchProductos();
       }
       
-      patchUi({ deleteTarget: null, deleteLoading: false });
-      return;
+      patchUi({ deleteTarget: null, deleteLoading: false, deleteError: '' });
     } catch {
-      patchUi({ deleteLoading: false });
+      patchUi({ deleteLoading: false, deleteError: 'No se pudo eliminar. Intenta de nuevo.' });
     }
   };
 
@@ -286,6 +288,7 @@ export function useGestionProductosScreen() {
     editingVariant,
     deleteTarget,
     deleteLoading,
+    deleteError,
     editingSabor,
     prodName,
     prodDesc,
