@@ -1,6 +1,6 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { PizzaSabor } from './esquemas/pizza-sabores.entity';
 import { CreatePizzaSaborDto, UpdatePizzaSaborDto } from './esquemas/pizza-sabores.dto';
 
@@ -51,20 +51,34 @@ export class PizzaSaboresService implements OnModuleInit {
 	}
 
 	async update(saborId: number, dto: UpdatePizzaSaborDto) {
-		await this.repo.update(saborId, {
-			...(dto.nombre !== undefined && { nombre: dto.nombre }),
-			...(dto.tipo !== undefined && { tipo: dto.tipo }),
-			...(dto.recargoPequena !== undefined && { recargoPequena: dto.recargoPequena }),
-			...(dto.recargoMediana !== undefined && { recargoMediana: dto.recargoMediana }),
-			...(dto.recargoGrande !== undefined && { recargoGrande: dto.recargoGrande }),
-			...(dto.activo !== undefined && { activo: dto.activo }),
-		});
+		try {
+			await this.repo.update(saborId, {
+				...(dto.nombre !== undefined && { nombre: dto.nombre }),
+				...(dto.tipo !== undefined && { tipo: dto.tipo }),
+				...(dto.recargoPequena !== undefined && { recargoPequena: dto.recargoPequena }),
+				...(dto.recargoMediana !== undefined && { recargoMediana: dto.recargoMediana }),
+				...(dto.recargoGrande !== undefined && { recargoGrande: dto.recargoGrande }),
+				...(dto.activo !== undefined && { activo: dto.activo }),
+			});
+		} catch (error) {
+			if (error instanceof QueryFailedError && (error as any).code === '23505') {
+				throw new ConflictException('Ya existe un sabor de pizza con ese nombre.');
+			}
+			throw error;
+		}
 		return this.repo.findOne({ where: { saborId } });
 	}
 
 	async create(dto: CreatePizzaSaborDto) {
 		const nuevo = this.repo.create(dto);
-		return this.repo.save(nuevo);
+		try {
+			return await this.repo.save(nuevo);
+		} catch (error) {
+			if (error instanceof QueryFailedError && (error as any).code === '23505') {
+				throw new ConflictException('Ya existe un sabor de pizza con ese nombre.');
+			}
+			throw error;
+		}
 	}
 
 	async delete(saborId: number) {
