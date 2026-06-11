@@ -5,6 +5,7 @@ import { CreateOrdenItemDto } from '../esquemas/ordenes.dto';
 import { ProductoVariantes } from '../../productos/esquemas/producto-variantes.entity';
 import { OrdenesProductos } from '../../ordenes-productos/esquemas/ordenes-productos.entity';
 import { PizzaSabor } from '../../pizza-sabores/esquemas/pizza-sabores.entity';
+import { resolverPersonalizacion } from '../../common/utils/personalizacion.util';
 
 @Injectable()
 export class ProductProcessingService {
@@ -84,9 +85,10 @@ export class ProductProcessingService {
 			}
 
 			let nombre = (variante.producto?.productoNombre || item.tipo || 'Producto').trim();
-			const prodLower = nombre.toLowerCase();
-			const isPizza = prodLower.includes('pizza') && !prodLower.includes('burguer');
-			const isCalzone = prodLower.includes('calzone');
+			// Personalización data-driven (con fallback por nombre para productos sin configurar)
+			const pers = resolverPersonalizacion(nombre, variante.producto?.personalizacion);
+			const isPizza = pers === 'pizza';
+			const isCalzone = pers === 'calzone';
 
 			// Calzone: sus variantes SON los sabores; el descriptor de sabores ya basta,
 			// no agregamos "- variante" (sería redundante: "Calzone - De Casa (De Casa + ...)").

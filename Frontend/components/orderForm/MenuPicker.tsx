@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import { Text, TextInput, TouchableOpacity, View } from '../../tw';
-import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji } from '@/src/shared';
+import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji, resolverPersonalizacion } from '@/src/shared';
 import type { Producto, ProductoVariante } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import PizzaPersonalizadaModal from './PizzaPersonalizadaModal';
@@ -49,8 +49,6 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
   }, [productos]);
 
   const SIZE_ORDER: Record<string, number> = { 'Pequeña': 0, 'Mediana': 1, 'Grande': 2 };
-  const sortVariantes = (vs: ProductoVariante[]) =>
-    [...vs].sort((a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50));
 
   // No longer using selectedCategory
 
@@ -222,19 +220,18 @@ export default function MenuPicker({ onAdd }: MenuPickerProps) {
                     key={variante.varianteId}
                     className={`bg-[#1E293B] border border-white/10 p-4 rounded-2xl flex-col items-start active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40 mb-1 ${isMobile ? 'w-[48%]' : 'w-[31%]'}`}
                     onPress={() => {
-                      const nameLower = producto.productoNombre.toLowerCase();
-                      const isPizza = nameLower.includes('pizza') && !nameLower.includes('burguer');
-                      const isCalzone = nameLower.includes('calzone');
-                      const isJugo  = nameLower.includes('jugo');
+                      // Personalización data-driven (con fallback por nombre)
+                      const pers = resolverPersonalizacion(producto);
+                      const isCalzone = pers === 'calzone';
 
-                      if (isPizza || isCalzone) {
+                      if (pers === 'pizza' || pers === 'calzone') {
                         setSelectedProducto(producto);
                         setSelectedVariante(variante);
                         // Calzone: sabores del catálogo con tipo === 'calzone' (precio plano), tope 2.
                         setModalCustomSabores(isCalzone ? (saboresCatalogo ?? []).filter(s => s.tipo === 'calzone' && s.activo).map(s => s.nombre) : undefined);
                         setModalMaxSabores(isCalzone ? 2 : 3);
                         setModalVisible(true);
-                      } else if (isJugo) {
+                      } else if (pers === 'jugo') {
                         setSelectedJugoProducto(producto);
                         setSelectedJugoVariante(variante);
                         setJugoModalVisible(true);

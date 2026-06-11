@@ -25,7 +25,7 @@ type DomicilioSinAsignar = {
         pagoEfectivo?: number;
         pagoTransferencia?: number;
     };
-    orden?: { ordenId: number; estadoOrden?: string; productos?: Array<{ producto: string; cantidad: number }> };
+    orden?: { ordenId: number; estadoOrden?: string; productos?: Array<{ producto: string; cantidad: number; precioUnitario?: number }> };
     cliente?: { clienteNombre?: string; telefono?: string };
 };
 
@@ -276,7 +276,7 @@ export default function AsignarDomiciliariosScreen() {
                     direccion: entry.direccionEntrega || 'Sin dirección',
                     telefonoCliente: entry.telefono || undefined,
                     productos: (entry.orden?.productos || []).map(p => ({
-                        nombre: p.producto, cantidad: p.cantidad, precioUnitario: 0,
+                        nombre: p.producto, cantidad: p.cantidad, precioUnitario: Number(p.precioUnitario) || 0,
                     })),
                     total: Number(entry.factura?.total || 0),
                     costoDomicilio: Number(entry.costoDomicilio || 0),

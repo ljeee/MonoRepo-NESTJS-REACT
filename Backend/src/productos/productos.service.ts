@@ -57,6 +57,7 @@ export class ProductosService {
 			descripcion: data.descripcion,
 			activo: data.activo ?? true,
 			emoji: data.emoji,
+			personalizacion: data.personalizacion ?? null,
 		});
 		const savedProducto = await this.repo.save(producto) as Productos;
 
@@ -81,6 +82,7 @@ export class ProductosService {
 			descripcion: data.descripcion,
 			activo: data.activo,
 			emoji: data.emoji,
+			...(data.personalizacion !== undefined ? { personalizacion: data.personalizacion } : {}),
 		});
 		return this.findOne(productoId);
 	}

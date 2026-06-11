@@ -4,6 +4,7 @@ import { View, Text, ScrollView, TouchableOpacity } from '../../tw';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Icon from '../ui/Icon';
+import { PERSONALIZACION_OPCIONES } from '@/src/shared';
 
 // ─── Emoji catalogue ──────────────────────────────────────────────────────────
 
@@ -52,12 +53,14 @@ interface ProductModalProps {
     emoji: string;
     error: string;
     loading: boolean;
+    personalizacion: string;
     onClose: () => void;
     onSave: () => void;
     onDelete?: () => void;
     onNameChange: (value: string) => void;
     onDescriptionChange: (value: string) => void;
     onEmojiChange: (value: string) => void;
+    onPersonalizacionChange: (value: string) => void;
 }
 
 export function ProductModal({
@@ -68,12 +71,14 @@ export function ProductModal({
     emoji,
     error,
     loading,
+    personalizacion,
     onClose,
     onSave,
     onDelete,
     onNameChange,
     onDescriptionChange,
     onEmojiChange,
+    onPersonalizacionChange,
 }: ProductModalProps) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const displayEmoji = emoji || (name.toLowerCase().includes('pizza') ? '🍕' : '🍔');
@@ -279,6 +284,39 @@ export function ProductModal({
                                 multiline
                                 numberOfLines={3}
                             />
+
+                            {/* ── Personalización (modal de sabores al agregar a una orden) ── */}
+                            <View>
+                                <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 2 }}>
+                                    Personalización al pedir
+                                </Text>
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                    {PERSONALIZACION_OPCIONES.map((opt) => {
+                                        const isSelected = (personalizacion || 'ninguna') === opt.value;
+                                        return (
+                                            <TouchableOpacity
+                                                key={opt.value}
+                                                onPress={() => onPersonalizacionChange(opt.value)}
+                                                style={{
+                                                    paddingHorizontal: 14,
+                                                    paddingVertical: 9,
+                                                    borderRadius: 14,
+                                                    borderWidth: 1,
+                                                    backgroundColor: isSelected ? 'rgba(245,165,36,0.18)' : 'rgba(255,255,255,0.04)',
+                                                    borderColor: isSelected ? 'rgba(245,165,36,0.45)' : 'rgba(255,255,255,0.08)',
+                                                }}
+                                            >
+                                                <Text style={{ fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', color: isSelected ? '#F5A524' : '#64748B' }}>
+                                                    {opt.label}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                                <Text style={{ color: '#475569', fontSize: 10, marginTop: 6, marginLeft: 2 }}>
+                                    Define qué modal se abre al agregarlo a una orden (sabores, calzone, base de jugo o ninguno).
+                                </Text>
+                            </View>
 
                             {/* Error */}
                             {error ? (

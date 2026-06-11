@@ -149,6 +149,9 @@ export class InventarioCajasService {
 		const tipo = (tipoProducto || '').toLowerCase();
 		const variante = (varianteNombre || '').toLowerCase();
 
+		// Papas encajadas → caja pequeña (se empacan como una pizza pequeña)
+		if (tipo.includes('encajada') || variante.includes('encajada')) return 'Caja Pizza Pequeña';
+
 		if (tipo.includes('calzone')) return 'Caja Calzone';
 
 		if (

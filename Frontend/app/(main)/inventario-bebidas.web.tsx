@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { ActivityIndicator, TextInput as RNTextInput } from 'react-native';
-import { ScrollView, View, Text, TouchableOpacity } from '../../tw';
+import { View, Text, TouchableOpacity } from '../../tw';
 import { useApi, useProductos } from '@/src/shared';
 import type { Producto, ProductoVariante } from '@/src/shared';
 import PageContainer from '../../components/ui/PageContainer';

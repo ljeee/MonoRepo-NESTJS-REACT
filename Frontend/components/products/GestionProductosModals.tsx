@@ -17,6 +17,7 @@ interface GestionProductosModalsProps {
     prodName: string;
     prodDesc: string;
     prodEmoji: string;
+    prodPersonalizacion: string;
     prodError: string;
     showVariantModal: boolean;
     editingVariant: ProductoVariante | null;
@@ -37,6 +38,7 @@ interface GestionProductosModalsProps {
     onProdNameChange: (name: string) => void;
     onProdDescriptionChange: (description: string) => void;
     onProdEmojiChange: (emoji: string) => void;
+    onProdPersonalizacionChange: (personalizacion: string) => void;
     onVarNameChange: (name: string) => void;
     onVarPriceChange: (price: string) => void;
     onVarDescriptionChange: (description: string) => void;
@@ -52,6 +54,7 @@ export function GestionProductosModals({
     prodName,
     prodDesc,
     prodEmoji,
+    prodPersonalizacion,
     prodError,
     showVariantModal,
     editingVariant,
@@ -72,6 +75,7 @@ export function GestionProductosModals({
     onProdNameChange,
     onProdDescriptionChange,
     onProdEmojiChange,
+    onProdPersonalizacionChange,
     onVarNameChange,
     onVarPriceChange,
     onVarDescriptionChange,
@@ -96,6 +100,8 @@ export function GestionProductosModals({
                 onNameChange={onProdNameChange}
                 onDescriptionChange={onProdDescriptionChange}
                 onEmojiChange={onProdEmojiChange}
+                personalizacion={prodPersonalizacion}
+                onPersonalizacionChange={onProdPersonalizacionChange}
             />
 
             <VariantModal

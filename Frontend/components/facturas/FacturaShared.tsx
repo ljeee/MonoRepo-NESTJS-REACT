@@ -197,7 +197,6 @@ export function FacturaCard({
   const isPagado = item.estado === 'pagado';
   const isCancelado = item.estado === 'cancelado';
   const isParcial = item.estado === 'parcial';
-  const variant = isCancelado ? 'danger' : isPagado ? 'success' : 'warning';
   const saldoPendiente = isParcial ? (item.total ?? 0) - (item.montoPagado ?? 0) : (item.total ?? 0);
   const progresoPct = item.total && item.montoPagado ? Math.min(100, (item.montoPagado / item.total) * 100) : 0;
 

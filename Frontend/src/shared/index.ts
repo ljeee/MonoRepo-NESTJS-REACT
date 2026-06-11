@@ -40,4 +40,5 @@ export { useOrdenesSocket } from './hooks/use-ordenes-socket';
 export * from './utils/format';
 export * from './utils/dateRange';
 export * from './utils/productEmojis';
+export * from './utils/personalizacion';
 export { mapOrdenToForm } from './utils/orderMapper';

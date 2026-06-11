@@ -54,6 +54,11 @@ export class CreateProductosDto {
 	@IsString()
 	emoji?: string;
 
+	@ApiProperty({example: 'pizza', required: false, description: "Tipo de personalización: 'pizza' | 'calzone' | 'jugo' | 'ninguna'. null = fallback por nombre"})
+	@IsOptional()
+	@IsString()
+	personalizacion?: string | null;
+
 	@ApiProperty({type: [CreateProductoVarianteDto], required: false, description: 'Variantes del producto (tamaños, sabores, etc)'})
 
 	@IsOptional()

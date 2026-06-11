@@ -180,25 +180,29 @@ export function useFacturasRango(limit: number = 50) {
 
   const [estado, setEstado] = useState<string | undefined>(undefined);
   const [clienteNombre, setClienteNombre] = useState<string | undefined>(undefined);
+  const [metodo, setMetodo] = useState<string | undefined>(undefined);
 
   const fromRef = useRef(from);
   const toRef = useRef(to);
   const pageRef = useRef(page);
   const estadoRef = useRef(estado);
   const clienteNombreRef = useRef(clienteNombre);
+  const metodoRef = useRef(metodo);
 
   useEffect(() => { fromRef.current = from; }, [from]);
   useEffect(() => { toRef.current = to; }, [to]);
   useEffect(() => { pageRef.current = page; }, [page]);
   useEffect(() => { estadoRef.current = estado; }, [estado]);
   useEffect(() => { clienteNombreRef.current = clienteNombre; }, [clienteNombre]);
+  useEffect(() => { metodoRef.current = metodo; }, [metodo]);
 
-  const fetchData = useCallback(async (f?: string, t?: string, p?: number, est?: string, cli?: string) => {
+  const fetchData = useCallback(async (f?: string, t?: string, p?: number, est?: string, cli?: string, met?: string) => {
     const finalFrom = f ?? fromRef.current;
     const finalTo = t ?? toRef.current;
     const finalPage = p ?? pageRef.current;
     const finalEstado = est !== undefined ? est : estadoRef.current;
     const finalClienteNombre = cli !== undefined ? cli : clienteNombreRef.current;
+    const finalMetodo = met !== undefined ? met : metodoRef.current;
     if (!finalFrom || !finalTo) return;
 
     setLoading(true);
@@ -211,6 +215,7 @@ export function useFacturasRango(limit: number = 50) {
         limit,
         estado: finalEstado || undefined,
         clienteNombre: finalClienteNombre || undefined,
+        metodo: finalMetodo || undefined,
       });
       const mapped = response.data.map(mapFactura);
       setData(mapped);
@@ -261,7 +266,7 @@ export function useFacturasRango(limit: number = 50) {
   }, [fetchData]);
 
   // Reset page to 1 when doing a brand-new search
-  const search = useCallback((f: string, t: string, est?: string, cli?: string) => {
+  const search = useCallback((f: string, t: string, est?: string, cli?: string, met?: string) => {
     setPage(1);
     pageRef.current = 1;
     if (est !== undefined) {
@@ -272,7 +277,11 @@ export function useFacturasRango(limit: number = 50) {
       setClienteNombre(cli);
       clienteNombreRef.current = cli;
     }
-    fetchData(f, t, 1, est, cli);
+    if (met !== undefined) {
+      setMetodo(met);
+      metodoRef.current = met;
+    }
+    fetchData(f, t, 1, est, cli, met);
   }, [fetchData]);
 
   return {

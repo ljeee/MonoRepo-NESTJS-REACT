@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Platform, StyleSheet, useWindowDimensions } from 'react-native';
-import { Pressable, View, Text, TouchableOpacity, TextInput, ScrollView, KeyboardAvoidingView } from '../../tw';
+import { Pressable, View, Text, TouchableOpacity, TextInput, ScrollView } from '../../tw';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
 import { BillCounter, COLOMBIAN_BILLS } from '../ui/BillCounter';
+import { useBreakpoint } from '../../styles/responsive';
 import { formatCurrency, useApi } from '@/src/shared';
 import type { DenominacionesMap } from '@/src/shared';
 
@@ -38,6 +39,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const isPartial = mode === 'partial';
     const api = useApi();
     const { height: screenHeight } = useWindowDimensions();
+    const { isDesktop } = useBreakpoint();
     // Default to first non-disabled method
     const firstAvailable = METHODS.find(m => !disabledMethods.includes(m.id))?.id ?? 'efectivo';
     const [selected, setSelected] = useState(firstAvailable);
@@ -274,30 +276,38 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
         <Modal
             visible={visible}
             transparent
-            animationType="slide"
+            animationType={isDesktop ? 'fade' : 'slide'}
             statusBarTranslucent
             onRequestClose={onClose}
         >
             {/*
-             * Bottom-sheet layout: KAV wraps the whole screen, panel slides up
-             * from the bottom. behavior="padding" with statusBarTranslucent
-             * collapses the panel on Android — use "height" on Android instead.
+             * Sin KeyboardAvoidingView: el KAV dentro de un Modal con statusBarTranslucent
+             * colapsa el panel en Android. El manifest usa adjustResize y el ScrollView
+             * interno (keyboardShouldPersistTaps) mantiene los inputs accesibles.
+             * Desktop → modal centrado; mobile → bottom-sheet.
              */}
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
+            <Pressable
+                style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.88)',
+                    justifyContent: isDesktop ? 'center' : 'flex-end',
+                    alignItems: isDesktop ? 'center' : 'stretch',
+                    padding: isDesktop ? 16 : 0,
+                }}
+                onPress={onClose}
             >
                 <Pressable
-                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.88)', justifyContent: 'flex-end' }}
-                    onPress={onClose}
+                    style={[
+                        styles.modalInner,
+                        isDesktop
+                            ? { maxWidth: 500, width: '100%', maxHeight: screenHeight * 0.9, borderRadius: 24 }
+                            : { width: '100%', maxHeight: screenHeight * 0.88 },
+                    ]}
+                    onPress={e => e.stopPropagation()}
                 >
-                    <Pressable
-                        style={[styles.modalInner, { maxHeight: screenHeight * 0.88, width: '100%' }]}
-                        onPress={e => e.stopPropagation()}
-                    >
-                        {/* ── Fixed header ── */}
-                        <View style={styles.fixedHeader}>
-                            <View style={styles.dragHandle} />
+                    {/* ── Fixed header ── */}
+                    <View style={styles.fixedHeader}>
+                        {!isDesktop && <View style={styles.dragHandle} />}
 
                             <View style={[styles.rowBetween, { marginBottom: compact ? 10 : 12 }]}>
                                 <View>
@@ -554,9 +564,8 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                 />
                             </View>
                         </View>
-                    </Pressable>
                 </Pressable>
-            </KeyboardAvoidingView>
+            </Pressable>
         </Modal>
     );
 }

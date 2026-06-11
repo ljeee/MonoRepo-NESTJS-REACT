@@ -47,6 +47,7 @@ export default function BalanceFechasScreen() {
     const [searchedTo, setSearchedTo] = useState('');
     const [hasSearched, setHasSearched] = useState(false);
     const [periodStats, setPeriodStats] = useState<any>(null);
+    const [metodoStats, setMetodoStats] = useState<any[]>([]);
     const [exporting, setExporting] = useState(false);
     const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todas');
     const [metodoFilter, setMetodoFilter] = useState<MethodFilterValue>('todos');
@@ -70,8 +71,12 @@ export default function BalanceFechasScreen() {
     // ── Handlers ───────────────────────────────────────────────────────────────
     const fetchStats = useCallback(async (f: string, t: string) => {
         try {
-            const s = await api.estadisticas.resumenPeriodo(f, t);
+            const [s, mp] = await Promise.all([
+                api.estadisticas.resumenPeriodo(f, t),
+                api.estadisticas.metodosPago(f, t),
+            ]);
             setPeriodStats(s);
+            setMetodoStats(mp);
         } catch { /* silent */ }
     }, [api]);
 
@@ -84,16 +89,21 @@ export default function BalanceFechasScreen() {
         setSearchedTo(tp);
         setFromF(fp); setToF(tp);
         setFromG(fp); setToG(tp);
-        searchF(fp, tp, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined);
+        searchF(fp, tp, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter);
         void fetchGastos(fp, tp, 1);
         void fetchStats(fp, tp);
         setHasSearched(true);
-    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchStats, estadoFilter, nombreFilter]);
+    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchStats, estadoFilter, nombreFilter, metodoFilter]);
 
     const handleSelectEstado = useCallback((key: EstadoFilter) => {
         setEstadoFilter(key);
-        if (hasSearched) searchF(searchedFrom, searchedTo, key === 'todas' ? undefined : key, nombreFilter || undefined);
-    }, [searchedFrom, searchedTo, nombreFilter, searchF, hasSearched]);
+        if (hasSearched) searchF(searchedFrom, searchedTo, key === 'todas' ? undefined : key, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter);
+    }, [searchedFrom, searchedTo, nombreFilter, searchF, hasSearched, metodoFilter]);
+
+    const handleSelectMetodo = useCallback((key: MethodFilterValue) => {
+        setMetodoFilter(key);
+        if (hasSearched) searchF(searchedFrom, searchedTo, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, key === 'todos' ? undefined : key);
+    }, [searchedFrom, searchedTo, estadoFilter, nombreFilter, searchF, hasSearched]);
 
     // Debounce nombre filter
     const searchFRef = useRef(searchF);
@@ -101,10 +111,10 @@ export default function BalanceFechasScreen() {
     useEffect(() => {
         if (!hasSearched) return;
         const t = setTimeout(() => {
-            searchFRef.current(searchedFrom, searchedTo, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined);
+            searchFRef.current(searchedFrom, searchedTo, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter);
         }, 400);
         return () => clearTimeout(t);
-    }, [nombreFilter, searchedFrom, searchedTo, estadoFilter, hasSearched]);
+    }, [nombreFilter, searchedFrom, searchedTo, estadoFilter, metodoFilter, hasSearched]);
 
     const handleToggleEstado = useCallback(async (
         facturaId: number, nuevoEstado: string, metodo?: string,
@@ -172,16 +182,15 @@ export default function BalanceFechasScreen() {
     const egresos = periodStats?.totalEgresos ?? 0;
     const neto = ingresos - egresos;
 
-    // Filtro de método (client-side sobre las facturas ya cargadas; el estado se filtra server-side)
+    // Conteos por método del período (metodosPago ya tiene bucket 'mixto' propio).
+    // El filtrado real es server-side; estos números son del rango completo (no de la página).
+    const metodoCount = (m: string) => metodoStats.find((x) => x.metodo === m)?.cantidad ?? 0;
     const metodoCounts = {
-        todos:         facturas.length,
-        efectivo:      facturas.filter((f: any) => f.metodo === 'efectivo').length,
-        transferencia: facturas.filter((f: any) => f.metodo === 'transferencia').length,
-        mixto:         facturas.filter((f: any) => f.metodo === 'efectivo_transferencia').length,
+        todos:         periodStats?.facturas ?? 0,
+        efectivo:      metodoCount('efectivo'),
+        transferencia: metodoCount('transferencia'),
+        mixto:         metodoCount('mixto'),
     };
-    const facturasView = metodoFilter === 'todos'
-        ? facturas
-        : facturas.filter((f: any) => f.metodo === (metodoFilter === 'mixto' ? 'efectivo_transferencia' : metodoFilter));
 
     return (
         <PageContainer scrollable maxWidthVariant="full">
@@ -251,8 +260,8 @@ export default function BalanceFechasScreen() {
                                 })}
                             </View>
 
-                            {/* Chips por método de pago (incluye Mixto) */}
-                            <MethodFilterChips value={metodoFilter} onChange={setMetodoFilter} counts={metodoCounts} includePendiente={false} />
+                            {/* Chips por método de pago (incluye Mixto) — filtra server-side */}
+                            <MethodFilterChips value={metodoFilter} onChange={handleSelectMetodo} counts={metodoCounts} includePendiente={false} />
 
                             <Input
                                 placeholder="Buscar por nombre de cliente..."
@@ -346,7 +355,7 @@ export default function BalanceFechasScreen() {
 
                         {loadingFacturas ? (
                             <ListSkeleton count={4} />
-                        ) : facturasView.length === 0 ? (
+                        ) : facturas.length === 0 ? (
                             <View className="items-center py-16 opacity-30">
                                 <Icon name="email-off-outline" size={48} color="#64748B" />
                                 <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs px-10">
@@ -355,7 +364,7 @@ export default function BalanceFechasScreen() {
                             </View>
                         ) : (
                             <View style={{ flexDirection: isMobile ? 'column' : 'row', flexWrap: isMobile ? 'nowrap' : 'wrap', gap: 12, marginBottom: 4 }}>
-                                {facturasView.map((item: any, idx: number) => (
+                                {facturas.map((item: any, idx: number) => (
                                     <View
                                         key={item.facturaId?.toString() || String(idx)}
                                         style={isMobile ? { width: '100%' } : { width: '48%' }}

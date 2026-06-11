@@ -12,12 +12,16 @@ export interface ProductoVariante {
   stockBebida?: number;
 }
 
+export type Personalizacion = 'pizza' | 'calzone' | 'jugo' | 'ninguna';
+
 export interface Producto {
   productoId: number;
   productoNombre: string;
   descripcion?: string;
   activo: boolean;
   emoji?: string;
+  /** Tipo de modal al agregar a una orden. null/undefined = fallback por nombre. */
+  personalizacion?: string | null;
   variantes: ProductoVariante[];
 }
 

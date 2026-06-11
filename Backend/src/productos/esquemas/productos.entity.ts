@@ -20,6 +20,11 @@ export class Productos {
 	@Column({name: 'emoji', type: 'text', nullable: true})
 	emoji: string;
 
+	/** Tipo de modal de personalización al agregar a una orden:
+	 *  'pizza' | 'calzone' | 'jugo' | 'ninguna'. null = sin configurar → fallback por nombre. */
+	@Column({name: 'personalizacion', type: 'text', nullable: true})
+	personalizacion: string | null;
+
 	@OneToMany(() => OrdenesProductos, (op) => op.productoObj)
 	ordenesProductos: OrdenesProductos[];
 

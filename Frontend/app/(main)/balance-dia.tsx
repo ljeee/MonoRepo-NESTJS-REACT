@@ -2,10 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ScrollView } from '../../tw';
 import { useFacturasDia, useFacturasPagosDia, useApi } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
-import { exportPdf } from '../../utils/exportData';
 import type { FacturaPago, CajaResumen, DenominacionesMap } from '@/src/shared';
 import { formatCurrency, DENOMINACIONES_COP } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -294,7 +292,6 @@ export default function BalanceDiaScreen() {
     const {
         data: gastos,
         loading: loadingGastos,
-        error: errorGastos,
         fetchData: fetchGastos,
     } = useFacturasPagosDia();
 

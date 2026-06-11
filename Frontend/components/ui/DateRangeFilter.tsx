@@ -11,14 +11,6 @@ interface Preset {
   days: number;
 }
 
-const DEFAULT_PRESETS: Preset[] = [
-  { label: 'Hoy',  days: 0  },
-  { label: 'Ayer', days: -1 },
-  { label: '7d',   days: 7  },
-  { label: '30d',  days: 30 },
-  { label: 'Mes',  days: 30 },
-];
-
 // Mes preset: from 1st of current month to today
 function getMesRange(): { from: string; to: string } {
   const now = new Date();

@@ -34,7 +34,7 @@ export default function FacturasRangoScreen() {
     data, loading, error,
     from, to, setFrom, setTo,
     fetchData, search,
-    stats, updateEstado, updateFactura, deleteFactura,
+    updateEstado, updateFactura, deleteFactura,
   } = useFacturasRango(5000);
 
   const [localPage, setLocalPage] = useState(1);

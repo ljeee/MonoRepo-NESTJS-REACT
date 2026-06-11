@@ -20,6 +20,7 @@ type UiState = {
   prodDesc: string;
   prodEmoji: string;
   prodActive: boolean;
+  prodPersonalizacion: string;
   prodError: string;
   varName: string;
   varPrice: string;
@@ -42,6 +43,7 @@ const initialUiState: UiState = {
   prodDesc: '',
   prodEmoji: '',
   prodActive: true,
+  prodPersonalizacion: 'ninguna',
   prodError: '',
   varName: '',
   varPrice: '',
@@ -87,6 +89,7 @@ export function useGestionProductosScreen() {
     prodDesc,
     prodEmoji,
     prodActive,
+    prodPersonalizacion,
     prodError,
     varName,
     varPrice,
@@ -115,6 +118,7 @@ export function useGestionProductosScreen() {
       prodDesc: '',
       prodEmoji: '',
       prodActive: true,
+      prodPersonalizacion: 'ninguna',
       editingProduct: null,
       prodError: '',
     });
@@ -145,6 +149,7 @@ export function useGestionProductosScreen() {
         prodDesc: product.descripcion || '',
         prodEmoji: product.emoji || '',
         prodActive: product.activo,
+        prodPersonalizacion: product.personalizacion ?? 'ninguna',
       });
     } else {
       resetProductForm();
@@ -179,6 +184,7 @@ export function useGestionProductosScreen() {
       descripcion: prodDesc,
       emoji: prodEmoji || undefined,
       activo: prodActive,
+      personalizacion: prodPersonalizacion || 'ninguna',
     };
 
     try {
@@ -284,6 +290,7 @@ export function useGestionProductosScreen() {
     prodName,
     prodDesc,
     prodEmoji,
+    prodPersonalizacion,
     prodError,
     varName,
     varPrice,

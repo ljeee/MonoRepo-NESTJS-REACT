@@ -15,8 +15,8 @@ import type {
 } from '@/src/shared';
 import { formatCompactCurrency as sharedFormatCompact, getLocalDateString } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
-import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
-import { PageContainer, PageHeader, Card, Icon, Button, DateRangeFilter } from '../../components/ui';
+import { View, Text, ScrollView } from '../../tw';
+import { PageContainer, PageHeader, Card, Icon, DateRangeFilter } from '../../components/ui';
 
 function formatCurrency(n: number) {
     return sharedFormatCompact(n);

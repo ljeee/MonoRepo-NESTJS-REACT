@@ -15,8 +15,8 @@ export class FacturasVentasService {
 		private readonly cajaMovimientosService: CajaMovimientosService,
 	) {}
 
-	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string } = {}) {
-		const { from, to, page = 1, limit = 50, estado, clienteNombre } = opts;
+	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string; metodo?: string } = {}) {
+		const { from, to, page = 1, limit = 50, estado, clienteNombre, metodo } = opts;
 
 		// Apply all WHERE filters — uses explicit Bogotá offset so Alpine Docker
 		// (no tzdata) gives the same result as an environment with TZ=America/Bogota.
@@ -43,6 +43,12 @@ export class FacturasVentasService {
 
 			if (clienteNombre && clienteNombre.trim()) {
 				qb.andWhere('f.clienteNombre ILIKE :clienteNombre', { clienteNombre: `%${clienteNombre.trim()}%` });
+			}
+
+			if (metodo) {
+				// 'mixto' es el alias UI de efectivo_transferencia
+				const m = metodo === 'mixto' ? 'efectivo_transferencia' : metodo;
+				qb.andWhere('f.metodo = :metodo', { metodo: m });
 			}
 		};
 

@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, TouchableOpacity } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
 import { View, Text, ScrollView } from '../../tw';
 import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@/src/shared';
 import { useFacturasPagosRango } from '@/src/shared';
@@ -240,7 +240,6 @@ export default function ContabilidadScreen() {
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [validRange, setValidRange] = useState({ from: '', to: '' });
-    const [filterError, setFilterError] = useState('');
     const [exportLoading, setExportLoading] = useState('');
     const [searched, setSearched] = useState(false);
 
@@ -277,8 +276,7 @@ export default function ContabilidadScreen() {
         const fromInput = fromOverride ?? from;
         const toInput = toOverride ?? to;
         const { from: f, to: t, error } = validateFlexibleDateRange(fromInput, toInput);
-        if (error) { setFilterError(error); return; }
-        setFilterError('');
+        if (error) return;
         setValidRange({ from: f, to: t });
         setFromF(f); setToF(t);
         setFromG(f); setToG(t);
