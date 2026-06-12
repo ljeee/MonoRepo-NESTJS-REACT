@@ -6,6 +6,7 @@ import Icon from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
 import { BillCounter, COLOMBIAN_BILLS } from '../ui/BillCounter';
 import { useBreakpoint } from '../../styles/responsive';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatCurrency, useApi } from '@/src/shared';
 import type { DenominacionesMap } from '@/src/shared';
 
@@ -40,6 +41,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const api = useApi();
     const { height: screenHeight } = useWindowDimensions();
     const { isDesktop } = useBreakpoint();
+    const insets = useSafeAreaInsets();
     // Default to first non-disabled method
     const firstAvailable = METHODS.find(m => !disabledMethods.includes(m.id))?.id ?? 'efectivo';
     const [selected, setSelected] = useState(firstAvailable);
@@ -301,7 +303,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                         styles.modalInner,
                         isDesktop
                             ? { maxWidth: 500, width: '100%', maxHeight: screenHeight * 0.9, borderRadius: 24 }
-                            : { width: '100%', maxHeight: screenHeight * 0.88 },
+                            : { width: '100%', maxHeight: screenHeight * 0.9 },
                     ]}
                     onPress={e => e.stopPropagation()}
                 >
@@ -356,8 +358,10 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                         </View>
 
                         {/* ── Scrollable content ── */}
+                        {/* maxHeight propio (no flex:1): en un bottom-sheet sin altura fija,
+                            flex:1 colapsa el ScrollView y se pierde el contenido. */}
                         <ScrollView
-                            style={styles.flex1}
+                            style={{ maxHeight: screenHeight * (isDesktop ? 0.62 : 0.5) }}
                             contentContainerStyle={styles.scrollContent}
                             keyboardShouldPersistTaps="handled"
                             showsVerticalScrollIndicator={false}
@@ -545,7 +549,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                         </ScrollView>
 
                         {/* ── Fixed footer ── */}
-                        <View style={[styles.footer, { paddingBottom: Platform.OS === 'ios' ? 28 : 16 }]}>
+                        <View style={[styles.footer, { paddingBottom: (Platform.OS === 'ios' ? 20 : 14) + Math.max(insets.bottom, 8) }]}>
                             <View style={styles.flex1}>
                                 <Button title="Cancelar" variant="ghost" size="sm" onPress={onClose} disabled={loading} />
                             </View>
