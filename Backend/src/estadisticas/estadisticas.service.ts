@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, In } from 'typeorm';
 import { Ordenes } from '../ordenes/esquemas/ordenes.entity';
 import { OrdenesProductos } from '../ordenes-productos/esquemas/ordenes-productos.entity';
 import { FacturasVentas } from '../facturas-ventas/esquemas/facturas-ventas.entity';
@@ -454,7 +454,7 @@ export class EstadisticasService {
 		return this.facturasRepo.find({
 			where: {
 				fechaFactura: Between(start, end),
-				estado: 'pagado', // Only paid ones as requested in "selecionador de facturas deberia ser solo efectivo y transferencia" implicitly implies valid ones
+				estado: In(['pagado', 'pagada']),
 			},
 			order: { fechaFactura: 'ASC' },
 		});

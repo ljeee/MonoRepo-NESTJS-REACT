@@ -125,9 +125,7 @@ export class InventarioCajasService {
 		}
 
 		for (const [nombreCaja, qty] of acumulado) {
-			const caja = await this.inventarioRepo.findOne({
-				where: { nombre: nombreCaja },
-			});
+			const caja = await this.findCajaPorNombre(nombreCaja);
 			if (!caja) continue; // caja no registrada → ignorar
 
 			const nuevaCantidad = Math.max(0, caja.cantidad - qty);
@@ -143,6 +141,13 @@ export class InventarioCajasService {
 			caja.cantidad = nuevaCantidad;
 			await this.inventarioRepo.save(caja);
 		}
+	}
+
+	private async findCajaPorNombre(nombreCaja: string): Promise<InventarioCajas | null> {
+		const norm = (s: string) =>
+			s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+		const todas = await this.inventarioRepo.find();
+		return todas.find(c => norm(c.nombre) === norm(nombreCaja)) ?? null;
 	}
 
 	private resolverNombreCaja(varianteNombre: string, tipoProducto: string): string | null {

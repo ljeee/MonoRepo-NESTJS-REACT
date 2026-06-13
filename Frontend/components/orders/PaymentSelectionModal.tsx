@@ -185,6 +185,9 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const clearCambio   = () => { setBillCountsCambio({});   setMonedasCambio(''); };
 
     const compact = screenHeight < 680;
+    // Si la caja no tiene denominaciones registradas (sin arqueo/apertura), no se puede
+    // limitar el cambio por stock — permitir asignarlo libre para no bloquear el cobro.
+    const hasCajaData = Object.keys(cajaEstado).length > 0;
 
     // ── Sección de cambio a entregar (reutilizada en efectivo y mixto) ────────
     const CambioSection = showCambioSection ? (
@@ -210,8 +213,8 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                         bill={denom}
                         count={billCountsCambio[String(denom)] || 0}
                         onChange={n => setBillCountsCambio(prev => ({ ...prev, [String(denom)]: n }))}
-                        enCaja={cajaEstado[String(denom)] ?? 0}
-                        limitByStock={true}
+                        enCaja={hasCajaData ? (cajaEstado[String(denom)] ?? 0) : undefined}
+                        limitByStock={hasCajaData}
                         variant="change"
                     />
                 ))}
@@ -358,16 +361,16 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                         </View>
 
                         {/* ── Scrollable content ── */}
-                        {/* maxHeight propio (no flex:1): en un bottom-sheet sin altura fija,
-                            flex:1 colapsa el ScrollView y se pierde el contenido. */}
+                        {/* flexShrink:1 (no flex:1, no maxHeight fijo): el ScrollView se encoge
+                            dentro del panel acotado por maxHeight y scrollea el sobrante.
+                            Header y footer quedan fijos (flexShrink:0 por defecto en RN).
+                            Indicador visible para que se note que hay más abajo (cambio). */}
                         <ScrollView
-                            style={{ maxHeight: screenHeight * (isDesktop ? 0.62 : 0.5) }}
+                            style={{ flexShrink: 1 }}
                             contentContainerStyle={styles.scrollContent}
                             keyboardShouldPersistTaps="handled"
-                            showsVerticalScrollIndicator={false}
+                            showsVerticalScrollIndicator
                             nestedScrollEnabled
-                            bounces={false}
-                            overScrollMode="never"
                         >
                             {/* ════════════════ EFECTIVO ════════════════ */}
                             {selected === 'efectivo' && (
