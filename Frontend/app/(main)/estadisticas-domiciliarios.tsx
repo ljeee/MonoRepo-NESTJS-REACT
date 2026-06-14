@@ -230,8 +230,8 @@ export default function EstadisticasDomiciliariosScreen() {
     return (
         <PageContainer>
             <PageHeader
-                title="Analytics Domicilios"
-                subtitle="Rendimiento del equipo de entrega"
+                title="Domiciliarios"
+                subtitle="Rendimiento de repartidores"
                 icon="chart-bar"
                 rightContent={
                     <Button

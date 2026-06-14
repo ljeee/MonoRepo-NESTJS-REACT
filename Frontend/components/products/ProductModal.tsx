@@ -87,7 +87,7 @@ export function ProductModal({
         <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} style={{ flex: 1 }}>
                 <Pressable
-                    style={{ flex: 1, backgroundColor: 'rgba(5,9,20,0.92)', justifyContent: 'flex-end' }}
+                    style={{ flex: 1, backgroundColor: 'rgba(5,9,20,0.97)', justifyContent: 'flex-end' }}
                     onPress={onClose}
                 >
                     <Pressable

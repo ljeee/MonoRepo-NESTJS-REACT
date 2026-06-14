@@ -80,7 +80,7 @@ export default function RegistroUsuariosScreen() {
 
     return (
         <PageContainer>
-            <PageHeader title="Registro de Usuarios" icon="account-plus-outline" />
+            <PageHeader title="Registro de Usuarios" subtitle="Crear acceso al sistema" icon="account-plus-outline" />
 
             <ScrollView contentContainerClassName="pb-10 pt-4">
                 <Card className="p-8 border border-white/5 bg-(--color-pos-surface)">

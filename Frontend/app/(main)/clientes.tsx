@@ -6,6 +6,7 @@ import type { Cliente, CreateClienteDto } from '@/src/shared';
 import { useClientByPhone } from '@/src/shared';
 import { useClientesList } from '@/src/shared';
 import { ScrollView, View, Text, TouchableOpacity } from '../../tw';
+import { EmptyState } from '../../components/states/EmptyState';
 import {
   PageContainer,
   PageHeader,
@@ -446,10 +447,7 @@ export default function ClientesScreen() {
       {/* ── Client List ── */}
       {loading && <ListSkeleton count={4} />}
       {!loading && data.length === 0 && !error && (
-        <View className="items-center py-20 opacity-40">
-          <Icon name="account-off-outline" size={64} color="#64748B" />
-          <Text className="text-slate-500 font-bold mt-4 uppercase tracking-wider text-sm">Sin clientes registrados</Text>
-        </View>
+        <EmptyState icon="account-group-outline" message="Sin clientes" subMessage="Agrega el primer cliente" />
       )}
 
       <View className="flex-row flex-wrap gap-4 pb-4">

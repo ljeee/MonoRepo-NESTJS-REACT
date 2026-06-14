@@ -437,6 +437,23 @@ export default function BalanceDiaScreen() {
         await updateFactura(facturaId, { total: newTotal });
     };
 
+    const handleAbono = async (
+        facturaId: number,
+        monto: number,
+        denominaciones?: DenominacionesMap,
+        cambioDenominaciones?: DenominacionesMap,
+    ) => {
+        setUpdatingId(facturaId);
+        try {
+            await api.facturas.abono(facturaId, monto, denominaciones, cambioDenominaciones);
+            await Promise.all([refetchFacturas(), fetchCajaResumen()]);
+        } catch (error) {
+            console.error('Error registrando abono:', error);
+        } finally {
+            setUpdatingId(null);
+        }
+    };
+
     const ingresos = stats?.totalPagado ?? 0;
     const totalGastos = gastos.reduce((sum: number, g: FacturaPago) => sum + (Number(g.total) || 0), 0);
 
@@ -939,6 +956,8 @@ export default function BalanceDiaScreen() {
                             isUpdating={updatingId === item.facturaId}
                             onToggleEstado={handleToggleEstado}
                             onUpdateTotal={handleUpdateTotal}
+                            onUpdate={updateFactura}
+                            onAbono={handleAbono}
                             showPrint
                             aperturaHecha={aperturaHecha}
                         />

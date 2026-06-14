@@ -61,6 +61,9 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const [billCountsCambio, setBillCountsCambio] = useState<Record<string, number>>({});
     const [monedasCambio, setMonedasCambio] = useState('');
 
+    // ── Paso del modal (entrada = billetes recibidos, cambio = desglose cambio) ─
+    const [step, setStep] = useState<'entrada' | 'cambio'>('entrada');
+
     const fetchCaja = useCallback(async () => {
         try {
             const estado = await api.cajaDenominaciones.getEstado();
@@ -79,6 +82,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
             setMonedaMixto('');
             setBillCountsCambio({});
             setMonedasCambio('');
+            setStep('entrada');
             fetchCaja();
             // Auto-switch if currently selected method is disabled
             if (disabledMethods.includes(selected)) {
@@ -372,6 +376,9 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                             showsVerticalScrollIndicator
                             nestedScrollEnabled
                         >
+                            {/* ════ Paso 2: desglose del cambio ════ */}
+                            {!isPartial && step === 'cambio' ? CambioSection : (
+                            <>
                             {/* ════════════════ EFECTIVO ════════════════ */}
                             {selected === 'efectivo' && (
                                 <View style={styles.sectionBox}>
@@ -421,7 +428,8 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                         </View>
                                     )}
 
-                                    {CambioSection}
+                                    {/* En abono (partial) no hay paso 2: el cambio se asigna aquí mismo */}
+                                    {isPartial && CambioSection}
 
                                     {hasEnteredEfectivo && (
                                         <TouchableOpacity onPress={clearEfectivo} style={[styles.clearBtn, styles.mt6]}>
@@ -537,7 +545,8 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                                 </View>
                                             )}
 
-                                            {CambioSection}
+                                            {/* En abono (partial) no hay paso 2: el cambio se asigna aquí mismo */}
+                                            {isPartial && CambioSection}
 
                                             {hasEnteredMixto && (
                                                 <TouchableOpacity onPress={clearMixto} style={[styles.clearBtn, styles.mt6]}>
@@ -549,26 +558,47 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                     )}
                                 </View>
                             )}
+                            </>
+                            )}
                         </ScrollView>
 
                         {/* ── Fixed footer ── */}
                         <View style={[styles.footer, { paddingBottom: (Platform.OS === 'ios' ? 20 : 14) + Math.max(insets.bottom, 8) }]}>
                             <View style={styles.flex1}>
-                                <Button title="Cancelar" variant="ghost" size="sm" onPress={onClose} disabled={loading} />
+                                {!isPartial && step === 'cambio' ? (
+                                    <Button title="← Volver" variant="ghost" size="sm" onPress={() => setStep('entrada')} disabled={loading} />
+                                ) : (
+                                    <Button title="Cancelar" variant="ghost" size="sm" onPress={onClose} disabled={loading} />
+                                )}
                             </View>
                             <View style={styles.flex2}>
-                                <Button
-                                    title={
-                                        showCambioSection && !cambioMatch
-                                            ? `Cambio: $${formatCurrency(cambio - totalCambioSeleccionado)} sin asignar`
-                                            : isPartial ? 'Registrar Abono' : 'Confirmar Pago'
-                                    }
-                                    variant="primary"
-                                    size="sm"
-                                    onPress={handleConfirm}
-                                    loading={loading}
-                                    disabled={isConfirmDisabled}
-                                />
+                                {!isPartial && step === 'entrada' && cambio > 0 ? (
+                                    <Button
+                                        title="Siguiente →"
+                                        variant="primary"
+                                        size="sm"
+                                        onPress={() => setStep('cambio')}
+                                        disabled={selected === 'efectivo_transferencia' && (Number(montoTransferencia) || 0) <= 0}
+                                    />
+                                ) : !isPartial && step === 'cambio' ? (
+                                    <Button
+                                        title="Confirmar cobro"
+                                        variant="primary"
+                                        size="sm"
+                                        onPress={handleConfirm}
+                                        loading={loading}
+                                        disabled={isConfirmDisabled}
+                                    />
+                                ) : (
+                                    <Button
+                                        title={isPartial ? 'Registrar Abono' : 'Confirmar Pago'}
+                                        variant="primary"
+                                        size="sm"
+                                        onPress={handleConfirm}
+                                        loading={loading}
+                                        disabled={isConfirmDisabled}
+                                    />
+                                )}
                             </View>
                         </View>
                 </Pressable>

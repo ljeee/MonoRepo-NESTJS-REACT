@@ -91,8 +91,8 @@ export default function MonitoreoScreen() {
     return (
         <PageContainer scrollable>
             <PageHeader 
-                title="Sistema" 
-                subtitle="Salud y Herramientas"
+                title="Monitoreo de Sistema"
+                subtitle="Estado de sincronización y salud"
                 icon="shield-check-outline" 
             />
 

@@ -83,7 +83,7 @@ export default function CierreCajaScreen() {
 
     return (
         <PageContainer>
-            <PageHeader title="Cierre de Caja" icon="cash-register" />
+            <PageHeader title="Cierre de Caja" subtitle="Resumen y cierre del día" icon="cash-register" />
 
             <ScrollView 
                 contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}

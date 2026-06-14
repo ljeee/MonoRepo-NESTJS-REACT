@@ -4,6 +4,7 @@ import { View, Text } from '../../tw';
 import { api } from '../../services/api';
 import { useRouter } from 'expo-router';
 import { Badge, Icon, PageContainer, PageHeader, Card, ListSkeleton, Button } from '../../components/ui';
+import { EmptyState } from '../../components/states/EmptyState';
 import { useAuth } from '../../contexts/AuthContext';
 import { Role } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
@@ -121,12 +122,7 @@ export default function UsuariosScreen() {
                         key={isMobile ? 'v' : 'h'}
                         numColumns={isMobile ? 1 : 2}
                         ListEmptyComponent={
-                            <View className="items-center justify-center py-20 opacity-30">
-                                <Icon name="account-group-outline" size={64} color="#64748B" />
-                                <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs">
-                                    No hay usuarios registrados
-                                </Text>
-                            </View>
+                            <EmptyState icon="account-group" message="Sin usuarios" subMessage="Crea el primer usuario" />
                         }
                         renderItem={renderItem}
                     />

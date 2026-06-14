@@ -119,7 +119,7 @@ export default function FacturasDiaScreen() {
     >
       <PageHeader
         title="Resumen del Día"
-        subtitle="Facturas"
+        subtitle="Facturas del día"
         icon="chart-bar"
         rightContent={
           <Button

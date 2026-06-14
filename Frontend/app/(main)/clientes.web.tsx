@@ -797,8 +797,8 @@ export default function ClientesScreen() {
       }
     >
       <PageHeader
-        title="Clientes"
-        subtitle="Directorio y fidelidad"
+        title="Directorio de Clientes"
+        subtitle="Gestión de fidelidad"
         icon="account-group-outline"
         rightContent={
           <Button

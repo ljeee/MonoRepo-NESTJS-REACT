@@ -28,7 +28,7 @@ export default function JugoBaseModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(5,9,20,0.97)', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
         <View style={{
           backgroundColor: '#0F172A',
           borderRadius: 28,

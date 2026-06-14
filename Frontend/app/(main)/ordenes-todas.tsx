@@ -16,6 +16,7 @@ import {
   ListSkeleton,
 } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
+import { EmptyState } from '../../components/states/EmptyState';
 
 const LIMIT = 20;
 
@@ -263,12 +264,7 @@ export default function OrdenesTodasScreen() {
         </View>
       ) : null}
       {!loading && !error && ordenes.length === 0 && (
-        <View className="items-center py-20 opacity-50">
-          <View className="bg-white/5 p-10 rounded-full mb-6">
-            <Icon name="clipboard-text-off-outline" size={64} color="#64748B" />
-          </View>
-          <Text className="text-slate-400 font-black text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>No se encontraron órdenes</Text>
-        </View>
+        <EmptyState icon="format-list-bulleted" message="Sin órdenes" subMessage="No hay órdenes en el período" />
       )}
 
       {/* Order cards */}
@@ -504,10 +500,7 @@ export default function OrdenesTodasScreen() {
                 );
               })}
               {!loading && ordenes.length === 0 && (
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
-                  <Icon name="clipboard-text-off-outline" size={80} color="#1E293B" />
-                  <Text style={{ color: '#334155', fontSize: 22, fontWeight: '800', marginTop: 16, textTransform: 'uppercase', letterSpacing: 1 }}>Sin órdenes</Text>
-                </View>
+                <EmptyState icon="format-list-bulleted" message="Sin órdenes" subMessage="No hay órdenes en el período" />
               )}
             </View>
           </ScrollView>

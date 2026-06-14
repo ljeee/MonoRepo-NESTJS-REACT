@@ -3,6 +3,7 @@ import { ActivityIndicator, TouchableOpacity, Platform, Modal } from 'react-nati
 import { View, Text, ScrollView, TextInput } from '../../tw';
 import { api } from '../../services/api';
 import { PageContainer, PageHeader, Card, Icon, Button, ConfirmModal } from '../../components/ui';
+import { EmptyState } from '../../components/states/EmptyState';
 import type { InventarioCaja, InventarioCajasMovimiento } from '@/src/shared';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -308,11 +309,7 @@ export default function InventarioCajasScreen() {
           <ActivityIndicator size="large" color="#F5A524" />
         </View>
       ) : cajas.length === 0 ? (
-         <View className="items-center justify-center py-20 bg-white/5 rounded-[32px] border border-white/5 mb-8">
-           <Icon name="package-variant-closed" size={64} color="#1E293B" />
-           <Text className="text-white font-black text-xl mt-4">Sin cajas configuradas</Text>
-           <Text className="text-slate-500 mt-2 text-sm max-w-xs text-center">Añade tu primer tipo de caja (ej: Caja Mediana) usando el botón de la parte superior.</Text>
-         </View>
+        <EmptyState icon="package-variant" message="Sin cajas registradas" subMessage="Agrega tipos de caja usando el botón superior" />
       ) : (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 32 }}>
            {cajas.map((c: InventarioCaja) => (
