@@ -86,6 +86,31 @@ describe('DomicilioCreationService', () => {
 			);
 		});
 
+		it('guarda una nueva dirección con costo si se provee', async () => {
+			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
+			mockDireccionesRepo.findOne.mockResolvedValue(null);
+			mockDireccionesRepo.save.mockResolvedValue({});
+
+			await service.upsertCliente('3001234567', 'Juan', 'Calle 10 #5-20', 'casa', undefined, undefined, undefined, undefined, 5000);
+
+			expect(mockDireccionesRepo.save).toHaveBeenCalledWith(
+				expect.objectContaining({ telefonoCliente: '3001234567', direccion: 'Calle 10 #5-20', costoDomicilio: 5000 }),
+			);
+		});
+
+		it('actualiza el costo de una dirección existente si se cambia', async () => {
+			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
+			const dirExistente = { id: 12, telefonoCliente: '3001234567', direccion: 'Calle 10 #5-20', costoDomicilio: 2000 };
+			mockDireccionesRepo.findOne.mockResolvedValue(dirExistente);
+			mockDireccionesRepo.save.mockResolvedValue({});
+
+			await service.upsertCliente('3001234567', 'Juan', 'Calle 10 #5-20', 'casa', undefined, undefined, undefined, 12, 5000);
+
+			expect(mockDireccionesRepo.save).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 12, costoDomicilio: 5000 }),
+			);
+		});
+
 		it('no guarda dirección si está vacía', async () => {
 			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
 
@@ -126,7 +151,7 @@ describe('DomicilioCreationService', () => {
 			mockDomiciliosRepo.create.mockReturnValue(domCreado);
 			mockDomiciliosRepo.save.mockResolvedValue(domCreado);
 
-			const result = await service.crearDomicilio(10, 5, '3001234567', '3111111111', 'Calle 10', 5000);
+			const result = await service.crearDomicilio(10, 5, '3001234567', '3111111111', 'Calle 10', undefined, 5000);
 
 			expect(mockDomiciliosRepo.create).toHaveBeenCalledWith(
 				expect.objectContaining({

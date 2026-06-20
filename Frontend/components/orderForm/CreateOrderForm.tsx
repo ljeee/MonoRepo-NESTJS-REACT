@@ -272,6 +272,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       tipoPedido: formState.tipoPedido || 'mesa',
       telefonoCliente: formState.telefonoCliente || undefined,
       nombreCliente: formState.tipoPedido === 'mesa' ? formState.numeroMesa : resolvedNombreCliente,
+      direccionId: formState.tipoPedido === 'domicilio' ? formState.selectedAddressId : undefined,
       direccionCliente: formState.tipoPedido === 'domicilio' ? formState.newAddress : undefined,
       referenciaDomicilio: formState.tipoPedido === 'domicilio' && formState.referenciaDomicilio ? formState.referenciaDomicilio : undefined,
       telefonoDomiciliario: formState.telefonoDomiciliario || undefined,
@@ -341,6 +342,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       numeroMesa: '',
       nombreCliente: '',
       selectedAddress: '',
+      selectedAddressId: undefined,
       newAddress: '',
       referenciaDomicilio: '',
       telefonoCliente: '',
@@ -454,6 +456,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                         updateForm({ 
                             tipoPedido,
                             selectedAddress: '',
+                            selectedAddressId: undefined,
                             newAddress: '',
                             referenciaDomicilio: '',
                             telefonoCliente: '',
@@ -567,10 +570,15 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                           }
                           onValueChange={(val) => {
                             const selected = val as string;
+                            const foundDir = client?.direcciones?.find(d => d.direccion === selected);
                             updateForm({
                               selectedAddress: selected,
+                              selectedAddressId: selected === '__nueva__' || !selected ? undefined : foundDir?.id,
                               // Carga la dirección en el TextInput; vacía si eligió "Nueva"
                               newAddress: selected === '__nueva__' || !selected ? '' : selected,
+                              // Carga la referencia y costo
+                              referenciaDomicilio: selected === '__nueva__' || !selected ? '' : (foundDir?.referencia || ''),
+                              costoDomicilio: selected === '__nueva__' || !selected ? '' : (foundDir?.costoDomicilio?.toString() || ''),
                             });
                           }}
                           style={{ color: 'white' }}

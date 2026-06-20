@@ -20,7 +20,17 @@ export class DomicilioCreationService {
 		return (tipoPedido || 'mesa') === 'domicilio';
 	}
 
-	async upsertCliente(telefono: string, nombre?: string, direccion?: string, referencia?: string, latitud?: number, longitud?: number, manager?: EntityManager): Promise<Clientes> {
+	async upsertCliente(
+		telefono: string,
+		nombre?: string,
+		direccion?: string,
+		referencia?: string,
+		latitud?: number,
+		longitud?: number,
+		manager?: EntityManager,
+		direccionId?: number,
+		costoDomicilio?: number,
+	): Promise<Clientes> {
 		const cRepo = manager ? manager.getRepository(Clientes) : this.clientesRepo;
 		const dRepo = manager ? manager.getRepository(ClienteDirecciones) : this.direccionesRepo;
 
@@ -33,23 +43,37 @@ export class DomicilioCreationService {
 			await cRepo.save(cliente);
 		}
 
-		// Autoguardar dirección si no existe
+		// Autoguardar o actualizar dirección
 		if (direccion?.trim()) {
 			const trimmed = direccion.trim();
-			const existe = await dRepo.findOne({
-				where: {telefonoCliente: telefono, direccion: trimmed},
-			});
+			let existe: ClienteDirecciones | null = null;
+
+			if (direccionId) {
+				existe = await dRepo.findOne({
+					where: {id: direccionId, telefonoCliente: telefono},
+				});
+			}
+
+			if (!existe) {
+				existe = await dRepo.findOne({
+					where: {telefonoCliente: telefono, direccion: trimmed},
+				});
+			}
+
 			if (!existe) {
 				await dRepo.save({
 					telefonoCliente: telefono,
 					direccion: trimmed,
 					referencia: referencia,
+					costoDomicilio: costoDomicilio,
 					latitud: latitud,
 					longitud: longitud,
 				});
 			} else {
 				let updated = false;
+				if (existe.direccion !== trimmed) { existe.direccion = trimmed; updated = true; }
 				if (referencia !== undefined && existe.referencia !== referencia) { existe.referencia = referencia; updated = true; }
+				if (costoDomicilio !== undefined && existe.costoDomicilio !== costoDomicilio) { existe.costoDomicilio = costoDomicilio; updated = true; }
 				if (latitud !== undefined && existe.latitud !== latitud) { existe.latitud = latitud; updated = true; }
 				if (longitud !== undefined && existe.longitud !== longitud) { existe.longitud = longitud; updated = true; }
 				if (updated) await dRepo.save(existe);
@@ -109,7 +133,7 @@ export class DomicilioCreationService {
 	async procesarDomicilio(data: CreateOrdenesDto, facturaId: number, ordenId: number, manager?: EntityManager): Promise<void> {
 		this.validarDatosDomicilio(data);
 
-		await this.upsertCliente(data.telefonoCliente!, data.nombreCliente, data.direccionCliente, data.referenciaCliente, data.latitudCliente, data.longitudCliente, manager);
+		await this.upsertCliente(data.telefonoCliente!, data.nombreCliente, data.direccionCliente, data.referenciaCliente, data.latitudCliente, data.longitudCliente, manager, data.direccionId, data.costoDomicilio);
 		if (data.telefonoDomiciliario) {
 			await this.upsertDomiciliario(data.telefonoDomiciliario, manager);
 		}
@@ -152,7 +176,7 @@ export class DomicilioCreationService {
 			await repo.update(domicilio.domicilioId, updateData);
 		}
 
-		if (data.telefonoCliente !== undefined || data.nombreCliente !== undefined || data.direccionCliente !== undefined || data.referenciaCliente !== undefined || data.latitudCliente !== undefined || data.longitudCliente !== undefined) {
+		if (data.telefonoCliente !== undefined || data.nombreCliente !== undefined || data.direccionCliente !== undefined || data.referenciaCliente !== undefined || data.latitudCliente !== undefined || data.longitudCliente !== undefined || data.costoDomicilio !== undefined) {
 			await this.upsertCliente(
 				data.telefonoCliente ?? domicilio.telefono,
 				data.nombreCliente,
@@ -161,6 +185,8 @@ export class DomicilioCreationService {
 				data.latitudCliente ?? domicilio.latitud,
 				data.longitudCliente ?? domicilio.longitud,
 				manager,
+				data.direccionId,
+				data.costoDomicilio !== undefined ? Number(data.costoDomicilio) : (domicilio.costoDomicilio !== undefined ? Number(domicilio.costoDomicilio) : undefined),
 			);
 		}
 

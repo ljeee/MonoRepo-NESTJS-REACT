@@ -252,6 +252,7 @@ export interface CreateOrdenDto {
   fechaOrden?: string;
   telefonoCliente?: string;
   nombreCliente?: string;
+  direccionId?: number;
   direccionCliente?: string;
   referenciaDomicilio?: string;
   telefonoDomiciliario?: string;

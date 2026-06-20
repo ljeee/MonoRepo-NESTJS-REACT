@@ -16,6 +16,7 @@ export interface OrderFormState {
   nombreCliente: string;
   numeroMesa: string;
   selectedAddress: string;
+  selectedAddressId?: number;
   newAddress: string;
   referenciaDomicilio: string;
   telefonoDomiciliario: string;
@@ -55,6 +56,7 @@ export const defaultOrderFormState: OrderFormState = {
   nombreCliente: '',
   numeroMesa: '',
   selectedAddress: '',
+  selectedAddressId: undefined,
   newAddress: '',
   referenciaDomicilio: '',
   telefonoDomiciliario: '',

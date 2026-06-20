@@ -38,6 +38,11 @@ export class CreateOrdenesDto {
 	@IsString()
 	direccionCliente: string;
 
+	@ApiProperty({example: 12, required: false, description: 'ID de la dirección a actualizar/corregir'})
+	@IsOptional()
+	@IsNumber()
+	direccionId?: number;
+
 	@ApiProperty({example: 'Casa azul', required: false, description: 'Referencia del domicilio del cliente'})
 	@IsOptional()
 	@IsString()
