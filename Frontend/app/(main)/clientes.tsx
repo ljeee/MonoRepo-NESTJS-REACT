@@ -441,13 +441,6 @@ export default function ClientesScreen() {
               />
             </View>
           </View>
-              title={formMode === 'create' ? 'Crear Cliente' : 'Guardar Cambios'}
-              onPress={handleSave}
-              variant="primary"
-              icon="content-save-outline"
-              loading={formLoading}
-            />
-          </View>
         </Card>
       )}
 
