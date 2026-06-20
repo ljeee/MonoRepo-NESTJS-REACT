@@ -120,6 +120,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const [loading, setLoading] = useState(false);
   const { client, fetchClient } = useClientByPhone();
   const { debounce } = useAntiDebounce();
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
 
   // ==================== CARRITO ====================
   const addToCart = useCallback((producto: Producto, variante: ProductoVariante, sabores?: string[], base?: 'leche' | 'agua') => {
@@ -556,56 +557,53 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                 <View className="flex-row flex-wrap -mx-1">
                   <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
                     <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
-
-                    {/* Picker de guardadas — solo si el cliente tiene historial */}
-                    {(client?.direcciones?.length ?? 0) > 0 && (
-                      <View className="bg-black/20 rounded-lg border border-white/5 min-h-[44px] justify-center overflow-hidden mb-2">
-                        <Picker
-                          selectedValue={
-                            // Si el usuario editó manualmente (newAddress difiere del selectedAddress),
-                            // mostrar placeholder para no confundir. Solo muestra la selección intacta.
-                            formState.selectedAddress && formState.selectedAddress !== '__nueva__' && formState.newAddress === formState.selectedAddress
-                              ? formState.selectedAddress
-                              : formState.selectedAddress === '__nueva__' ? '__nueva__' : ''
-                          }
-                          onValueChange={(val) => {
-                            const selected = val as string;
-                            const foundDir = client?.direcciones?.find(d => d.direccion === selected);
-                            updateForm({
-                              selectedAddress: selected,
-                              selectedAddressId: selected === '__nueva__' || !selected ? undefined : foundDir?.id,
-                              // Carga la dirección en el TextInput; vacía si eligió "Nueva"
-                              newAddress: selected === '__nueva__' || !selected ? '' : selected,
-                              // Carga la referencia y costo
-                              referenciaDomicilio: selected === '__nueva__' || !selected ? '' : (foundDir?.referencia || ''),
-                              costoDomicilio: selected === '__nueva__' || !selected ? '' : (foundDir?.costoDomicilio?.toString() || ''),
-                            });
-                          }}
-                          style={{ color: 'white' }}
-                          itemStyle={{ color: 'white', fontSize: 13 }}
-                          dropdownIconColor="#94A3B8"
-                        >
-                          <PickerItem label="Elegir dirección guardada..." value="" color="#64748B" />
+                    <View style={{ position: 'relative' }}>
+                      <TextInput
+                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                        value={formState.newAddress}
+                        onFocus={() => setShowAddressDropdown(true)}
+                        onBlur={() => {
+                          const t = setTimeout(() => setShowAddressDropdown(false), 200);
+                          pendingTimers.current.push(t);
+                        }}
+                        onChangeText={(val) => {
+                          updateForm({
+                            newAddress: val,
+                            selectedAddressId: val.trim() === '' ? undefined : formState.selectedAddressId,
+                          });
+                        }}
+                        placeholder="Escribe o edita la dirección..."
+                        placeholderTextColor="#475569"
+                      />
+                      {showAddressDropdown && (client?.direcciones?.length ?? 0) > 0 && (
+                        <View style={{
+                          position: 'absolute', top: 50, left: 0, right: 0, zIndex: 9999,
+                          backgroundColor: '#1E293B', borderRadius: 12,
+                          borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+                          overflow: 'hidden', elevation: 10,
+                        }}>
                           {(client?.direcciones ?? []).map((dir) => (
-                            <PickerItem key={dir.id} label={dir.direccion} value={dir.direccion} />
+                            <TouchableOpacity
+                              key={dir.id}
+                              style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}
+                              onPress={() => {
+                                updateForm({
+                                  selectedAddress: dir.direccion,
+                                  selectedAddressId: dir.id,
+                                  newAddress: dir.direccion,
+                                  referenciaDomicilio: dir.referencia || '',
+                                  costoDomicilio: dir.costoDomicilio?.toString() || '',
+                                });
+                                setShowAddressDropdown(false);
+                              }}
+                            >
+                              <Text style={{ color: '#F8FAFC', fontWeight: 'bold', fontSize: 13 }}>{dir.direccion}</Text>
+                              {dir.referencia ? <Text style={{ color: '#64748B', fontSize: 11 }}>Ref: {dir.referencia}</Text> : null}
+                            </TouchableOpacity>
                           ))}
-                          <PickerItem label="+ Nueva dirección" value="__nueva__" color="#F5A524" />
-                        </Picker>
-                      </View>
-                    )}
-
-                    {/* TextInput siempre editable — para ajustar o ingresar dirección */}
-                    <TextInput
-                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                      value={formState.newAddress}
-                      onChangeText={(val) => {
-                        // Solo actualiza newAddress — NO tocar selectedAddress para evitar
-                        // el loop reactivo: Picker.onChange → newAddress = '' → usuario pierde lo que escribe
-                        updateForm({ newAddress: val });
-                      }}
-                      placeholder={(client?.direcciones?.length ?? 0) > 0 ? 'O escribe / edita la dirección...' : 'Calle...'}
-                      placeholderTextColor="#475569"
-                    />
+                        </View>
+                      )}
+                    </View>
                   </View>
 
                   <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
