@@ -554,8 +554,8 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
 
               {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
               {formState.tipoPedido === 'domicilio' && (
-                <View className="flex-row flex-wrap -mx-1">
-                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
+                <View className="flex-row flex-wrap -mx-1" style={{ zIndex: 10, elevation: 10 }}>
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`} style={{ zIndex: 100, elevation: 100 }}>
                     <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
                     <View style={{ position: 'relative' }}>
                       <TextInput
