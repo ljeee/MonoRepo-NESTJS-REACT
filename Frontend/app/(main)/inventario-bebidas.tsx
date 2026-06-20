@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ActivityIndicator, TextInput as RNTextInput, FlatList } from 'react-native';
+import { ActivityIndicator, TextInput as RNTextInput, FlatList, RefreshControl } from 'react-native';
 import { View, Text, TouchableOpacity } from '../../tw';
 import { useApi, useProductos } from '@/src/shared';
 import type { Producto, ProductoVariante } from '@/src/shared';
@@ -167,6 +167,13 @@ export default function InventarioBebidasScreen() {
     const [stockMap, setStockMap] = useState<StockMap>({});
     const [arrivals, setArrivals] = useState<ArrivalMap>({});
     const [savingId, setSavingId] = useState<number | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchProductos();
+        setRefreshing(false);
+    }, [fetchProductos]);
 
     useEffect(() => {
         void fetchProductos();
@@ -260,6 +267,14 @@ export default function InventarioBebidasScreen() {
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={{ paddingBottom: 60 }}
                 ListFooterComponent={hasData ? <BebidaMovimientosWidget /> : null}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor="#F5A524"
+                        colors={['#F5A524']}
+                    />
+                }
                 renderItem={({ item }) => {
                     if (item.type === 'header') {
                         return (

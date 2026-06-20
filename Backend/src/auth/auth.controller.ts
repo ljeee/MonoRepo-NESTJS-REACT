@@ -1,8 +1,10 @@
-import {Body, Controller, Get, Post, Request, UseGuards} from '@nestjs/common';
+import {Body, Controller, Get, Param, Patch, Post, Request, UseGuards} from '@nestjs/common';
 import {ApiBearerAuth, ApiTags} from '@nestjs/swagger';
 import {AuthService} from './auth.service';
 import {LoginDto} from './dto/login.dto';
 import {RegisterDto} from './dto/register.dto';
+import {LoginClienteDto} from './dto/login-cliente.dto';
+import {RegisterClienteDto} from './dto/register-cliente.dto';
 import {AuthResponseDto} from './dto/auth-response.dto';
 import {RefreshTokenDto} from './dto/refresh-token.dto';
 import {Public} from './decorators/public.decorator';
@@ -20,6 +22,18 @@ export class AuthController {
 	@Post('login')
 	async login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
 		return this.authService.login(dto);
+	}
+
+	@Public()
+	@Post('cliente/login')
+	async loginCliente(@Body() dto: LoginClienteDto): Promise<AuthResponseDto> {
+		return this.authService.loginCliente(dto);
+	}
+
+	@Public()
+	@Post('cliente/registro')
+	async registerCliente(@Body() dto: RegisterClienteDto): Promise<AuthResponseDto> {
+		return this.authService.registerCliente(dto);
 	}
 
 	@Public()
@@ -50,5 +64,16 @@ export class AuthController {
 	@Post('register')
 	async register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
 		return this.authService.register(dto);
+	}
+
+	@ApiBearerAuth()
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(Role.Admin)
+	@Patch('users/:id')
+	async updateUser(
+		@Param('id') id: string,
+		@Body() dto: { name?: string; username?: string; password?: string },
+	): Promise<any> {
+		return this.authService.updateUser(id, dto);
 	}
 }

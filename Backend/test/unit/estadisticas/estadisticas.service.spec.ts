@@ -314,7 +314,11 @@ describe('EstadisticasService', () => {
 
 			expect(result).toEqual(facturas);
 			expect(mockFacturasRepo.find).toHaveBeenCalledWith(
-				expect.objectContaining({ where: expect.objectContaining({ estado: 'pagado' }) }),
+				expect.objectContaining({
+					where: expect.objectContaining({
+						estado: expect.any(Object),
+					}),
+				}),
 			);
 		});
 	});

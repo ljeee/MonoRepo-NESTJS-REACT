@@ -7,7 +7,7 @@ import { ProductoVariantes } from '../../../src/productos/esquemas/producto-vari
 
 const makeQb = () => {
 	const qb: any = {};
-	['leftJoinAndSelect', 'orderBy', 'take', 'skip', 'andWhere'].forEach(m => {
+	['leftJoinAndSelect', 'orderBy', 'addOrderBy', 'take', 'skip', 'andWhere'].forEach(m => {
 		qb[m] = jest.fn().mockReturnValue(qb);
 	});
 	qb.getMany = jest.fn();
@@ -33,10 +33,25 @@ describe('ProductosService', () => {
 		mockVariantesRepo = {
 			create: jest.fn(),
 			save: jest.fn(),
-			find: jest.fn(),
+			find: jest.fn().mockResolvedValue([]),
 			findOne: jest.fn(),
 			update: jest.fn(),
 			delete: jest.fn(),
+		};
+
+		const mockManager = {
+			getRepository: jest.fn((entity) => {
+				if (entity === ProductoVariantes) return mockVariantesRepo;
+				return mockRepo;
+			}),
+			query: jest.fn().mockResolvedValue(undefined),
+		};
+
+		mockRepo.manager = {
+			transaction: jest.fn((cb) => cb(mockManager)),
+		};
+		mockVariantesRepo.manager = {
+			transaction: jest.fn((cb) => cb(mockManager)),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
@@ -60,7 +75,7 @@ describe('ProductosService', () => {
 			const result = await service.findAll();
 
 			expect(result).toEqual(list);
-			expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('p.variantes', 'variantes');
+			expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('p.variantes', 'variantes', 'variantes.activo = true');
 		});
 
 		it('filtra por activo cuando se especifica', async () => {

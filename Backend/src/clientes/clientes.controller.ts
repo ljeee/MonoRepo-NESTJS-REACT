@@ -3,6 +3,12 @@ import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {ClientesService} from "./clientes.service";
 import {CreateClientesDto} from "./esquemas/clientes.dto";
 import {Public} from '../auth/decorators/public.decorator';
+import {UseGuards} from '@nestjs/common';
+import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard';
+import {RolesGuard} from '../auth/guards/roles.guard';
+import {Roles} from '../auth/decorators/roles.decorator';
+import {Role} from '../auth/roles.enum';
+import {ApiBearerAuth} from '@nestjs/swagger';
 
 @Public()
 @ApiTags('Clientes')
@@ -55,8 +61,24 @@ export class ClientesController {
 
 	@Post(":telefono/direcciones")
 	@ApiOperation({ summary: 'Agregar dirección a un cliente (auto-deduplica)' })
-	addDireccion(@Param("telefono") telefono: string, @Body('direccion') direccion: string) {
-		return this.service.addDireccion(telefono, direccion);
+	addDireccion(
+		@Param("telefono") telefono: string, 
+		@Body() dto: {direccion: string; referencia?: string; costoDomicilio?: number; latitud?: number; longitud?: number}
+	) {
+		return this.service.addDireccion(telefono, dto);
+	}
+
+	@ApiBearerAuth()
+	@UseGuards(JwtAuthGuard, RolesGuard)
+	@Roles(Role.Admin, Role.Cajero)
+	@Post(":telefono/reset-password")
+	@ApiOperation({ summary: 'Restablecer contraseña del cliente por parte del administrador' })
+	@ApiResponse({ status: 200, description: 'Contraseña restablecida correctamente.' })
+	resetPassword(
+		@Param("telefono") telefono: string, 
+		@Body('newPassword') newPassword?: string
+	) {
+		return this.service.resetPassword(telefono, newPassword);
 	}
 
 	@Delete("direcciones/:id")

@@ -18,10 +18,11 @@ import { useBreakpoint } from '../../styles/responsive';
 interface ProductoEdit {
     _clientId: string;
     varianteId?: number;
-    tipo: string;       // nombre legible para display
+    tipo: string;       // nombre legible para display (puede incluir sabores embebidos)
     cantidad: number;
     precioUnitario: number;
     sabores?: string[];
+    base?: 'leche' | 'agua';  // base de jugo, para re-enviar al backend
     tamano?: string;
 }
 
@@ -220,14 +221,32 @@ export default function EditarOrdenScreen() {
             setOrden(o);
             setObservaciones(o.observaciones || '');
             // Map existing products to ProductoEdit
-            const mapped: ProductoEdit[] = (o.productos || []).map((p: any) => ({
-                _clientId: nextId(),
-                varianteId: p.varianteId || p.variante?.varianteId || p.productoObj?.variantes?.[0]?.varianteId,
-                tipo: p.producto || `${p.productoObj?.productoNombre || ''} ${p.variante?.nombre || ''}`.trim() || 'Producto',
-                cantidad: p.cantidad || 1,
-                precioUnitario: p.precioUnitario ?? p.variante?.precio ?? p.productoObj?.precio ?? 0,
-                sabores: [p.sabor1, p.sabor2, p.sabor3].filter(Boolean) as string[],
-            }));
+            const mapped: ProductoEdit[] = (o.productos || []).map((p: any) => {
+                const productoStr: string = p.producto || `${p.productoObj?.productoNombre || ''} ${p.variante?.nombre || ''}`.trim() || 'Producto';
+
+                // Extraer base (leche/agua) — siempre al final del string
+                const baseMatch = productoStr.match(/\s*\((leche|agua)\)\s*$/i);
+                const base = baseMatch
+                    ? (baseMatch[1].toLowerCase() as 'leche' | 'agua')
+                    : undefined;
+
+                // Extraer sabores — en el paréntesis que queda tras quitar la base
+                const textSinBase = productoStr.replace(/\s*\((leche|agua)\)\s*$/i, '').trim();
+                const saboresMatch = textSinBase.match(/\(([^)]+)\)\s*$/);
+                const sabores = saboresMatch
+                    ? saboresMatch[1].split(/\s*\+\s*/).map((s: string) => s.trim()).filter(Boolean)
+                    : [];
+
+                return {
+                    _clientId: nextId(),
+                    varianteId: p.varianteId || p.variante?.varianteId || p.productoObj?.variantes?.[0]?.varianteId,
+                    tipo: productoStr,
+                    cantidad: p.cantidad || 1,
+                    precioUnitario: p.precioUnitario ?? p.variante?.precio ?? p.productoObj?.precio ?? 0,
+                    sabores,
+                    base,
+                };
+            });
             setProducts(mapped);
         }).catch(() => setError('Error al cargar la orden')).finally(() => setLoadingOrden(false));
     }, [ordenId]);
@@ -246,15 +265,27 @@ export default function EditarOrdenScreen() {
                 observaciones: observaciones || undefined,
                 productos: products
                     .filter(p => p.varianteId !== undefined && p.varianteId !== null)
-                    .map((p: ProductoEdit) => ({
-                        producto: p.tipo, // For frontend type compatibility
-                        tipo: p.tipo,     // For backend DTO compatibility
-                        varianteId: Number(p.varianteId),
-                        cantidad: p.cantidad,
-                        sabor1: p.sabores?.[0],
-                        sabor2: p.sabores?.[1],
-                        sabor3: p.sabores?.[2],
-                    })) as any,
+                    .map((p: ProductoEdit) => {
+                        // El campo `tipo` tiene los sabores/base embebidos como sufijo:
+                        // "Pizza - Grande (Hawaiana + Napolitana)" o "Jugo - Naranja (Leche)"
+                        // El backend los re-construye desde sabor1/2/3 + base, así que
+                        // quitamos TODOS los sufijos de paréntesis para evitar duplicación.
+                        let tipoBase = (p.tipo || '').trim();
+                        // Quitar base al final, si existe
+                        tipoBase = tipoBase.replace(/\s*\((leche|agua)\)\s*$/i, '').trim();
+                        // Quitar sabores al final (último paréntesis restante)
+                        tipoBase = tipoBase.replace(/\s*\([^)]+\)\s*$/, '').trim();
+                        return {
+                            producto: tipoBase,
+                            tipo: tipoBase,
+                            varianteId: Number(p.varianteId),
+                            cantidad: p.cantidad,
+                            sabor1: p.sabores?.[0],
+                            sabor2: p.sabores?.[1],
+                            sabor3: p.sabores?.[2],
+                            base: p.base ?? undefined,
+                        };
+                    }) as any,
             });
             showToast('Orden actualizada correctamente', 'success');
             setTimeout(() => router.back(), 1000); // Volver al detalle original

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, RefreshControl } from 'react-native';
 import { View, Text } from '../../tw';
 import {
     useFacturasRango,
@@ -53,6 +53,7 @@ export default function BalanceFechasScreen() {
     const [metodoFilter, setMetodoFilter] = useState<MethodFilterValue>('todos');
     const [nombreFilter, setNombreFilter] = useState('');
     const [updatingId, setUpdatingId] = useState<number | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
 
     // ── Data hooks ─────────────────────────────────────────────────────────────
     const {
@@ -79,6 +80,19 @@ export default function BalanceFechasScreen() {
             setMetodoStats(mp);
         } catch { /* silent */ }
     }, [api]);
+
+    const handleRefresh = useCallback(async () => {
+        if (!hasSearched) return;
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                searchF(searchedFrom, searchedTo, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter),
+                fetchGastos(searchedFrom, searchedTo, 1),
+                fetchStats(searchedFrom, searchedTo)
+            ]);
+        } catch { /* silent */ }
+        setRefreshing(false);
+    }, [hasSearched, searchedFrom, searchedTo, searchF, fetchGastos, fetchStats, estadoFilter, nombreFilter, metodoFilter]);
 
     const handleSearch = useCallback((fromOverride?: string, toOverride?: string) => {
         const fromInput = fromOverride ?? from;
@@ -193,7 +207,18 @@ export default function BalanceFechasScreen() {
     };
 
     return (
-        <PageContainer scrollable maxWidthVariant="full">
+        <PageContainer
+            scrollable
+            maxWidthVariant="full"
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    tintColor="#F5A524"
+                    colors={['#F5A524']}
+                />
+            }
+        >
             <View className="px-4 pb-20">
 
                 <PageHeader

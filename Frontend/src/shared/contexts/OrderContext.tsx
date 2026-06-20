@@ -17,6 +17,7 @@ export interface OrderFormState {
   numeroMesa: string;
   selectedAddress: string;
   newAddress: string;
+  referenciaDomicilio: string;
   telefonoDomiciliario: string;
   costoDomicilio: string;
   metodo?: string;
@@ -55,6 +56,7 @@ export const defaultOrderFormState: OrderFormState = {
   numeroMesa: '',
   selectedAddress: '',
   newAddress: '',
+  referenciaDomicilio: '',
   telefonoDomiciliario: '',
   costoDomicilio: '',
   observaciones: '',

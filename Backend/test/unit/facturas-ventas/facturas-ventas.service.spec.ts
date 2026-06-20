@@ -4,6 +4,7 @@ import { NotFoundException } from '@nestjs/common';
 import { FacturasVentasService } from '../../../src/facturas-ventas/facturas-ventas.service';
 import { FacturasVentas } from '../../../src/facturas-ventas/esquemas/facturas-ventas.entity';
 import { CajaMovimientosService } from '../../../src/caja-movimientos/caja-movimientos.service';
+import { EstadisticasGateway } from '../../../src/estadisticas/estadisticas.gateway';
 
 const makeQb = () => ({
 	leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -21,6 +22,7 @@ describe('FacturasVentasService', () => {
 	let qb: ReturnType<typeof makeQb>;
 	let mockRepo: any;
 	let mockCajaMovimientosService: any;
+	let mockEstadisticasGateway: any;
 
 	beforeEach(async () => {
 		qb = makeQb();
@@ -38,11 +40,16 @@ describe('FacturasVentasService', () => {
 			registrarEntrada: jest.fn().mockResolvedValue(undefined),
 		};
 
+		mockEstadisticasGateway = {
+			emitirActualizacionStats: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				FacturasVentasService,
 				{ provide: getRepositoryToken(FacturasVentas), useValue: mockRepo },
 				{ provide: CajaMovimientosService, useValue: mockCajaMovimientosService },
+				{ provide: EstadisticasGateway, useValue: mockEstadisticasGateway },
 			],
 		}).compile();
 
@@ -233,56 +240,23 @@ describe('FacturasVentasService', () => {
 			expect(mockRepo.update).toHaveBeenCalledWith(1, { clienteNombre: 'Pedro' });
 		});
 
-		it('usa transacción cuando el estado cambia a pagada', async () => {
-			const updateQb = {
-				update: jest.fn().mockReturnThis(),
-				set: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({}),
-			};
-			const facturasRepo = {
-				update: jest.fn().mockResolvedValue({ affected: 1 }),
-				findOne: jest.fn().mockResolvedValue({ facturaId: 1, estado: 'pagada' }),
-			};
-			const ordenesRepo = {
-				createQueryBuilder: jest.fn(() => updateQb),
-			};
-			mockRepo.manager.transaction.mockImplementation(async (cb: Function) =>
-				cb({
-					getRepository: jest.fn()
-						.mockReturnValueOnce(facturasRepo)
-						.mockReturnValueOnce(ordenesRepo),
-				}),
+		it('actualiza factura y registra caja cuando el estado cambia a pagada', async () => {
+			mockRepo.update.mockResolvedValue({ affected: 1 });
+			const facturaObj = { facturaId: 1, estado: 'pagada', total: 30000, clienteNombre: 'Pedro' };
+			mockRepo.findOne.mockResolvedValue(facturaObj);
+
+			const result = await service.update(1, {
+				estado: 'pagada',
+				metodo: 'efectivo',
+				denominaciones: { 50000: 1 },
+				pagoEfectivo: 50000,
+			});
+
+			expect(mockRepo.update).toHaveBeenCalledWith(1, expect.objectContaining({ estado: 'pagada' }));
+			expect(mockCajaMovimientosService.registrarEntrada).toHaveBeenCalledWith(
+				expect.objectContaining({ facturaVentaId: 1, metodo: 'efectivo' })
 			);
-
-			const result = await service.update(1, { estado: 'pagada', metodo: 'efectivo' });
-
-			expect(facturasRepo.update).toHaveBeenCalledWith(1, expect.objectContaining({ estado: 'pagada' }));
-			expect(updateQb.execute).toHaveBeenCalled();
-			expect(result).toEqual({ facturaId: 1, estado: 'pagada' });
-		});
-
-		it('marca las ordenes como completadas al pagar la factura', async () => {
-			const updateQb = {
-				update: jest.fn().mockReturnThis(),
-				set: jest.fn().mockReturnThis(),
-				where: jest.fn().mockReturnThis(),
-				andWhere: jest.fn().mockReturnThis(),
-				execute: jest.fn().mockResolvedValue({}),
-			};
-			const facturasRepo = {
-				update: jest.fn().mockResolvedValue({}),
-				findOne: jest.fn().mockResolvedValue({ facturaId: 1 }),
-			};
-			const ordenesRepo = { createQueryBuilder: jest.fn(() => updateQb) };
-			mockRepo.manager.transaction.mockImplementation(async (cb: Function) =>
-				cb({ getRepository: jest.fn().mockReturnValueOnce(facturasRepo).mockReturnValueOnce(ordenesRepo) }),
-			);
-
-			await service.update(1, { estado: 'pagada' });
-
-			expect(updateQb.set).toHaveBeenCalledWith({ estadoOrden: 'completada' });
+			expect(result).toEqual(facturaObj);
 		});
 	});
 

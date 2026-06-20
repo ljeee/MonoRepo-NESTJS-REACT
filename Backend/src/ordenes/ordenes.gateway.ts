@@ -46,4 +46,8 @@ export class OrdenesGateway implements OnGatewayConnection, OnGatewayDisconnect 
 	emitirHandoffWhatsapp(data: any) {
 	    this.server.emit('whatsapp:handoff', data);
 	}
+
+	emitirActualizacionStats(data?: any) {
+		this.server.emit('stats:update', data || { timestamp: Date.now() });
+	}
 }

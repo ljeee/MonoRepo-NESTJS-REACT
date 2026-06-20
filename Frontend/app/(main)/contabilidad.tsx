@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Platform, TouchableOpacity, RefreshControl } from 'react-native';
 import { View, Text, ScrollView } from '../../tw';
 import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@/src/shared';
 import { useFacturasPagosRango } from '@/src/shared';
@@ -242,6 +242,7 @@ export default function ContabilidadScreen() {
     const [validRange, setValidRange] = useState({ from: '', to: '' });
     const [exportLoading, setExportLoading] = useState('');
     const [searched, setSearched] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const {
         data: facturas, loading: loadingF, error: errorF,
@@ -260,6 +261,25 @@ export default function ContabilidadScreen() {
     const [periodStats, setPeriodStats] = useState<ResumenPeriodo | null>(null);
     const [metodosData, setMetodosData] = useState<any[]>([]);
     const [loadingStats, setLoadingStats] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        if (!searched || !validRange.from || !validRange.to) return;
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                searchF(validRange.from, validRange.to),
+                fetchGastos(validRange.from, validRange.to, 1),
+                api.estadisticas.resumenPeriodo(validRange.from, validRange.to)
+                    .then((statsRes) => setPeriodStats(statsRes)),
+                api.estadisticas.metodosPago(validRange.from, validRange.to)
+                    .then((metodosRes) => setMetodosData(metodosRes))
+            ]);
+        } catch (err) {
+            console.error('Error refreshing contabilidad:', err);
+        } finally {
+            setRefreshing(false);
+        }
+    }, [searched, validRange, searchF, fetchGastos, api]);
 
     const fetchAllPeriod = useCallback(async (f?: string, t?: string) => {
         const queryFrom = f ?? validRange.from;
@@ -352,7 +372,16 @@ export default function ContabilidadScreen() {
 
     if (!searched) {
         return (
-            <PageContainer>
+            <PageContainer
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={handleRefresh}
+                        tintColor="#F5A524"
+                        colors={['#F5A524']}
+                    />
+                }
+            >
                 <PageHeader title="Contabilidad" subtitle="Libro contable" icon="book-account-outline" />
                 {DateBar}
                 <View style={{ alignItems: 'center', paddingTop: 60, opacity: 0.6 }}>
@@ -367,7 +396,16 @@ export default function ContabilidadScreen() {
     }
 
     return (
-        <PageContainer>
+        <PageContainer
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    tintColor="#F5A524"
+                    colors={['#F5A524']}
+                />
+            }
+        >
             <PageHeader
                 title="Contabilidad"
                 subtitle="Libro contable"

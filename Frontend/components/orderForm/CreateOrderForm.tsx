@@ -6,7 +6,7 @@ import { ScrollView, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingVi
 import { Badge, Picker, PickerItem } from '../ui';
 import { api } from '../../services/api';
 import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce } from '@/src/shared';
-import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente } from '@/src/shared';
+import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente, ClienteDireccion } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import CartPanel, { CartItem } from './CartPanel';
 import MenuPicker from './MenuPicker';
@@ -109,6 +109,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
   const [clientesList, setClientesList] = useState<Cliente[]>([]);
   const [nameSuggestions, setNameSuggestions] = useState<Cliente[]>([]);
+  const [addressSuggestions, setAddressSuggestions] = useState<ClienteDireccion[]>([]);
 
   const fetchDomiciliarios = useCallback(async () => {
     try {
@@ -171,7 +172,6 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   }, [formState.cart, updateForm]);
 
   // ==================== EFFECTS ====================
-  const hasClienteDirecciones = !!(client?.direcciones?.length);
 
   // Buscar cliente solo cuando hay 10 dígitos y es domicilio
   useEffect(() => {
@@ -214,6 +214,13 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
     );
   }, [formState.nombreCliente, formState.tipoPedido, clientesList]);
 
+  // Limpiar sugerencias de dirección cuando no aplican
+  useEffect(() => {
+    if (formState.tipoPedido !== 'domicilio') {
+      setAddressSuggestions([]);
+    }
+  }, [formState.tipoPedido]);
+
   const resolvedNombreCliente =
     formState.tipoPedido === 'domicilio'
       ? (formState.nombreCliente || client?.clienteNombre || '')
@@ -237,9 +244,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         return;
       }
 
-      const direccion = hasClienteDirecciones
-        ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
-        : formState.newAddress;
+      const direccion = formState.newAddress;
 
       if (!direccion || !direccion.trim()) {
         setLoading(false);
@@ -267,11 +272,8 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       tipoPedido: formState.tipoPedido || 'mesa',
       telefonoCliente: formState.telefonoCliente || undefined,
       nombreCliente: formState.tipoPedido === 'mesa' ? formState.numeroMesa : resolvedNombreCliente,
-      direccionCliente: formState.tipoPedido === 'domicilio'
-        ? (hasClienteDirecciones
-          ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
-          : formState.newAddress)
-        : undefined,
+      direccionCliente: formState.tipoPedido === 'domicilio' ? formState.newAddress : undefined,
+      referenciaDomicilio: formState.tipoPedido === 'domicilio' && formState.referenciaDomicilio ? formState.referenciaDomicilio : undefined,
       telefonoDomiciliario: formState.telefonoDomiciliario || undefined,
       costoDomicilio: formState.tipoPedido === 'domicilio' && formState.costoDomicilio
         ? Number(formState.costoDomicilio)
@@ -321,12 +323,11 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         cantidad: i.cantidad,
         precioUnitario: i.precioUnitario,
       }));
-      const direccion = hasClienteDirecciones
-        ? (formState.selectedAddress === '__nueva__' ? formState.newAddress : formState.selectedAddress)
-        : formState.newAddress;
+      const direccion = formState.newAddress;
       sendWhatsAppDomicilio(formState.telefonoDomiciliario, {
         clienteNombre: resolvedNombreCliente,
         direccion: direccion || '',
+        referencia: formState.referenciaDomicilio || undefined,
         telefonoCliente: formState.telefonoCliente || undefined,
         productos: receiptProducts,
         total,
@@ -341,6 +342,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       nombreCliente: '',
       selectedAddress: '',
       newAddress: '',
+      referenciaDomicilio: '',
       telefonoCliente: '',
       telefonoDomiciliario: '',
       costoDomicilio: '',
@@ -453,6 +455,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                             tipoPedido,
                             selectedAddress: '',
                             newAddress: '',
+                            referenciaDomicilio: '',
                             telefonoCliente: '',
                             telefonoDomiciliario: '',
                             costoDomicilio: '',
@@ -550,41 +553,62 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                 <View className="flex-row flex-wrap -mx-1">
                   <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
                     <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
-                    {hasClienteDirecciones ? (
-                      <View className="flex-col gap-1">
-                        <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
-                          <Picker
-                            selectedValue={formState.selectedAddress}
-                            onValueChange={(val) => updateForm({ selectedAddress: val })}
-                            style={{ color: 'white' }}
-                            itemStyle={{ color: 'white', fontSize: 14 }}
-                            dropdownIconColor="#94A3B8"
-                          >
-                            <PickerItem label="Seleccionar Dirección" value="" color="#64748B" />
-                            {(client?.direcciones || [])
-                              .map((dir) => <PickerItem key={dir.id} label={dir.direccion} value={dir.direccion} />)}
-                            <PickerItem label="+ Nueva dirección..." value="__nueva__" />
-                          </Picker>
-                        </View>
-                        {formState.selectedAddress === '__nueva__' && (
-                          <TextInput
-                            className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                            value={formState.newAddress}
-                            onChangeText={(val) => updateForm({ newAddress: val })}
-                            placeholder="Calle..."
-                            placeholderTextColor="#475569"
-                          />
-                        )}
+
+                    {/* Picker de guardadas — solo si el cliente tiene historial */}
+                    {(client?.direcciones?.length ?? 0) > 0 && (
+                      <View className="bg-black/20 rounded-lg border border-white/5 min-h-[44px] justify-center overflow-hidden mb-2">
+                        <Picker
+                          selectedValue={
+                            // Si el usuario editó manualmente (newAddress difiere del selectedAddress),
+                            // mostrar placeholder para no confundir. Solo muestra la selección intacta.
+                            formState.selectedAddress && formState.selectedAddress !== '__nueva__' && formState.newAddress === formState.selectedAddress
+                              ? formState.selectedAddress
+                              : formState.selectedAddress === '__nueva__' ? '__nueva__' : ''
+                          }
+                          onValueChange={(val) => {
+                            const selected = val as string;
+                            updateForm({
+                              selectedAddress: selected,
+                              // Carga la dirección en el TextInput; vacía si eligió "Nueva"
+                              newAddress: selected === '__nueva__' || !selected ? '' : selected,
+                            });
+                          }}
+                          style={{ color: 'white' }}
+                          itemStyle={{ color: 'white', fontSize: 13 }}
+                          dropdownIconColor="#94A3B8"
+                        >
+                          <PickerItem label="Elegir dirección guardada..." value="" color="#64748B" />
+                          {(client?.direcciones ?? []).map((dir) => (
+                            <PickerItem key={dir.id} label={dir.direccion} value={dir.direccion} />
+                          ))}
+                          <PickerItem label="+ Nueva dirección" value="__nueva__" color="#F5A524" />
+                        </Picker>
                       </View>
-                    ) : (
-                      <TextInput
-                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                        value={formState.newAddress}
-                        onChangeText={(val) => updateForm({ newAddress: val })}
-                        placeholder="Calle..."
-                        placeholderTextColor="#475569"
-                      />
                     )}
+
+                    {/* TextInput siempre editable — para ajustar o ingresar dirección */}
+                    <TextInput
+                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                      value={formState.newAddress}
+                      onChangeText={(val) => {
+                        // Solo actualiza newAddress — NO tocar selectedAddress para evitar
+                        // el loop reactivo: Picker.onChange → newAddress = '' → usuario pierde lo que escribe
+                        updateForm({ newAddress: val });
+                      }}
+                      placeholder={(client?.direcciones?.length ?? 0) > 0 ? 'O escribe / edita la dirección...' : 'Calle...'}
+                      placeholderTextColor="#475569"
+                    />
+                  </View>
+
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
+                    <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Referencia (Opcional)</Text>
+                    <TextInput
+                      className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
+                      value={formState.referenciaDomicilio}
+                      onChangeText={(val) => updateForm({ referenciaDomicilio: val })}
+                      placeholder="Ej. Casa verde dos pisos"
+                      placeholderTextColor="#475569"
+                    />
                   </View>
 
                   <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/4'}`}>

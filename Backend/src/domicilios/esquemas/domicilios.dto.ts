@@ -18,6 +18,10 @@ export class CreateDomiciliosDto {
 	direccionEntrega?: string;
 
 	@IsOptional()
+	@IsString()
+	referenciaDomicilio?: string;
+
+	@IsOptional()
 	@IsNumber()
 	ordenId?: number;
 

@@ -8,7 +8,17 @@ export function mapOrdenToForm(orden: Orden): Partial<OrderFormState> {
     varianteId: p.varianteId || 0,
     precioUnitario: p.precioUnitario || 0,
     cantidad: p.cantidad || 1,
-    sabores: [p.sabor1, p.sabor2, p.sabor3].filter((s): s is string => !!s),
+    sabores: (() => {
+      // sabor1/2/3 are NOT separate DB columns — embedded in the `producto` string
+      // Format: "Pizza Grande (Sabor1 + Sabor2)" or "Jugo Naranja (Leche)"
+      // Ignore trailing base suffix "(Leche)" or "(Agua)" before extracting sabores
+      const text = (p.producto || '').replace(/\s*\((leche|agua)\)\s*$/i, '').trim();
+      const match = text.match(/\(([^)]+)\)\s*$/);
+      if (!match) return [];
+      const parts = match[1].split(/\s*\+\s*/).map((s: string) => s.trim()).filter(Boolean);
+      // Only treat as sabores if they look like flavor names (not size descriptors)
+      return parts;
+    })(),
   }));
 
   const domicilio = orden.domicilios?.[0];

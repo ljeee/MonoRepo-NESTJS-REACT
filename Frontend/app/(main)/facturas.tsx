@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, RefreshControl } from 'react-native';
 import { View, Text, ScrollView } from '../../tw';
 import { useFacturasRango, calcStats, useApi, getLocalDateString } from '@/src/shared';
 import type { DenominacionesMap } from '@/src/shared';
@@ -38,6 +38,14 @@ export default function FacturasRangoScreen() {
   } = useFacturasRango(5000);
 
   const [localPage, setLocalPage] = useState(1);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+  }, [fetchData]);
+
   const itemsPerPage = 50;
 
   const [updating, setUpdating] = useState<number | null>(null);
@@ -194,7 +202,18 @@ export default function FacturasRangoScreen() {
      * which converts className via useCssElement (same as all other working list screens).
      */
     <PageContainer scrollable={false} contentContainerClassName="flex-1">
-      <ScrollView className="flex-1" contentContainerClassName="pb-4">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="pb-4"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#F5A524"
+            colors={['#F5A524']}
+          />
+        }
+      >
 
         <PageHeader
           title="Facturas por Fechas"
@@ -202,7 +221,7 @@ export default function FacturasRangoScreen() {
           icon="calendar-range"
           rightContent={
             <Button
-              title="Refrescar"
+              title=""
               icon="refresh"
               variant="ghost"
               size="sm"

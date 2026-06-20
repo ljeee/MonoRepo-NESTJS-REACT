@@ -9,13 +9,15 @@ import Icon from '../../components/ui/Icon';
 import { useBreakpoint } from '../../styles/responsive';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
 
-type DomicilioSinAsignar = {
+type DomicilioData = {
     domicilioId: number;
     fechaCreado: string;
     direccionEntrega?: string;
+    referenciaDomicilio?: string;
     costoDomicilio?: number;
     estadoDomicilio?: string;
     telefono?: string;
+    telefonoDomiciliarioAsignado?: string;
     factura?: {
         clienteNombre?: string;
         total?: number;
@@ -229,7 +231,8 @@ function timeAgo(dateStr: string): string {
 export default function AsignarDomiciliariosScreen() {
     const { showToast } = useToast();
     const { isMobile } = useBreakpoint();
-    const [domicilios, setDomicilios] = useState<DomicilioSinAsignar[]>([]);
+    const [domicilios, setDomicilios] = useState<DomicilioData[]>([]);
+    const [asignados, setAsignados] = useState<DomicilioData[]>([]);
     const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
     const [selectedDomiciliario, setSelectedDomiciliario] = useState<Record<number, string>>({});
     const [assigning, setAssigning] = useState<Record<number, boolean>>({});
@@ -238,11 +241,12 @@ export default function AsignarDomiciliariosScreen() {
 
     const fetchData = useCallback(async () => {
         try {
-            const [sinAsignar, todos] = await Promise.all([
-                api.domicilios.getSinAsignar(),
+            const [allDayData, todos] = await Promise.all([
+                api.domicilios.getAllDay(),
                 api.domiciliarios.getAll(),
             ]);
-            setDomicilios(sinAsignar as DomicilioSinAsignar[]);
+            setDomicilios((allDayData as DomicilioData[]).filter(d => !d.telefonoDomiciliarioAsignado));
+            setAsignados((allDayData as DomicilioData[]).filter(d => !!d.telefonoDomiciliarioAsignado));
             setDomiciliarios(todos);
         } catch {
             showToast('Error al cargar los datos', 'error');
@@ -269,11 +273,12 @@ export default function AsignarDomiciliariosScreen() {
         try {
             await api.domicilios.update(domicilioId, { telefonoDomiciliarioAsignado: telefono });
             showToast('Domiciliario asignado correctamente', 'success');
-            const entry = domicilios.find(d => d.domicilioId === domicilioId);
+            const entry = domicilios.find(d => d.domicilioId === domicilioId) || asignados.find(d => d.domicilioId === domicilioId);
             if (entry && typeof window !== 'undefined') {
                 sendWhatsAppDomicilio(telefono, {
                     clienteNombre: entry.cliente?.clienteNombre || entry.factura?.clienteNombre || 'Sin nombre',
                     direccion: entry.direccionEntrega || 'Sin dirección',
+                    referencia: entry.referenciaDomicilio || undefined,
                     telefonoCliente: entry.telefono || undefined,
                     productos: (entry.orden?.productos || []).map(p => ({
                         nombre: p.producto, cantidad: p.cantidad, precioUnitario: Number(p.precioUnitario) || 0,
@@ -283,7 +288,7 @@ export default function AsignarDomiciliariosScreen() {
                     metodo: entry.factura?.estado || 'N/A',
                 });
             }
-            setDomicilios(prev => prev.filter(d => d.domicilioId !== domicilioId));
+            void fetchData();
         } catch {
             showToast('Error al asignar el domiciliario', 'error');
         } finally {
@@ -538,6 +543,98 @@ export default function AsignarDomiciliariosScreen() {
                             </Card>
                         );
                     })}
+                </View>
+            )}
+
+            {asignados.length > 0 && (
+                <View className="mt-8 mb-6">
+                    <View className="flex-row items-center gap-3 mb-4">
+                        <Icon name="check-all" size={20} color="#10B981" />
+                        <Text className="text-white font-black text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
+                            Asignados Hoy ({asignados.length})
+                        </Text>
+                    </View>
+                    <View className="flex-row flex-wrap gap-4">
+                        {asignados.map(d => {
+                            const clienteNombre = d.cliente?.clienteNombre || d.factura?.clienteNombre || 'Sin nombre';
+                            const total = d.factura?.total;
+                            const isAssigning = !!assigning[d.domicilioId];
+                            const currentDom = domiciliarios.find(dom => dom.telefono === d.telefonoDomiciliarioAsignado);
+                            
+                            return (
+                                <Card key={d.domicilioId} className={`p-4 ${isMobile ? 'w-full' : 'min-w-[320px] max-w-[480px] flex-1'}`}>
+                                    {/* Cabecera compacta */}
+                                    <View className="flex-row justify-between mb-2">
+                                        <Text className="text-(--color-pos-primary) font-black text-xs" style={{ fontFamily: 'Space Grotesk' }}>
+                                            #{d.orden?.ordenId ?? d.domicilioId}
+                                        </Text>
+                                        <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>
+                                            {clienteNombre}
+                                        </Text>
+                                        <Text className="text-slate-400 text-xs">
+                                            {formatCurrency(total)}
+                                        </Text>
+                                    </View>
+                                    
+                                    <View className="mb-2">
+                                        <Text className="text-emerald-400 text-xs font-bold">
+                                            Entregando: {currentDom?.domiciliarioNombre || d.telefonoDomiciliarioAsignado}
+                                        </Text>
+                                    </View>
+
+                                    {/* Reasignar */}
+                                    <View className="mt-2">
+                                        <Text className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5">
+                                            Reasignar
+                                        </Text>
+                                        <View className="flex-row gap-2">
+                                            <View className="flex-1 bg-black/30 rounded-xl border border-white/10 overflow-hidden min-h-[44px] justify-center">
+                                                <Picker
+                                                    selectedValue={selectedDomiciliario[d.domicilioId] ?? d.telefonoDomiciliarioAsignado ?? ''}
+                                                    onValueChange={(val) =>
+                                                        setSelectedDomiciliario(prev => ({
+                                                            ...prev,
+                                                            [d.domicilioId]: val as string,
+                                                        }))
+                                                    }
+                                                    style={{ color: 'white' }}
+                                                    itemStyle={{ color: 'white', fontSize: 14 }}
+                                                    dropdownIconColor="#94A3B8"
+                                                >
+                                                    <PickerItem label="Seleccionar otro..." value="" color="#64748B" />
+                                                    {domiciliarios.map(dom => (
+                                                        <PickerItem key={dom.telefono} label={dom.domiciliarioNombre || dom.telefono} value={dom.telefono} />
+                                                    ))}
+                                                </Picker>
+                                            </View>
+                                            <TouchableOpacity
+                                                className={`px-4 rounded-xl items-center justify-center ${isAssigning ? 'opacity-50' : ''} ${
+                                                    selectedDomiciliario[d.domicilioId] && selectedDomiciliario[d.domicilioId] !== d.telefonoDomiciliarioAsignado
+                                                        ? 'bg-(--color-pos-primary)'
+                                                        : 'bg-white/5 border border-white/10'
+                                                }`}
+                                                onPress={() => handleAsignar(d.domicilioId)}
+                                                disabled={isAssigning || !selectedDomiciliario[d.domicilioId] || selectedDomiciliario[d.domicilioId] === d.telefonoDomiciliarioAsignado}
+                                            >
+                                                {isAssigning
+                                                    ? <ActivityIndicator size="small" color="#fff" />
+                                                    : <Icon
+                                                        name="send-outline"
+                                                        size={16}
+                                                        color={
+                                                            selectedDomiciliario[d.domicilioId] && selectedDomiciliario[d.domicilioId] !== d.telefonoDomiciliarioAsignado
+                                                                ? '#000'
+                                                                : '#475569'
+                                                        }
+                                                    />
+                                                }
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </Card>
+                            );
+                        })}
+                    </View>
                 </View>
             )}
 

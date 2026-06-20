@@ -120,16 +120,19 @@ export default function CajaMovimientosWidget({ cajaResumen, onRefresh, isLoadin
         <>
         <Card className="mb-8 p-5">
             {/* ── Cabecera ── */}
-            <View className="flex-row justify-between items-center mb-4">
-                <View className="flex-row items-center gap-3">
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
                     <Icon name="cash-register" size={20} color="#F5A524" />
-                    <Text className="text-white font-black text-base uppercase tracking-tight" style={{ fontFamily: 'Space Grotesk' }}>
+                    <Text
+                        numberOfLines={1}
+                        style={{ fontFamily: 'Space Grotesk', color: '#F8FAFC', fontSize: 14, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, flexShrink: 1 }}
+                    >
                         {title ?? 'Movimientos de Caja'}
                     </Text>
                 </View>
-                <View className="flex-row items-center gap-2">
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                     {isToday && (
-                        <Button title="Ajuste" icon="swap-horizontal" variant="ghost" size="sm" onPress={() => setShowAjusteModal(true)} disabled={isLoading} />
+                        <Button title="" icon="swap-horizontal" variant="ghost" size="sm" onPress={() => setShowAjusteModal(true)} disabled={isLoading} />
                     )}
                     <Button title="" icon="refresh" variant="ghost" size="sm" onPress={onRefresh} disabled={isLoading} />
                 </View>

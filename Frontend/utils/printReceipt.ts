@@ -158,6 +158,7 @@ export function sendWhatsAppDomicilio(
   data: {
     clienteNombre: string;
     direccion: string;
+    referencia?: string;
     telefonoCliente?: string;
     productos: ReceiptProduct[];
     total: number;
@@ -178,6 +179,7 @@ export function sendWhatsAppDomicilio(
     `Cliente: ${data.clienteNombre}`,
     data.telefonoCliente ? `Tel: ${data.telefonoCliente}` : '',
     `Direccion: ${data.direccion}`,
+    data.referencia ? `Referencia: ${data.referencia}` : '',
     '',
     'Productos:',
     productList,

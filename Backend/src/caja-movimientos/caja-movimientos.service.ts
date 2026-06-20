@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CajaMovimiento } from './esquemas/caja-movimiento.entity';
 import { getBogotaDateString } from '../common/utils/date.utils';
+import { EstadisticasGateway } from '../estadisticas/estadisticas.gateway';
 
 export interface DenominacionesMap {
     [denominacion: string]: number; // e.g. { "100000": 2, "50000": 1 }
@@ -27,6 +28,7 @@ export class CajaMovimientosService {
     constructor(
         @InjectRepository(CajaMovimiento)
         private readonly repo: Repository<CajaMovimiento>,
+        private readonly estadisticasGateway: EstadisticasGateway,
     ) {}
 
     async getMovimientos(fecha?: string, cajaOrigen: CajaOrigen = 'principal') {
@@ -59,7 +61,7 @@ export class CajaMovimientosService {
     }) {
         const fecha = data.fecha ?? getBogotaDateString();
         const total = sumarDenominaciones(data.denominaciones);
-        return this.repo.save({
+        const saved = await this.repo.save({
             fecha,
             tipo: 'entrada',
             cajaOrigen: data.cajaOrigen ?? 'principal',
@@ -71,6 +73,8 @@ export class CajaMovimientosService {
             metodo: data.metodo ?? null,
             pagoTransferencia: data.pagoTransferencia ?? null,
         });
+        this.estadisticasGateway.emitirActualizacionStats({ source: 'caja_entrada', fecha });
+        return saved;
     }
 
     async registrarSalida(data: {
@@ -98,7 +102,7 @@ export class CajaMovimientosService {
         }
 
         const total = sumarDenominaciones(data.denominaciones);
-        return this.repo.save({
+        const saved = await this.repo.save({
             fecha,
             tipo: 'salida',
             cajaOrigen,
@@ -108,6 +112,8 @@ export class CajaMovimientosService {
             facturaPagoId: data.facturaPagoId ?? null,
             descripcion: data.descripcion ?? null,
         });
+        this.estadisticasGateway.emitirActualizacionStats({ source: 'caja_salida', fecha });
+        return saved;
     }
 
     async registrarApertura(data: {
@@ -118,7 +124,7 @@ export class CajaMovimientosService {
     }) {
         const fecha = data.fecha ?? getBogotaDateString();
         const total = sumarDenominaciones(data.denominaciones);
-        return this.repo.save({
+        const saved = await this.repo.save({
             fecha,
             tipo: 'apertura',
             cajaOrigen: data.cajaOrigen ?? 'principal',
@@ -128,6 +134,8 @@ export class CajaMovimientosService {
             facturaPagoId: null,
             descripcion: data.descripcion ?? 'Apertura de caja',
         });
+        this.estadisticasGateway.emitirActualizacionStats({ source: 'caja_apertura', fecha });
+        return saved;
     }
 
     async registrarAjuste(data: {
@@ -164,7 +172,7 @@ export class CajaMovimientosService {
             }
         }
 
-        return this.repo.save({
+        const saved = await this.repo.save({
             fecha,
             tipo: data.tipo,
             cajaOrigen,
@@ -174,6 +182,8 @@ export class CajaMovimientosService {
             facturaVentaId: null,
             facturaPagoId: null,
         });
+        this.estadisticasGateway.emitirActualizacionStats({ source: 'caja_ajuste', fecha });
+        return saved;
     }
 
     async getResumen(fecha?: string, cajaOrigen: CajaOrigen = 'principal') {

@@ -7,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from '../../../src/auth/auth.service';
 import { User } from '../../../src/auth/esquemas/user.entity';
 import { Domiciliarios } from '../../../src/domiciliarios/esquemas/domiciliarios.entity';
+import { Clientes } from '../../../src/clientes/esquemas/clientes.entity';
 import { Role } from '../../../src/auth/roles.enum';
 
 jest.mock('bcrypt', () => ({
@@ -20,6 +21,7 @@ describe('AuthService', () => {
 	let service: AuthService;
 	let mockUsersRepo: any;
 	let mockDomiciliariosRepo: any;
+	let mockClientesRepo: any;
 	let mockJwtService: any;
 
 	const mockUser: Partial<User> = {
@@ -47,6 +49,12 @@ describe('AuthService', () => {
 			save: jest.fn(),
 		};
 
+		mockClientesRepo = {
+			findOne: jest.fn(),
+			create: jest.fn(),
+			save: jest.fn(),
+		};
+
 		mockJwtService = {
 			sign: jest.fn().mockReturnValue('fake-jwt-token'),
 			verify: jest.fn().mockReturnValue({ sub: 'uuid-test-1', username: 'testuser', roles: [Role.Mesero] }),
@@ -57,6 +65,7 @@ describe('AuthService', () => {
 				AuthService,
 				{ provide: getRepositoryToken(User), useValue: mockUsersRepo },
 				{ provide: getRepositoryToken(Domiciliarios), useValue: mockDomiciliariosRepo },
+				{ provide: getRepositoryToken(Clientes), useValue: mockClientesRepo },
 				{ provide: JwtService, useValue: mockJwtService },
 				{ provide: ConfigService, useValue: { get: jest.fn() } },
 			],

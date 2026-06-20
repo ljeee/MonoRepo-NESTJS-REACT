@@ -204,6 +204,7 @@ describe('InventarioCajasService', () => {
 	describe('descontarCajasParaOrden', () => {
 		it('descuenta la cantidad correcta de la caja correspondiente', async () => {
 			const caja = { id: 1, nombre: 'Caja Pizza Grande', cantidad: 20, alertaMinimo: null };
+			mockInventarioRepo.find.mockResolvedValue([caja]);
 			mockInventarioRepo.findOne.mockResolvedValue(caja);
 			mockMovimientosRepo.save.mockResolvedValue({});
 			mockInventarioRepo.save.mockImplementation(async (c: any) => c);
@@ -229,6 +230,7 @@ describe('InventarioCajasService', () => {
 		});
 
 		it('omite silenciosamente si la caja no está registrada en BD', async () => {
+			mockInventarioRepo.find.mockResolvedValue([]);
 			mockInventarioRepo.findOne.mockResolvedValue(null);
 
 			await service.descontarCajasParaOrden(
@@ -241,6 +243,7 @@ describe('InventarioCajasService', () => {
 
 		it('agrupa múltiples items del mismo tipo de caja', async () => {
 			const caja = { id: 1, nombre: 'Caja Pizza Grande', cantidad: 10, alertaMinimo: null };
+			mockInventarioRepo.find.mockResolvedValue([caja]);
 			mockInventarioRepo.findOne.mockResolvedValue(caja);
 			mockMovimientosRepo.save.mockResolvedValue({});
 			mockInventarioRepo.save.mockImplementation(async (c: any) => c);
@@ -253,8 +256,7 @@ describe('InventarioCajasService', () => {
 				10,
 			);
 
-			// Solo una llamada a findOne y save (agrupado)
-			expect(mockInventarioRepo.findOne).toHaveBeenCalledTimes(1);
+			// Solo una llamada a save (agrupado)
 			expect(caja.cantidad).toBe(7);
 		});
 	});

@@ -36,7 +36,7 @@ describe('DomiciliariosService', () => {
 
 			expect(result).toEqual(list);
 			expect(mockRepo.find).toHaveBeenCalledWith(
-				expect.objectContaining({ relations: ['domicilios'] }),
+				expect.objectContaining({ relations: expect.arrayContaining(['domicilios']) }),
 			);
 		});
 

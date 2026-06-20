@@ -162,7 +162,7 @@ services:
     networks: [pizzeria-network]
     <<: *default-logging
 
-  # # ── Cloudflare Tunnel (solo n8n dev) ─────────────────────────────────────
+  # ── Cloudflare Tunnel (solo n8n dev) ─────────────────────────────────────
   # cloudflared_n8n:
   #   image: cloudflare/cloudflared:latest
   #   container_name: pizzeria-cloudflared-n8n

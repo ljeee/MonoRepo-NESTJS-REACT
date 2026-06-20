@@ -19,6 +19,9 @@ export class Clientes {
 	@Column({name: 'correo', type: 'text', nullable: true})
 	correo: string;
 
+	@Column({name: 'password', type: 'text', nullable: true})
+	password?: string;
+
 	@OneToMany(() => ClienteDirecciones, (dir) => dir.cliente, {cascade: true, eager: true})
 	direcciones: ClienteDirecciones[];
 

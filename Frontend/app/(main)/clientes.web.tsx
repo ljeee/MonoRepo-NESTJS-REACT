@@ -125,13 +125,14 @@ interface ClienteFormModalProps {
   existingDirs: { id: number; direccion: string }[];
   newAddress: string;
   setNewAddress: (v: string) => void;
-  newAddressInput: string;
-  setNewAddressInput: (v: string) => void;
+  newAddressInput: { direccion: string, referencia: string, costoDomicilio: string };
+  setNewAddressInput: React.Dispatch<React.SetStateAction<{ direccion: string, referencia: string, costoDomicilio: string }>>;
   addingAddress: string | null;
   onSave: () => void;
   onCancel: () => void;
   onAddAddress: (tel: string) => void;
   onRemoveAddress: (id: number) => void;
+  onResetPassword: (tel: string) => void;
 }
 
 const ClienteFormModal = memo(({
@@ -152,6 +153,7 @@ const ClienteFormModal = memo(({
   onCancel,
   onAddAddress,
   onRemoveAddress,
+  onResetPassword,
 }: ClienteFormModalProps) => (
   <Modal
     visible={visible}
@@ -311,50 +313,72 @@ const ClienteFormModal = memo(({
                 </Text>
                 {existingDirs.length > 0 ? (
                   existingDirs.map((dir) => (
-                    <View
-                      key={dir.id}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        gap: 10,
-                        marginBottom: 8,
-                        backgroundColor: 'rgba(255,255,255,0.04)',
-                        padding: 10,
-                        borderRadius: 10,
-                      }}
-                    >
-                      <Icon name="map-marker-outline" size={14} color="#F5A524" />
-                      <Text className="text-slate-300 text-xs flex-1">{dir.direccion}</Text>
-                      <TouchableOpacity
-                        onPress={() => onRemoveAddress(dir.id)}
-                        className="w-8 h-8 items-center justify-center rounded-lg active:bg-red-500/20"
+                      <View
+                        key={dir.id}
+                        style={{
+                          marginBottom: 8,
+                          backgroundColor: 'rgba(255,255,255,0.04)',
+                          padding: 10,
+                          borderRadius: 10,
+                        }}
                       >
-                        <Icon name="trash-can-outline" size={14} color="#EF4444" />
-                      </TouchableOpacity>
-                    </View>
-                  ))
-                ) : (
-                  <Text className="text-slate-500 text-xs italic mb-3">Sin direcciones registradas</Text>
-                )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                          <Icon name="map-marker-outline" size={14} color="#F5A524" />
+                          <Text className="text-slate-300 text-xs flex-1 font-bold">{dir.direccion}</Text>
+                          <TouchableOpacity
+                            onPress={() => onRemoveAddress(dir.id)}
+                            className="w-8 h-8 items-center justify-center rounded-lg active:bg-red-500/20"
+                          >
+                            <Icon name="trash-can-outline" size={14} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                        {(dir.referencia || dir.costoDomicilio !== undefined) && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, paddingLeft: 24, opacity: 0.7 }}>
+                            {dir.referencia && <Text className="text-slate-400 text-[10px] italic flex-1">Ref: {dir.referencia}</Text>}
+                            {dir.costoDomicilio !== undefined && <Text className="text-slate-400 text-[10px] font-bold">Costo: ${formatCurrency(dir.costoDomicilio).replace('$', '')}</Text>}
+                          </View>
+                        )}
+                      </View>
+                    ))
+                  ) : (
+                    <Text className="text-slate-500 text-xs italic mb-3">Sin direcciones registradas</Text>
+                  )}
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                  <Input
-                    placeholder="Nueva dirección..."
-                    value={newAddressInput}
-                    onChangeText={setNewAddressInput}
-                    containerStyle={{ flex: 1, marginBottom: 0 }}
-                    size="sm"
-                  />
-                  <Button
-                    title=""
-                    icon="plus"
-                    variant="primary"
-                    size="sm"
-                    onPress={() => onAddAddress(editingPhone)}
-                    disabled={!newAddressInput.trim() || addingAddress === editingPhone}
-                    loading={addingAddress === editingPhone}
-                  />
-                </View>
+                  <View style={{ flexDirection: 'column', gap: 8, marginTop: 6, backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+                    <Input
+                      placeholder="Nueva dirección..."
+                      value={newAddressInput.direccion}
+                      onChangeText={(v) => setNewAddressInput(p => ({ ...p, direccion: v }))}
+                      containerStyle={{ marginBottom: 0 }}
+                      size="sm"
+                    />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <Input
+                        placeholder="Referencia (opcional)..."
+                        value={newAddressInput.referencia}
+                        onChangeText={(v) => setNewAddressInput(p => ({ ...p, referencia: v }))}
+                        containerStyle={{ flex: 2, marginBottom: 0 }}
+                        size="sm"
+                      />
+                      <Input
+                        placeholder="Costo ($)"
+                        value={newAddressInput.costoDomicilio}
+                        onChangeText={(v) => setNewAddressInput(p => ({ ...p, costoDomicilio: v }))}
+                        keyboardType="number-pad"
+                        containerStyle={{ flex: 1, marginBottom: 0 }}
+                        size="sm"
+                      />
+                      <Button
+                        title=""
+                        icon="plus"
+                        variant="primary"
+                        size="sm"
+                        onPress={() => onAddAddress(editingPhone)}
+                        disabled={!newAddressInput.direccion.trim() || addingAddress === editingPhone}
+                        loading={addingAddress === editingPhone}
+                      />
+                    </View>
+                  </View>
               </View>
             )}
 
@@ -378,26 +402,35 @@ const ClienteFormModal = memo(({
             )}
           </ScrollView>
 
-          {/* Footer actions */}
           <View
             style={{
               flexDirection: 'row',
-              justifyContent: 'flex-end',
-              gap: 10,
+              justifyContent: 'space-between',
+              alignItems: 'center',
               padding: 16,
               borderTopWidth: 1,
               borderTopColor: 'rgba(255,255,255,0.05)',
             }}
           >
-            <Button title="Cancelar" onPress={onCancel} variant="ghost" />
-            <Button
-              title={mode === 'create' ? 'Crear Cliente' : 'Guardar Cambios'}
-              onPress={onSave}
-              variant="primary"
-              icon="content-save-outline"
-              loading={formLoading}
-              disabled={!formData.telefono}
-            />
+            {mode === 'edit' ? (
+              <Button
+                title="Reset Password"
+                onPress={() => onResetPassword(editingPhone)}
+                variant="secondary"
+                icon="lock-reset"
+              />
+            ) : <View />}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Button title="Cancelar" onPress={onCancel} variant="ghost" />
+              <Button
+                title={mode === 'create' ? 'Crear Cliente' : 'Guardar Cambios'}
+                onPress={onSave}
+                variant="primary"
+                icon="content-save-outline"
+                loading={formLoading}
+                disabled={!formData.telefono}
+              />
+            </View>
           </View>
         </Pressable>
       </Pressable>
@@ -680,7 +713,7 @@ export default function ClientesScreen() {
 
   // ── Address state ──
   const [newAddress, setNewAddress] = useState('');
-  const [newAddressInput, setNewAddressInput] = useState('');
+  const [newAddressInput, setNewAddressInput] = useState({ direccion: '', referencia: '', costoDomicilio: '' });
   const [addingAddress, setAddingAddress] = useState<string | null>(null);
 
   // ── Delete modal ──
@@ -693,7 +726,7 @@ export default function ClientesScreen() {
     setFormError('');
     setEditingPhone('');
     setNewAddress('');
-    setNewAddressInput('');
+    setNewAddressInput({ direccion: '', referencia: '', costoDomicilio: '' });
   }, []);
 
   const openCreate = useCallback(() => {
@@ -714,7 +747,7 @@ export default function ClientesScreen() {
       correo: c.correo || '',
     });
     setFormError('');
-    setNewAddressInput('');
+    setNewAddressInput({ direccion: '', referencia: '', costoDomicilio: '' });
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -738,11 +771,15 @@ export default function ClientesScreen() {
   }, [formMode, formData, newAddress, editingPhone, resetForm, refetch]);
 
   const handleAddAddress = useCallback(async (tel: string) => {
-    if (!newAddressInput.trim()) return;
+    if (!newAddressInput.direccion.trim()) return;
     setAddingAddress(tel);
     try {
-      await api.clientes.addDireccion(tel, newAddressInput.trim());
-      setNewAddressInput('');
+      await api.clientes.addDireccion(tel, {
+        direccion: newAddressInput.direccion.trim(),
+        referencia: newAddressInput.referencia.trim() || undefined,
+        costoDomicilio: newAddressInput.costoDomicilio ? Number(newAddressInput.costoDomicilio) : undefined
+      });
+      setNewAddressInput({ direccion: '', referencia: '', costoDomicilio: '' });
       refetch();
     } catch {
       setFormError('Error al agregar dirección');
@@ -774,9 +811,19 @@ export default function ClientesScreen() {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refetch(), fetchStats()]);
+    await refetch();
+    await fetchStats();
     setRefreshing(false);
   }, [refetch, fetchStats]);
+
+  const handleResetPassword = useCallback(async (tel: string) => {
+    try {
+      await api.clientes.resetPassword(tel);
+      alert('Contraseña restablecida exitosamente. La nueva contraseña es 123456');
+    } catch {
+      alert('Error al restablecer contraseña');
+    }
+  }, []);
 
   // Derived: edit modal needs dirs from data
   const editingClient = useMemo(
@@ -1028,6 +1075,7 @@ export default function ClientesScreen() {
         onCancel={resetForm}
         onAddAddress={handleAddAddress}
         onRemoveAddress={handleRemoveAddress}
+        onResetPassword={handleResetPassword}
       />
 
       {/* ── Delete Confirmation Modal ── */}

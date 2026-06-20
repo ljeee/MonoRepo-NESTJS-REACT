@@ -5,7 +5,8 @@
   "workspaces": [
     "Frontend",
     "Desktop",
-    "Backend"
+    "Backend",
+    "RiderApp"
   ],
   "scripts": {
     "backend": "npm run start:dev --prefix Backend",

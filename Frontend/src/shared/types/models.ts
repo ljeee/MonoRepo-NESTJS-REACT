@@ -31,6 +31,10 @@ export interface ClienteDireccion {
   id: number;
   telefonoCliente: string;
   direccion: string;
+  referencia?: string;
+  costoDomicilio?: number;
+  latitud?: number;
+  longitud?: number;
 }
 
 export interface Cliente {
@@ -47,6 +51,12 @@ export interface Cliente {
 export interface Domiciliario {
   telefono: string;
   domiciliarioNombre?: string;
+  userId?: string;
+  user?: {
+    id: string;
+    username: string;
+    name?: string;
+  };
 }
 
 // ─── Ordenes ──────────────────────────────────────────────────────────────────
@@ -98,6 +108,7 @@ export interface Domicilio {
   telefono?: string;
   telefonoDomiciliarioAsignado?: string;
   direccionEntrega?: string;
+  referenciaDomicilio?: string;
   estadoDomicilio?: string;
   costoDomicilio?: number;
   assignedUserId?: string;
@@ -242,6 +253,7 @@ export interface CreateOrdenDto {
   telefonoCliente?: string;
   nombreCliente?: string;
   direccionCliente?: string;
+  referenciaDomicilio?: string;
   telefonoDomiciliario?: string;
   costoDomicilio?: number;
   observaciones?: string;

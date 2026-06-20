@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ActivityIndicator, TextInput as RNTextInput } from 'react-native';
+import { ActivityIndicator, TextInput as RNTextInput, RefreshControl } from 'react-native';
 import { View, Text, TouchableOpacity } from '../../tw';
 import { useApi, useProductos } from '@/src/shared';
 import type { Producto, ProductoVariante } from '@/src/shared';
@@ -253,6 +253,13 @@ export default function InventarioBebidasScreen() {
     const [stockMap, setStockMap] = useState<StockMap>({});
     const [arrivals, setArrivals] = useState<ArrivalMap>({});
     const [savingId, setSavingId] = useState<number | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchProductos();
+        setRefreshing(false);
+    }, [fetchProductos]);
 
     // Load products on mount
     useEffect(() => {
@@ -299,7 +306,16 @@ export default function InventarioBebidasScreen() {
     const hasData = gaseosas.length > 0 || jugos.length > 0;
 
     return (
-        <PageContainer>
+        <PageContainer
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    tintColor="#F5A524"
+                    colors={['#F5A524']}
+                />
+            }
+        >
             <PageHeader
                 title="Inventario Bebidas"
                 subtitle="Gaseosas y jugos — stock rápido"

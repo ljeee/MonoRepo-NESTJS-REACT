@@ -4,6 +4,7 @@ import {Repository} from "typeorm";
 import {Clientes} from "./esquemas/clientes.entity";
 import {ClienteDirecciones} from "./esquemas/cliente-direcciones.entity";
 import {CreateClientesDto} from "./esquemas/clientes.dto";
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class ClientesService {
@@ -75,19 +76,51 @@ export class ClientesService {
 		});
 	}
 
-	async addDireccion(telefono: string, direccion: string): Promise<ClienteDirecciones> {
-		const trimmed = direccion.trim();
+	async addDireccion(telefono: string, dto: {direccion: string; referencia?: string; costoDomicilio?: number; latitud?: number; longitud?: number}): Promise<ClienteDirecciones> {
+		const trimmed = dto.direccion.trim();
 
-		// No duplicar
+		// No duplicar, actualizar si existe
 		const existe = await this.direccionesRepo.findOne({
 			where: {telefonoCliente: telefono, direccion: trimmed},
 		});
-		if (existe) return existe;
+		
+		if (existe) {
+			let updated = false;
+			if (dto.referencia !== undefined && existe.referencia !== dto.referencia) { existe.referencia = dto.referencia; updated = true; }
+			if (dto.costoDomicilio !== undefined && existe.costoDomicilio !== dto.costoDomicilio) { existe.costoDomicilio = dto.costoDomicilio; updated = true; }
+			if (dto.latitud !== undefined && existe.latitud !== dto.latitud) { existe.latitud = dto.latitud; updated = true; }
+			if (dto.longitud !== undefined && existe.longitud !== dto.longitud) { existe.longitud = dto.longitud; updated = true; }
+			
+			if (updated) {
+				await this.direccionesRepo.save(existe);
+			}
+			return existe;
+		}
 
 		return this.direccionesRepo.save({
 			telefonoCliente: telefono,
 			direccion: trimmed,
+			referencia: dto.referencia,
+			costoDomicilio: dto.costoDomicilio,
+			latitud: dto.latitud,
+			longitud: dto.longitud,
 		});
+	}
+
+	async resetPassword(telefono: string, newPassword?: string) {
+		const cliente = await this.repo.findOne({ where: { telefono } });
+		if (!cliente) {
+			throw new NotFoundException(`Cliente con teléfono ${telefono} no encontrado`);
+		}
+
+		// Si no se provee nueva contraseña, el por defecto es el mismo teléfono
+		const passwordToSet = newPassword || telefono;
+		const hash = await bcrypt.hash(passwordToSet, 12);
+		
+		cliente.password = hash;
+		await this.repo.save(cliente);
+
+		return { success: true, message: 'Contraseña restablecida', temporaryPassword: passwordToSet };
 	}
 
 	async removeDireccion(id: number) {

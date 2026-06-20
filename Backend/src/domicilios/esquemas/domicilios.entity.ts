@@ -33,6 +33,15 @@ export class Domicilios {
 	@Column({name: 'direccion_entrega', type: 'text', nullable: true})
 	direccionEntrega: string;
 
+	@Column({name: 'referencia_domicilio', type: 'text', nullable: true})
+	referenciaDomicilio: string;
+
+	@Column({name: 'latitud', type: 'float', nullable: true})
+	latitud: number;
+
+	@Column({name: 'longitud', type: 'float', nullable: true})
+	longitud: number;
+
 	@Column({name: 'costo_domicilio', type: 'numeric', nullable: true, default: 0, transformer: new ColumnNumericTransformer()})
 	costoDomicilio: number;
 

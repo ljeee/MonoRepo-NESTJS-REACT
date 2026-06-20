@@ -7,12 +7,14 @@ import { OrdenesProductos } from '../ordenes-productos/esquemas/ordenes-producto
 import { FacturasVentas } from '../facturas-ventas/esquemas/facturas-ventas.entity';
 import { FacturasPagos } from '../facturas-pagos/esquemas/facturas-pagos.entity';
 
+import { EstadisticasGateway } from './estadisticas.gateway';
+
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([Ordenes, OrdenesProductos, FacturasVentas, FacturasPagos]),
 	],
-	providers: [EstadisticasService],
+	providers: [EstadisticasService, EstadisticasGateway],
 	controllers: [EstadisticasController],
-	exports: [EstadisticasService],
+	exports: [EstadisticasService, EstadisticasGateway],
 })
 export class EstadisticasModule {}

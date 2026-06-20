@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, TouchableOpacity, Platform, Modal } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, Platform, Modal, RefreshControl } from 'react-native';
 import { View, Text, ScrollView, TextInput } from '../../tw';
 import { api } from '../../services/api';
 import { PageContainer, PageHeader, Card, Icon, Button, ConfirmModal } from '../../components/ui';
@@ -191,6 +191,7 @@ export default function InventarioCajasScreen() {
   const [cajas, setCajas] = useState<InventarioCaja[]>([]);
   const [movimientos, setMovimientos] = useState<InventarioCajasMovimiento[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [adjustingId, setAdjustingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   
@@ -221,6 +222,12 @@ export default function InventarioCajasScreen() {
 
   useEffect(() => {
     fetchData();
+  }, [fetchData]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
   }, [fetchData]);
 
   const handleAjustar = useCallback(async (cajaId: number, delta: number, tipo: 'entrada' | 'salida') => {
@@ -271,7 +278,16 @@ export default function InventarioCajasScreen() {
   };
 
   return (
-    <PageContainer>
+    <PageContainer
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#F5A524"
+          colors={['#F5A524']}
+        />
+      }
+    >
       <PageHeader
         title="Inventario de Cajas"
         subtitle="Control de empaques múltiples"

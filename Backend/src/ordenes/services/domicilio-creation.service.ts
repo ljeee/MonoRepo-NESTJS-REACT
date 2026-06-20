@@ -20,7 +20,7 @@ export class DomicilioCreationService {
 		return (tipoPedido || 'mesa') === 'domicilio';
 	}
 
-	async upsertCliente(telefono: string, nombre?: string, direccion?: string, manager?: EntityManager): Promise<Clientes> {
+	async upsertCliente(telefono: string, nombre?: string, direccion?: string, referencia?: string, latitud?: number, longitud?: number, manager?: EntityManager): Promise<Clientes> {
 		const cRepo = manager ? manager.getRepository(Clientes) : this.clientesRepo;
 		const dRepo = manager ? manager.getRepository(ClienteDirecciones) : this.direccionesRepo;
 
@@ -43,7 +43,16 @@ export class DomicilioCreationService {
 				await dRepo.save({
 					telefonoCliente: telefono,
 					direccion: trimmed,
+					referencia: referencia,
+					latitud: latitud,
+					longitud: longitud,
 				});
+			} else {
+				let updated = false;
+				if (referencia !== undefined && existe.referencia !== referencia) { existe.referencia = referencia; updated = true; }
+				if (latitud !== undefined && existe.latitud !== latitud) { existe.latitud = latitud; updated = true; }
+				if (longitud !== undefined && existe.longitud !== longitud) { existe.longitud = longitud; updated = true; }
+				if (updated) await dRepo.save(existe);
 			}
 		}
 
@@ -68,7 +77,10 @@ export class DomicilioCreationService {
 		telefonoCliente: string,
 		telefonoDomiciliario: string | undefined,
 		direccion?: string,
+		referencia?: string,
 		costoDomicilio?: number,
+		latitud?: number,
+		longitud?: number,
 		manager?: EntityManager,
 	): Promise<Domicilios> {
 		const repo = manager ? manager.getRepository(Domicilios) : this.domiciliosRepo;
@@ -80,7 +92,10 @@ export class DomicilioCreationService {
 				telefono: telefonoCliente,
 				telefonoDomiciliarioAsignado: telefonoDomiciliario,
 				direccionEntrega: direccion,
+				referenciaDomicilio: referencia,
 				costoDomicilio: costoDomicilio || 0,
+				latitud: latitud,
+				longitud: longitud,
 			}),
 		);
 	}
@@ -94,7 +109,7 @@ export class DomicilioCreationService {
 	async procesarDomicilio(data: CreateOrdenesDto, facturaId: number, ordenId: number, manager?: EntityManager): Promise<void> {
 		this.validarDatosDomicilio(data);
 
-		await this.upsertCliente(data.telefonoCliente!, data.nombreCliente, data.direccionCliente, manager);
+		await this.upsertCliente(data.telefonoCliente!, data.nombreCliente, data.direccionCliente, data.referenciaCliente, data.latitudCliente, data.longitudCliente, manager);
 		if (data.telefonoDomiciliario) {
 			await this.upsertDomiciliario(data.telefonoDomiciliario, manager);
 		}
@@ -104,7 +119,10 @@ export class DomicilioCreationService {
 			data.telefonoCliente!,
 			data.telefonoDomiciliario,
 			data.direccionCliente,
+			data.referenciaCliente,
 			data.costoDomicilio,
+			data.latitudCliente,
+			data.longitudCliente,
 			manager,
 		);
 	}
@@ -123,19 +141,25 @@ export class DomicilioCreationService {
 
 		const updateData: Partial<Domicilios> = {};
 		if (data.direccionCliente !== undefined) updateData.direccionEntrega = data.direccionCliente;
+		if (data.referenciaCliente !== undefined) updateData.referenciaDomicilio = data.referenciaCliente;
 		if (data.telefonoCliente !== undefined) updateData.telefono = data.telefonoCliente;
 		if (data.telefonoDomiciliario !== undefined) updateData.telefonoDomiciliarioAsignado = data.telefonoDomiciliario;
 		if (data.costoDomicilio !== undefined) updateData.costoDomicilio = Number(data.costoDomicilio) || 0;
+		if (data.latitudCliente !== undefined) updateData.latitud = data.latitudCliente;
+		if (data.longitudCliente !== undefined) updateData.longitud = data.longitudCliente;
 
 		if (Object.keys(updateData).length > 0) {
 			await repo.update(domicilio.domicilioId, updateData);
 		}
 
-		if (data.telefonoCliente !== undefined || data.nombreCliente !== undefined || data.direccionCliente !== undefined) {
+		if (data.telefonoCliente !== undefined || data.nombreCliente !== undefined || data.direccionCliente !== undefined || data.referenciaCliente !== undefined || data.latitudCliente !== undefined || data.longitudCliente !== undefined) {
 			await this.upsertCliente(
 				data.telefonoCliente ?? domicilio.telefono,
 				data.nombreCliente,
 				data.direccionCliente ?? domicilio.direccionEntrega,
+				data.referenciaCliente ?? domicilio.referenciaDomicilio,
+				data.latitudCliente ?? domicilio.latitud,
+				data.longitudCliente ?? domicilio.longitud,
 				manager,
 			);
 		}

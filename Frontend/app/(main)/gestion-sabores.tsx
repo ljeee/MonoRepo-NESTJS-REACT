@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Platform, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Platform, ActivityIndicator, RefreshControl } from 'react-native';
 import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
 import { api as apiService } from '../../services/api';
 import { PizzaSabor, Producto, Personalizacion, PERSONALIZACION_OPCIONES, useToast } from '@/src/shared';
@@ -47,6 +47,13 @@ export default function GestionSaboresScreen() {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [deleteId, setDeleteId] = useState<number | null>(null);
     const [saving, setSaving] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await loadSabores();
+        setRefreshing(false);
+    }, []);
 
     // Productos modal state
     const [showProductosModal, setShowProductosModal] = useState(false);
@@ -153,7 +160,17 @@ export default function GestionSaboresScreen() {
     if (loading) return <PageContainer scrollable={false}><ListSkeleton count={8} /></PageContainer>;
 
     return (
-        <PageContainer scrollable>
+        <PageContainer
+            scrollable
+            refreshControl={
+                <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    tintColor="#F5A524"
+                    colors={['#F5A524']}
+                />
+            }
+        >
             <PageHeader
                 title="Saborización"
                 subtitle="Administración de variedades y recargos"
@@ -161,14 +178,14 @@ export default function GestionSaboresScreen() {
                 rightContent={
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                         <Button
-                            title={isMobile ? undefined : 'Productos'}
+                            title={isMobile ? "" : "Productos"}
                             icon="view-grid-outline"
                             variant="outline"
                             size="sm"
                             onPress={openProductosModal}
                         />
                         <Button
-                            title={isMobile ? undefined : 'Nuevo Sabor'}
+                            title={isMobile ? "" : "Nuevo Sabor"}
                             icon="plus"
                             variant="primary"
                             size="sm"

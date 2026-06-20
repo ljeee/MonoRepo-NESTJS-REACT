@@ -137,7 +137,7 @@ describe('ClientesService', () => {
 			const existe = { id: 1, direccion: 'Calle 10 #5-20' };
 			mockDireccionesRepo.findOne.mockResolvedValue(existe);
 
-			const result = await service.addDireccion('3001234567', 'Calle 10 #5-20');
+			const result = await service.addDireccion('3001234567', { direccion: 'Calle 10 #5-20' });
 
 			expect(result).toEqual(existe);
 			expect(mockDireccionesRepo.save).not.toHaveBeenCalled();
@@ -148,7 +148,7 @@ describe('ClientesService', () => {
 			const nueva = { id: 2, direccion: 'Calle 20' };
 			mockDireccionesRepo.save.mockResolvedValue(nueva);
 
-			const result = await service.addDireccion('3001234567', '  Calle 20  ');
+			const result = await service.addDireccion('3001234567', { direccion: '  Calle 20  ' });
 
 			expect(result).toEqual(nueva);
 			expect(mockDireccionesRepo.save).toHaveBeenCalledWith(

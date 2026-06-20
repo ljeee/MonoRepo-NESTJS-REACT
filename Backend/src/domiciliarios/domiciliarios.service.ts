@@ -15,14 +15,14 @@ export class DomiciliariosService {
 		return this.repo.find({
 			take: limit,
 			skip: (page - 1) * limit,
-			relations: ['domicilios']
+			relations: ['domicilios', 'user']
 		});
 	}
 
 	async findOne(telefono: string) {
 		const domiciliario = await this.repo.findOne({
 			where: { telefono },
-			relations: ['domicilios']
+			relations: ['domicilios', 'user']
 		});
 		if (!domiciliario) {
 			throw new NotFoundException(`Domiciliario con teléfono ${telefono} no encontrado`);

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react';
+import { RefreshControl } from 'react-native';
 import { ScrollView, TouchableOpacity, View, Text } from '../../tw';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
@@ -85,6 +86,7 @@ export default function OrdenesTodasScreen() {
   );
 
   const { page, estado, from, to, result, loading, error } = state;
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(
     async (p: number) => {
@@ -104,6 +106,12 @@ export default function OrdenesTodasScreen() {
     },
     [estado, from, to],
   );
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchData(1);
+    setRefreshing(false);
+  }, [fetchData]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -132,7 +140,16 @@ export default function OrdenesTodasScreen() {
   const fsCardWidth = isMobile ? '100%' : isTablet ? '49%' : '32%';
 
   return (
-    <PageContainer>
+    <PageContainer
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor="#F5A524"
+          colors={['#F5A524']}
+        />
+      }
+    >
       <PageHeader
         title="Historial de Órdenes"
         subtitle="Listado general"
@@ -149,7 +166,7 @@ export default function OrdenesTodasScreen() {
               />
             )}
             <Button
-              title={isMobile ? "" : "Refrescar"}
+              title=""
               icon="refresh"
               variant="ghost"
               size="sm"

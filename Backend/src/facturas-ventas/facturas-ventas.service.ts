@@ -3,9 +3,9 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {Repository, SelectQueryBuilder} from 'typeorm';
 import {FacturasVentas} from './esquemas/facturas-ventas.entity';
 import {AbonoDto, CreateFacturasVentasDto} from './esquemas/facturas-ventas.dto';
-import {Ordenes} from '../ordenes/esquemas/ordenes.entity';
 import {getBogotaDayBoundaries, getBogotaDateString} from '../common/utils/date.utils';
 import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
+import {EstadisticasGateway} from '../estadisticas/estadisticas.gateway';
 
 @Injectable()
 export class FacturasVentasService {
@@ -13,6 +13,7 @@ export class FacturasVentasService {
 		@InjectRepository(FacturasVentas)
 		private readonly repo: Repository<FacturasVentas>,
 		private readonly cajaMovimientosService: CajaMovimientosService,
+		private readonly estadisticasGateway: EstadisticasGateway,
 	) {}
 
 	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string; metodo?: string } = {}) {
@@ -129,34 +130,25 @@ export class FacturasVentasService {
 		return factura;
 	}
 
-	create(data: CreateFacturasVentasDto) {
-		return this.repo.save(data);
+	async create(data: CreateFacturasVentasDto) {
+		const saved = await this.repo.save(data);
+		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_create', id: saved.facturaId });
+		return saved;
 	}
 
 	async update(id: number, data: Partial<CreateFacturasVentasDto>) {
 		const completing = data.estado === 'pagada' || data.estado === 'pagado';
 
 		if (!completing) {
-			return this.repo.update(id, data);
+			await this.repo.update(id, data);
+			this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_update', id });
+			return;
 		}
 
-		// Transactional: complete factura + all linked orders atomically
-		const result = await this.repo.manager.transaction(async (manager) => {
-			const facturasRepo = manager.getRepository(FacturasVentas);
-			const ordenesRepo = manager.getRepository(Ordenes);
-
-			await facturasRepo.update(id, data);
-
-			await ordenesRepo
-				.createQueryBuilder()
-				.update(Ordenes)
-				.set({ estadoOrden: 'completada' })
-				.where('factura_id = :facturaId', { facturaId: id })
-				.andWhere('estado_orden NOT IN (:...estados)', { estados: ['completada', 'cancelada'] })
-				.execute();
-
-			return facturasRepo.findOne({ where: { facturaId: id } });
-		});
+		// Actualiza solo la factura — las órdenes mantienen su estado propio.
+		// Pueden estar en preparación y pagarse por adelantado sin cerrarse.
+		await this.repo.update(id, data);
+		const result = await this.repo.findOne({ where: { facturaId: id } });
 
 		// Register caja entry + exit in parallel (independent INSERTs).
 		// skipValidation on salida: las denominaciones del cambio están garantizadas
@@ -194,6 +186,7 @@ export class FacturasVentasService {
 
 		if (cajaOps.length) await Promise.all(cajaOps);
 
+		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_pagada', id });
 		return result;
 	}
 
@@ -233,10 +226,13 @@ export class FacturasVentasService {
 
 		if (cajaOps.length) await Promise.all(cajaOps);
 
+		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_abono', id });
 		return this.findOne(id);
 	}
 
-	remove(id: number) {
-		return this.repo.delete(id);
+	async remove(id: number) {
+		const res = await this.repo.delete(id);
+		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_delete', id });
+		return res;
 	}
 }

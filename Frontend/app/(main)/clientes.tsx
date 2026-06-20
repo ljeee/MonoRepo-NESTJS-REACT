@@ -78,7 +78,7 @@ export default function ClientesScreen() {
 
   // ── Address state ──
   const [newAddress, setNewAddress] = useState('');
-  const [newAddressInput, setNewAddressInput] = useState('');
+  const [newAddressInput, setNewAddressInput] = useState({ direccion: '', referencia: '', costoDomicilio: '' });
   const [addingAddress, setAddingAddress] = useState<string | null>(null);
 
   // ── Delete modal state ──
@@ -87,7 +87,7 @@ export default function ClientesScreen() {
 
   // ── Fetch stats ──
   useEffect(() => {
-    api.estadisticas.clientesFrecuentes(200)
+    api.estadisticas.clientesFrecuentes(10000)
       .then(setFrecuentes)
       .catch(() => { /* ignore */ });
   }, [data]);
@@ -133,6 +133,7 @@ export default function ClientesScreen() {
     setFormError('');
     setEditingPhone('');
     setNewAddress('');
+    setNewAddressInput({ direccion: '', referencia: '', costoDomicilio: '' });
   };
 
   const openCreate = () => {
@@ -153,7 +154,7 @@ export default function ClientesScreen() {
       correo: c.correo || '',
     });
     setFormError('');
-    setNewAddressInput('');
+    setNewAddressInput({ direccion: '', referencia: '', costoDomicilio: '' });
   };
 
   const handleSave = async () => {
@@ -184,11 +185,15 @@ export default function ClientesScreen() {
   };
 
   const handleAddAddress = async (tel: string) => {
-    if (!newAddressInput.trim()) return;
+    if (!newAddressInput.direccion.trim()) return;
     setAddingAddress(tel);
     try {
-      await api.clientes.addDireccion(tel, newAddressInput.trim());
-      setNewAddressInput('');
+      await api.clientes.addDireccion(tel, {
+        direccion: newAddressInput.direccion.trim(),
+        referencia: newAddressInput.referencia.trim() || undefined,
+        costoDomicilio: newAddressInput.costoDomicilio ? Number(newAddressInput.costoDomicilio) : undefined
+      });
+      setNewAddressInput({ direccion: '', referencia: '', costoDomicilio: '' });
       refetch();
     } catch {
       setFormError('Error al agregar dirección');
@@ -227,6 +232,15 @@ export default function ClientesScreen() {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
+  };
+
+  const handleResetPassword = async (tel: string) => {
+    try {
+      await api.clientes.resetPassword(tel);
+      alert('Contraseña restablecida exitosamente. La nueva contraseña es 123456');
+    } catch {
+      alert('Error al restablecer contraseña');
+    }
   };
 
   return (
@@ -337,38 +351,63 @@ export default function ClientesScreen() {
                   <Text className="text-white font-black text-xs uppercase tracking-widest mb-4">Direcciones Registradas</Text>
                   {editDirs.length > 0 ? (
                     editDirs.map(dir => (
-                      <View key={dir.id} className="flex-row items-center gap-3 mb-3 bg-white/5 p-3 rounded-xl">
-                        <Icon name="map-marker-outline" size={14} color="#F5A524" />
-                        <Text className="text-slate-300 text-xs flex-1">{dir.direccion}</Text>
-                        <TouchableOpacity 
-                          onPress={() => handleRemoveAddress(dir.id)}
-                          className="w-8 h-8 items-center justify-center rounded-lg active:bg-red-500/20"
-                        >
-                          <Icon name="trash-can-outline" size={14} color="#EF4444" />
-                        </TouchableOpacity>
+                      <View key={dir.id} className="mb-3 bg-white/5 p-3 rounded-xl border border-white/5">
+                        <View className="flex-row items-center gap-3">
+                          <Icon name="map-marker-outline" size={14} color="#F5A524" />
+                          <Text className="text-slate-300 text-xs flex-1 font-bold">{dir.direccion}</Text>
+                          <TouchableOpacity 
+                            onPress={() => handleRemoveAddress(dir.id)}
+                            className="w-8 h-8 items-center justify-center rounded-lg active:bg-red-500/20"
+                          >
+                            <Icon name="trash-can-outline" size={14} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                        {(dir.referencia || dir.costoDomicilio !== undefined) && (
+                          <View className="flex-row items-center gap-3 mt-2 pl-6 opacity-70">
+                            {dir.referencia && <Text className="text-slate-400 text-[10px] italic flex-1">Ref: {dir.referencia}</Text>}
+                            {dir.costoDomicilio !== undefined && <Text className="text-slate-400 text-[10px] font-bold">Costo: ${formatCurrency(dir.costoDomicilio).replace('$', '')}</Text>}
+                          </View>
+                        )}
                       </View>
                     ))
                   ) : (
                     <Text className="text-slate-500 text-xs italic mb-4">Sin direcciones registradas</Text>
                   )}
                   
-                  <View className="flex-row items-center gap-2 mt-2">
+                  <View className="flex-col gap-2 mt-2 p-3 bg-white/5 rounded-xl border border-white/10">
                     <Input
                       placeholder="Nueva dirección..."
-                      value={newAddressInput}
-                      onChangeText={setNewAddressInput}
-                      className="flex-1"
+                      value={newAddressInput.direccion}
+                      onChangeText={(v) => setNewAddressInput(p => ({ ...p, direccion: v }))}
+                      className="mb-0"
                       size="sm"
                     />
-                    <Button
-                      title="+"
-                      variant="primary"
-                      size="sm"
-                      onPress={() => handleAddAddress(editingPhone)}
-                      disabled={!newAddressInput.trim() || addingAddress === editingPhone}
-                      loading={addingAddress === editingPhone}
-                      className="h-10 w-10 p-0 items-center justify-center"
-                    />
+                    <View className="flex-row items-center gap-2">
+                      <Input
+                        placeholder="Referencia (opcional)..."
+                        value={newAddressInput.referencia}
+                        onChangeText={(v) => setNewAddressInput(p => ({ ...p, referencia: v }))}
+                        className="flex-[2] mb-0"
+                        size="sm"
+                      />
+                      <Input
+                        placeholder="Costo ($)"
+                        value={newAddressInput.costoDomicilio}
+                        onChangeText={(v) => setNewAddressInput(p => ({ ...p, costoDomicilio: v }))}
+                        keyboardType="number-pad"
+                        className="flex-1 mb-0"
+                        size="sm"
+                      />
+                      <Button
+                        title="+"
+                        variant="primary"
+                        size="sm"
+                        onPress={() => handleAddAddress(editingPhone)}
+                        disabled={!newAddressInput.direccion.trim() || addingAddress === editingPhone}
+                        loading={addingAddress === editingPhone}
+                        className="h-10 w-10 p-0 items-center justify-center"
+                      />
+                    </View>
                   </View>
                 </View>
               );
@@ -382,9 +421,26 @@ export default function ClientesScreen() {
             </View>
           ) : null}
 
-          <View className="flex-row justify-end gap-3 mt-8">
-            <Button title="Cancelar" onPress={resetForm} variant="ghost" />
-            <Button
+          <View className="flex-row justify-between items-center mt-8">
+            {formMode === 'edit' ? (
+              <Button
+                title="Reset Password"
+                onPress={() => handleResetPassword(editingPhone)}
+                variant="secondary"
+                icon="lock-reset"
+              />
+            ) : <View />}
+            <View className="flex-row gap-3">
+              <Button title="Cancelar" onPress={resetForm} variant="ghost" />
+              <Button
+                title={formMode === 'create' ? 'Crear Cliente' : 'Guardar Cambios'}
+                onPress={handleSave}
+                variant="primary"
+                icon="content-save-outline"
+                loading={formLoading}
+              />
+            </View>
+          </View>
               title={formMode === 'create' ? 'Crear Cliente' : 'Guardar Cambios'}
               onPress={handleSave}
               variant="primary"

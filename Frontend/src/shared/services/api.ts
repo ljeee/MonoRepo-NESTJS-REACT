@@ -78,6 +78,9 @@ export function createApi(http: AxiosInstance) {
 
     getUsers: () =>
       http.get<any[]>('/auth/users').then((r) => arr<any>(r.data)),
+
+    updateUser: (id: string, data: { name?: string; username?: string; password?: string }) =>
+      http.patch<any>(`/auth/users/${id}`, data).then((r) => r.data),
   };
 
   // ─── Ordenes ────────────────────────────────────────────────────────
@@ -170,11 +173,14 @@ export function createApi(http: AxiosInstance) {
     getDirecciones: (telefono: string) =>
       http.get<ClienteDireccion[]>(`/clientes/${telefono}/direcciones`).then((r) => arr<ClienteDireccion>(r.data)),
 
-    addDireccion: (telefono: string, direccion: string) =>
-      http.post<ClienteDireccion>(`/clientes/${telefono}/direcciones`, { direccion }).then((r) => r.data),
+    addDireccion: (telefono: string, dto: { direccion: string, referencia?: string, costoDomicilio?: number, latitud?: number, longitud?: number } | string) =>
+      http.post<ClienteDireccion>(`/clientes/${telefono}/direcciones`, typeof dto === 'string' ? { direccion: dto } : dto).then((r) => r.data),
 
     removeDireccion: (id: number) =>
       http.delete(`/clientes/direcciones/${id}`).then((r) => r.data),
+
+    resetPassword: (telefono: string) =>
+      http.post<{ message: string }>(`/clientes/${telefono}/reset-password`).then((r) => r.data),
   };
 
   // ─── Domiciliarios ─────────────────────────────────────────────────

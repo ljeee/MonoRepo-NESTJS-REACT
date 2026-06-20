@@ -38,6 +38,11 @@ export class CreateOrdenesDto {
 	@IsString()
 	direccionCliente: string;
 
+	@ApiProperty({example: 'Casa azul', required: false, description: 'Referencia del domicilio del cliente'})
+	@IsOptional()
+	@IsString()
+	referenciaCliente?: string;
+
 	@ApiProperty({example: '3109876543', required: false, description: 'Teléfono del domiciliario para domicilio'})
 	@IsOptional()
 	@IsString()
@@ -47,6 +52,16 @@ export class CreateOrdenesDto {
 	@IsOptional()
 	@IsNumber()
 	costoDomicilio?: number;
+
+	@ApiProperty({example: 6.2442, required: false, description: 'Latitud de la dirección de entrega'})
+	@IsOptional()
+	@IsNumber()
+	latitudCliente?: number;
+
+	@ApiProperty({example: -75.5812, required: false, description: 'Longitud de la dirección de entrega'})
+	@IsOptional()
+	@IsNumber()
+	longitudCliente?: number;
 
 	@ApiProperty({example: 'efectivo', required: false, description: 'Método de pago preferido (efectivo, transferencia, tarjeta)'})
 	@IsOptional()
