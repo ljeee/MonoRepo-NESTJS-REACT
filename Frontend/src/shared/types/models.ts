@@ -133,6 +133,10 @@ export interface FacturaDomicilio {
   costoDomicilio?: number;
   direccionEntrega?: string;
   telefono?: string;
+  domiciliario?: {
+    domiciliarioNombre?: string;
+    telefono?: string;
+  };
 }
 
 export interface FacturaVenta {

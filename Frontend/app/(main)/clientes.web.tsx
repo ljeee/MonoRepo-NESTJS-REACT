@@ -122,7 +122,7 @@ interface ClienteFormModalProps {
   formError: string;
   formLoading: boolean;
   editingPhone: string;
-  existingDirs: { id: number; direccion: string }[];
+  existingDirs: { id: number; direccion: string; referencia?: string; costoDomicilio?: number }[];
   newAddress: string;
   setNewAddress: (v: string) => void;
   newAddressInput: { direccion: string, referencia: string, costoDomicilio: string };

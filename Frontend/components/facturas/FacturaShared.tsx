@@ -37,6 +37,10 @@ export interface FacturaOrden {
 export interface FacturaDomicilio {
   costoDomicilio?: number;
   direccionEntrega?: string;
+  domiciliario?: {
+    domiciliarioNombre?: string;
+    telefono?: string;
+  };
 }
 
 export interface FacturaItem {
@@ -235,6 +239,7 @@ export function FacturaCard({
     : 'rgba(245,165,36,0.04)';
 
   const direccionDomicilio = item.domicilios?.[0]?.direccionEntrega;
+  const domiciliarioNombre = item.domicilios?.[0]?.domiciliario?.domiciliarioNombre;
 
   return (
     <Card style={{ overflow: 'hidden', borderWidth: 0, padding: 0, marginBottom: 12, backgroundColor: `rgba(15,23,42,0.7)` }}>
@@ -303,6 +308,14 @@ export function FacturaCard({
                 <RNText style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' }}>
                   Domicilio{costoDomicilio > 0 ? `  +$${formatCurrency(costoDomicilio)}` : ''}
                 </RNText>
+                {domiciliarioNombre && (
+                  <>
+                    <RNView style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(249,115,22,0.5)', marginHorizontal: 2 }} />
+                    <RNText style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: 'bold' }}>
+                      {domiciliarioNombre}
+                    </RNText>
+                  </>
+                )}
               </RNView>
             )}
             {direccionDomicilio && (

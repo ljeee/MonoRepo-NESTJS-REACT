@@ -64,6 +64,7 @@ export class FacturasVentasService {
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
 			.leftJoinAndSelect('ordenes.productos', 'op')
 			.leftJoinAndSelect('f.domicilios', 'domicilios')
+			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.orderBy('f.fechaFactura', 'DESC');
 		addFilters(dataQb);
 		const data = await dataQb.take(limit).skip((page - 1) * limit).getMany();
@@ -78,6 +79,7 @@ export class FacturasVentasService {
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
 			.leftJoinAndSelect('ordenes.productos', 'op')
 			.leftJoinAndSelect('f.domicilios', 'domicilios')
+			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('f.fechaFactura BETWEEN :start AND :end', {start, end})
 			.getMany();
 		return result;
@@ -89,6 +91,7 @@ export class FacturasVentasService {
 			.createQueryBuilder('f')
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
 			.leftJoinAndSelect('f.domicilios', 'domicilios')
+			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('(f.estado = :pendiente OR f.estado IS NULL)')
 			.andWhere('f.fechaFactura BETWEEN :start AND :end', {start, end, pendiente: 'pendiente'})
 			.getMany();
@@ -122,7 +125,7 @@ export class FacturasVentasService {
 	async findOne(id: number) {
 		const factura = await this.repo.findOne({
 			where: {facturaId: id},
-			relations: ['ordenes', 'domicilios'],
+			relations: ['ordenes', 'domicilios', 'domicilios.domiciliario'],
 		});
 		if (!factura) {
 			throw new NotFoundException(`Factura con ID ${id} no encontrada`);
