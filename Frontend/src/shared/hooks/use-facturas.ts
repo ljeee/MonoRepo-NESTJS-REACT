@@ -96,18 +96,33 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
     }),
     domicilios: rawDomicilios.map((rawDomicilio) => {
       const domicilio = asRecord(rawDomicilio);
+      const rawDomiciliario = asRecord(domicilio.domiciliario);
       return {
         costoDomicilio: numberOrZero(domicilio.costoDomicilio),
         direccionEntrega: typeof domicilio.direccionEntrega === 'string' ? domicilio.direccionEntrega : undefined,
+        telefono: typeof domicilio.telefono === 'string' ? domicilio.telefono : undefined,
+        domiciliario: domicilio.domiciliario
+          ? {
+              domiciliarioNombre:
+                typeof rawDomiciliario.domiciliarioNombre === 'string'
+                  ? rawDomiciliario.domiciliarioNombre
+                  : undefined,
+              telefono:
+                typeof rawDomiciliario.telefono === 'string'
+                  ? rawDomiciliario.telefono
+                  : undefined,
+            }
+          : undefined,
       };
     }),
   };
 }
 
 export function calcStats(list: FacturaVenta[]): FacturaStats {
-  const total = list.reduce((s, f) => s + (Number(f.total) || 0), 0);
-  const pagado = list.filter((f) => f.estado === 'pagado' || f.estado === 'pagada').reduce((s, f) => s + (Number(f.total) || 0), 0);
-  return { totalDia: total, totalPagado: pagado, totalPendiente: total - pagado, count: list.length };
+  const nonCancelled = list.filter((f) => f.estado !== 'cancelado');
+  const total = nonCancelled.reduce((s, f) => s + (Number(f.total) || 0), 0);
+  const pagado = nonCancelled.filter((f) => f.estado === 'pagado' || f.estado === 'pagada').reduce((s, f) => s + (Number(f.total) || 0), 0);
+  return { totalDia: total, totalPagado: pagado, totalPendiente: total - pagado, count: nonCancelled.length };
 }
 
 // ─── Facturas del Día ─────────────────────────────────────────────────────────

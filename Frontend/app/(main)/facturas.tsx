@@ -103,11 +103,13 @@ export default function FacturasRangoScreen() {
     }
   }, [api, from, to, search]);
 
+  const isPagado = (f: FacturaItem) => f.estado === 'pagado' || f.estado === 'pagada';
+
   const metodoCounts = useMemo(() => ({
     todos:         data.length,
-    efectivo:      data.filter(f => f.metodo === 'efectivo').length,
-    transferencia: data.filter(f => f.metodo === 'transferencia').length,
-    mixto:         data.filter(f => f.metodo === 'efectivo_transferencia').length,
+    efectivo:      data.filter(f => f.metodo === 'efectivo' && isPagado(f)).length,
+    transferencia: data.filter(f => f.metodo === 'transferencia' && isPagado(f)).length,
+    mixto:         data.filter(f => f.metodo === 'efectivo_transferencia' && isPagado(f)).length,
   }), [data]);
 
   // ── Filtrado local en cliente ──
@@ -118,7 +120,7 @@ export default function FacturasRangoScreen() {
     }
     if (metodoFilter !== 'todos') {
       const target = metodoFilter === 'mixto' ? 'efectivo_transferencia' : metodoFilter;
-      result = result.filter(f => f.metodo === target);
+      result = result.filter(f => f.metodo === target && isPagado(f));
     }
     if (nombreFilter.trim()) {
       const q = nombreFilter.trim().toLowerCase();

@@ -188,13 +188,23 @@ function OrderCardPOS({
                             </View>
                         </View>
 
-                        {/* Address for domicilio */}
-                        {item.tipoPedido === 'domicilio' && item.domicilios?.[0]?.direccionEntrega && (
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                        {/* Address and driver for domicilio */}
+                        {item.tipoPedido === 'domicilio' && (item.domicilios?.[0]?.direccionEntrega || item.domicilios?.[0]?.domiciliario?.domiciliarioNombre) && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, flexWrap: 'wrap' }}>
                                 <Icon name="map-marker-outline" size={11} color="#94A3B8" />
-                                <Text numberOfLines={1} style={{ color: '#94A3B8', fontSize: 11, fontFamily: 'Outfit', flex: 1 }}>
-                                    {item.domicilios[0].direccionEntrega}
-                                </Text>
+                                {item.domicilios[0].direccionEntrega && (
+                                    <Text numberOfLines={1} style={{ color: '#94A3B8', fontSize: 11, fontFamily: 'Outfit', marginRight: 6 }}>
+                                        {item.domicilios[0].direccionEntrega}
+                                    </Text>
+                                )}
+                                {item.domicilios[0].domiciliario?.domiciliarioNombre && (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                        <Icon name="motorbike" size={10} color="#FB923C" />
+                                        <Text style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 9, fontWeight: 'bold' }}>
+                                            {item.domicilios[0].domiciliario.domiciliarioNombre}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
                         )}
                     </View>

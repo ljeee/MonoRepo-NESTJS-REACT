@@ -2,6 +2,7 @@ import {BadRequestException, Injectable, NotFoundException, ConflictException} f
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository, Between, EntityManager} from 'typeorm';
 import {Ordenes} from './esquemas/ordenes.entity';
+import {Domicilios} from '../domicilios/esquemas/domicilios.entity';
 import {CreateOrdenesDto, CreateOrdenItemDto, FindOrdenesDto} from './esquemas/ordenes.dto';
 import {FacturaCreationService} from './services/factura-creation.service';
 import {DomicilioCreationService} from './services/domicilio-creation.service';
@@ -33,6 +34,8 @@ export class OrdenesService {
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.leftJoinAndSelect('o.domicilios', 'domicilios')
+			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.orderBy('o.fechaOrden', 'DESC')
 			.take(limit)
 			.skip((page - 1) * limit);
@@ -62,6 +65,7 @@ export class OrdenesService {
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
 			.leftJoinAndSelect('o.domicilios', 'domicilios')
+			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('o.fechaOrden BETWEEN :start AND :end', { start, end });
 
 		if (estado) {
@@ -81,6 +85,8 @@ export class OrdenesService {
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.leftJoinAndSelect('o.domicilios', 'domicilios')
+			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('o.fechaOrden BETWEEN :start AND :end', {start, end})
 			.andWhere('o.estadoOrden != :pendiente', {pendiente: 'pendiente'})
 			.getMany();
@@ -95,6 +101,8 @@ export class OrdenesService {
 			.createQueryBuilder('o')
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
+			.leftJoinAndSelect('o.domicilios', 'domicilios')
+			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('(o.estadoOrden = :pendiente OR o.estadoOrden IS NULL)')
 			.andWhere('o.fechaOrden BETWEEN :start AND :end', {start, end, pendiente: 'pendiente'})
 			.getMany();
@@ -104,7 +112,7 @@ export class OrdenesService {
 		const repo = manager ? manager.getRepository(Ordenes) : this.repo;
 		const orden = await repo.findOne({
 			where: {ordenId: id},
-			relations: ['factura', 'productos', 'productos.productoObj', 'productos.variante', 'domicilios'],
+			relations: ['factura', 'productos', 'productos.productoObj', 'productos.variante', 'domicilios', 'domicilios.domiciliario'],
 		});
 		if (!orden) {
 			throw new NotFoundException(`Orden con ID ${id} no encontrada`);
@@ -310,6 +318,9 @@ export class OrdenesService {
 			}
 			
 			await oRepo.save(orden);
+
+			// 1.5 Eliminar domicilio asociado
+			await manager.getRepository(Domicilios).delete({ ordenId: id });
 
 			// 2. Cancelar factura asociada
 			if (orden.facturaId) {

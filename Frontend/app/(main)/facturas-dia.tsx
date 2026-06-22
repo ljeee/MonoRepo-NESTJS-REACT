@@ -88,20 +88,20 @@ export default function FacturasDiaScreen() {
     !searchQuery || (f.clienteNombre && f.clienteNombre.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const noPendiente = (f: FacturaItem) => f.estado !== 'pendiente' && f.estado !== 'parcial';
+  const isPagado = (f: FacturaItem) => f.estado === 'pagado' || f.estado === 'pagada';
   const methodCounts = {
     todos:         searchFiltered.length,
-    efectivo:      searchFiltered.filter(f => f.metodo === 'efectivo' && noPendiente(f)).length,
-    transferencia: searchFiltered.filter(f => f.metodo === 'transferencia' && noPendiente(f)).length,
-    mixto:         searchFiltered.filter(f => f.metodo === 'efectivo_transferencia' && noPendiente(f)).length,
+    efectivo:      searchFiltered.filter(f => f.metodo === 'efectivo' && isPagado(f)).length,
+    transferencia: searchFiltered.filter(f => f.metodo === 'transferencia' && isPagado(f)).length,
+    mixto:         searchFiltered.filter(f => f.metodo === 'efectivo_transferencia' && isPagado(f)).length,
     pendiente:     searchFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial').length,
   };
 
   const filteredData = searchFiltered.filter((f: FacturaItem) => {
     if (filterMethod === 'todos') return true;
     if (filterMethod === 'pendiente') return f.estado === 'pendiente' || f.estado === 'parcial';
-    if (filterMethod === 'mixto') return f.metodo === 'efectivo_transferencia' && noPendiente(f);
-    return f.metodo === filterMethod && noPendiente(f);
+    if (filterMethod === 'mixto') return f.metodo === 'efectivo_transferencia' && isPagado(f);
+    return f.metodo === filterMethod && isPagado(f);
   });
 
   const computedStats = React.useMemo(() => calcStats(filteredData as any), [filteredData]);

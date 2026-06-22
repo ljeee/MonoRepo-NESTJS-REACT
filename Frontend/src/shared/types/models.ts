@@ -112,6 +112,10 @@ export interface Domicilio {
   estadoDomicilio?: string;
   costoDomicilio?: number;
   assignedUserId?: string;
+  domiciliario?: {
+    domiciliarioNombre?: string;
+    telefono?: string;
+  };
 }
 
 // ─── Facturas Ventas ──────────────────────────────────────────────────────────

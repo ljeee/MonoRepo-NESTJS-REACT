@@ -65,6 +65,10 @@ interface Domicilio {
   telefono?: number;
   telefonoDomiciliarioAsignado?: number;
   costoDomicilio?: number;
+  domiciliario?: {
+    domiciliarioNombre?: string;
+    telefono?: string;
+  };
 }
 
 interface OrdenDetalle {
@@ -341,6 +345,9 @@ export default function OrdenDetalleScreen() {
                       )}
                       {orden.domicilios?.[0]?.direccionEntrega && (
                           <DetailItem icon="map-marker-radius-outline" label="Dirección" value={orden.domicilios[0].direccionEntrega} />
+                      )}
+                      {orden.domicilios?.[0]?.domiciliario?.domiciliarioNombre && (
+                          <DetailItem icon="motorbike" label="Domiciliario" value={orden.domicilios[0].domiciliario.domiciliarioNombre} valueColor="#FB923C" />
                       )}
                   </View>
               </Card>
