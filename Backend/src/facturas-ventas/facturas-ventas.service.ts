@@ -16,40 +16,50 @@ export class FacturasVentasService {
 		private readonly estadisticasGateway: EstadisticasGateway,
 	) {}
 
-	async findAll(opts: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string; metodo?: string } = {}) {
-		const { from, to, page = 1, limit = 50, estado, clienteNombre, metodo } = opts;
+	async findAll(
+		opts: {
+			from?: string;
+			to?: string;
+			page?: number;
+			limit?: number;
+			estado?: string;
+			clienteNombre?: string;
+			metodo?: string;
+		} = {},
+	) {
+		const {from, to, page = 1, limit = 50, estado, clienteNombre, metodo} = opts;
 
 		// Apply all WHERE filters — uses explicit Bogotá offset so Alpine Docker
 		// (no tzdata) gives the same result as an environment with TZ=America/Bogota.
 		const addFilters = (qb: SelectQueryBuilder<FacturasVentas>) => {
 			if (from && to) {
-				const { start } = getBogotaDayBoundaries(from);
-				const { end } = getBogotaDayBoundaries(to);
-				qb.where('f.fechaFactura BETWEEN :from AND :to', { from: start, to: end });
+				const {start} = getBogotaDayBoundaries(from);
+				const {end} = getBogotaDayBoundaries(to);
+				qb.where('f.fechaFactura BETWEEN :from AND :to', {from: start, to: end});
 			} else if (from) {
-				const { start } = getBogotaDayBoundaries(from);
-				qb.where('f.fechaFactura >= :from', { from: start });
+				const {start} = getBogotaDayBoundaries(from);
+				qb.where('f.fechaFactura >= :from', {from: start});
 			} else if (to) {
-				const { end } = getBogotaDayBoundaries(to);
-				qb.where('f.fechaFactura <= :to', { to: end });
+				const {end} = getBogotaDayBoundaries(to);
+				qb.where('f.fechaFactura <= :to', {to: end});
 			}
 
 			if (estado) {
 				if (estado === 'pendiente') {
-					qb.andWhere('(f.estado = :estado OR f.estado IS NULL)', { estado: 'pendiente' });
+					qb.andWhere('(f.estado = :estado OR f.estado IS NULL)', {estado: 'pendiente'});
 				} else {
-					qb.andWhere('f.estado = :estado', { estado });
+					qb.andWhere('f.estado = :estado', {estado});
 				}
 			}
 
 			if (clienteNombre && clienteNombre.trim()) {
-				qb.andWhere('f.clienteNombre ILIKE :clienteNombre', { clienteNombre: `%${clienteNombre.trim()}%` });
+				qb.andWhere('f.clienteNombre ILIKE :clienteNombre', {clienteNombre: `%${clienteNombre.trim()}%`});
 			}
 
 			if (metodo) {
 				// 'mixto' es el alias UI de efectivo_transferencia
 				const m = metodo === 'mixto' ? 'efectivo_transferencia' : metodo;
-				qb.andWhere('f.metodo = :metodo', { metodo: m });
+				qb.andWhere('f.metodo = :metodo', {metodo: m});
 			}
 		};
 
@@ -67,13 +77,16 @@ export class FacturasVentasService {
 			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.orderBy('f.fechaFactura', 'DESC');
 		addFilters(dataQb);
-		const data = await dataQb.take(limit).skip((page - 1) * limit).getMany();
+		const data = await dataQb
+			.take(limit)
+			.skip((page - 1) * limit)
+			.getMany();
 
-		return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+		return {data, total, page, limit, totalPages: Math.ceil(total / limit)};
 	}
 
 	async findByDay() {
-		const { start, end } = getBogotaDayBoundaries();
+		const {start, end} = getBogotaDayBoundaries();
 		const result = await this.repo
 			.createQueryBuilder('f')
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
@@ -86,7 +99,7 @@ export class FacturasVentasService {
 	}
 
 	findPendingByDay() {
-		const { start, end } = getBogotaDayBoundaries();
+		const {start, end} = getBogotaDayBoundaries();
 		return this.repo
 			.createQueryBuilder('f')
 			.leftJoinAndSelect('f.ordenes', 'ordenes')
@@ -98,7 +111,7 @@ export class FacturasVentasService {
 	}
 
 	async getDayStats() {
-		const { start, end } = getBogotaDayBoundaries();
+		const {start, end} = getBogotaDayBoundaries();
 
 		const facturas = await this.repo
 			.createQueryBuilder('f')
@@ -135,7 +148,7 @@ export class FacturasVentasService {
 
 	async create(data: CreateFacturasVentasDto) {
 		const saved = await this.repo.save(data);
-		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_create', id: saved.facturaId });
+		this.estadisticasGateway.emitirActualizacionStats({source: 'factura_create', id: saved.facturaId});
 		return saved;
 	}
 
@@ -144,14 +157,14 @@ export class FacturasVentasService {
 
 		if (!completing) {
 			await this.repo.update(id, data);
-			this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_update', id });
+			this.estadisticasGateway.emitirActualizacionStats({source: 'factura_update', id});
 			return;
 		}
 
 		// Actualiza solo la factura — las órdenes mantienen su estado propio.
 		// Pueden estar en preparación y pagarse por adelantado sin cerrarse.
 		await this.repo.update(id, data);
-		const result = await this.repo.findOne({ where: { facturaId: id } });
+		const result = await this.repo.findOne({where: {facturaId: id}});
 
 		// Register caja entry + exit in parallel (independent INSERTs).
 		// skipValidation on salida: las denominaciones del cambio están garantizadas
@@ -162,34 +175,36 @@ export class FacturasVentasService {
 
 		if (
 			(data.metodo === 'efectivo' || data.metodo === 'efectivo_transferencia') &&
-			data.denominaciones && Object.keys(data.denominaciones).length > 0 &&
+			data.denominaciones &&
+			Object.keys(data.denominaciones).length > 0 &&
 			(data.pagoEfectivo ?? 0) > 0
 		) {
-			cajaOps.push(this.cajaMovimientosService.registrarEntrada({
-				denominaciones: data.denominaciones,
-				facturaVentaId: id,
-				descripcion: `Cobro factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
-				fecha,
-				metodo: data.metodo,
-				pagoTransferencia: data.pagoTransferencia,
-			}));
+			cajaOps.push(
+				this.cajaMovimientosService.registrarEntrada({
+					denominaciones: data.denominaciones,
+					facturaVentaId: id,
+					descripcion: `Cobro factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
+					fecha,
+					metodo: data.metodo,
+					pagoTransferencia: data.pagoTransferencia,
+				}),
+			);
 		}
 
-		if (
-			data.cambioDenominaciones &&
-			Object.keys(data.cambioDenominaciones).length > 0
-		) {
-			cajaOps.push(this.cajaMovimientosService.registrarSalida({
-				denominaciones: data.cambioDenominaciones,
-				descripcion: `Cambio factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
-				fecha,
-				skipValidation: true,
-			}));
+		if (data.cambioDenominaciones && Object.keys(data.cambioDenominaciones).length > 0) {
+			cajaOps.push(
+				this.cajaMovimientosService.registrarSalida({
+					denominaciones: data.cambioDenominaciones,
+					descripcion: `Cambio factura #${id}${result?.clienteNombre ? ` - ${result.clienteNombre}` : ''}`,
+					fecha,
+					skipValidation: true,
+				}),
+			);
 		}
 
 		if (cajaOps.length) await Promise.all(cajaOps);
 
-		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_pagada', id });
+		this.estadisticasGateway.emitirActualizacionStats({source: 'factura_pagada', id});
 		return result;
 	}
 
@@ -203,39 +218,43 @@ export class FacturasVentasService {
 		const nuevoMonto = (factura.montoPagado ?? 0) + dto.monto;
 		const nuevoEstado = nuevoMonto >= factura.total ? 'pagado' : 'parcial';
 
-		await this.repo.update(id, { montoPagado: nuevoMonto, estado: nuevoEstado });
+		await this.repo.update(id, {montoPagado: nuevoMonto, estado: nuevoEstado});
 
 		const fecha = getBogotaDateString();
 		const cajaOps: Promise<unknown>[] = [];
 
 		if (dto.denominaciones && Object.keys(dto.denominaciones).length > 0) {
-			cajaOps.push(this.cajaMovimientosService.registrarEntrada({
-				denominaciones: dto.denominaciones,
-				facturaVentaId: id,
-				descripcion: `Abono factura #${id}${factura.clienteNombre ? ` - ${factura.clienteNombre}` : ''}`,
-				fecha,
-				metodo: 'efectivo',
-			}));
+			cajaOps.push(
+				this.cajaMovimientosService.registrarEntrada({
+					denominaciones: dto.denominaciones,
+					facturaVentaId: id,
+					descripcion: `Abono factura #${id}${factura.clienteNombre ? ` - ${factura.clienteNombre}` : ''}`,
+					fecha,
+					metodo: 'efectivo',
+				}),
+			);
 		}
 
 		if (dto.cambioDenominaciones && Object.keys(dto.cambioDenominaciones).length > 0) {
-			cajaOps.push(this.cajaMovimientosService.registrarSalida({
-				denominaciones: dto.cambioDenominaciones,
-				descripcion: `Cambio abono factura #${id}${factura.clienteNombre ? ` - ${factura.clienteNombre}` : ''}`,
-				fecha,
-				skipValidation: true,
-			}));
+			cajaOps.push(
+				this.cajaMovimientosService.registrarSalida({
+					denominaciones: dto.cambioDenominaciones,
+					descripcion: `Cambio abono factura #${id}${factura.clienteNombre ? ` - ${factura.clienteNombre}` : ''}`,
+					fecha,
+					skipValidation: true,
+				}),
+			);
 		}
 
 		if (cajaOps.length) await Promise.all(cajaOps);
 
-		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_abono', id });
+		this.estadisticasGateway.emitirActualizacionStats({source: 'factura_abono', id});
 		return this.findOne(id);
 	}
 
 	async remove(id: number) {
 		const res = await this.repo.delete(id);
-		this.estadisticasGateway.emitirActualizacionStats({ source: 'factura_delete', id });
+		this.estadisticasGateway.emitirActualizacionStats({source: 'factura_delete', id});
 		return res;
 	}
 }

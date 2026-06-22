@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { ColumnNumericTransformer } from '../../common/utils/numeric.transformer';
-import { Ingrediente } from './ingrediente.entity';
+import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn} from 'typeorm';
+import {ColumnNumericTransformer} from '../../common/utils/numeric.transformer';
+import {Ingrediente} from './ingrediente.entity';
 
 /**
  * Links a ProductoVariante to an Ingrediente.
@@ -16,20 +16,20 @@ import { Ingrediente } from './ingrediente.entity';
  */
 @Entity('variantes_ingredientes')
 export class VarianteIngrediente {
-    @PrimaryGeneratedColumn()
-    id: number;
+	@PrimaryGeneratedColumn()
+	id: number;
 
-    @Column({ name: 'variante_id', type: 'integer' })
-    varianteId: number;
+	@Column({name: 'variante_id', type: 'integer'})
+	varianteId: number;
 
-    @Column({ name: 'ingrediente_id', type: 'integer' })
-    ingredienteId: number;
+	@Column({name: 'ingrediente_id', type: 'integer'})
+	ingredienteId: number;
 
-    /** Raw units consumed per 1 sale of the variant */
-    @Column({ type: 'numeric', default: 1, transformer: new ColumnNumericTransformer() })
-    cantidadPorVenta: number;
+	/** Raw units consumed per 1 sale of the variant */
+	@Column({type: 'numeric', default: 1, transformer: new ColumnNumericTransformer()})
+	cantidadPorVenta: number;
 
-    @ManyToOne(() => Ingrediente, (i) => i.variantes, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'ingrediente_id' })
-    ingrediente: Ingrediente;
+	@ManyToOne(() => Ingrediente, (i) => i.variantes, {onDelete: 'CASCADE'})
+	@JoinColumn({name: 'ingrediente_id'})
+	ingrediente: Ingrediente;
 }

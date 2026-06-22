@@ -116,6 +116,9 @@ export interface Domicilio {
     domiciliarioNombre?: string;
     telefono?: string;
   };
+  orden?: Orden;
+  cliente?: Cliente;
+  factura?: FacturaVenta;
 }
 
 // ─── Facturas Ventas ──────────────────────────────────────────────────────────

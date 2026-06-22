@@ -1,8 +1,8 @@
-import {Injectable, NotFoundException} from "@nestjs/common";
-import {InjectRepository} from "@nestjs/typeorm";
-import {Repository} from "typeorm";
-import {Domicilios} from "./esquemas/domicilios.entity";
-import {CreateDomiciliosDto} from "./esquemas/domicilios.dto";
+import {Injectable, NotFoundException} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Repository} from 'typeorm';
+import {Domicilios} from './esquemas/domicilios.entity';
+import {CreateDomiciliosDto} from './esquemas/domicilios.dto';
 
 @Injectable()
 export class DomiciliosService {
@@ -12,7 +12,8 @@ export class DomiciliosService {
 	) {}
 
 	findAll(page = 1, limit = 500) {
-		return this.repo.createQueryBuilder('d')
+		return this.repo
+			.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
 			.leftJoinAndSelect('orden.productos', 'productos')
@@ -29,13 +30,14 @@ export class DomiciliosService {
 		start.setHours(0, 0, 0, 0);
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
-		return this.repo.createQueryBuilder('d')
+		return this.repo
+			.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
 			.leftJoinAndSelect('orden.productos', 'productos')
 			.leftJoinAndSelect('d.cliente', 'cliente')
 			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
-			.where('d.fechaCreado BETWEEN :start AND :end', { start, end })
+			.where('d.fechaCreado BETWEEN :start AND :end', {start, end})
 			.orderBy('d.fechaCreado', 'DESC')
 			.getMany();
 	}
@@ -45,15 +47,16 @@ export class DomiciliosService {
 		start.setHours(0, 0, 0, 0);
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
-		return this.repo.createQueryBuilder('d')
+		return this.repo
+			.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
 			.leftJoinAndSelect('orden.productos', 'productos')
 			.leftJoinAndSelect('d.cliente', 'cliente')
 			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
-			.where('(d.telefonoDomiciliarioAsignado IS NULL OR d.telefonoDomiciliarioAsignado = :empty)', { empty: '' })
-			.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end })
-			.andWhere('d.estadoDomicilio NOT IN (:...excluir)', { excluir: ['cancelado', 'entregado'] })
+			.where('(d.telefonoDomiciliarioAsignado IS NULL OR d.telefonoDomiciliarioAsignado = :empty)', {empty: ''})
+			.andWhere('d.fechaCreado BETWEEN :start AND :end', {start, end})
+			.andWhere('d.estadoDomicilio NOT IN (:...excluir)', {excluir: ['cancelado', 'entregado']})
 			.orderBy('d.fechaCreado', 'ASC')
 			.getMany();
 	}
@@ -63,22 +66,23 @@ export class DomiciliosService {
 		start.setHours(0, 0, 0, 0);
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
-		return this.repo.createQueryBuilder('d')
+		return this.repo
+			.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
 			.leftJoinAndSelect('orden.productos', 'productos')
 			.leftJoinAndSelect('d.cliente', 'cliente')
 			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
 			.where('(d.estadoDomicilio = :pendiente OR d.estadoDomicilio IS NULL)')
-			.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end, pendiente: 'pendiente' })
+			.andWhere('d.fechaCreado BETWEEN :start AND :end', {start, end, pendiente: 'pendiente'})
 			.orderBy('d.fechaCreado', 'DESC')
 			.getMany();
 	}
 
 	async findOne(id: number) {
 		const domicilio = await this.repo.findOne({
-			where: { domicilioId: id },
-			relations: ['factura', 'orden', 'cliente', 'domiciliario']
+			where: {domicilioId: id},
+			relations: ['factura', 'orden', 'cliente', 'domiciliario'],
 		});
 		if (!domicilio) {
 			throw new NotFoundException(`Domicilio con ID ${id} no encontrado`);
@@ -95,20 +99,21 @@ export class DomiciliosService {
 	}
 
 	findByUser(telefono: string, all = false) {
-		const query = this.repo.createQueryBuilder('d')
+		const query = this.repo
+			.createQueryBuilder('d')
 			.leftJoinAndSelect('d.factura', 'factura')
 			.leftJoinAndSelect('d.orden', 'orden')
 			.leftJoinAndSelect('orden.productos', 'productos')
 			.leftJoinAndSelect('d.cliente', 'cliente')
 			.leftJoinAndSelect('d.domiciliario', 'domiciliario')
-			.where('d.telefonoDomiciliarioAsignado = :telefono', { telefono });
+			.where('d.telefonoDomiciliarioAsignado = :telefono', {telefono});
 
 		if (!all) {
 			const start = new Date();
 			start.setHours(0, 0, 0, 0);
 			const end = new Date();
 			end.setHours(23, 59, 59, 999);
-			query.andWhere('d.fechaCreado BETWEEN :start AND :end', { start, end });
+			query.andWhere('d.fechaCreado BETWEEN :start AND :end', {start, end});
 		}
 
 		return query.orderBy('d.fechaCreado', 'DESC').getMany();

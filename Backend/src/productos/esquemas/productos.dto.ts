@@ -11,7 +11,11 @@ export class CreateProductoVarianteDto {
 	@IsNumber()
 	precio: number;
 
-	@ApiProperty({example: 18000, required: false, description: 'Precio cuando el jugo se prepara con leche. Null = no aplica'})
+	@ApiProperty({
+		example: 18000,
+		required: false,
+		description: 'Precio cuando el jugo se prepara con leche. Null = no aplica',
+	})
 	@IsOptional()
 	@IsNumber()
 	precioLeche?: number | null;
@@ -54,13 +58,20 @@ export class CreateProductosDto {
 	@IsString()
 	emoji?: string;
 
-	@ApiProperty({example: 'pizza', required: false, description: "Tipo de personalización: 'pizza' | 'calzone' | 'jugo' | 'ninguna'. null = fallback por nombre"})
+	@ApiProperty({
+		example: 'pizza',
+		required: false,
+		description: "Tipo de personalización: 'pizza' | 'calzone' | 'jugo' | 'ninguna'. null = fallback por nombre",
+	})
 	@IsOptional()
 	@IsString()
 	personalizacion?: string | null;
 
-	@ApiProperty({type: [CreateProductoVarianteDto], required: false, description: 'Variantes del producto (tamaños, sabores, etc)'})
-
+	@ApiProperty({
+		type: [CreateProductoVarianteDto],
+		required: false,
+		description: 'Variantes del producto (tamaños, sabores, etc)',
+	})
 	@IsOptional()
 	@ValidateNested({each: true})
 	@Type(() => CreateProductoVarianteDto)

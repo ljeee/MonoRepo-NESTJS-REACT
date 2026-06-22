@@ -1,8 +1,8 @@
-import {Injectable, NotFoundException} from "@nestjs/common";
-import {InjectRepository} from "@nestjs/typeorm";
-import {Repository} from "typeorm";
-import {Domiciliarios} from "./esquemas/domiciliarios.entity";
-import {CreateDomiciliariosDto} from "./esquemas/domiciliarios.dto";
+import {Injectable, NotFoundException} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Repository} from 'typeorm';
+import {Domiciliarios} from './esquemas/domiciliarios.entity';
+import {CreateDomiciliariosDto} from './esquemas/domiciliarios.dto';
 
 @Injectable()
 export class DomiciliariosService {
@@ -15,14 +15,14 @@ export class DomiciliariosService {
 		return this.repo.find({
 			take: limit,
 			skip: (page - 1) * limit,
-			relations: ['domicilios', 'user']
+			relations: ['domicilios', 'user'],
 		});
 	}
 
 	async findOne(telefono: string) {
 		const domiciliario = await this.repo.findOne({
-			where: { telefono },
-			relations: ['domicilios', 'user']
+			where: {telefono},
+			relations: ['domicilios', 'user'],
 		});
 		if (!domiciliario) {
 			throw new NotFoundException(`Domiciliario con teléfono ${telefono} no encontrado`);

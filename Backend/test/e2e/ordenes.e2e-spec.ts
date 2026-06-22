@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {Test, TestingModule} from '@nestjs/testing';
+import {INestApplication, ValidationPipe} from '@nestjs/common';
 import request from 'supertest';
-import { OrdenesController } from '../../src/ordenes/ordenes.controller';
-import { OrdenesService } from '../../src/ordenes/ordenes.service';
+import {OrdenesController} from '../../src/ordenes/ordenes.controller';
+import {OrdenesService} from '../../src/ordenes/ordenes.service';
 
 const mockOrdenesService = {
 	findAll: jest.fn(),
@@ -22,7 +22,7 @@ const mockOrden = {
 	tipoPedido: 'mesa',
 	estadoOrden: 'pendiente',
 	fechaOrden: new Date().toISOString(),
-	factura: { facturaId: 10, total: 50000, estado: 'pendiente' },
+	factura: {facturaId: 10, total: 50000, estado: 'pendiente'},
 	productos: [],
 };
 
@@ -32,21 +32,19 @@ describe('OrdenesController (e2e)', () => {
 	beforeAll(async () => {
 		const moduleFixture: TestingModule = await Test.createTestingModule({
 			controllers: [OrdenesController],
-			providers: [
-				{ provide: OrdenesService, useValue: mockOrdenesService },
-			],
+			providers: [{provide: OrdenesService, useValue: mockOrdenesService}],
 		}).compile();
 
 		app = moduleFixture.createNestApplication();
 
 		// Inyectar usuario de prueba para endpoints que usan @GetUser()
 		app.use((req: any, _res: any, next: () => void) => {
-			req.user = { id: 'test-user-id', username: 'cajero1', roles: ['cajero'] };
+			req.user = {id: 'test-user-id', username: 'cajero1', roles: ['cajero']};
 			next();
 		});
 
 		app.useGlobalPipes(
-			new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }),
+			new ValidationPipe({whitelist: true, transform: true, transformOptions: {enableImplicitConversion: true}}),
 		);
 
 		await app.init();
@@ -64,24 +62,22 @@ describe('OrdenesController (e2e)', () => {
 
 	describe('GET /ordenes', () => {
 		it('retorna 200 con lista paginada', async () => {
-			const response = { data: [mockOrden], total: 1, page: 1, limit: 50, totalPages: 1 };
+			const response = {data: [mockOrden], total: 1, page: 1, limit: 50, totalPages: 1};
 			mockOrdenesService.findAll.mockResolvedValue(response);
 
 			const res = await request(app.getHttpServer()).get('/ordenes').expect(200);
 
-			expect(res.body).toMatchObject({ total: 1, page: 1 });
+			expect(res.body).toMatchObject({total: 1, page: 1});
 			expect(mockOrdenesService.findAll).toHaveBeenCalled();
 		});
 
 		it('pasa los query params al servicio', async () => {
-			mockOrdenesService.findAll.mockResolvedValue({ data: [], total: 0, page: 1, limit: 10, totalPages: 0 });
+			mockOrdenesService.findAll.mockResolvedValue({data: [], total: 0, page: 1, limit: 10, totalPages: 0});
 
-			await request(app.getHttpServer())
-				.get('/ordenes?estado=pendiente&page=2&limit=10')
-				.expect(200);
+			await request(app.getHttpServer()).get('/ordenes?estado=pendiente&page=2&limit=10').expect(200);
 
 			expect(mockOrdenesService.findAll).toHaveBeenCalledWith(
-				expect.objectContaining({ estado: 'pendiente', page: 2, limit: 10 }),
+				expect.objectContaining({estado: 'pendiente', page: 2, limit: 10}),
 			);
 		});
 	});
@@ -127,12 +123,12 @@ describe('OrdenesController (e2e)', () => {
 
 			const res = await request(app.getHttpServer()).get('/ordenes/1').expect(200);
 
-			expect(res.body).toMatchObject({ ordenId: 1 });
+			expect(res.body).toMatchObject({ordenId: 1});
 			expect(mockOrdenesService.findOne).toHaveBeenCalledWith(1);
 		});
 
 		it('retorna 404 cuando la orden no existe', async () => {
-			const { NotFoundException } = await import('@nestjs/common');
+			const {NotFoundException} = await import('@nestjs/common');
 			mockOrdenesService.findOne.mockRejectedValue(new NotFoundException('Orden no encontrada'));
 
 			await request(app.getHttpServer()).get('/ordenes/999').expect(404);
@@ -145,24 +141,18 @@ describe('OrdenesController (e2e)', () => {
 		it('retorna 201 con la orden creada', async () => {
 			mockOrdenesService.create.mockResolvedValue(mockOrden);
 
-			const res = await request(app.getHttpServer())
-				.post('/ordenes')
-				.send({ tipoPedido: 'mesa' })
-				.expect(201);
+			const res = await request(app.getHttpServer()).post('/ordenes').send({tipoPedido: 'mesa'}).expect(201);
 
-			expect(res.body).toMatchObject({ ordenId: 1 });
+			expect(res.body).toMatchObject({ordenId: 1});
 			expect(mockOrdenesService.create).toHaveBeenCalled();
 		});
 
 		it('retorna 400 cuando tipoPedido tiene un valor inválido', async () => {
-			await request(app.getHttpServer())
-				.post('/ordenes')
-				.send({ tipoPedido: 'invalido' })
-				.expect(400);
+			await request(app.getHttpServer()).post('/ordenes').send({tipoPedido: 'invalido'}).expect(400);
 		});
 
 		it('crea orden de tipo domicilio correctamente', async () => {
-			mockOrdenesService.create.mockResolvedValue({ ...mockOrden, tipoPedido: 'domicilio' });
+			mockOrdenesService.create.mockResolvedValue({...mockOrden, tipoPedido: 'domicilio'});
 
 			const res = await request(app.getHttpServer())
 				.post('/ordenes')
@@ -175,7 +165,7 @@ describe('OrdenesController (e2e)', () => {
 				.expect(201);
 
 			expect(mockOrdenesService.create).toHaveBeenCalledWith(
-				expect.objectContaining({ tipoPedido: 'domicilio', nombreCliente: 'Juan Pérez' }),
+				expect.objectContaining({tipoPedido: 'domicilio', nombreCliente: 'Juan Pérez'}),
 			);
 		});
 	});
@@ -184,15 +174,18 @@ describe('OrdenesController (e2e)', () => {
 
 	describe('PATCH /ordenes/:id', () => {
 		it('retorna 200 con la orden actualizada', async () => {
-			const updated = { ...mockOrden, observaciones: 'sin cebolla' };
+			const updated = {...mockOrden, observaciones: 'sin cebolla'};
 			mockOrdenesService.update.mockResolvedValue(updated);
 
 			const res = await request(app.getHttpServer())
 				.patch('/ordenes/1')
-				.send({ observaciones: 'sin cebolla' })
+				.send({observaciones: 'sin cebolla'})
 				.expect(200);
 
-			expect(mockOrdenesService.update).toHaveBeenCalledWith(1, expect.objectContaining({ observaciones: 'sin cebolla' }));
+			expect(mockOrdenesService.update).toHaveBeenCalledWith(
+				1,
+				expect.objectContaining({observaciones: 'sin cebolla'}),
+			);
 		});
 	});
 
@@ -200,7 +193,7 @@ describe('OrdenesController (e2e)', () => {
 
 	describe('DELETE /ordenes/:id', () => {
 		it('retorna 200 al eliminar correctamente', async () => {
-			mockOrdenesService.remove.mockResolvedValue({ affected: 1 });
+			mockOrdenesService.remove.mockResolvedValue({affected: 1});
 
 			await request(app.getHttpServer()).delete('/ordenes/1').expect(200);
 
@@ -208,8 +201,10 @@ describe('OrdenesController (e2e)', () => {
 		});
 
 		it('retorna 400 cuando la orden no se puede eliminar', async () => {
-			const { BadRequestException } = await import('@nestjs/common');
-			mockOrdenesService.remove.mockRejectedValue(new BadRequestException('No se puede eliminar una orden pagada'));
+			const {BadRequestException} = await import('@nestjs/common');
+			mockOrdenesService.remove.mockRejectedValue(
+				new BadRequestException('No se puede eliminar una orden pagada'),
+			);
 
 			await request(app.getHttpServer()).delete('/ordenes/2').expect(400);
 		});
@@ -219,12 +214,12 @@ describe('OrdenesController (e2e)', () => {
 
 	describe('PATCH /ordenes/:id/completar', () => {
 		it('retorna 200 al completar la orden', async () => {
-			const completed = { ...mockOrden, estadoOrden: 'completada' };
+			const completed = {...mockOrden, estadoOrden: 'completada'};
 			mockOrdenesService.completar.mockResolvedValue(completed);
 
 			const res = await request(app.getHttpServer())
 				.patch('/ordenes/1/completar')
-				.send({ metodo: 'efectivo' })
+				.send({metodo: 'efectivo'})
 				.expect(200);
 
 			expect(mockOrdenesService.completar).toHaveBeenCalledWith(
@@ -240,11 +235,11 @@ describe('OrdenesController (e2e)', () => {
 		});
 
 		it('pasa pagos mixtos al servicio', async () => {
-			mockOrdenesService.completar.mockResolvedValue({ ...mockOrden, estadoOrden: 'completada' });
+			mockOrdenesService.completar.mockResolvedValue({...mockOrden, estadoOrden: 'completada'});
 
 			await request(app.getHttpServer())
 				.patch('/ordenes/1/completar')
-				.send({ metodo: 'mixto', pagoEfectivo: 30000, pagoTransferencia: 20000 })
+				.send({metodo: 'mixto', pagoEfectivo: 30000, pagoTransferencia: 20000})
 				.expect(200);
 
 			expect(mockOrdenesService.completar).toHaveBeenCalledWith(
@@ -264,19 +259,15 @@ describe('OrdenesController (e2e)', () => {
 
 	describe('PATCH /ordenes/:id/cancel', () => {
 		it('retorna 200 al cancelar la orden', async () => {
-			const cancelled = { ...mockOrden, estadoOrden: 'cancelado' };
+			const cancelled = {...mockOrden, estadoOrden: 'cancelado'};
 			mockOrdenesService.cancel.mockResolvedValue(cancelled);
 
 			const res = await request(app.getHttpServer())
 				.patch('/ordenes/1/cancel')
-				.send({ reason: 'cliente se arrepintió' })
+				.send({reason: 'cliente se arrepintió'})
 				.expect(200);
 
-			expect(mockOrdenesService.cancel).toHaveBeenCalledWith(
-				1,
-				'cliente se arrepintió',
-				'test-user-id',
-			);
+			expect(mockOrdenesService.cancel).toHaveBeenCalledWith(1, 'cliente se arrepintió', 'test-user-id');
 		});
 	});
 });

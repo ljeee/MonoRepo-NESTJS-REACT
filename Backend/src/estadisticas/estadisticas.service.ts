@@ -1,11 +1,11 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, In } from 'typeorm';
-import { Ordenes } from '../ordenes/esquemas/ordenes.entity';
-import { OrdenesProductos } from '../ordenes-productos/esquemas/ordenes-productos.entity';
-import { FacturasVentas } from '../facturas-ventas/esquemas/facturas-ventas.entity';
-import { FacturasPagos } from '../facturas-pagos/esquemas/facturas-pagos.entity';
-import { getBogotaDateString } from '../common/utils/date.utils';
+import {Injectable} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Repository, Between, In} from 'typeorm';
+import {Ordenes} from '../ordenes/esquemas/ordenes.entity';
+import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.entity';
+import {FacturasVentas} from '../facturas-ventas/esquemas/facturas-ventas.entity';
+import {FacturasPagos} from '../facturas-pagos/esquemas/facturas-pagos.entity';
+import {getBogotaDateString} from '../common/utils/date.utils';
 
 @Injectable()
 export class EstadisticasService {
@@ -23,19 +23,19 @@ export class EstadisticasService {
 	private buildDayBounds(from: string, to: string) {
 		const start = from.includes('T') ? new Date(from) : new Date(`${from}T00:00:00-05:00`);
 		const end = to.includes('T') ? new Date(to) : new Date(`${to}T23:59:59.999-05:00`);
-		return { start, end };
+		return {start, end};
 	}
 
 	// ─── Top Productos ────────────────────────────────────────────────────────────
 	async productosTop(from: string, to: string, limit = 10) {
-		const { start, end } = this.buildDayBounds(from, to);
+		const {start, end} = this.buildDayBounds(from, to);
 		const result = await this.opRepo
 			.createQueryBuilder('op')
 			.select('op.producto', 'producto')
 			.addSelect('SUM(op.cantidad)', 'totalVendido')
 			.addSelect('SUM(op.cantidad * op.precio_unitario)', 'ingresos')
 			.innerJoin('op.orden', 'o')
-			.where('o.fechaOrden BETWEEN :from AND :to', { from: start, to: end })
+			.where('o.fechaOrden BETWEEN :from AND :to', {from: start, to: end})
 			.andWhere("o.estadoOrden != 'cancelado'")
 			.groupBy('op.producto')
 			.orderBy('"totalVendido"', 'DESC')
@@ -51,8 +51,8 @@ export class EstadisticasService {
 
 	// ─── Top Sabores (extraídos del texto del producto) ───────────────────────────
 	async saboresTop(from: string, to: string, limit = 10) {
-		const { start, end } = this.buildDayBounds(from, to);
-		// Los sabores están embebidos en el campo 'producto' 
+		const {start, end} = this.buildDayBounds(from, to);
+		// Los sabores están embebidos en el campo 'producto'
 		// ej: "Pizza Grande (paisa + carnes)" o "Pizza Grande paisa y carnes"
 		// Hacemos un query que busque las pizzas y extraiga los sabores
 		const pizzas = await this.opRepo
@@ -60,7 +60,7 @@ export class EstadisticasService {
 			.select('op.producto', 'producto')
 			.addSelect('op.cantidad', 'cantidad')
 			.innerJoin('op.orden', 'o')
-			.where('o.fechaOrden BETWEEN :from AND :to', { from: start, to: end })
+			.where('o.fechaOrden BETWEEN :from AND :to', {from: start, to: end})
 			.andWhere("o.estadoOrden != 'cancelado'")
 			.andWhere("LOWER(op.producto) LIKE '%pizza%'")
 			.getRawMany();
@@ -92,7 +92,7 @@ export class EstadisticasService {
 		}
 
 		return Object.entries(saborCount)
-			.map(([sabor, cantidad]) => ({ sabor, cantidad }))
+			.map(([sabor, cantidad]) => ({sabor, cantidad}))
 			.sort((a, b) => b.cantidad - a.cantidad)
 			.slice(0, limit);
 	}
@@ -113,16 +113,13 @@ export class EstadisticasService {
 				to: new Date(`${to}T23:59:59-05:00`),
 			});
 		} else if (fecha) {
-			qb.where("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date = :fecha", { fecha });
+			qb.where("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date = :fecha", {fecha});
 		} else {
 			const hoy = getBogotaDateString();
-			qb.where("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date = :fecha", { fecha: hoy });
+			qb.where("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date = :fecha", {fecha: hoy});
 		}
 
-		const result = await qb
-			.groupBy('hora')
-			.orderBy('hora', 'ASC')
-			.getRawMany();
+		const result = await qb.groupBy('hora').orderBy('hora', 'ASC').getRawMany();
 
 		return result.map((r) => ({
 			hora: Number(r.hora),
@@ -133,14 +130,14 @@ export class EstadisticasService {
 
 	// ─── Ventas por Día ───────────────────────────────────────────────────────────
 	async ventasPorDia(from: string, to: string) {
-		const { start, end } = this.buildDayBounds(from, to);
+		const {start, end} = this.buildDayBounds(from, to);
 		const result = await this.ordenesRepo
 			.createQueryBuilder('o')
 			.select("(o.fecha_orden AT TIME ZONE 'America/Bogota')::date", 'fecha')
 			.addSelect('COUNT(*)', 'cantidad')
 			.addSelect('SUM(f.total)', 'total')
 			.innerJoin('o.factura', 'f')
-			.where('o.fecha_orden BETWEEN :from AND :to', { from: start, to: end })
+			.where('o.fecha_orden BETWEEN :from AND :to', {from: start, to: end})
 			.andWhere("o.estado_orden != 'cancelado'")
 			.groupBy('fecha')
 			.orderBy('fecha', 'ASC')
@@ -156,14 +153,14 @@ export class EstadisticasService {
 
 	// ─── Métodos de Pago ──────────────────────────────────────────────────────────
 	async metodosPago(from: string, to: string) {
-		const { start, end } = this.buildDayBounds(from, to);
+		const {start, end} = this.buildDayBounds(from, to);
 		const facturas = await this.facturasRepo
 			.createQueryBuilder('f')
-			.where("f.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
+			.where('f.fechaFactura BETWEEN :from AND :to', {from: start, to: end})
 			.andWhere("f.estado != 'cancelado'")
 			.getMany();
 
-		const counts: Record<string, { cantidad: number; total: number }> = {};
+		const counts: Record<string, {cantidad: number; total: number}> = {};
 
 		for (const f of facturas) {
 			const metodoRaw = f.metodo ? f.metodo.toLowerCase().trim() : 'sin método';
@@ -172,7 +169,7 @@ export class EstadisticasService {
 			const metodo = metodoRaw === 'efectivo_transferencia' ? 'mixto' : metodoRaw;
 			const total = Number(f.total) || 0;
 
-			if (!counts[metodo]) counts[metodo] = { cantidad: 0, total: 0 };
+			if (!counts[metodo]) counts[metodo] = {cantidad: 0, total: 0};
 			counts[metodo].total += total;
 			counts[metodo].cantidad += 1;
 		}
@@ -196,38 +193,50 @@ export class EstadisticasService {
 	}
 
 	async resumenPeriodo(from: string, to: string) {
-		const { start, end } = this.buildDayBounds(from, to);
+		const {start, end} = this.buildDayBounds(from, to);
 		const [ventasResult, egresosResult, ordenesResult, canceladosResult] = await Promise.all([
 			this.facturasRepo
 				.createQueryBuilder('f')
 				.select('COUNT(*)', 'count')
 				.addSelect('COALESCE(SUM(f.total), 0)', 'total')
-				.addSelect("COALESCE(SUM(CASE WHEN f.estado = 'pagado' OR f.estado = 'pagada' THEN f.total ELSE 0 END), 0)", 'totalPagado')
-				.addSelect("COALESCE(SUM(CASE WHEN f.estado = 'pendiente' OR f.estado IS NULL THEN f.total ELSE 0 END), 0)", 'totalPendiente')
+				.addSelect(
+					"COALESCE(SUM(CASE WHEN f.estado = 'pagado' OR f.estado = 'pagada' THEN f.total ELSE 0 END), 0)",
+					'totalPagado',
+				)
+				.addSelect(
+					"COALESCE(SUM(CASE WHEN f.estado = 'pendiente' OR f.estado IS NULL THEN f.total ELSE 0 END), 0)",
+					'totalPendiente',
+				)
 				.addSelect("COUNT(CASE WHEN f.estado = 'pagado' OR f.estado = 'pagada' THEN 1 END)", 'countPagado')
 				.addSelect("COUNT(CASE WHEN f.estado = 'pendiente' OR f.estado IS NULL THEN 1 END)", 'countPendiente')
-				.where("f.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
+				.where('f.fechaFactura BETWEEN :from AND :to', {from: start, to: end})
 				.andWhere("f.estado != 'cancelado'")
 				.getRawOne(),
 			this.pagosRepo
 				.createQueryBuilder('p')
 				.select('COALESCE(SUM(p.total), 0)', 'total')
-				.addSelect("COALESCE(SUM(CASE WHEN p.estado = 'pagado' OR p.estado = 'pagada' THEN p.total ELSE 0 END), 0)", 'totalPagado')
-				.addSelect("COALESCE(SUM(CASE WHEN p.estado = 'pendiente' OR p.estado IS NULL THEN p.total ELSE 0 END), 0)", 'totalPendiente')
+				.addSelect(
+					"COALESCE(SUM(CASE WHEN p.estado = 'pagado' OR p.estado = 'pagada' THEN p.total ELSE 0 END), 0)",
+					'totalPagado',
+				)
+				.addSelect(
+					"COALESCE(SUM(CASE WHEN p.estado = 'pendiente' OR p.estado IS NULL THEN p.total ELSE 0 END), 0)",
+					'totalPendiente',
+				)
 				.addSelect("COUNT(CASE WHEN p.estado = 'pagado' OR p.estado = 'pagada' THEN 1 END)", 'countPagado')
 				.addSelect("COUNT(CASE WHEN p.estado = 'pendiente' OR p.estado IS NULL THEN 1 END)", 'countPendiente')
-				.where("p.fechaFactura BETWEEN :from AND :to", { from: start, to: end })
+				.where('p.fechaFactura BETWEEN :from AND :to', {from: start, to: end})
 				.getRawOne(),
 			this.ordenesRepo
 				.createQueryBuilder('o')
 				.select('COUNT(*)', 'count')
-				.where("o.fecha_orden BETWEEN :from AND :to", { from: start, to: end })
+				.where('o.fecha_orden BETWEEN :from AND :to', {from: start, to: end})
 				.andWhere("o.estado_orden != 'cancelado'")
 				.getRawOne(),
 			this.ordenesRepo
 				.createQueryBuilder('o')
 				.select('COUNT(*)', 'count')
-				.where("o.fecha_orden BETWEEN :from AND :to", { from: start, to: end })
+				.where('o.fecha_orden BETWEEN :from AND :to', {from: start, to: end})
 				.andWhere("o.estado_orden = 'cancelado'")
 				.getRawOne(),
 		]);
@@ -280,7 +289,7 @@ export class EstadisticasService {
 			.addSelect('SUM(f.total)', 'gastoTotal')
 			.addSelect('MAX(f.total)', 'pedidoMaximo')
 			.addSelect('MAX(f.fechaFactura)', 'ultimaVisita')
-			.where("f.cliente_nombre IS NOT NULL")
+			.where('f.cliente_nombre IS NOT NULL')
 			.andWhere("f.cliente_nombre != ''")
 			.andWhere("f.cliente_nombre NOT ILIKE 'mesa %'")
 			.andWhere("f.cliente_nombre NOT ILIKE 'mesa'")
@@ -288,15 +297,11 @@ export class EstadisticasService {
 			.andWhere("f.estado != 'cancelado'");
 
 		if (from && to) {
-			const { start, end } = this.buildDayBounds(from, to);
-			qb = qb.andWhere('f.fechaFactura BETWEEN :from AND :to', { from: start, to: end });
+			const {start, end} = this.buildDayBounds(from, to);
+			qb = qb.andWhere('f.fechaFactura BETWEEN :from AND :to', {from: start, to: end});
 		}
 
-		const result = await qb
-			.groupBy('f.cliente_nombre')
-			.orderBy('"gastoTotal"', 'DESC')
-			.limit(limit)
-			.getRawMany();
+		const result = await qb.groupBy('f.cliente_nombre').orderBy('"gastoTotal"', 'DESC').limit(limit).getRawMany();
 
 		return result.map((r) => ({
 			clienteNombre: r.clienteNombre,
@@ -309,7 +314,7 @@ export class EstadisticasService {
 
 	// ─── Top Variantes de Producto ────────────────────────────────────────────────
 	async variantesTop(from: string, to: string, limit = 10) {
-		const { start, end } = this.buildDayBounds(from, to);
+		const {start, end} = this.buildDayBounds(from, to);
 		const result = await this.opRepo
 			.createQueryBuilder('op')
 			.select('pv.nombre', 'variante')
@@ -319,7 +324,7 @@ export class EstadisticasService {
 			.innerJoin('op.orden', 'o')
 			.innerJoin('op.variante', 'pv')
 			.innerJoin('op.productoObj', 'p')
-			.where('o.fechaOrden BETWEEN :from AND :to', { from: start, to: end })
+			.where('o.fechaOrden BETWEEN :from AND :to', {from: start, to: end})
 			.andWhere("o.estadoOrden != 'cancelado'")
 			.andWhere('op.variante_id IS NOT NULL')
 			.groupBy('pv.nombre')
@@ -345,7 +350,7 @@ export class EstadisticasService {
 		// 1. Find orders linked to domicilios with this phone
 		const ordenesViaDomicilio = await this.ordenesRepo
 			.createQueryBuilder('o')
-			.innerJoin('o.domicilios', 'd', 'd.telefono = :tel', { tel: telefono })
+			.innerJoin('o.domicilios', 'd', 'd.telefono = :tel', {tel: telefono})
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('o.factura', 'f')
 			.orderBy('o.fechaOrden', 'DESC')
@@ -357,8 +362,8 @@ export class EstadisticasService {
 		const ordenesViaFactura = await this.ordenesRepo
 			.createQueryBuilder('o')
 			.innerJoin('o.factura', 'f')
-			.leftJoin('clientes', 'c', 'c.telefono = :tel AND c.cliente_nombre = f.cliente_nombre', { tel: telefono })
-			.where('f.telefono_cliente = :tel OR c.telefono = :tel', { tel: telefono })
+			.leftJoin('clientes', 'c', 'c.telefono = :tel AND c.cliente_nombre = f.cliente_nombre', {tel: telefono})
+			.where('f.telefono_cliente = :tel OR c.telefono = :tel', {tel: telefono})
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('o.factura', 'fv')
 			.orderBy('o.fechaOrden', 'DESC')
@@ -378,13 +383,11 @@ export class EstadisticasService {
 
 		// Compute stats
 		const totalOrdenes = ordenes.length;
-		const completadas = ordenes.filter(o => o.estadoOrden !== 'cancelado');
+		const completadas = ordenes.filter((o) => o.estadoOrden !== 'cancelado');
 		const gastoTotal = completadas.reduce((sum, o) => {
 			return sum + (Number(o.factura?.total) || 0);
 		}, 0);
-		const ticketPromedio = completadas.length > 0
-			? Math.round(gastoTotal / completadas.length)
-			: 0;
+		const ticketPromedio = completadas.length > 0 ? Math.round(gastoTotal / completadas.length) : 0;
 
 		// Count product frequency
 		const productoCount: Record<string, number> = {};
@@ -395,7 +398,7 @@ export class EstadisticasService {
 			}
 		}
 		const productosTop = Object.entries(productoCount)
-			.map(([nombre, cantidad]) => ({ nombre, cantidad }))
+			.map(([nombre, cantidad]) => ({nombre, cantidad}))
 			.sort((a, b) => b.cantidad - a.cantidad)
 			.slice(0, 10);
 
@@ -407,13 +410,13 @@ export class EstadisticasService {
 			ticketPromedio,
 			productosTop,
 			ultimaVisita: ordenes[0]?.fechaOrden || null,
-			ordenes: ordenes.slice(0, 50).map(o => ({
+			ordenes: ordenes.slice(0, 50).map((o) => ({
 				ordenId: o.ordenId,
 				fechaOrden: o.fechaOrden,
 				estadoOrden: o.estadoOrden,
 				tipoPedido: o.tipoPedido,
 				total: Number(o.factura?.total) || 0,
-				productos: (o.productos || []).map(p => ({
+				productos: (o.productos || []).map((p) => ({
 					nombre: p.producto,
 					cantidad: Number(p.cantidad) || 0,
 				})),
@@ -423,7 +426,7 @@ export class EstadisticasService {
 
 	// ─── Estadísticas por Domiciliario ───────────────────────────────────────────
 	async domiciliariosStats(from: string, to: string) {
-		const { start, end } = this.buildDayBounds(from, to);
+		const {start, end} = this.buildDayBounds(from, to);
 
 		// Unimos domicilios con la tabla domiciliarios por teléfono asignado
 		const result = await this.facturasRepo.manager
@@ -433,30 +436,30 @@ export class EstadisticasService {
 			.addSelect('d.telefono_domiciliario_asignado', 'telefono')
 			.addSelect('COUNT(*)', 'entregas')
 			.addSelect('COALESCE(SUM(d.costo_domicilio), 0)', 'ganancia')
-			.where('d.fecha_creado BETWEEN :from AND :to', { from: start, to: end })
-			.andWhere("d.telefono_domiciliario_asignado IS NOT NULL")
+			.where('d.fecha_creado BETWEEN :from AND :to', {from: start, to: end})
+			.andWhere('d.telefono_domiciliario_asignado IS NOT NULL')
 			.groupBy('d.telefono_domiciliario_asignado')
 			.addGroupBy('dm.domiciliario_nombre')
 			.orderBy('"entregas"', 'DESC')
 			.getRawMany();
 
-		return result.map(r => ({
+		return result.map((r) => ({
 			nombre: r.nombre || 'Sin nombre',
 			telefono: r.telefono || '',
 			entregas: Number(r.entregas),
 			ganancia: Number(r.ganancia) || 0,
 		}));
 	}
- 
+
 	// ─── Detalle de Facturas ──────────────────────────────────────────────────────
 	async facturasDetalle(from: string, to: string) {
-		const { start, end } = this.buildDayBounds(from, to);
+		const {start, end} = this.buildDayBounds(from, to);
 		return this.facturasRepo.find({
 			where: {
 				fechaFactura: Between(start, end),
 				estado: In(['pagado', 'pagada']),
 			},
-			order: { fechaFactura: 'ASC' },
+			order: {fechaFactura: 'ASC'},
 		});
 	}
 }

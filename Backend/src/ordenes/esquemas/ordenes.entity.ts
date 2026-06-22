@@ -1,4 +1,13 @@
-import {Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, Index, UpdateDateColumn} from 'typeorm';
+import {
+	Entity,
+	PrimaryGeneratedColumn,
+	Column,
+	ManyToOne,
+	OneToMany,
+	JoinColumn,
+	Index,
+	UpdateDateColumn,
+} from 'typeorm';
 import {FacturasVentas} from '../../facturas-ventas/esquemas/facturas-ventas.entity';
 import {OrdenesProductos} from '../../ordenes-productos/esquemas/ordenes-productos.entity';
 import {Domicilios} from '../../domicilios/esquemas/domicilios.entity';
@@ -32,7 +41,7 @@ export class Ordenes {
 	fechaCancelacion: Date;
 
 	@ManyToOne(() => FacturasVentas, (factura) => factura.ordenes, {nullable: true, onDelete: 'CASCADE'})
-    @JoinColumn({name: 'factura_id'})
+	@JoinColumn({name: 'factura_id'})
 	factura: FacturasVentas;
 
 	@OneToMany(() => OrdenesProductos, (op) => op.orden)

@@ -5,10 +5,7 @@ import {ImportadorController} from './importador.controller';
 import {FacturasVentasModule} from '../facturas-ventas/facturas-ventas.module';
 
 @Module({
-	imports: [
-		TypeOrmModule.forFeature([FacturasVentas]),
-		FacturasVentasModule,
-	],
+	imports: [TypeOrmModule.forFeature([FacturasVentas]), FacturasVentasModule],
 	controllers: [ImportadorController],
 	providers: [],
 })

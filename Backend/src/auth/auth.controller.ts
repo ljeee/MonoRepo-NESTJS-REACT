@@ -72,7 +72,7 @@ export class AuthController {
 	@Patch('users/:id')
 	async updateUser(
 		@Param('id') id: string,
-		@Body() dto: { name?: string; username?: string; password?: string },
+		@Body() dto: {name?: string; username?: string; password?: string},
 	): Promise<any> {
 		return this.authService.updateUser(id, dto);
 	}

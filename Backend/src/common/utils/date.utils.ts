@@ -20,9 +20,9 @@ export function getBogotaDateString(date: Date = new Date()): string {
  * en la zona horaria de Bogotá, representados como objetos Date con offset -05:00.
  * Útil para búsquedas exactas con timestamptz.
  */
-export function getBogotaDayBoundaries(dateStr?: string): { start: Date; end: Date } {
+export function getBogotaDayBoundaries(dateStr?: string): {start: Date; end: Date} {
 	const baseDate = dateStr || getBogotaDateString();
 	const start = new Date(`${baseDate}T00:00:00-05:00`);
 	const end = new Date(`${baseDate}T23:59:59.999-05:00`);
-	return { start, end };
+	return {start, end};
 }

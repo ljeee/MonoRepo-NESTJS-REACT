@@ -1,11 +1,4 @@
-import {
-	Column,
-	CreateDateColumn,
-	Entity,
-	PrimaryGeneratedColumn,
-	UpdateDateColumn,
-	OneToOne,
-} from 'typeorm';
+import {Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToOne} from 'typeorm';
 import {Role} from '../roles.enum';
 import {Domiciliarios} from '../../domiciliarios/esquemas/domiciliarios.entity';
 

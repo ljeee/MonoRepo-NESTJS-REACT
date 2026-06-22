@@ -1,8 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThanOrEqual } from 'typeorm';
-import { InventarioCajas, InventarioCajasMovimiento } from './esquemas/inventario-cajas.entity';
-import { AjustarCajasDto, ConfigurarAlertaDto, CrearCajaDto } from './esquemas/inventario-cajas.dto';
+import {Injectable, NotFoundException, BadRequestException} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Repository, MoreThanOrEqual} from 'typeorm';
+import {InventarioCajas, InventarioCajasMovimiento} from './esquemas/inventario-cajas.entity';
+import {AjustarCajasDto, ConfigurarAlertaDto, CrearCajaDto} from './esquemas/inventario-cajas.dto';
 
 @Injectable()
 export class InventarioCajasService {
@@ -25,15 +25,17 @@ export class InventarioCajasService {
 
 	/** Eliminar tipo de caja */
 	async eliminar(id: number): Promise<void> {
-		const inv = await this.inventarioRepo.findOne({ where: { id } });
+		const inv = await this.inventarioRepo.findOne({where: {id}});
 		if (!inv) throw new NotFoundException('Caja no encontrada');
 		await this.inventarioRepo.remove(inv);
 	}
 
 	/** Retorna todas las cajas */
-	async getEstado(): Promise<Array<{ id: number; nombre: string; cantidad: number; alertaMinimo: number | null; enAlerta: boolean }>> {
-		const cajas = await this.inventarioRepo.find({ order: { id: 'ASC' } });
-		return cajas.map(inv => ({
+	async getEstado(): Promise<
+		Array<{id: number; nombre: string; cantidad: number; alertaMinimo: number | null; enAlerta: boolean}>
+	> {
+		const cajas = await this.inventarioRepo.find({order: {id: 'ASC'}});
+		return cajas.map((inv) => ({
 			id: inv.id,
 			nombre: inv.nombre,
 			cantidad: inv.cantidad,
@@ -44,7 +46,7 @@ export class InventarioCajasService {
 
 	/** Ajusta la cantidad de una caja específica (positivo = agregar, negativo = restar) */
 	async ajustar(cajaId: number, dto: AjustarCajasDto) {
-		const inv = await this.inventarioRepo.findOne({ where: { id: cajaId } });
+		const inv = await this.inventarioRepo.findOne({where: {id: cajaId}});
 		if (!inv) throw new NotFoundException('Caja no encontrada');
 
 		const nuevaCantidad = Math.max(0, inv.cantidad + dto.delta);
@@ -73,24 +75,24 @@ export class InventarioCajasService {
 	}
 
 	/** Configura la cantidad mínima de alerta de una caja */
-	async configurarAlerta(cajaId: number, dto: ConfigurarAlertaDto): Promise<{ alertaMinimo: number }> {
-		const inv = await this.inventarioRepo.findOne({ where: { id: cajaId } });
+	async configurarAlerta(cajaId: number, dto: ConfigurarAlertaDto): Promise<{alertaMinimo: number}> {
+		const inv = await this.inventarioRepo.findOne({where: {id: cajaId}});
 		if (!inv) throw new NotFoundException('Caja no encontrada');
-		
+
 		inv.alertaMinimo = dto.alertaMinimo;
 		await this.inventarioRepo.save(inv);
-		return { alertaMinimo: inv.alertaMinimo! };
+		return {alertaMinimo: inv.alertaMinimo};
 	}
 
 	/** Obtiene los movimientos cargando la info de la caja a la que pertenecen */
 	async getMovimientos(limit = 20): Promise<any[]> {
 		const movimientos = await this.movimientosRepo.find({
 			relations: ['caja'],
-			order: { creadoEn: 'DESC' },
+			order: {creadoEn: 'DESC'},
 			take: limit,
 		});
 
-		return movimientos.map(m => ({
+		return movimientos.map((m) => ({
 			id: m.id,
 			cajaId: m.cajaId,
 			cajaNombre: m.caja?.nombre || 'Caja eliminada',
@@ -112,7 +114,7 @@ export class InventarioCajasService {
 	 * Si la caja no existe en la BD se omite silenciosamente.
 	 */
 	async descontarCajasParaOrden(
-		items: { varianteNombre: string; tipoProducto: string; cantidad: number }[],
+		items: {varianteNombre: string; tipoProducto: string; cantidad: number}[],
 		notaOrdenId: number,
 	): Promise<void> {
 		// Agrupar por nombre de caja para hacer una sola llamada por tipo
@@ -144,10 +146,9 @@ export class InventarioCajasService {
 	}
 
 	private async findCajaPorNombre(nombreCaja: string): Promise<InventarioCajas | null> {
-		const norm = (s: string) =>
-			s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+		const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 		const todas = await this.inventarioRepo.find();
-		return todas.find(c => norm(c.nombre) === norm(nombreCaja)) ?? null;
+		return todas.find((c) => norm(c.nombre) === norm(nombreCaja)) ?? null;
 	}
 
 	private resolverNombreCaja(varianteNombre: string, tipoProducto: string): string | null {
@@ -159,11 +160,8 @@ export class InventarioCajasService {
 
 		if (tipo.includes('calzone')) return 'Caja Calzone';
 
-		if (
-			variante.includes('pequeña') ||
-			variante.includes('pequena') ||
-			variante.includes('personal')
-		) return 'Caja Pizza Pequeña';
+		if (variante.includes('pequeña') || variante.includes('pequena') || variante.includes('personal'))
+			return 'Caja Pizza Pequeña';
 
 		if (variante.includes('mediana')) return 'Caja Pizza Mediana';
 
@@ -175,4 +173,3 @@ export class InventarioCajasService {
 		return null; // productos que no llevan caja (bebidas, adiciones, etc.)
 	}
 }
-

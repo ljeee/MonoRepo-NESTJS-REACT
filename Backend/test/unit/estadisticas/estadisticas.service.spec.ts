@@ -1,18 +1,30 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { EstadisticasService } from '../../../src/estadisticas/estadisticas.service';
-import { Ordenes } from '../../../src/ordenes/esquemas/ordenes.entity';
-import { OrdenesProductos } from '../../../src/ordenes-productos/esquemas/ordenes-productos.entity';
-import { FacturasVentas } from '../../../src/facturas-ventas/esquemas/facturas-ventas.entity';
-import { FacturasPagos } from '../../../src/facturas-pagos/esquemas/facturas-pagos.entity';
+import {Test, TestingModule} from '@nestjs/testing';
+import {getRepositoryToken} from '@nestjs/typeorm';
+import {EstadisticasService} from '../../../src/estadisticas/estadisticas.service';
+import {Ordenes} from '../../../src/ordenes/esquemas/ordenes.entity';
+import {OrdenesProductos} from '../../../src/ordenes-productos/esquemas/ordenes-productos.entity';
+import {FacturasVentas} from '../../../src/facturas-ventas/esquemas/facturas-ventas.entity';
+import {FacturasPagos} from '../../../src/facturas-pagos/esquemas/facturas-pagos.entity';
 
 const makeQb = (overrides: any = {}) => {
 	const qb: any = {};
 	const chainable = [
-		'select', 'addSelect', 'innerJoin', 'leftJoin', 'leftJoinAndSelect',
-		'where', 'andWhere', 'groupBy', 'addGroupBy', 'orderBy', 'limit', 'take',
+		'select',
+		'addSelect',
+		'innerJoin',
+		'leftJoin',
+		'leftJoinAndSelect',
+		'where',
+		'andWhere',
+		'groupBy',
+		'addGroupBy',
+		'orderBy',
+		'limit',
+		'take',
 	];
-	chainable.forEach(m => { qb[m] = jest.fn().mockReturnValue(qb); });
+	chainable.forEach((m) => {
+		qb[m] = jest.fn().mockReturnValue(qb);
+	});
 	qb.getRawMany = overrides.getRawMany ?? jest.fn().mockResolvedValue([]);
 	qb.getRawOne = overrides.getRawOne ?? jest.fn().mockResolvedValue({});
 	qb.getMany = overrides.getMany ?? jest.fn().mockResolvedValue([]);
@@ -27,22 +39,22 @@ describe('EstadisticasService', () => {
 	let mockPagosRepo: any;
 
 	beforeEach(async () => {
-		mockOrdenesRepo = { createQueryBuilder: jest.fn() };
-		mockOpRepo = { createQueryBuilder: jest.fn() };
+		mockOrdenesRepo = {createQueryBuilder: jest.fn()};
+		mockOpRepo = {createQueryBuilder: jest.fn()};
 		mockFacturasRepo = {
 			createQueryBuilder: jest.fn(),
 			find: jest.fn(),
-			manager: { createQueryBuilder: jest.fn() },
+			manager: {createQueryBuilder: jest.fn()},
 		};
-		mockPagosRepo = { createQueryBuilder: jest.fn() };
+		mockPagosRepo = {createQueryBuilder: jest.fn()};
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				EstadisticasService,
-				{ provide: getRepositoryToken(Ordenes), useValue: mockOrdenesRepo },
-				{ provide: getRepositoryToken(OrdenesProductos), useValue: mockOpRepo },
-				{ provide: getRepositoryToken(FacturasVentas), useValue: mockFacturasRepo },
-				{ provide: getRepositoryToken(FacturasPagos), useValue: mockPagosRepo },
+				{provide: getRepositoryToken(Ordenes), useValue: mockOrdenesRepo},
+				{provide: getRepositoryToken(OrdenesProductos), useValue: mockOpRepo},
+				{provide: getRepositoryToken(FacturasVentas), useValue: mockFacturasRepo},
+				{provide: getRepositoryToken(FacturasPagos), useValue: mockPagosRepo},
 			],
 		}).compile();
 
@@ -54,15 +66,15 @@ describe('EstadisticasService', () => {
 	describe('productosTop', () => {
 		it('retorna los productos top formateados', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([
-					{ producto: 'Pizza Grande', totalVendido: '5', ingresos: '150000' },
-				]),
+				getRawMany: jest
+					.fn()
+					.mockResolvedValue([{producto: 'Pizza Grande', totalVendido: '5', ingresos: '150000'}]),
 			});
 			mockOpRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.productosTop('2025-01-01', '2025-01-01');
 
-			expect(result).toEqual([{ producto: 'Pizza Grande', totalVendido: 5, ingresos: 150000 }]);
+			expect(result).toEqual([{producto: 'Pizza Grande', totalVendido: 5, ingresos: 150000}]);
 		});
 
 		it('devuelve lista vacía si no hay datos', async () => {
@@ -79,29 +91,25 @@ describe('EstadisticasService', () => {
 	describe('saboresTop', () => {
 		it('extrae sabores de formato con paréntesis', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([
-					{ producto: 'Pizza Grande (paisa + hawaiana)', cantidad: '2' },
-				]),
+				getRawMany: jest.fn().mockResolvedValue([{producto: 'Pizza Grande (paisa + hawaiana)', cantidad: '2'}]),
 			});
 			mockOpRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.saboresTop('2025-01-01', '2025-01-01');
 
-			expect(result.find(r => r.sabor === 'paisa')?.cantidad).toBe(2);
-			expect(result.find(r => r.sabor === 'hawaiana')?.cantidad).toBe(2);
+			expect(result.find((r) => r.sabor === 'paisa')?.cantidad).toBe(2);
+			expect(result.find((r) => r.sabor === 'hawaiana')?.cantidad).toBe(2);
 		});
 
 		it('extrae sabores de formato con "y"', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([
-					{ producto: 'Pizza Grande paisa y ranchera', cantidad: '1' },
-				]),
+				getRawMany: jest.fn().mockResolvedValue([{producto: 'Pizza Grande paisa y ranchera', cantidad: '1'}]),
 			});
 			mockOpRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.saboresTop('2025-01-01', '2025-01-01');
 
-			expect(result.find(r => r.sabor === 'paisa')?.cantidad).toBe(1);
+			expect(result.find((r) => r.sabor === 'paisa')?.cantidad).toBe(1);
 		});
 
 		it('retorna lista vacía si no hay pizzas', async () => {
@@ -118,13 +126,13 @@ describe('EstadisticasService', () => {
 	describe('ventasPorHora', () => {
 		it('retorna ventas por hora formateadas', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([{ hora: '12', cantidad: '3', total: '90000' }]),
+				getRawMany: jest.fn().mockResolvedValue([{hora: '12', cantidad: '3', total: '90000'}]),
 			});
 			mockOrdenesRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.ventasPorHora(undefined, '2025-01-01', '2025-01-31');
 
-			expect(result).toEqual([{ hora: 12, cantidad: 3, total: 90000 }]);
+			expect(result).toEqual([{hora: 12, cantidad: 3, total: 90000}]);
 		});
 
 		it('usa fecha específica cuando se provee', async () => {
@@ -134,8 +142,8 @@ describe('EstadisticasService', () => {
 			await service.ventasPorHora('2025-01-15');
 
 			expect(qb.where).toHaveBeenCalledWith(
-				expect.stringContaining("::date = :fecha"),
-				expect.objectContaining({ fecha: '2025-01-15' }),
+				expect.stringContaining('::date = :fecha'),
+				expect.objectContaining({fecha: '2025-01-15'}),
 			);
 		});
 
@@ -154,9 +162,7 @@ describe('EstadisticasService', () => {
 	describe('ventasPorDia', () => {
 		it('calcula ticketPromedio correctamente', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([
-					{ fecha: '2025-01-01', cantidad: '4', total: '80000' },
-				]),
+				getRawMany: jest.fn().mockResolvedValue([{fecha: '2025-01-01', cantidad: '4', total: '80000'}]),
 			});
 			mockOrdenesRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -167,9 +173,7 @@ describe('EstadisticasService', () => {
 
 		it('ticketPromedio es 0 cuando no hay ventas', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([
-					{ fecha: '2025-01-01', cantidad: '0', total: '0' },
-				]),
+				getRawMany: jest.fn().mockResolvedValue([{fecha: '2025-01-01', cantidad: '0', total: '0'}]),
 			});
 			mockOrdenesRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -185,62 +189,64 @@ describe('EstadisticasService', () => {
 		it('agrupa correctamente por método de pago', async () => {
 			const qb = makeQb({
 				getMany: jest.fn().mockResolvedValue([
-					{ metodo: 'efectivo', total: 50000, pagoEfectivo: null, pagoTransferencia: null },
-					{ metodo: 'transferencia', total: 30000, pagoEfectivo: null, pagoTransferencia: null },
+					{metodo: 'efectivo', total: 50000, pagoEfectivo: null, pagoTransferencia: null},
+					{metodo: 'transferencia', total: 30000, pagoEfectivo: null, pagoTransferencia: null},
 				]),
 			});
 			mockFacturasRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.metodosPago('2025-01-01', '2025-01-01');
 
-			expect(result.find(r => r.metodo === 'efectivo')?.total).toBe(50000);
-			expect(result.find(r => r.metodo === 'transferencia')?.total).toBe(30000);
+			expect(result.find((r) => r.metodo === 'efectivo')?.total).toBe(50000);
+			expect(result.find((r) => r.metodo === 'transferencia')?.total).toBe(30000);
 		});
 
 		it('agrupa efectivo_transferencia como su propio bucket "mixto" (total completo, cuenta 1 vez)', async () => {
 			const qb = makeQb({
-				getMany: jest.fn().mockResolvedValue([
-					{ metodo: 'efectivo_transferencia', total: 70000, pagoEfectivo: 50000, pagoTransferencia: 20000 },
-				]),
+				getMany: jest
+					.fn()
+					.mockResolvedValue([
+						{metodo: 'efectivo_transferencia', total: 70000, pagoEfectivo: 50000, pagoTransferencia: 20000},
+					]),
 			});
 			mockFacturasRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.metodosPago('2025-01-01', '2025-01-01');
 
-			const mixto = result.find(r => r.metodo === 'mixto');
+			const mixto = result.find((r) => r.metodo === 'mixto');
 			expect(mixto?.total).toBe(70000);
 			expect(mixto?.cantidad).toBe(1);
 			// No debe inflar los buckets de efectivo/transferencia
-			expect(result.find(r => r.metodo === 'efectivo')).toBeUndefined();
-			expect(result.find(r => r.metodo === 'transferencia')).toBeUndefined();
+			expect(result.find((r) => r.metodo === 'efectivo')).toBeUndefined();
+			expect(result.find((r) => r.metodo === 'transferencia')).toBeUndefined();
 		});
 
 		it('calcula porcentaje correcto', async () => {
 			const qb = makeQb({
 				getMany: jest.fn().mockResolvedValue([
-					{ metodo: 'efectivo', total: 75000, pagoEfectivo: null, pagoTransferencia: null },
-					{ metodo: 'transferencia', total: 25000, pagoEfectivo: null, pagoTransferencia: null },
+					{metodo: 'efectivo', total: 75000, pagoEfectivo: null, pagoTransferencia: null},
+					{metodo: 'transferencia', total: 25000, pagoEfectivo: null, pagoTransferencia: null},
 				]),
 			});
 			mockFacturasRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.metodosPago('2025-01-01', '2025-01-01');
 
-			const efectivo = result.find(r => r.metodo === 'efectivo');
+			const efectivo = result.find((r) => r.metodo === 'efectivo');
 			expect(efectivo?.porcentaje).toBe(75);
 		});
 
 		it('maneja método nulo usando "sin método"', async () => {
 			const qb = makeQb({
-				getMany: jest.fn().mockResolvedValue([
-					{ metodo: null, total: 10000, pagoEfectivo: null, pagoTransferencia: null },
-				]),
+				getMany: jest
+					.fn()
+					.mockResolvedValue([{metodo: null, total: 10000, pagoEfectivo: null, pagoTransferencia: null}]),
 			});
 			mockFacturasRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.metodosPago('2025-01-01', '2025-01-01');
 
-			expect(result.find(r => r.metodo === 'sin método')?.total).toBe(10000);
+			expect(result.find((r) => r.metodo === 'sin método')?.total).toBe(10000);
 		});
 	});
 
@@ -248,18 +254,14 @@ describe('EstadisticasService', () => {
 
 	describe('resumenPeriodo', () => {
 		it('calcula balanceNeto y ticketPromedio correctamente', async () => {
-			const ventasQb = makeQb({ getRawOne: jest.fn().mockResolvedValue({ count: '5', total: '100000' }) });
-			const egresosQb = makeQb({ getRawOne: jest.fn().mockResolvedValue({ total: '20000' }) });
-			const ordenesQb = makeQb({ getRawOne: jest.fn().mockResolvedValue({ count: '4' }) });
-			const canceladosQb = makeQb({ getRawOne: jest.fn().mockResolvedValue({ count: '1' }) });
+			const ventasQb = makeQb({getRawOne: jest.fn().mockResolvedValue({count: '5', total: '100000'})});
+			const egresosQb = makeQb({getRawOne: jest.fn().mockResolvedValue({total: '20000'})});
+			const ordenesQb = makeQb({getRawOne: jest.fn().mockResolvedValue({count: '4'})});
+			const canceladosQb = makeQb({getRawOne: jest.fn().mockResolvedValue({count: '1'})});
 
-			mockFacturasRepo.createQueryBuilder
-				.mockReturnValueOnce(ventasQb);
-			mockPagosRepo.createQueryBuilder
-				.mockReturnValueOnce(egresosQb);
-			mockOrdenesRepo.createQueryBuilder
-				.mockReturnValueOnce(ordenesQb)
-				.mockReturnValueOnce(canceladosQb);
+			mockFacturasRepo.createQueryBuilder.mockReturnValueOnce(ventasQb);
+			mockPagosRepo.createQueryBuilder.mockReturnValueOnce(egresosQb);
+			mockOrdenesRepo.createQueryBuilder.mockReturnValueOnce(ordenesQb).mockReturnValueOnce(canceladosQb);
 
 			const result = await service.resumenPeriodo('2025-01-01', '2025-01-01');
 
@@ -271,12 +273,14 @@ describe('EstadisticasService', () => {
 		});
 
 		it('ticketPromedio es 0 cuando no hay facturas', async () => {
-			const zeroQb = makeQb({ getRawOne: jest.fn().mockResolvedValue({ count: '0', total: '0' }) });
+			const zeroQb = makeQb({getRawOne: jest.fn().mockResolvedValue({count: '0', total: '0'})});
 			mockFacturasRepo.createQueryBuilder.mockReturnValueOnce(zeroQb);
-			mockPagosRepo.createQueryBuilder.mockReturnValueOnce(makeQb({ getRawOne: jest.fn().mockResolvedValue({ total: '0' }) }));
+			mockPagosRepo.createQueryBuilder.mockReturnValueOnce(
+				makeQb({getRawOne: jest.fn().mockResolvedValue({total: '0'})}),
+			);
 			mockOrdenesRepo.createQueryBuilder
-				.mockReturnValueOnce(makeQb({ getRawOne: jest.fn().mockResolvedValue({ count: '0' }) }))
-				.mockReturnValueOnce(makeQb({ getRawOne: jest.fn().mockResolvedValue({ count: '0' }) }));
+				.mockReturnValueOnce(makeQb({getRawOne: jest.fn().mockResolvedValue({count: '0'})}))
+				.mockReturnValueOnce(makeQb({getRawOne: jest.fn().mockResolvedValue({count: '0'})}));
 
 			const result = await service.resumenPeriodo('2025-01-01', '2025-01-01');
 
@@ -290,9 +294,11 @@ describe('EstadisticasService', () => {
 	describe('clientesFrecuentes', () => {
 		it('retorna los clientes frecuentes formateados', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([
-					{ clienteNombre: 'Juan', totalOrdenes: '5', gastoTotal: '200000', ultimaVisita: '2025-01-10' },
-				]),
+				getRawMany: jest
+					.fn()
+					.mockResolvedValue([
+						{clienteNombre: 'Juan', totalOrdenes: '5', gastoTotal: '200000', ultimaVisita: '2025-01-10'},
+					]),
 			});
 			mockFacturasRepo.createQueryBuilder.mockReturnValue(qb);
 
@@ -307,7 +313,7 @@ describe('EstadisticasService', () => {
 
 	describe('facturasDetalle', () => {
 		it('retorna facturas del período', async () => {
-			const facturas = [{ facturaId: 1, total: 50000 }];
+			const facturas = [{facturaId: 1, total: 50000}];
 			mockFacturasRepo.find.mockResolvedValue(facturas);
 
 			const result = await service.facturasDetalle('2025-01-01', '2025-01-01');
@@ -328,9 +334,9 @@ describe('EstadisticasService', () => {
 	describe('domiciliariosStats', () => {
 		it('retorna estadísticas de domiciliarios', async () => {
 			const qb = makeQb({
-				getRawMany: jest.fn().mockResolvedValue([
-					{ nombre: 'Carlos', telefono: '3001', entregas: '3', ganancia: '15000' },
-				]),
+				getRawMany: jest
+					.fn()
+					.mockResolvedValue([{nombre: 'Carlos', telefono: '3001', entregas: '3', ganancia: '15000'}]),
 			});
 			mockFacturasRepo.manager.createQueryBuilder.mockReturnValue(qb);
 
@@ -345,7 +351,7 @@ describe('EstadisticasService', () => {
 
 	describe('clienteHistorial', () => {
 		it('devuelve historial vacío cuando no hay órdenes', async () => {
-			const qb = makeQb({ getMany: jest.fn().mockResolvedValue([]) });
+			const qb = makeQb({getMany: jest.fn().mockResolvedValue([])});
 			mockOrdenesRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.clienteHistorial('3001234567');
@@ -357,10 +363,26 @@ describe('EstadisticasService', () => {
 
 		it('calcula stats correctamente con órdenes completadas y canceladas', async () => {
 			const ordenes = [
-				{ ordenId: 1, fechaOrden: new Date('2025-01-10'), estadoOrden: 'completado', tipoPedido: 'domicilio', factura: { total: '50000' }, productos: [{ producto: 'Pizza', cantidad: 1 }] },
-				{ ordenId: 2, fechaOrden: new Date('2025-01-05'), estadoOrden: 'cancelado', tipoPedido: 'mesa', factura: null, productos: [] },
+				{
+					ordenId: 1,
+					fechaOrden: new Date('2025-01-10'),
+					estadoOrden: 'completado',
+					tipoPedido: 'domicilio',
+					factura: {total: '50000'},
+					productos: [{producto: 'Pizza', cantidad: 1}],
+				},
+				{
+					ordenId: 2,
+					fechaOrden: new Date('2025-01-05'),
+					estadoOrden: 'cancelado',
+					tipoPedido: 'mesa',
+					factura: null,
+					productos: [],
+				},
 			];
-			const qb = makeQb({ getMany: jest.fn().mockResolvedValue(ordenes).mockResolvedValueOnce(ordenes).mockResolvedValueOnce([]) });
+			const qb = makeQb({
+				getMany: jest.fn().mockResolvedValue(ordenes).mockResolvedValueOnce(ordenes).mockResolvedValueOnce([]),
+			});
 			mockOrdenesRepo.createQueryBuilder.mockReturnValue(qb);
 
 			const result = await service.clienteHistorial('3001234567');

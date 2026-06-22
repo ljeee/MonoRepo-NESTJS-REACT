@@ -1,21 +1,21 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import {Test, TestingModule} from '@nestjs/testing';
+import {getRepositoryToken} from '@nestjs/typeorm';
+import {BadRequestException, UnauthorizedException} from '@nestjs/common';
+import {JwtService} from '@nestjs/jwt';
+import {ConfigService} from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { AuthService } from '../../../src/auth/auth.service';
-import { User } from '../../../src/auth/esquemas/user.entity';
-import { Domiciliarios } from '../../../src/domiciliarios/esquemas/domiciliarios.entity';
-import { Clientes } from '../../../src/clientes/esquemas/clientes.entity';
-import { Role } from '../../../src/auth/roles.enum';
+import {AuthService} from '../../../src/auth/auth.service';
+import {User} from '../../../src/auth/esquemas/user.entity';
+import {Domiciliarios} from '../../../src/domiciliarios/esquemas/domiciliarios.entity';
+import {Clientes} from '../../../src/clientes/esquemas/clientes.entity';
+import {Role} from '../../../src/auth/roles.enum';
 
 jest.mock('bcrypt', () => ({
 	hash: jest.fn(),
 	compare: jest.fn(),
 }));
 
-const mockedBcrypt = bcrypt as jest.Mocked<typeof bcrypt>;
+const mockedBcrypt = bcrypt;
 
 describe('AuthService', () => {
 	let service: AuthService;
@@ -40,7 +40,7 @@ describe('AuthService', () => {
 			findOne: jest.fn(),
 			create: jest.fn(),
 			save: jest.fn(),
-			manager: { transaction: jest.fn() },
+			manager: {transaction: jest.fn()},
 		};
 
 		mockDomiciliariosRepo = {
@@ -57,17 +57,17 @@ describe('AuthService', () => {
 
 		mockJwtService = {
 			sign: jest.fn().mockReturnValue('fake-jwt-token'),
-			verify: jest.fn().mockReturnValue({ sub: 'uuid-test-1', username: 'testuser', roles: [Role.Mesero] }),
+			verify: jest.fn().mockReturnValue({sub: 'uuid-test-1', username: 'testuser', roles: [Role.Mesero]}),
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				AuthService,
-				{ provide: getRepositoryToken(User), useValue: mockUsersRepo },
-				{ provide: getRepositoryToken(Domiciliarios), useValue: mockDomiciliariosRepo },
-				{ provide: getRepositoryToken(Clientes), useValue: mockClientesRepo },
-				{ provide: JwtService, useValue: mockJwtService },
-				{ provide: ConfigService, useValue: { get: jest.fn() } },
+				{provide: getRepositoryToken(User), useValue: mockUsersRepo},
+				{provide: getRepositoryToken(Domiciliarios), useValue: mockDomiciliariosRepo},
+				{provide: getRepositoryToken(Clientes), useValue: mockClientesRepo},
+				{provide: JwtService, useValue: mockJwtService},
+				{provide: ConfigService, useValue: {get: jest.fn()}},
 			],
 		}).compile();
 
@@ -83,7 +83,7 @@ describe('AuthService', () => {
 			mockUsersRepo.findOne.mockResolvedValue(mockUser);
 			(mockedBcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-			const result = await service.login({ username: 'testuser', password: 'password123' });
+			const result = await service.login({username: 'testuser', password: 'password123'});
 
 			expect(result.accessToken).toBe('fake-jwt-token');
 			expect(result.username).toBe('testuser');
@@ -93,27 +93,27 @@ describe('AuthService', () => {
 		it('lanza UnauthorizedException si el usuario no existe', async () => {
 			mockUsersRepo.findOne.mockResolvedValue(null);
 
-			await expect(
-				service.login({ username: 'noexiste', password: 'pass1234' }),
-			).rejects.toThrow(UnauthorizedException);
+			await expect(service.login({username: 'noexiste', password: 'pass1234'})).rejects.toThrow(
+				UnauthorizedException,
+			);
 		});
 
 		it('lanza UnauthorizedException si la contraseña es incorrecta', async () => {
 			mockUsersRepo.findOne.mockResolvedValue(mockUser);
 			(mockedBcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-			await expect(
-				service.login({ username: 'testuser', password: 'wrongpass' }),
-			).rejects.toThrow(UnauthorizedException);
+			await expect(service.login({username: 'testuser', password: 'wrongpass'})).rejects.toThrow(
+				UnauthorizedException,
+			);
 		});
 
 		it('usa el mismo mensaje de error para usuario inexistente y contraseña incorrecta', async () => {
 			mockUsersRepo.findOne.mockResolvedValue(null);
-			const err1: any = await service.login({ username: 'x', password: 'pass1234' }).catch((e) => e);
+			const err1: any = await service.login({username: 'x', password: 'pass1234'}).catch((e) => e);
 
 			mockUsersRepo.findOne.mockResolvedValue(mockUser);
 			(mockedBcrypt.compare as jest.Mock).mockResolvedValue(false);
-			const err2: any = await service.login({ username: 'testuser', password: 'wrong' }).catch((e) => e);
+			const err2: any = await service.login({username: 'testuser', password: 'wrong'}).catch((e) => e);
 
 			expect(err1.message).toBe(err2.message);
 		});
@@ -121,11 +121,9 @@ describe('AuthService', () => {
 		it('consulta el repositorio con el username proporcionado', async () => {
 			mockUsersRepo.findOne.mockResolvedValue(null);
 
-			await service.login({ username: 'buscame', password: 'pass1234' }).catch(() => {});
+			await service.login({username: 'buscame', password: 'pass1234'}).catch(() => {});
 
-			expect(mockUsersRepo.findOne).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { username: 'buscame' } }),
-			);
+			expect(mockUsersRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({where: {username: 'buscame'}}));
 		});
 	});
 
@@ -145,17 +143,15 @@ describe('AuthService', () => {
 			};
 			mockUsersRepo.manager.transaction.mockImplementation(async (cb: Function) =>
 				cb({
-					getRepository: jest.fn()
-						.mockReturnValueOnce(uRepo)
-						.mockReturnValueOnce(dRepo),
+					getRepository: jest.fn().mockReturnValueOnce(uRepo).mockReturnValueOnce(dRepo),
 				}),
 			);
 			(mockedBcrypt.hash as jest.Mock).mockResolvedValue('$2b$12$hashed');
-			return { uRepo, dRepo };
+			return {uRepo, dRepo};
 		};
 
 		it('crea un usuario mesero exitosamente', async () => {
-			const { uRepo } = setupTransaction(null, null);
+			const {uRepo} = setupTransaction(null, null);
 
 			const result = await service.register({
 				username: 'nuevousuario',
@@ -169,9 +165,9 @@ describe('AuthService', () => {
 		});
 
 		it('asigna rol mesero por defecto si no se especifica roles', async () => {
-			const { uRepo } = setupTransaction(null, null);
+			const {uRepo} = setupTransaction(null, null);
 
-			await service.register({ username: 'sinrol', password: 'password123', name: 'Sin Rol' });
+			await service.register({username: 'sinrol', password: 'password123', name: 'Sin Rol'});
 
 			const createArgs = uRepo.create.mock.calls[0][0];
 			expect(createArgs.roles).toContain(Role.Mesero);
@@ -181,7 +177,7 @@ describe('AuthService', () => {
 			setupTransaction(mockUser, null);
 
 			await expect(
-				service.register({ username: 'testuser', password: 'password123', name: 'Dup' }),
+				service.register({username: 'testuser', password: 'password123', name: 'Dup'}),
 			).rejects.toThrow(BadRequestException);
 		});
 
@@ -189,7 +185,7 @@ describe('AuthService', () => {
 			setupTransaction(null, null);
 
 			await expect(
-				service.register({ username: 'badmin', password: 'password123', name: 'Bad', roles: [Role.Admin] }),
+				service.register({username: 'badmin', password: 'password123', name: 'Bad', roles: [Role.Admin]}),
 			).rejects.toThrow(BadRequestException);
 		});
 
@@ -197,12 +193,17 @@ describe('AuthService', () => {
 			setupTransaction(null, null);
 
 			await expect(
-				service.register({ username: 'rider', password: 'password123', name: 'Rider', roles: [Role.Domiciliario] }),
+				service.register({
+					username: 'rider',
+					password: 'password123',
+					name: 'Rider',
+					roles: [Role.Domiciliario],
+				}),
 			).rejects.toThrow(BadRequestException);
 		});
 
 		it('lanza BadRequestException si el teléfono del domiciliario ya está registrado', async () => {
-			const existingDom = { telefono: '3001234567' };
+			const existingDom = {telefono: '3001234567'};
 			setupTransaction(null, existingDom);
 
 			await expect(
@@ -217,7 +218,7 @@ describe('AuthService', () => {
 		});
 
 		it('crea entrada de domiciliario al registrar usuario con ese rol', async () => {
-			const { dRepo } = setupTransaction(null, null);
+			const {dRepo} = setupTransaction(null, null);
 
 			await service.register({
 				username: 'rider3',
@@ -231,9 +232,9 @@ describe('AuthService', () => {
 		});
 
 		it('hashea la contraseña antes de guardar', async () => {
-			const { uRepo } = setupTransaction(null, null);
+			const {uRepo} = setupTransaction(null, null);
 
-			await service.register({ username: 'hashtest', password: 'mipass123', name: 'Hash' });
+			await service.register({username: 'hashtest', password: 'mipass123', name: 'Hash'});
 
 			const createArgs = uRepo.create.mock.calls[0][0];
 			expect(createArgs.passwordHash).toBe('$2b$12$hashed');
@@ -245,7 +246,7 @@ describe('AuthService', () => {
 
 	describe('refreshToken', () => {
 		it('retorna nuevos tokens con un refresh token válido', async () => {
-			mockJwtService.verify.mockReturnValue({ sub: 'uuid-test-1', username: 'testuser', roles: [Role.Mesero] });
+			mockJwtService.verify.mockReturnValue({sub: 'uuid-test-1', username: 'testuser', roles: [Role.Mesero]});
 			mockUsersRepo.findOne.mockResolvedValue(mockUser);
 
 			const result = await service.refreshToken('valid-refresh-token');
@@ -263,7 +264,7 @@ describe('AuthService', () => {
 		});
 
 		it('lanza UnauthorizedException si el usuario del token fue eliminado', async () => {
-			mockJwtService.verify.mockReturnValue({ sub: 'deleted-id', username: 'gone', roles: [] });
+			mockJwtService.verify.mockReturnValue({sub: 'deleted-id', username: 'gone', roles: []});
 			mockUsersRepo.findOne.mockResolvedValue(null);
 
 			await expect(service.refreshToken('orphan-token')).rejects.toThrow(UnauthorizedException);
@@ -292,7 +293,7 @@ describe('AuthService', () => {
 			service.toAuthResponse(mockUser as User);
 
 			const secondCall = mockJwtService.sign.mock.calls[1];
-			expect(secondCall[1]).toEqual(expect.objectContaining({ expiresIn: '7d' }));
+			expect(secondCall[1]).toEqual(expect.objectContaining({expiresIn: '7d'}));
 		});
 	});
 
@@ -300,14 +301,14 @@ describe('AuthService', () => {
 
 	describe('findAll', () => {
 		it('retorna todos los usuarios sin contraseñas', async () => {
-			const users = [mockUser, { ...mockUser, id: 'uuid-2', username: 'otro' }];
+			const users = [mockUser, {...mockUser, id: 'uuid-2', username: 'otro'}];
 			mockUsersRepo.find.mockResolvedValue(users);
 
 			const result = await service.findAll();
 
 			expect(result).toEqual(users);
 			expect(mockUsersRepo.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: expect.arrayContaining(['id', 'username']) }),
+				expect.objectContaining({select: expect.arrayContaining(['id', 'username'])}),
 			);
 		});
 	});

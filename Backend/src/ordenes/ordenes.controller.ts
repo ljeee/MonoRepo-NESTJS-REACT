@@ -141,18 +141,24 @@ export class OrdenesController {
 		@Body('pagoTransferencia') pagoTransferencia?: number,
 		@Body('denominaciones') denominaciones?: Record<string, number>,
 	) {
-		return this.service.completar(id, metodo, user.id, ip, idempotencyKey, lastUpdatedAt, pagoEfectivo, pagoTransferencia, denominaciones);
+		return this.service.completar(
+			id,
+			metodo,
+			user.id,
+			ip,
+			idempotencyKey,
+			lastUpdatedAt,
+			pagoEfectivo,
+			pagoTransferencia,
+			denominaciones,
+		);
 	}
 
 	@Patch(':id/cancel')
 	@Roles(Role.Admin, Role.Cajero)
 	@ApiOperation({summary: 'Cancelar una orden y su factura asociada'})
 	@ApiResponse({status: 200, description: 'Orden cancelada.'})
-	cancel(
-		@Param('id') id: number,
-		@Body('reason') reason: string,
-		@GetUser() user: User,
-	) {
+	cancel(@Param('id') id: number, @Body('reason') reason: string, @GetUser() user: User) {
 		return this.service.cancel(id, reason, user.id);
 	}
 }

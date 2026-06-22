@@ -3,9 +3,9 @@ export class ColumnNumericTransformer {
 		return data;
 	}
 	from(data: string | number): number {
-        if (typeof data === 'number') {
-            return data;
-        }
+		if (typeof data === 'number') {
+			return data;
+		}
 		return parseFloat(data);
 	}
 }

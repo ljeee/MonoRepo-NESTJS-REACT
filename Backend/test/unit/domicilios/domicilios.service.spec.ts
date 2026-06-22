@@ -1,12 +1,12 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { DomiciliosService } from '../../../src/domicilios/domicilios.service';
-import { Domicilios } from '../../../src/domicilios/esquemas/domicilios.entity';
+import {Test, TestingModule} from '@nestjs/testing';
+import {getRepositoryToken} from '@nestjs/typeorm';
+import {NotFoundException} from '@nestjs/common';
+import {DomiciliosService} from '../../../src/domicilios/domicilios.service';
+import {Domicilios} from '../../../src/domicilios/esquemas/domicilios.entity';
 
 const makeQb = () => {
 	const qb: any = {};
-	['leftJoinAndSelect', 'where', 'andWhere', 'orderBy', 'take', 'skip'].forEach(m => {
+	['leftJoinAndSelect', 'where', 'andWhere', 'orderBy', 'take', 'skip'].forEach((m) => {
 		qb[m] = jest.fn().mockReturnValue(qb);
 	});
 	qb.getMany = jest.fn();
@@ -29,10 +29,7 @@ describe('DomiciliosService', () => {
 		};
 
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [
-				DomiciliosService,
-				{ provide: getRepositoryToken(Domicilios), useValue: mockRepo },
-			],
+			providers: [DomiciliosService, {provide: getRepositoryToken(Domicilios), useValue: mockRepo}],
 		}).compile();
 
 		service = module.get<DomiciliosService>(DomiciliosService);
@@ -42,7 +39,7 @@ describe('DomiciliosService', () => {
 
 	describe('findAll', () => {
 		it('retorna la lista paginada de domicilios', async () => {
-			const list = [{ domicilioId: 1 }, { domicilioId: 2 }];
+			const list = [{domicilioId: 1}, {domicilioId: 2}];
 			qb.getMany.mockResolvedValue(list);
 
 			const result = await service.findAll();
@@ -71,7 +68,7 @@ describe('DomiciliosService', () => {
 
 			expect(qb.where).toHaveBeenCalledWith(
 				expect.stringContaining('BETWEEN'),
-				expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
+				expect.objectContaining({start: expect.any(Date), end: expect.any(Date)}),
 			);
 		});
 	});
@@ -90,7 +87,7 @@ describe('DomiciliosService', () => {
 			);
 			expect(qb.andWhere).toHaveBeenCalledWith(
 				expect.stringContaining('estadoDomicilio NOT IN'),
-				expect.objectContaining({ excluir: ['cancelado', 'entregado'] }),
+				expect.objectContaining({excluir: ['cancelado', 'entregado']}),
 			);
 		});
 	});
@@ -103,9 +100,7 @@ describe('DomiciliosService', () => {
 
 			await service.findPendingByDay();
 
-			expect(qb.where).toHaveBeenCalledWith(
-				expect.stringContaining('estadoDomicilio = :pendiente'),
-			);
+			expect(qb.where).toHaveBeenCalledWith(expect.stringContaining('estadoDomicilio = :pendiente'));
 		});
 	});
 
@@ -119,7 +114,7 @@ describe('DomiciliosService', () => {
 
 			expect(qb.where).toHaveBeenCalledWith(
 				expect.stringContaining('telefonoDomiciliarioAsignado = :telefono'),
-				expect.objectContaining({ telefono: '3001234567' }),
+				expect.objectContaining({telefono: '3001234567'}),
 			);
 			expect(qb.andWhere).toHaveBeenCalled();
 		});
@@ -137,7 +132,7 @@ describe('DomiciliosService', () => {
 
 	describe('findOne', () => {
 		it('retorna el domicilio cuando existe', async () => {
-			const dom = { domicilioId: 1 };
+			const dom = {domicilioId: 1};
 			mockRepo.findOne.mockResolvedValue(dom);
 
 			const result = await service.findOne(1);
@@ -156,7 +151,7 @@ describe('DomiciliosService', () => {
 
 	describe('create', () => {
 		it('guarda y retorna el domicilio', async () => {
-			const data = { telefono: '3001234567', direccionEntrega: 'Calle 10' } as any;
+			const data = {telefono: '3001234567', direccionEntrega: 'Calle 10'} as any;
 			mockRepo.save.mockResolvedValue(data);
 
 			const result = await service.create(data);
@@ -167,17 +162,17 @@ describe('DomiciliosService', () => {
 
 	describe('update', () => {
 		it('actualiza el domicilio con los campos dados', async () => {
-			mockRepo.update.mockResolvedValue({ affected: 1 });
+			mockRepo.update.mockResolvedValue({affected: 1});
 
-			await service.update(1, { estadoDomicilio: 'entregado' } as any);
+			await service.update(1, {estadoDomicilio: 'entregado'} as any);
 
-			expect(mockRepo.update).toHaveBeenCalledWith(1, { estadoDomicilio: 'entregado' });
+			expect(mockRepo.update).toHaveBeenCalledWith(1, {estadoDomicilio: 'entregado'});
 		});
 	});
 
 	describe('remove', () => {
 		it('elimina el domicilio por id', async () => {
-			mockRepo.delete.mockResolvedValue({ affected: 1 });
+			mockRepo.delete.mockResolvedValue({affected: 1});
 
 			await service.remove(3);
 

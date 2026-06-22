@@ -42,7 +42,13 @@ export class Domicilios {
 	@Column({name: 'longitud', type: 'float', nullable: true})
 	longitud: number;
 
-	@Column({name: 'costo_domicilio', type: 'numeric', nullable: true, default: 0, transformer: new ColumnNumericTransformer()})
+	@Column({
+		name: 'costo_domicilio',
+		type: 'numeric',
+		nullable: true,
+		default: 0,
+		transformer: new ColumnNumericTransformer(),
+	})
 	costoDomicilio: number;
 
 	@Column({name: 'estado_domicilio', type: 'text', default: () => "'pendiente'"})

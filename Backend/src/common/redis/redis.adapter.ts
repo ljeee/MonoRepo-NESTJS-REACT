@@ -1,55 +1,62 @@
-import { IoAdapter } from '@nestjs/platform-socket.io';
-import { ServerOptions } from 'socket.io';
-import { createAdapter } from '@socket.io/redis-adapter';
-import { Redis } from 'ioredis';
+import {IoAdapter} from '@nestjs/platform-socket.io';
+import {ServerOptions} from 'socket.io';
+import {createAdapter} from '@socket.io/redis-adapter';
+import {Redis} from 'ioredis';
 
 export class RedisIoAdapter extends IoAdapter {
-  private adapterConstructor: ReturnType<typeof createAdapter> | undefined;
+	private adapterConstructor: ReturnType<typeof createAdapter> | undefined;
 
-  constructor(appOrHttpServer?: any) {
-    super(appOrHttpServer);
-  }
+	constructor(appOrHttpServer?: any) {
+		super(appOrHttpServer);
+	}
 
-  async connectToRedis(): Promise<void> {
-    const pubClient = new Redis({
-      host: process.env.REDIS_HOST || '127.0.0.1',
-      port: Number(process.env.REDIS_PORT) || 6379,
-    });
-    
-    pubClient.on('error', (err) => {
-        console.error('Redis Adapter PubClient Error:', err);
-    });
+	async connectToRedis(): Promise<void> {
+		const pubClient = new Redis({
+			host: process.env.REDIS_HOST || '127.0.0.1',
+			port: Number(process.env.REDIS_PORT) || 6379,
+		});
 
-    const subClient = pubClient.duplicate();
-    subClient.on('error', (err) => {
-        console.error('Redis Adapter SubClient Error:', err);
-    });
+		pubClient.on('error', (err) => {
+			console.error('Redis Adapter PubClient Error:', err);
+		});
 
-    this.adapterConstructor = createAdapter(pubClient, subClient);
-  }
+		const subClient = pubClient.duplicate();
+		subClient.on('error', (err) => {
+			console.error('Redis Adapter SubClient Error:', err);
+		});
 
-  createIOServer(port: number, options?: ServerOptions): any {
-    const allowedOrigins = process.env.CORS_ORIGINS
-      ?.split(',')
-      .map((origin) => origin.trim())
-      .filter(Boolean);
+		this.adapterConstructor = createAdapter(pubClient, subClient);
+	}
 
-    const originsToAllow = allowedOrigins && allowedOrigins.length > 0 
-      ? allowedOrigins 
-      : ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost', 'http://localhost:1420', 'http://localhost:8081', 'http://localhost:5173'];
+	createIOServer(port: number, options?: ServerOptions): any {
+		const allowedOrigins = process.env.CORS_ORIGINS?.split(',')
+			.map((origin) => origin.trim())
+			.filter(Boolean);
 
-    const server = super.createIOServer(port, {
-      ...options,
-      cors: {
-        origin: originsToAllow,
-        methods: ['GET', 'POST', 'PUT', 'DELETE'],
-        credentials: true
-      }
-    });
+		const originsToAllow =
+			allowedOrigins && allowedOrigins.length > 0
+				? allowedOrigins
+				: [
+						'tauri://localhost',
+						'http://tauri.localhost',
+						'https://tauri.localhost',
+						'http://localhost:1420',
+						'http://localhost:8081',
+						'http://localhost:5173',
+					];
 
-    if (this.adapterConstructor) {
-        server.adapter(this.adapterConstructor);
-    }
-    return server;
-  }
+		const server = super.createIOServer(port, {
+			...options,
+			cors: {
+				origin: originsToAllow,
+				methods: ['GET', 'POST', 'PUT', 'DELETE'],
+				credentials: true,
+			},
+		});
+
+		if (this.adapterConstructor) {
+			server.adapter(this.adapterConstructor);
+		}
+		return server;
+	}
 }

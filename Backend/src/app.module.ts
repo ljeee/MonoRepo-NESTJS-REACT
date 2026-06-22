@@ -12,18 +12,18 @@ import {DomiciliariosModule} from './domiciliarios/domiciliarios.module';
 import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 import {AuthModule} from './auth/auth.module';
 import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
-import { EstadisticasModule } from './estadisticas/estadisticas.module';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { BullModule } from '@nestjs/bullmq';
-import { RedisModule } from './common/redis/redis.module';
-import { CierresModule } from './cierres/cierres.module';
-import { EmpresaModule } from './empresa/empresa.module';
-import { ContabilidadModule } from './contabilidad/contabilidad.module';
-import { SocketGateway } from './common/gateways/socket.gateway';
-import { ScheduleModule } from '@nestjs/schedule';
-import { InventarioCajasModule } from './inventario-cajas/inventario-cajas.module';
-import { CajaMovimientosModule } from './caja-movimientos/caja-movimientos.module';
-import { InventarioBebidasModule } from './inventario-bebidas/inventario-bebidas.module';
+import {EstadisticasModule} from './estadisticas/estadisticas.module';
+import {ThrottlerModule, ThrottlerGuard} from '@nestjs/throttler';
+import {BullModule} from '@nestjs/bullmq';
+import {RedisModule} from './common/redis/redis.module';
+import {CierresModule} from './cierres/cierres.module';
+import {EmpresaModule} from './empresa/empresa.module';
+import {ContabilidadModule} from './contabilidad/contabilidad.module';
+import {SocketGateway} from './common/gateways/socket.gateway';
+import {ScheduleModule} from '@nestjs/schedule';
+import {InventarioCajasModule} from './inventario-cajas/inventario-cajas.module';
+import {CajaMovimientosModule} from './caja-movimientos/caja-movimientos.module';
+import {InventarioBebidasModule} from './inventario-bebidas/inventario-bebidas.module';
 
 import * as Joi from 'joi';
 
@@ -33,9 +33,7 @@ import * as Joi from 'joi';
 			isGlobal: true,
 			envFilePath: '.env',
 			validationSchema: Joi.object({
-				NODE_ENV: Joi.string()
-					.valid('development', 'production', 'test')
-					.default('development'),
+				NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
 				PORT: Joi.number().default(3000),
 				DATABASE_HOST: Joi.string().required(),
 				DATABASE_PORT: Joi.number().default(5432),
@@ -65,10 +63,12 @@ import * as Joi from 'joi';
 				return config;
 			},
 		}),
-		ThrottlerModule.forRoot([{
-			ttl: 60000,
-			limit: 100,
-		}]),
+		ThrottlerModule.forRoot([
+			{
+				ttl: 60000,
+				limit: 100,
+			},
+		]),
 		BullModule.forRootAsync({
 			imports: [ConfigModule],
 			inject: [ConfigService],

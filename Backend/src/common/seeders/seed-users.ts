@@ -92,7 +92,6 @@ export async function seedUsers() {
 			},
 		];
 
-
 		for (const userData of users) {
 			const existing = await userRepository.findOne({where: {username: userData.username}});
 			if (existing) {
@@ -114,7 +113,7 @@ export async function seedUsers() {
 				if (!existingDom) {
 					const newDom = domiciliarioRepository.create({
 						telefono: userData.username,
-						domiciliarioNombre: userData.name
+						domiciliarioNombre: userData.name,
 					});
 					await domiciliarioRepository.save(newDom);
 					console.log(`✅ Domiciliario created in its table: ${userData.name}`);

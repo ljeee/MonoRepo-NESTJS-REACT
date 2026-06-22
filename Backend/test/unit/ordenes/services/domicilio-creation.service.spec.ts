@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { BadRequestException } from '@nestjs/common';
-import { DomicilioCreationService } from '../../../../src/ordenes/services/domicilio-creation.service';
-import { Clientes } from '../../../../src/clientes/esquemas/clientes.entity';
-import { ClienteDirecciones } from '../../../../src/clientes/esquemas/cliente-direcciones.entity';
-import { Domiciliarios } from '../../../../src/domiciliarios/esquemas/domiciliarios.entity';
-import { Domicilios } from '../../../../src/domicilios/esquemas/domicilios.entity';
+import {Test, TestingModule} from '@nestjs/testing';
+import {getRepositoryToken} from '@nestjs/typeorm';
+import {BadRequestException} from '@nestjs/common';
+import {DomicilioCreationService} from '../../../../src/ordenes/services/domicilio-creation.service';
+import {Clientes} from '../../../../src/clientes/esquemas/clientes.entity';
+import {ClienteDirecciones} from '../../../../src/clientes/esquemas/cliente-direcciones.entity';
+import {Domiciliarios} from '../../../../src/domiciliarios/esquemas/domiciliarios.entity';
+import {Domicilios} from '../../../../src/domicilios/esquemas/domicilios.entity';
 
 describe('DomicilioCreationService', () => {
 	let service: DomicilioCreationService;
@@ -15,18 +15,18 @@ describe('DomicilioCreationService', () => {
 	let mockDomiciliosRepo: any;
 
 	beforeEach(async () => {
-		mockClientesRepo = { findOne: jest.fn(), save: jest.fn() };
-		mockDireccionesRepo = { findOne: jest.fn(), save: jest.fn() };
-		mockDomiciliariosRepo = { findOne: jest.fn(), save: jest.fn() };
-		mockDomiciliosRepo = { findOne: jest.fn(), save: jest.fn(), create: jest.fn(), update: jest.fn() };
+		mockClientesRepo = {findOne: jest.fn(), save: jest.fn()};
+		mockDireccionesRepo = {findOne: jest.fn(), save: jest.fn()};
+		mockDomiciliariosRepo = {findOne: jest.fn(), save: jest.fn()};
+		mockDomiciliosRepo = {findOne: jest.fn(), save: jest.fn(), create: jest.fn(), update: jest.fn()};
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				DomicilioCreationService,
-				{ provide: getRepositoryToken(Clientes), useValue: mockClientesRepo },
-				{ provide: getRepositoryToken(ClienteDirecciones), useValue: mockDireccionesRepo },
-				{ provide: getRepositoryToken(Domiciliarios), useValue: mockDomiciliariosRepo },
-				{ provide: getRepositoryToken(Domicilios), useValue: mockDomiciliosRepo },
+				{provide: getRepositoryToken(Clientes), useValue: mockClientesRepo},
+				{provide: getRepositoryToken(ClienteDirecciones), useValue: mockDireccionesRepo},
+				{provide: getRepositoryToken(Domiciliarios), useValue: mockDomiciliariosRepo},
+				{provide: getRepositoryToken(Domicilios), useValue: mockDomiciliosRepo},
 			],
 		}).compile();
 
@@ -54,7 +54,7 @@ describe('DomicilioCreationService', () => {
 	describe('upsertCliente', () => {
 		it('crea un nuevo cliente si no existe', async () => {
 			mockClientesRepo.findOne.mockResolvedValue(null);
-			mockClientesRepo.save.mockResolvedValue({ telefono: '3001234567' });
+			mockClientesRepo.save.mockResolvedValue({telefono: '3001234567'});
 			mockDireccionesRepo.findOne.mockResolvedValue(null);
 			mockDireccionesRepo.save.mockResolvedValue({});
 
@@ -64,9 +64,9 @@ describe('DomicilioCreationService', () => {
 		});
 
 		it('retorna el cliente existente sin guardarlo de nuevo', async () => {
-			const clienteExistente = { telefono: '3001234567', clienteNombre: 'Juan' };
+			const clienteExistente = {telefono: '3001234567', clienteNombre: 'Juan'};
 			mockClientesRepo.findOne.mockResolvedValue(clienteExistente);
-			mockDireccionesRepo.findOne.mockResolvedValue({ id: 1 }); // dirección ya existe
+			mockDireccionesRepo.findOne.mockResolvedValue({id: 1}); // dirección ya existe
 
 			const result = await service.upsertCliente('3001234567', 'Juan', 'Calle 10');
 
@@ -75,44 +75,73 @@ describe('DomicilioCreationService', () => {
 		});
 
 		it('guarda una nueva dirección si no existe', async () => {
-			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
+			mockClientesRepo.findOne.mockResolvedValue({telefono: '3001234567'});
 			mockDireccionesRepo.findOne.mockResolvedValue(null);
 			mockDireccionesRepo.save.mockResolvedValue({});
 
 			await service.upsertCliente('3001234567', 'Juan', 'Calle 10 #5-20');
 
 			expect(mockDireccionesRepo.save).toHaveBeenCalledWith(
-				expect.objectContaining({ telefonoCliente: '3001234567', direccion: 'Calle 10 #5-20' }),
+				expect.objectContaining({telefonoCliente: '3001234567', direccion: 'Calle 10 #5-20'}),
 			);
 		});
 
 		it('guarda una nueva dirección con costo si se provee', async () => {
-			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
+			mockClientesRepo.findOne.mockResolvedValue({telefono: '3001234567'});
 			mockDireccionesRepo.findOne.mockResolvedValue(null);
 			mockDireccionesRepo.save.mockResolvedValue({});
 
-			await service.upsertCliente('3001234567', 'Juan', 'Calle 10 #5-20', 'casa', undefined, undefined, undefined, undefined, 5000);
+			await service.upsertCliente(
+				'3001234567',
+				'Juan',
+				'Calle 10 #5-20',
+				'casa',
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				5000,
+			);
 
 			expect(mockDireccionesRepo.save).toHaveBeenCalledWith(
-				expect.objectContaining({ telefonoCliente: '3001234567', direccion: 'Calle 10 #5-20', costoDomicilio: 5000 }),
+				expect.objectContaining({
+					telefonoCliente: '3001234567',
+					direccion: 'Calle 10 #5-20',
+					costoDomicilio: 5000,
+				}),
 			);
 		});
 
 		it('actualiza el costo de una dirección existente si se cambia', async () => {
-			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
-			const dirExistente = { id: 12, telefonoCliente: '3001234567', direccion: 'Calle 10 #5-20', costoDomicilio: 2000 };
+			mockClientesRepo.findOne.mockResolvedValue({telefono: '3001234567'});
+			const dirExistente = {
+				id: 12,
+				telefonoCliente: '3001234567',
+				direccion: 'Calle 10 #5-20',
+				costoDomicilio: 2000,
+			};
 			mockDireccionesRepo.findOne.mockResolvedValue(dirExistente);
 			mockDireccionesRepo.save.mockResolvedValue({});
 
-			await service.upsertCliente('3001234567', 'Juan', 'Calle 10 #5-20', 'casa', undefined, undefined, undefined, 12, 5000);
+			await service.upsertCliente(
+				'3001234567',
+				'Juan',
+				'Calle 10 #5-20',
+				'casa',
+				undefined,
+				undefined,
+				undefined,
+				12,
+				5000,
+			);
 
 			expect(mockDireccionesRepo.save).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 12, costoDomicilio: 5000 }),
+				expect.objectContaining({id: 12, costoDomicilio: 5000}),
 			);
 		});
 
 		it('no guarda dirección si está vacía', async () => {
-			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
+			mockClientesRepo.findOne.mockResolvedValue({telefono: '3001234567'});
 
 			await service.upsertCliente('3001234567', 'Juan', '   ');
 
@@ -124,7 +153,7 @@ describe('DomicilioCreationService', () => {
 
 	describe('upsertDomiciliario', () => {
 		it('retorna el domiciliario existente', async () => {
-			const dom = { telefono: '3111111111' };
+			const dom = {telefono: '3111111111'};
 			mockDomiciliariosRepo.findOne.mockResolvedValue(dom);
 
 			const result = await service.upsertDomiciliario('3111111111');
@@ -135,7 +164,7 @@ describe('DomicilioCreationService', () => {
 
 		it('crea un nuevo domiciliario si no existe', async () => {
 			mockDomiciliariosRepo.findOne.mockResolvedValue(null);
-			mockDomiciliariosRepo.save.mockResolvedValue({ telefono: '3111111111' });
+			mockDomiciliariosRepo.save.mockResolvedValue({telefono: '3111111111'});
 
 			await service.upsertDomiciliario('3111111111');
 
@@ -147,7 +176,7 @@ describe('DomicilioCreationService', () => {
 
 	describe('crearDomicilio', () => {
 		it('crea y guarda el domicilio con todos los datos', async () => {
-			const domCreado = { domicilioId: 1, facturaId: 10, ordenId: 5 };
+			const domCreado = {domicilioId: 1, facturaId: 10, ordenId: 5};
 			mockDomiciliosRepo.create.mockReturnValue(domCreado);
 			mockDomiciliosRepo.save.mockResolvedValue(domCreado);
 
@@ -170,9 +199,7 @@ describe('DomicilioCreationService', () => {
 
 			await service.crearDomicilio(1, 1, '3001234567', undefined, undefined);
 
-			expect(mockDomiciliosRepo.create).toHaveBeenCalledWith(
-				expect.objectContaining({ costoDomicilio: 0 }),
-			);
+			expect(mockDomiciliosRepo.create).toHaveBeenCalledWith(expect.objectContaining({costoDomicilio: 0}));
 		});
 	});
 
@@ -180,14 +207,12 @@ describe('DomicilioCreationService', () => {
 
 	describe('validarDatosDomicilio', () => {
 		it('lanza BadRequestException si falta telefonoCliente', () => {
-			expect(() =>
-				service.validarDatosDomicilio({ tipoPedido: 'domicilio' } as any),
-			).toThrow(BadRequestException);
+			expect(() => service.validarDatosDomicilio({tipoPedido: 'domicilio'} as any)).toThrow(BadRequestException);
 		});
 
 		it('no lanza excepción cuando telefonoCliente está presente', () => {
 			expect(() =>
-				service.validarDatosDomicilio({ tipoPedido: 'domicilio', telefonoCliente: '3001234567' } as any),
+				service.validarDatosDomicilio({tipoPedido: 'domicilio', telefonoCliente: '3001234567'} as any),
 			).not.toThrow();
 		});
 	});
@@ -196,11 +221,11 @@ describe('DomicilioCreationService', () => {
 
 	describe('procesarDomicilio', () => {
 		it('procesa un domicilio completo', async () => {
-			mockClientesRepo.findOne.mockResolvedValue({ telefono: '3001234567' });
-			mockDireccionesRepo.findOne.mockResolvedValue({ id: 1 });
-			mockDomiciliariosRepo.findOne.mockResolvedValue({ telefono: '3111111111' });
+			mockClientesRepo.findOne.mockResolvedValue({telefono: '3001234567'});
+			mockDireccionesRepo.findOne.mockResolvedValue({id: 1});
+			mockDomiciliariosRepo.findOne.mockResolvedValue({telefono: '3111111111'});
 			mockDomiciliosRepo.create.mockReturnValue({});
-			mockDomiciliosRepo.save.mockResolvedValue({ domicilioId: 1 });
+			mockDomiciliosRepo.save.mockResolvedValue({domicilioId: 1});
 
 			const data = {
 				tipoPedido: 'domicilio',
@@ -217,9 +242,9 @@ describe('DomicilioCreationService', () => {
 		});
 
 		it('lanza BadRequestException si falta telefonoCliente', async () => {
-			await expect(
-				service.procesarDomicilio({ tipoPedido: 'domicilio' } as any, 1, 1),
-			).rejects.toThrow(BadRequestException);
+			await expect(service.procesarDomicilio({tipoPedido: 'domicilio'} as any, 1, 1)).rejects.toThrow(
+				BadRequestException,
+			);
 		});
 	});
 
@@ -227,22 +252,22 @@ describe('DomicilioCreationService', () => {
 
 	describe('updateDomicilioPorOrden', () => {
 		it('actualiza los datos del domicilio existente', async () => {
-			const domExistente = { domicilioId: 7, ordenId: 1, telefono: '300', direccionEntrega: 'Calle 1' };
+			const domExistente = {domicilioId: 7, ordenId: 1, telefono: '300', direccionEntrega: 'Calle 1'};
 			mockDomiciliosRepo.findOne.mockResolvedValue(domExistente);
 			mockDomiciliosRepo.update.mockResolvedValue({});
-			mockClientesRepo.findOne.mockResolvedValue({ telefono: '300' });
-			mockDireccionesRepo.findOne.mockResolvedValue({ id: 1 });
+			mockClientesRepo.findOne.mockResolvedValue({telefono: '300'});
+			mockDireccionesRepo.findOne.mockResolvedValue({id: 1});
 
-			await service.updateDomicilioPorOrden(1, { direccionCliente: 'Calle 2' });
+			await service.updateDomicilioPorOrden(1, {direccionCliente: 'Calle 2'});
 
 			expect(mockDomiciliosRepo.update).toHaveBeenCalledWith(
 				7,
-				expect.objectContaining({ direccionEntrega: 'Calle 2' }),
+				expect.objectContaining({direccionEntrega: 'Calle 2'}),
 			);
 		});
 
 		it('no actualiza si no hay cambios', async () => {
-			const domExistente = { domicilioId: 7, ordenId: 1 };
+			const domExistente = {domicilioId: 7, ordenId: 1};
 			mockDomiciliosRepo.findOne.mockResolvedValue(domExistente);
 
 			await service.updateDomicilioPorOrden(1, {});

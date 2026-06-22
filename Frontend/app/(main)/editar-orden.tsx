@@ -211,6 +211,7 @@ export default function EditarOrdenScreen() {
     const [orden, setOrden] = useState<OrdenInfo | null>(null);
     const [products, setProducts] = useState<ProductoEdit[]>([]);
     const [observaciones, setObservaciones] = useState('');
+    const [costoDomicilio, setCostoDomicilio] = useState<string>('0');
     const [showAddPanel, setShowAddPanel] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -220,6 +221,7 @@ export default function EditarOrdenScreen() {
         api.ordenes.getById(Number(ordenId)).then((o: any) => {
             setOrden(o);
             setObservaciones(o.observaciones || '');
+            setCostoDomicilio(String(o.domicilios?.[0]?.costoDomicilio || 0));
             // Map existing products to ProductoEdit
             const mapped: ProductoEdit[] = (o.productos || []).map((p: any) => {
                 const productoStr: string = p.producto || `${p.productoObj?.productoNombre || ''} ${p.variante?.nombre || ''}`.trim() || 'Producto';
@@ -252,7 +254,8 @@ export default function EditarOrdenScreen() {
     }, [ordenId]);
 
     const isPaid = (orden?.factura?.estado || '').toLowerCase() === 'pagada';
-    const costoDom = Number(orden?.domicilios?.[0]?.costoDomicilio || 0);
+    const isDomicilio = orden?.tipoPedido?.toLowerCase() === 'domicilio';
+    const costoDom = isDomicilio ? Number(costoDomicilio || 0) : 0;
     const subtotal = products.reduce((s: number, p: ProductoEdit) => s + p.precioUnitario * p.cantidad, 0);
     const total = subtotal + costoDom;
 
@@ -263,6 +266,7 @@ export default function EditarOrdenScreen() {
         try {
             await api.ordenes.update(Number(ordenId), {
                 observaciones: observaciones || undefined,
+                costoDomicilio: isDomicilio ? Number(costoDomicilio) : undefined,
                 productos: products
                     .filter(p => p.varianteId !== undefined && p.varianteId !== null)
                     .map((p: ProductoEdit) => {
@@ -294,7 +298,7 @@ export default function EditarOrdenScreen() {
         } finally {
             setSaving(false);
         }
-    }, [isPaid, products, observaciones, ordenId, router, showToast]);
+    }, [isPaid, products, observaciones, costoDomicilio, isDomicilio, ordenId, router, showToast]);
 
     // ── Loading ──
     if (loadingOrden) {
@@ -479,10 +483,29 @@ export default function EditarOrdenScreen() {
                                             <Text className="font-bold text-slate-400 text-sm">Productos</Text>
                                             <Text className="font-black text-white text-sm" style={{ fontFamily: 'Space Grotesk' }}>${formatCOP(subtotal)}</Text>
                                         </View>
-                                        {costoDom > 0 && (
-                                            <View className="flex-row justify-between">
+                                        {isDomicilio && (
+                                            <View className="flex-row justify-between items-center my-1">
                                                 <Text className="font-bold text-slate-400 text-sm">Domicilio</Text>
-                                                <Text className="font-black text-emerald-500 text-sm" style={{ fontFamily: 'Space Grotesk' }}>+${formatCOP(costoDom)}</Text>
+                                                {!isPaid ? (
+                                                    <View className="flex-row items-center bg-black/20 rounded-lg border border-white/5 px-2 py-0.5">
+                                                        <Text className="text-emerald-500 font-black text-sm mr-1">+</Text>
+                                                        <TextInput
+                                                            value={costoDomicilio}
+                                                            onChangeText={(val) => {
+                                                                const numericValue = val.replace(/\D/g, '');
+                                                                setCostoDomicilio(numericValue);
+                                                            }}
+                                                            placeholder="0"
+                                                            placeholderTextColor="#475569"
+                                                            keyboardType="numeric"
+                                                            style={{ color: '#10B981', fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, textAlign: 'right', minWidth: 60, padding: 2 }}
+                                                        />
+                                                    </View>
+                                                ) : (
+                                                    <Text className="font-black text-emerald-500 text-sm" style={{ fontFamily: 'Space Grotesk' }}>
+                                                        +${formatCOP(costoDom)}
+                                                    </Text>
+                                                )}
                                             </View>
                                         )}
                                         <View className="h-[1px] bg-white/5 my-2" />

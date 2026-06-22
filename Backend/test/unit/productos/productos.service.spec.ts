@@ -1,13 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { ProductosService } from '../../../src/productos/productos.service';
-import { Productos } from '../../../src/productos/esquemas/productos.entity';
-import { ProductoVariantes } from '../../../src/productos/esquemas/producto-variantes.entity';
+import {Test, TestingModule} from '@nestjs/testing';
+import {getRepositoryToken} from '@nestjs/typeorm';
+import {NotFoundException} from '@nestjs/common';
+import {ProductosService} from '../../../src/productos/productos.service';
+import {Productos} from '../../../src/productos/esquemas/productos.entity';
+import {ProductoVariantes} from '../../../src/productos/esquemas/producto-variantes.entity';
 
 const makeQb = () => {
 	const qb: any = {};
-	['leftJoinAndSelect', 'orderBy', 'addOrderBy', 'take', 'skip', 'andWhere'].forEach(m => {
+	['leftJoinAndSelect', 'orderBy', 'addOrderBy', 'take', 'skip', 'andWhere'].forEach((m) => {
 		qb[m] = jest.fn().mockReturnValue(qb);
 	});
 	qb.getMany = jest.fn();
@@ -57,8 +57,8 @@ describe('ProductosService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				ProductosService,
-				{ provide: getRepositoryToken(Productos), useValue: mockRepo },
-				{ provide: getRepositoryToken(ProductoVariantes), useValue: mockVariantesRepo },
+				{provide: getRepositoryToken(Productos), useValue: mockRepo},
+				{provide: getRepositoryToken(ProductoVariantes), useValue: mockVariantesRepo},
 			],
 		}).compile();
 
@@ -69,7 +69,7 @@ describe('ProductosService', () => {
 
 	describe('findAll', () => {
 		it('retorna todos los productos con sus variantes', async () => {
-			const list = [{ productoId: 1, productoNombre: 'Pizza' }];
+			const list = [{productoId: 1, productoNombre: 'Pizza'}];
 			qb.getMany.mockResolvedValue(list);
 
 			const result = await service.findAll();
@@ -81,9 +81,9 @@ describe('ProductosService', () => {
 		it('filtra por activo cuando se especifica', async () => {
 			qb.getMany.mockResolvedValue([]);
 
-			await service.findAll({ activo: true });
+			await service.findAll({activo: true});
 
-			expect(qb.andWhere).toHaveBeenCalledWith('p.activo = :activo', { activo: true });
+			expect(qb.andWhere).toHaveBeenCalledWith('p.activo = :activo', {activo: true});
 		});
 
 		it('no filtra cuando activo es undefined', async () => {
@@ -99,7 +99,7 @@ describe('ProductosService', () => {
 
 	describe('findOne', () => {
 		it('retorna el producto cuando existe', async () => {
-			const producto = { productoId: 1, productoNombre: 'Pizza' };
+			const producto = {productoId: 1, productoNombre: 'Pizza'};
 			mockRepo.findOne.mockResolvedValue(producto);
 
 			const result = await service.findOne(1);
@@ -118,7 +118,7 @@ describe('ProductosService', () => {
 
 	describe('findByName', () => {
 		it('retorna el producto por nombre', async () => {
-			const producto = { productoId: 1, productoNombre: 'Pizza' };
+			const producto = {productoId: 1, productoNombre: 'Pizza'};
 			mockRepo.findOne.mockResolvedValue(producto);
 
 			const result = await service.findByName('Pizza');
@@ -137,8 +137,8 @@ describe('ProductosService', () => {
 
 	describe('create', () => {
 		it('crea producto sin variantes', async () => {
-			const dto = { productoNombre: 'Bebida', descripcion: 'Refrescos', activo: true } as any;
-			const producto = { productoId: 1, ...dto };
+			const dto = {productoNombre: 'Bebida', descripcion: 'Refrescos', activo: true} as any;
+			const producto = {productoId: 1, ...dto};
 			mockRepo.create.mockReturnValue(producto);
 			mockRepo.save.mockResolvedValue(producto);
 
@@ -151,12 +151,12 @@ describe('ProductosService', () => {
 		it('crea producto con variantes', async () => {
 			const dto = {
 				productoNombre: 'Pizza',
-				variantes: [{ nombre: 'Grande', precio: 30000 }],
+				variantes: [{nombre: 'Grande', precio: 30000}],
 			} as any;
-			const producto = { productoId: 1, productoNombre: 'Pizza', variantes: [] };
+			const producto = {productoId: 1, productoNombre: 'Pizza', variantes: []};
 			mockRepo.create.mockReturnValue(producto);
 			mockRepo.save.mockResolvedValue(producto);
-			const variante = { varianteId: 1, nombre: 'Grande', precio: 30000 };
+			const variante = {varianteId: 1, nombre: 'Grande', precio: 30000};
 			mockVariantesRepo.create.mockReturnValue(variante);
 			mockVariantesRepo.save.mockResolvedValue([variante]);
 
@@ -167,15 +167,13 @@ describe('ProductosService', () => {
 		});
 
 		it('usa activo=true por defecto cuando no se especifica', async () => {
-			const dto = { productoNombre: 'Chuzo' } as any;
-			mockRepo.create.mockReturnValue({ productoId: 1, activo: true });
-			mockRepo.save.mockResolvedValue({ productoId: 1, activo: true });
+			const dto = {productoNombre: 'Chuzo'} as any;
+			mockRepo.create.mockReturnValue({productoId: 1, activo: true});
+			mockRepo.save.mockResolvedValue({productoId: 1, activo: true});
 
 			await service.create(dto);
 
-			expect(mockRepo.create).toHaveBeenCalledWith(
-				expect.objectContaining({ activo: true }),
-			);
+			expect(mockRepo.create).toHaveBeenCalledWith(expect.objectContaining({activo: true}));
 		});
 	});
 
@@ -183,11 +181,11 @@ describe('ProductosService', () => {
 
 	describe('update', () => {
 		it('actualiza el producto y retorna el resultado', async () => {
-			const updated = { productoId: 1, productoNombre: 'Pizza Actualizada' };
-			mockRepo.update.mockResolvedValue({ affected: 1 });
+			const updated = {productoId: 1, productoNombre: 'Pizza Actualizada'};
+			mockRepo.update.mockResolvedValue({affected: 1});
 			mockRepo.findOne.mockResolvedValue(updated);
 
-			const result = await service.update(1, { productoNombre: 'Pizza Actualizada' } as any);
+			const result = await service.update(1, {productoNombre: 'Pizza Actualizada'} as any);
 
 			expect(result).toEqual(updated);
 		});
@@ -197,7 +195,7 @@ describe('ProductosService', () => {
 
 	describe('remove', () => {
 		it('elimina el producto por id', async () => {
-			mockRepo.delete.mockResolvedValue({ affected: 1 });
+			mockRepo.delete.mockResolvedValue({affected: 1});
 
 			await service.remove(1);
 
@@ -209,7 +207,7 @@ describe('ProductosService', () => {
 
 	describe('createVariante', () => {
 		it('crea y guarda una variante', async () => {
-			const variante = { varianteId: 1, nombre: 'Grande', precio: 30000, productoId: 1 };
+			const variante = {varianteId: 1, nombre: 'Grande', precio: 30000, productoId: 1};
 			mockVariantesRepo.create.mockReturnValue(variante);
 			mockVariantesRepo.save.mockResolvedValue(variante);
 
@@ -221,29 +219,29 @@ describe('ProductosService', () => {
 
 	describe('getVariantes', () => {
 		it('retorna variantes activas del producto ordenadas por nombre', async () => {
-			const list = [{ varianteId: 1, nombre: 'Grande', activo: true }];
+			const list = [{varianteId: 1, nombre: 'Grande', activo: true}];
 			mockVariantesRepo.find.mockResolvedValue(list);
 
 			const result = await service.getVariantes(1);
 
 			expect(result).toEqual(list);
 			expect(mockVariantesRepo.find).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { productoId: 1, activo: true } }),
+				expect.objectContaining({where: {productoId: 1, activo: true}}),
 			);
 		});
 	});
 
 	describe('updateVariante', () => {
 		it('actualiza solo los campos provistos', async () => {
-			const updated = { varianteId: 1, nombre: 'Nuevo', precio: 35000 };
-			mockVariantesRepo.update.mockResolvedValue({ affected: 1 });
+			const updated = {varianteId: 1, nombre: 'Nuevo', precio: 35000};
+			mockVariantesRepo.update.mockResolvedValue({affected: 1});
 			mockVariantesRepo.findOne.mockResolvedValue(updated);
 
 			const result = await service.updateVariante(1, 'Nuevo', 35000);
 
 			expect(mockVariantesRepo.update).toHaveBeenCalledWith(
 				1,
-				expect.objectContaining({ nombre: 'Nuevo', precio: 35000 }),
+				expect.objectContaining({nombre: 'Nuevo', precio: 35000}),
 			);
 			expect(result).toEqual(updated);
 		});
@@ -251,7 +249,7 @@ describe('ProductosService', () => {
 
 	describe('deleteVariante', () => {
 		it('elimina la variante por id', async () => {
-			mockVariantesRepo.delete.mockResolvedValue({ affected: 1 });
+			mockVariantesRepo.delete.mockResolvedValue({affected: 1});
 
 			await service.deleteVariante(5);
 

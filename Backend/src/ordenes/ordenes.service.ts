@@ -29,8 +29,9 @@ export class OrdenesService {
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
-		const { estado, from, to, page = 1, limit = 50 } = query;
-		const qb = this.repo.createQueryBuilder('o')
+		const {estado, from, to, page = 1, limit = 50} = query;
+		const qb = this.repo
+			.createQueryBuilder('o')
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
@@ -41,18 +42,21 @@ export class OrdenesService {
 			.skip((page - 1) * limit);
 
 		if (estado) {
-			qb.andWhere('o.estadoOrden = :estado', { estado });
+			qb.andWhere('o.estadoOrden = :estado', {estado});
 		}
 		if (from && to) {
-			qb.andWhere('o.fechaOrden BETWEEN :from AND :to', { from: new Date(from + 'T00:00:00'), to: new Date(to + 'T23:59:59') });
+			qb.andWhere('o.fechaOrden BETWEEN :from AND :to', {
+				from: new Date(from + 'T00:00:00'),
+				to: new Date(to + 'T23:59:59'),
+			});
 		} else if (from) {
-			qb.andWhere('o.fechaOrden >= :from', { from: new Date(from + 'T00:00:00') });
+			qb.andWhere('o.fechaOrden >= :from', {from: new Date(from + 'T00:00:00')});
 		} else if (to) {
-			qb.andWhere('o.fechaOrden <= :to', { to: new Date(to + 'T23:59:59') });
+			qb.andWhere('o.fechaOrden <= :to', {to: new Date(to + 'T23:59:59')});
 		}
 
 		const [data, total] = await qb.getManyAndCount();
-		return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+		return {data, total, page, limit, totalPages: Math.ceil(total / limit)};
 	}
 
 	findByDay(estado?: string) {
@@ -60,16 +64,17 @@ export class OrdenesService {
 		start.setHours(0, 0, 0, 0);
 		const end = new Date();
 		end.setHours(23, 59, 59, 999);
-		const qb = this.repo.createQueryBuilder('o')
+		const qb = this.repo
+			.createQueryBuilder('o')
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
 			.leftJoinAndSelect('o.domicilios', 'domicilios')
 			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
-			.where('o.fechaOrden BETWEEN :start AND :end', { start, end });
+			.where('o.fechaOrden BETWEEN :start AND :end', {start, end});
 
 		if (estado) {
-			qb.andWhere('o.estadoOrden = :estado', { estado });
+			qb.andWhere('o.estadoOrden = :estado', {estado});
 		}
 
 		return qb.getMany();
@@ -112,7 +117,14 @@ export class OrdenesService {
 		const repo = manager ? manager.getRepository(Ordenes) : this.repo;
 		const orden = await repo.findOne({
 			where: {ordenId: id},
-			relations: ['factura', 'productos', 'productos.productoObj', 'productos.variante', 'domicilios', 'domicilios.domiciliario'],
+			relations: [
+				'factura',
+				'productos',
+				'productos.productoObj',
+				'productos.variante',
+				'domicilios',
+				'domicilios.domiciliario',
+			],
 		});
 		if (!orden) {
 			throw new NotFoundException(`Orden con ID ${id} no encontrada`);
@@ -126,7 +138,13 @@ export class OrdenesService {
 		return (tipoPedido || 'mesa') === 'domicilio';
 	}
 
-	private async crearOrden(facturaId: number, tipoPedido?: string, estadoOrden?: string, observaciones?: string, manager?: EntityManager): Promise<Ordenes> {
+	private async crearOrden(
+		facturaId: number,
+		tipoPedido?: string,
+		estadoOrden?: string,
+		observaciones?: string,
+		manager?: EntityManager,
+	): Promise<Ordenes> {
 		const repo = manager ? manager.getRepository(Ordenes) : this.repo;
 		const orden = repo.create({facturaId, tipoPedido, estadoOrden, observaciones});
 		return repo.save(orden);
@@ -137,15 +155,31 @@ export class OrdenesService {
 	async create(data: CreateOrdenesDto) {
 		return this.repo.manager.transaction(async (manager) => {
 			const productos = Array.isArray(data.productos) ? data.productos : [];
-			const descripcion = productos.length > 0
-				? this.facturaCreationService.generarDescripcionFactura(productos, this.productProcessingService.construirNombreProducto.bind(this.productProcessingService))
-				: '';
+			const descripcion =
+				productos.length > 0
+					? this.facturaCreationService.generarDescripcionFactura(
+							productos,
+							this.productProcessingService.construirNombreProducto.bind(this.productProcessingService),
+						)
+					: '';
 
 			// 1. Crear factura (metodo se guarda desde el inicio para pedidos con pago conocido, ej. WhatsApp bot)
-			const factura = await this.facturaCreationService.crearFactura(data.nombreCliente || '', data.metodo, descripcion, manager, data.telefonoCliente || undefined);
+			const factura = await this.facturaCreationService.crearFactura(
+				data.nombreCliente || '',
+				data.metodo,
+				descripcion,
+				manager,
+				data.telefonoCliente || undefined,
+			);
 
 			// 2. Crear orden
-			const orden = await this.crearOrden(factura.facturaId, data.tipoPedido, data.estadoOrden, data.observaciones, manager);
+			const orden = await this.crearOrden(
+				factura.facturaId,
+				data.tipoPedido,
+				data.estadoOrden,
+				data.observaciones,
+				manager,
+			);
 
 			// 3. Procesar productos y calcular total
 			let total = 0;
@@ -166,12 +200,14 @@ export class OrdenesService {
 			}
 
 			// 4. Procesar domicilio si aplica
-			const necesitaCaja = ['domicilio', 'para llevar', 'para_llevar', 'paraLlevar'].includes((data.tipoPedido || '').toLowerCase());
+			const necesitaCaja = ['domicilio', 'para llevar', 'para_llevar', 'paraLlevar'].includes(
+				(data.tipoPedido || '').toLowerCase(),
+			);
 			if (this.domicilioCreationService.esDomicilio(data.tipoPedido)) {
 				await this.domicilioCreationService.procesarDomicilio(data, factura.facturaId, orden.ordenId, manager);
 			}
 
-			const fullOrden = await this.findOne(orden.ordenId, manager); 
+			const fullOrden = await this.findOne(orden.ordenId, manager);
 			this.ordenesGateway.emitirNuevaOrden(fullOrden);
 
 			// Actualizar cierre si existe para la fecha de la orden
@@ -180,28 +216,30 @@ export class OrdenesService {
 
 			// 5. Descontar cajas (domicilio o para llevar) — fuera de TX para no bloquear
 			if (necesitaCaja && productos.length > 0) {
-				const itemsToCajas = fullOrden.productos?.map(p => ({
-					varianteNombre: (p as any).variante?.nombre || '',
-					tipoProducto: (p as any).productoObj?.productoNombre || p.producto || '',
-					cantidad: Number(p.cantidad) || 1,
-				})) ?? [];
+				const itemsToCajas =
+					fullOrden.productos?.map((p) => ({
+						varianteNombre: (p as any).variante?.nombre || '',
+						tipoProducto: (p as any).productoObj?.productoNombre || p.producto || '',
+						cantidad: Number(p.cantidad) || 1,
+					})) ?? [];
 				// fire-and-forget: no queremos que un error de inventario revierta la orden
 				this.inventarioCajasService
 					.descontarCajasParaOrden(itemsToCajas, orden.ordenId)
-					.catch(err => console.warn('[InventarioCajas] Error al descontar cajas:', err?.message));
+					.catch((err) => console.warn('[InventarioCajas] Error al descontar cajas:', err?.message));
 			}
 
 			// 6. Descontar stock de bebidas (gaseosas/jugos) — aplica a TODO tipo de orden
 			//    (incl. mesa), fire-and-forget. Registra -1 en historial aunque no haya stock.
 			if (productos.length > 0) {
-				const drinkItems = fullOrden.productos?.map(p => ({
-					varianteId: (p as any).varianteId ?? (p as any).variante?.varianteId ?? null,
-					productoNombre: (p as any).productoObj?.productoNombre || p.producto || '',
-					cantidad: Number(p.cantidad) || 1,
-				})) ?? [];
+				const drinkItems =
+					fullOrden.productos?.map((p) => ({
+						varianteId: (p as any).varianteId ?? (p as any).variante?.varianteId ?? null,
+						productoNombre: (p as any).productoObj?.productoNombre || p.producto || '',
+						cantidad: Number(p.cantidad) || 1,
+					})) ?? [];
 				this.inventarioBebidasService
 					.descontarBebidasParaOrden(drinkItems, orden.ordenId)
-					.catch(err => console.warn('[InventarioBebidas] Error al descontar stock:', err?.message));
+					.catch((err) => console.warn('[InventarioBebidas] Error al descontar stock:', err?.message));
 			}
 
 			return fullOrden;
@@ -210,7 +248,7 @@ export class OrdenesService {
 
 	async update(id: number, data: Partial<CreateOrdenesDto>) {
 		return this.repo.manager.transaction(async (manager) => {
-			const { productos, ...basicData } = data;
+			const {productos, ...basicData} = data;
 			const oRepo = manager.getRepository(Ordenes);
 
 			let orden = await this.findOne(id, manager);
@@ -221,7 +259,14 @@ export class OrdenesService {
 			}
 
 			// 1. Update basic order data
-			const allowedFields = ['tipoPedido', 'estadoOrden', 'fechaOrden', 'observaciones', 'usuarioCancelacionId', 'fechaCancelacion'];
+			const allowedFields = [
+				'tipoPedido',
+				'estadoOrden',
+				'fechaOrden',
+				'observaciones',
+				'usuarioCancelacionId',
+				'fechaCancelacion',
+			];
 			const updateData: any = {};
 			for (const key of allowedFields) {
 				if (key in basicData) {
@@ -240,34 +285,51 @@ export class OrdenesService {
 				orden = await this.findOne(id, manager);
 			}
 
-			// 2. If products are included, re-process everything
+			// 2. Recalculate total and update Invoice
+			let newTotal = 0;
+			let isTotalChanged = false;
+
 			if (productos && Array.isArray(productos)) {
 				// a. Delete old relations
 				await this.productProcessingService.eliminarProductosDeOrden(id, manager);
 
 				// b. Process new productos
-				const { total: totalProductos } = await this.productProcessingService.procesarProductos(id, productos, manager);
-
-				// c. Recalculate total (including domicile cost)
-				let newTotal = totalProductos;
-				if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
-					// We check if it comes in data or we use the one already in the order
-					const costoDom = data.costoDomicilio !== undefined ? Number(data.costoDomicilio) : Number(orden.domicilios?.[0]?.costoDomicilio || 0);
-					newTotal += costoDom;
-				}
-
-				// d. Update Invoice description and total
-				const newDescripcion = this.facturaCreationService.generarDescripcionFactura(
+				const {total: totalProductos} = await this.productProcessingService.procesarProductos(
+					id,
 					productos,
-					this.productProcessingService.construirNombreProducto.bind(this.productProcessingService),
+					manager,
 				);
+				newTotal = totalProductos;
+				isTotalChanged = true;
+			} else {
+				// Sum existing products of the order
+				newTotal = (orden.productos || []).reduce(
+					(sum, p) => sum + (Number(p.precioUnitario) || 0) * (p.cantidad || 1),
+					0,
+				);
+			}
 
-				if (orden.facturaId) {
-					await this.facturaCreationService.updateFactura(orden.facturaId, {
-						total: newTotal,
-						descripcion: newDescripcion,
-					}, manager);
+			if (this.domicilioCreationService.esDomicilio(orden.tipoPedido)) {
+				const costoDom =
+					data.costoDomicilio !== undefined
+						? Number(data.costoDomicilio)
+						: Number(orden.domicilios?.[0]?.costoDomicilio || 0);
+				newTotal += costoDom;
+
+				if (data.costoDomicilio !== undefined) {
+					isTotalChanged = true;
 				}
+			}
+
+			if (orden.facturaId && (isTotalChanged || (productos && Array.isArray(productos)))) {
+				const updateFields: any = {total: newTotal};
+				if (productos && Array.isArray(productos)) {
+					updateFields.descripcion = this.facturaCreationService.generarDescripcionFactura(
+						productos,
+						this.productProcessingService.construirNombreProducto.bind(this.productProcessingService),
+					);
+				}
+				await this.facturaCreationService.updateFactura(orden.facturaId, updateFields, manager);
 			}
 
 			const updated = await this.findOne(id, manager);
@@ -300,7 +362,7 @@ export class OrdenesService {
 
 			const estadoActual = String(orden.estadoOrden || '').toLowerCase();
 			const estadosCancelables = ['pendiente', 'preparacion', 'en preparación'];
-			
+
 			if (!estadosCancelables.includes(estadoActual)) {
 				throw new BadRequestException(`No se puede cancelar una orden en estado: ${orden.estadoOrden}`);
 			}
@@ -309,18 +371,18 @@ export class OrdenesService {
 			orden.estadoOrden = 'cancelado';
 			orden.usuarioCancelacionId = userId;
 			orden.fechaCancelacion = new Date();
-			
+
 			if (reason) {
 				const notaCancelacion = `[ANULACIÓN: ${reason}]`;
-				orden.observaciones = orden.observaciones 
+				orden.observaciones = orden.observaciones
 					? `${orden.observaciones} ${notaCancelacion}`
 					: notaCancelacion;
 			}
-			
+
 			await oRepo.save(orden);
 
 			// 1.5 Eliminar domicilio asociado
-			await manager.getRepository(Domicilios).delete({ ordenId: id });
+			await manager.getRepository(Domicilios).delete({ordenId: id});
 
 			// 2. Cancelar factura asociada
 			if (orden.facturaId) {
@@ -337,7 +399,7 @@ export class OrdenesService {
 			// Restaurar stock de bebidas descontado al crear (idempotente, fire-and-forget)
 			this.inventarioBebidasService
 				.restaurarBebidasParaOrden(id)
-				.catch(err => console.warn('[InventarioBebidas] Error al restaurar stock:', err?.message));
+				.catch((err) => console.warn('[InventarioBebidas] Error al restaurar stock:', err?.message));
 
 			return fullUpdated;
 		});
@@ -366,9 +428,11 @@ export class OrdenesService {
 			if (lastUpdatedAt && orden.updatedAt) {
 				const clientDate = new Date(lastUpdatedAt).getTime();
 				const serverDate = new Date(orden.updatedAt).getTime();
-				
+
 				if (Math.abs(serverDate - clientDate) > 1000) {
-					throw new ConflictException('La orden ha sido modificada por otro usuario. Por favor refresca antes de pagar.');
+					throw new ConflictException(
+						'La orden ha sido modificada por otro usuario. Por favor refresca antes de pagar.',
+					);
 				}
 			}
 
@@ -376,22 +440,26 @@ export class OrdenesService {
 			if (idempotencyKey) {
 				const existing = await this.facturaCreationService.findByIdempotencyKey(idempotencyKey);
 				if (existing) {
-					return this.findOne(id); 
+					return this.findOne(id);
 				}
 			}
 
 			// 3. Actualizar Factura
 			if (orden.facturaId) {
-				await this.facturaCreationService.updateFactura(orden.facturaId, {
-					metodo,
-					estado: 'pagada',
-					usuarioCobroId: userId,
-					fechaCobro: new Date(),
-					ipDispositivo: ip,
-					idempotencyKey,
-					pagoEfectivo,
-					pagoTransferencia,
-				}, manager);
+				await this.facturaCreationService.updateFactura(
+					orden.facturaId,
+					{
+						metodo,
+						estado: 'pagada',
+						usuarioCobroId: userId,
+						fechaCobro: new Date(),
+						ipDispositivo: ip,
+						idempotencyKey,
+						pagoEfectivo,
+						pagoTransferencia,
+					},
+					manager,
+				);
 			}
 
 			// 4. Marcar Orden como Completada
@@ -404,12 +472,17 @@ export class OrdenesService {
 				const raw = await opRepo
 					.createQueryBuilder('op')
 					.select(['op.variante_id AS "varianteId"', 'op.cantidad AS cantidad'])
-					.where('op.orden_id = :id', { id })
+					.where('op.orden_id = :id', {id})
 					.getRawMany();
 				// getRawMany returns DB column values as strings — normalize here
-				const items: Array<{ varianteId: number | null; cantidad: number }> = raw.map(
+				const items: Array<{varianteId: number | null; cantidad: number}> = raw.map(
 					(r: Record<string, unknown>) => ({
-						varianteId: r['varianteId'] != null ? Number(r['varianteId']) : (r['variante_id'] != null ? Number(r['variante_id']) : null),
+						varianteId:
+							r['varianteId'] != null
+								? Number(r['varianteId'])
+								: r['variante_id'] != null
+									? Number(r['variante_id'])
+									: null,
 						cantidad: Number(r['cantidad']) || 0,
 					}),
 				);
@@ -440,5 +513,4 @@ export class OrdenesService {
 			return updated;
 		});
 	}
-
 }

@@ -1,10 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { FacturasVentasService } from '../../../src/facturas-ventas/facturas-ventas.service';
-import { FacturasVentas } from '../../../src/facturas-ventas/esquemas/facturas-ventas.entity';
-import { CajaMovimientosService } from '../../../src/caja-movimientos/caja-movimientos.service';
-import { EstadisticasGateway } from '../../../src/estadisticas/estadisticas.gateway';
+import {Test, TestingModule} from '@nestjs/testing';
+import {getRepositoryToken} from '@nestjs/typeorm';
+import {NotFoundException} from '@nestjs/common';
+import {FacturasVentasService} from '../../../src/facturas-ventas/facturas-ventas.service';
+import {FacturasVentas} from '../../../src/facturas-ventas/esquemas/facturas-ventas.entity';
+import {CajaMovimientosService} from '../../../src/caja-movimientos/caja-movimientos.service';
+import {EstadisticasGateway} from '../../../src/estadisticas/estadisticas.gateway';
 
 const makeQb = () => ({
 	leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -33,7 +33,7 @@ describe('FacturasVentasService', () => {
 			save: jest.fn(),
 			update: jest.fn(),
 			delete: jest.fn(),
-			manager: { transaction: jest.fn() },
+			manager: {transaction: jest.fn()},
 		};
 
 		mockCajaMovimientosService = {
@@ -47,9 +47,9 @@ describe('FacturasVentasService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				FacturasVentasService,
-				{ provide: getRepositoryToken(FacturasVentas), useValue: mockRepo },
-				{ provide: CajaMovimientosService, useValue: mockCajaMovimientosService },
-				{ provide: EstadisticasGateway, useValue: mockEstadisticasGateway },
+				{provide: getRepositoryToken(FacturasVentas), useValue: mockRepo},
+				{provide: CajaMovimientosService, useValue: mockCajaMovimientosService},
+				{provide: EstadisticasGateway, useValue: mockEstadisticasGateway},
 			],
 		}).compile();
 
@@ -60,7 +60,7 @@ describe('FacturasVentasService', () => {
 
 	describe('findAll', () => {
 		it('retorna lista paginada con valores por defecto', async () => {
-			const facturas = [{ facturaId: 1, total: 30000, estado: 'pagada' }];
+			const facturas = [{facturaId: 1, total: 30000, estado: 'pagada'}];
 			qb.getCount.mockResolvedValue(1);
 			qb.getMany.mockResolvedValue(facturas);
 
@@ -77,11 +77,11 @@ describe('FacturasVentasService', () => {
 			qb.getCount.mockResolvedValue(0);
 			qb.getMany.mockResolvedValue([]);
 
-			await service.findAll({ from: '2024-01-01', to: '2024-01-31' });
+			await service.findAll({from: '2024-01-01', to: '2024-01-31'});
 
 			expect(qb.where).toHaveBeenCalledWith(
 				'f.fechaFactura BETWEEN :from AND :to',
-				expect.objectContaining({ from: expect.any(Date), to: expect.any(Date) }),
+				expect.objectContaining({from: expect.any(Date), to: expect.any(Date)}),
 			);
 		});
 
@@ -89,7 +89,7 @@ describe('FacturasVentasService', () => {
 			qb.getCount.mockResolvedValue(0);
 			qb.getMany.mockResolvedValue([]);
 
-			await service.findAll({ from: '2024-01-01' });
+			await service.findAll({from: '2024-01-01'});
 
 			expect(qb.where).toHaveBeenCalledWith('f.fechaFactura >= :from', expect.any(Object));
 		});
@@ -98,7 +98,7 @@ describe('FacturasVentasService', () => {
 			qb.getCount.mockResolvedValue(0);
 			qb.getMany.mockResolvedValue([]);
 
-			await service.findAll({ to: '2024-01-31' });
+			await service.findAll({to: '2024-01-31'});
 
 			expect(qb.where).toHaveBeenCalledWith('f.fechaFactura <= :to', expect.any(Object));
 		});
@@ -107,7 +107,7 @@ describe('FacturasVentasService', () => {
 			qb.getCount.mockResolvedValue(100);
 			qb.getMany.mockResolvedValue(Array(10).fill({}));
 
-			const result = await service.findAll({ limit: 10 });
+			const result = await service.findAll({limit: 10});
 
 			expect(result.totalPages).toBe(10);
 		});
@@ -116,7 +116,7 @@ describe('FacturasVentasService', () => {
 			qb.getCount.mockResolvedValue(0);
 			qb.getMany.mockResolvedValue([]);
 
-			await service.findAll({ page: 3, limit: 15 });
+			await service.findAll({page: 3, limit: 15});
 
 			expect(qb.take).toHaveBeenCalledWith(15);
 			expect(qb.skip).toHaveBeenCalledWith(30);
@@ -127,7 +127,7 @@ describe('FacturasVentasService', () => {
 
 	describe('findByDay', () => {
 		it('retorna las facturas del día actual', async () => {
-			const facturas = [{ facturaId: 1 }, { facturaId: 2 }];
+			const facturas = [{facturaId: 1}, {facturaId: 2}];
 			qb.getMany.mockResolvedValue(facturas);
 
 			const result = await service.findByDay();
@@ -135,7 +135,7 @@ describe('FacturasVentasService', () => {
 			expect(result).toEqual(facturas);
 			expect(qb.where).toHaveBeenCalledWith(
 				'f.fechaFactura BETWEEN :start AND :end',
-				expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
+				expect.objectContaining({start: expect.any(Date), end: expect.any(Date)}),
 			);
 		});
 	});
@@ -145,9 +145,9 @@ describe('FacturasVentasService', () => {
 	describe('getDayStats', () => {
 		it('calcula correctamente los totales del día', async () => {
 			const facturas = [
-				{ facturaId: 1, total: 30000, estado: 'pagada' },
-				{ facturaId: 2, total: 20000, estado: 'pagada' },
-				{ facturaId: 3, total: 15000, estado: 'pendiente' },
+				{facturaId: 1, total: 30000, estado: 'pagada'},
+				{facturaId: 2, total: 20000, estado: 'pagada'},
+				{facturaId: 3, total: 15000, estado: 'pendiente'},
 			];
 			qb.getMany.mockResolvedValue(facturas);
 
@@ -164,7 +164,7 @@ describe('FacturasVentasService', () => {
 
 			await service.getDayStats();
 
-			expect(qb.andWhere).toHaveBeenCalledWith('f.estado != :cancelado', { cancelado: 'cancelado' });
+			expect(qb.andWhere).toHaveBeenCalledWith('f.estado != :cancelado', {cancelado: 'cancelado'});
 		});
 
 		it('retorna ceros cuando no hay facturas en el día', async () => {
@@ -180,8 +180,8 @@ describe('FacturasVentasService', () => {
 
 		it('maneja totales con valor null o undefined sin error', async () => {
 			const facturas = [
-				{ facturaId: 1, total: null, estado: 'pagada' },
-				{ facturaId: 2, total: undefined, estado: 'pendiente' },
+				{facturaId: 1, total: null, estado: 'pagada'},
+				{facturaId: 2, total: undefined, estado: 'pendiente'},
 			];
 			qb.getMany.mockResolvedValue(facturas);
 
@@ -196,15 +196,13 @@ describe('FacturasVentasService', () => {
 
 	describe('findOne', () => {
 		it('retorna la factura cuando existe', async () => {
-			const factura = { facturaId: 1, total: 30000, estado: 'pagada' };
+			const factura = {facturaId: 1, total: 30000, estado: 'pagada'};
 			mockRepo.findOne.mockResolvedValue(factura);
 
 			const result = await service.findOne(1);
 
 			expect(result).toEqual(factura);
-			expect(mockRepo.findOne).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { facturaId: 1 } }),
-			);
+			expect(mockRepo.findOne).toHaveBeenCalledWith(expect.objectContaining({where: {facturaId: 1}}));
 		});
 
 		it('lanza NotFoundException cuando la factura no existe', async () => {
@@ -218,8 +216,8 @@ describe('FacturasVentasService', () => {
 
 	describe('create', () => {
 		it('guarda y retorna la factura creada', async () => {
-			const dto = { clienteNombre: 'Juan', total: 50000, idempotencyKey: 'key-1' };
-			const saved = { facturaId: 1, ...dto };
+			const dto = {clienteNombre: 'Juan', total: 50000, idempotencyKey: 'key-1'};
+			const saved = {facturaId: 1, ...dto};
 			mockRepo.save.mockResolvedValue(saved);
 
 			const result = await service.create(dto as any);
@@ -233,28 +231,28 @@ describe('FacturasVentasService', () => {
 
 	describe('update', () => {
 		it('hace simple update cuando el estado NO es pagada', async () => {
-			mockRepo.update.mockResolvedValue({ affected: 1 });
+			mockRepo.update.mockResolvedValue({affected: 1});
 
-			await service.update(1, { clienteNombre: 'Pedro' });
+			await service.update(1, {clienteNombre: 'Pedro'});
 
-			expect(mockRepo.update).toHaveBeenCalledWith(1, { clienteNombre: 'Pedro' });
+			expect(mockRepo.update).toHaveBeenCalledWith(1, {clienteNombre: 'Pedro'});
 		});
 
 		it('actualiza factura y registra caja cuando el estado cambia a pagada', async () => {
-			mockRepo.update.mockResolvedValue({ affected: 1 });
-			const facturaObj = { facturaId: 1, estado: 'pagada', total: 30000, clienteNombre: 'Pedro' };
+			mockRepo.update.mockResolvedValue({affected: 1});
+			const facturaObj = {facturaId: 1, estado: 'pagada', total: 30000, clienteNombre: 'Pedro'};
 			mockRepo.findOne.mockResolvedValue(facturaObj);
 
 			const result = await service.update(1, {
 				estado: 'pagada',
 				metodo: 'efectivo',
-				denominaciones: { 50000: 1 },
+				denominaciones: {50000: 1},
 				pagoEfectivo: 50000,
 			});
 
-			expect(mockRepo.update).toHaveBeenCalledWith(1, expect.objectContaining({ estado: 'pagada' }));
+			expect(mockRepo.update).toHaveBeenCalledWith(1, expect.objectContaining({estado: 'pagada'}));
 			expect(mockCajaMovimientosService.registrarEntrada).toHaveBeenCalledWith(
-				expect.objectContaining({ facturaVentaId: 1, metodo: 'efectivo' })
+				expect.objectContaining({facturaVentaId: 1, metodo: 'efectivo'}),
 			);
 			expect(result).toEqual(facturaObj);
 		});
@@ -264,7 +262,7 @@ describe('FacturasVentasService', () => {
 
 	describe('remove', () => {
 		it('elimina la factura por ID', async () => {
-			mockRepo.delete.mockResolvedValue({ affected: 1 });
+			mockRepo.delete.mockResolvedValue({affected: 1});
 
 			await service.remove(1);
 

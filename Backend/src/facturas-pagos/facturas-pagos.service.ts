@@ -1,10 +1,10 @@
-import {Injectable, NotFoundException} from "@nestjs/common";
-import {InjectRepository} from "@nestjs/typeorm";
-import {Repository} from "typeorm";
-import {FacturasPagos} from "./esquemas/facturas-pagos.entity";
-import {CreateFacturasPagosDto, FindFacturasPagosDto} from "./esquemas/facturas-pagos.dto";
-import {getBogotaDateString} from "../common/utils/date.utils";
-import {CajaMovimientosService} from "../caja-movimientos/caja-movimientos.service";
+import {Injectable, NotFoundException} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Repository} from 'typeorm';
+import {FacturasPagos} from './esquemas/facturas-pagos.entity';
+import {CreateFacturasPagosDto, FindFacturasPagosDto} from './esquemas/facturas-pagos.dto';
+import {getBogotaDateString} from '../common/utils/date.utils';
+import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
 
 @Injectable()
 export class FacturasPagosService {
@@ -15,37 +15,37 @@ export class FacturasPagosService {
 	) {}
 
 	async findAll(query: FindFacturasPagosDto = {}) {
-		const { from, to, page = 1, limit = 100 } = query;
-		const qb = this.repo.createQueryBuilder('p')
+		const {from, to, page = 1, limit = 100} = query;
+		const qb = this.repo
+			.createQueryBuilder('p')
 			.orderBy('p.fechaFactura', 'DESC')
 			.take(limit)
 			.skip((page - 1) * limit);
 
 		if (from && to) {
-			qb.where('p.fechaFactura BETWEEN :from AND :to', { from, to });
+			qb.where('p.fechaFactura BETWEEN :from AND :to', {from, to});
 		} else if (from) {
-			qb.where('p.fechaFactura >= :from', { from });
+			qb.where('p.fechaFactura >= :from', {from});
 		} else if (to) {
-			qb.where('p.fechaFactura <= :to', { to });
+			qb.where('p.fechaFactura <= :to', {to});
 		}
 
 		const [data, total] = await qb.getManyAndCount();
-		return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+		return {data, total, page, limit, totalPages: Math.ceil(total / limit)};
 	}
 
 	findByDay() {
 		// fechaFactura is a date column (equality check is timezone-independent)
 		const today = getBogotaDateString();
-		return this.repo.createQueryBuilder('p')
-			.where('p.fechaFactura = :today', { today })
-			.getMany();
+		return this.repo.createQueryBuilder('p').where('p.fechaFactura = :today', {today}).getMany();
 	}
 
 	findPendingByDay() {
 		const today = getBogotaDateString();
-		return this.repo.createQueryBuilder('p')
+		return this.repo
+			.createQueryBuilder('p')
 			.where('(p.estado = :pendiente OR p.estado IS NULL)')
-			.andWhere('p.fechaFactura = :today', { today, pendiente: 'pendiente' })
+			.andWhere('p.fechaFactura = :today', {today, pendiente: 'pendiente'})
 			.getMany();
 	}
 

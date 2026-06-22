@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
+import {Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index} from 'typeorm';
 
 /**
  * Ledger de movimientos de stock de bebidas (gaseosas/jugos), por variante.
@@ -16,24 +16,24 @@ export class BebidaMovimiento {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column({ type: 'int' })
+	@Column({type: 'int'})
 	varianteId: number;
 
-	@Column({ type: 'int' })
+	@Column({type: 'int'})
 	delta: number;
 
-	@Column({ type: 'int', default: 0 })
+	@Column({type: 'int', default: 0})
 	aplicado: number;
 
-	@Column({ type: 'int' })
+	@Column({type: 'int'})
 	cantidadResultante: number;
 
-	@Column({ type: 'varchar', length: 50, default: 'salida' })
+	@Column({type: 'varchar', length: 50, default: 'salida'})
 	tipo: string; // 'salida' | 'entrada' | 'ajuste'
 
-	@Column({ type: 'varchar', length: 255, nullable: true })
+	@Column({type: 'varchar', length: 255, nullable: true})
 	nota: string | null;
 
-	@CreateDateColumn({ type: 'timestamptz' })
+	@CreateDateColumn({type: 'timestamptz'})
 	creadoEn: Date;
 }

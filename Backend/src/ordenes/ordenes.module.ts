@@ -24,7 +24,18 @@ import {ProductProcessingService} from './services/product-processing.service';
 
 @Module({
 	imports: [
-		TypeOrmModule.forFeature([Ordenes, FacturasVentas, Domicilios, Clientes, ClienteDirecciones, Domiciliarios, Productos, ProductoVariantes, OrdenesProductos, PizzaSabor]),
+		TypeOrmModule.forFeature([
+			Ordenes,
+			FacturasVentas,
+			Domicilios,
+			Clientes,
+			ClienteDirecciones,
+			Domiciliarios,
+			Productos,
+			ProductoVariantes,
+			OrdenesProductos,
+			PizzaSabor,
+		]),
 		PizzaSaboresModule,
 		CierresModule,
 		InventarioCajasModule,
@@ -32,13 +43,13 @@ import {ProductProcessingService} from './services/product-processing.service';
 		InventarioBebidasModule,
 	],
 	providers: [
-		OrdenesService, 
-		OrdenesGateway, 
-		FacturaCreationService, 
-		DomicilioCreationService, 
-		ProductProcessingService
+		OrdenesService,
+		OrdenesGateway,
+		FacturaCreationService,
+		DomicilioCreationService,
+		ProductProcessingService,
 	],
 	controllers: [OrdenesController],
-	exports: [OrdenesService, OrdenesGateway]
+	exports: [OrdenesService, OrdenesGateway],
 })
 export class OrdenesModule {}

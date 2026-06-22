@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
   StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  ActivityIndicator, FlatList, RefreshControl, SafeAreaView,
+  ActivityIndicator, FlatList, RefreshControl,
   StatusBar, Platform, Linking
 } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
-import { AuthProvider, useAuth, api } from '../Frontend/src/shared/index';
+import { AuthProvider, useAuth, api, Domicilio } from '@/src/shared';
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
 
@@ -72,7 +73,7 @@ function LoginScreen() {
 
 function DashboardScreen() {
   const { user, logout } = useAuth();
-  const [domicilios, setDomicilios] = useState<any[]>([]);
+  const [domicilios, setDomicilios] = useState<Domicilio[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -103,7 +104,7 @@ function DashboardScreen() {
     Toast.show({ type: 'success', text1: 'Copiado', text2: text });
   };
 
-  const renderItem = ({ item }: { item: any }) => {
+  const renderItem = ({ item }: { item: Domicilio }) => {
     const isPagado = item.factura?.estado === 'pagado' || item.factura?.estado === 'pagada';
     
     return (
@@ -115,7 +116,7 @@ function DashboardScreen() {
 
         <View style={styles.infoRow}>
           <Text style={styles.label}>Dirección:</Text>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+          <View style={styles.infoRowValueContainer}>
             <Text style={styles.value} numberOfLines={2}>{item.direccionEntrega || 'N/A'}</Text>
           </View>
           <TouchableOpacity onPress={() => copyToClipboard(item.direccionEntrega || '')} style={styles.copyBtn}>
@@ -126,7 +127,7 @@ function DashboardScreen() {
         {item.referenciaDomicilio ? (
           <View style={styles.infoRow}>
             <Text style={styles.label}>Ref:</Text>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+            <View style={styles.infoRowValueContainer}>
               <Text style={styles.value} numberOfLines={2}>{item.referenciaDomicilio}</Text>
             </View>
             <TouchableOpacity onPress={() => copyToClipboard(item.referenciaDomicilio)} style={styles.copyBtn}>
@@ -147,7 +148,7 @@ function DashboardScreen() {
 
         {item.latitud && item.longitud ? (
           <TouchableOpacity 
-            style={[styles.button, { marginTop: 4, marginBottom: 8, flexDirection: 'row', justifyContent: 'center' }]} 
+            style={styles.mapButton} 
             onPress={() => {
               const lat = item.latitud;
               const lng = item.longitud;
@@ -254,9 +255,11 @@ function Main() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Main />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <Main />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
 
@@ -266,6 +269,21 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#0F172A',
+  },
+  infoRowValueContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mapButton: {
+    backgroundColor: '#F5A524',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   container: {
     flex: 1,

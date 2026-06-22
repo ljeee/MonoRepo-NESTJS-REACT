@@ -1,13 +1,13 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
-import { FacturasPagosService } from '../../../src/facturas-pagos/facturas-pagos.service';
-import { FacturasPagos } from '../../../src/facturas-pagos/esquemas/facturas-pagos.entity';
-import { CajaMovimientosService } from '../../../src/caja-movimientos/caja-movimientos.service';
+import {Test, TestingModule} from '@nestjs/testing';
+import {getRepositoryToken} from '@nestjs/typeorm';
+import {NotFoundException} from '@nestjs/common';
+import {FacturasPagosService} from '../../../src/facturas-pagos/facturas-pagos.service';
+import {FacturasPagos} from '../../../src/facturas-pagos/esquemas/facturas-pagos.entity';
+import {CajaMovimientosService} from '../../../src/caja-movimientos/caja-movimientos.service';
 
 const makeQb = () => {
 	const qb: any = {};
-	['where', 'andWhere', 'orderBy', 'take', 'skip'].forEach(m => {
+	['where', 'andWhere', 'orderBy', 'take', 'skip'].forEach((m) => {
 		qb[m] = jest.fn().mockReturnValue(qb);
 	});
 	qb.getMany = jest.fn();
@@ -38,8 +38,8 @@ describe('FacturasPagosService', () => {
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				FacturasPagosService,
-				{ provide: getRepositoryToken(FacturasPagos), useValue: mockRepo },
-				{ provide: CajaMovimientosService, useValue: mockCajaMovimientosService },
+				{provide: getRepositoryToken(FacturasPagos), useValue: mockRepo},
+				{provide: CajaMovimientosService, useValue: mockCajaMovimientosService},
 			],
 		}).compile();
 
@@ -50,38 +50,38 @@ describe('FacturasPagosService', () => {
 
 	describe('findAll', () => {
 		it('retorna datos paginados con from y to', async () => {
-			const data = [{ pagosId: 1 }];
+			const data = [{pagosId: 1}];
 			qb.getManyAndCount.mockResolvedValue([data, 1]);
 
-			const result = await service.findAll({ from: '2025-01-01', to: '2025-01-31', page: 1, limit: 50 });
+			const result = await service.findAll({from: '2025-01-01', to: '2025-01-31', page: 1, limit: 50});
 
 			expect(result.data).toEqual(data);
 			expect(result.total).toBe(1);
 			expect(qb.where).toHaveBeenCalledWith(
 				expect.stringContaining('BETWEEN'),
-				expect.objectContaining({ from: '2025-01-01', to: '2025-01-31' }),
+				expect.objectContaining({from: '2025-01-01', to: '2025-01-31'}),
 			);
 		});
 
 		it('filtra solo con from cuando falta to', async () => {
 			qb.getManyAndCount.mockResolvedValue([[], 0]);
 
-			await service.findAll({ from: '2025-01-01' });
+			await service.findAll({from: '2025-01-01'});
 
 			expect(qb.where).toHaveBeenCalledWith(
 				expect.stringContaining('>='),
-				expect.objectContaining({ from: '2025-01-01' }),
+				expect.objectContaining({from: '2025-01-01'}),
 			);
 		});
 
 		it('filtra solo con to cuando falta from', async () => {
 			qb.getManyAndCount.mockResolvedValue([[], 0]);
 
-			await service.findAll({ to: '2025-01-31' });
+			await service.findAll({to: '2025-01-31'});
 
 			expect(qb.where).toHaveBeenCalledWith(
 				expect.stringContaining('<='),
-				expect.objectContaining({ to: '2025-01-31' }),
+				expect.objectContaining({to: '2025-01-31'}),
 			);
 		});
 
@@ -96,7 +96,7 @@ describe('FacturasPagosService', () => {
 		it('calcula totalPages correctamente', async () => {
 			qb.getManyAndCount.mockResolvedValue([[], 25]);
 
-			const result = await service.findAll({ limit: 10 });
+			const result = await service.findAll({limit: 10});
 
 			expect(result.totalPages).toBe(3);
 		});
@@ -110,10 +110,7 @@ describe('FacturasPagosService', () => {
 
 			await service.findByDay();
 
-			expect(qb.where).toHaveBeenCalledWith(
-				expect.stringContaining('fechaFactura = :today'),
-				expect.any(Object),
-			);
+			expect(qb.where).toHaveBeenCalledWith(expect.stringContaining('fechaFactura = :today'), expect.any(Object));
 		});
 	});
 
@@ -125,9 +122,7 @@ describe('FacturasPagosService', () => {
 
 			await service.findPendingByDay();
 
-			expect(qb.where).toHaveBeenCalledWith(
-				expect.stringContaining('estado = :pendiente'),
-			);
+			expect(qb.where).toHaveBeenCalledWith(expect.stringContaining('estado = :pendiente'));
 		});
 	});
 
@@ -135,7 +130,7 @@ describe('FacturasPagosService', () => {
 
 	describe('findOne', () => {
 		it('retorna el pago cuando existe', async () => {
-			const pago = { pagosId: 1, total: 50000 };
+			const pago = {pagosId: 1, total: 50000};
 			mockRepo.findOneBy.mockResolvedValue(pago);
 
 			const result = await service.findOne(1);
@@ -154,8 +149,8 @@ describe('FacturasPagosService', () => {
 
 	describe('create', () => {
 		it('guarda el pago con fechaFactura asignada automáticamente si no se provee', async () => {
-			const data: any = { total: 50000 };
-			mockRepo.save.mockResolvedValue({ pagosId: 1, ...data });
+			const data: any = {total: 50000};
+			mockRepo.save.mockResolvedValue({pagosId: 1, ...data});
 
 			await service.create(data);
 
@@ -164,7 +159,7 @@ describe('FacturasPagosService', () => {
 		});
 
 		it('conserva fechaFactura si ya viene en los datos', async () => {
-			const data: any = { total: 50000, fechaFactura: '2025-01-15' };
+			const data: any = {total: 50000, fechaFactura: '2025-01-15'};
 			mockRepo.save.mockResolvedValue(data);
 
 			await service.create(data);
@@ -177,11 +172,11 @@ describe('FacturasPagosService', () => {
 
 	describe('update', () => {
 		it('actualiza el pago con los campos dados', async () => {
-			mockRepo.update.mockResolvedValue({ affected: 1 });
+			mockRepo.update.mockResolvedValue({affected: 1});
 
-			await service.update(1, { estado: 'pagado' } as any);
+			await service.update(1, {estado: 'pagado'} as any);
 
-			expect(mockRepo.update).toHaveBeenCalledWith(1, { estado: 'pagado' });
+			expect(mockRepo.update).toHaveBeenCalledWith(1, {estado: 'pagado'});
 		});
 	});
 
@@ -189,7 +184,7 @@ describe('FacturasPagosService', () => {
 
 	describe('remove', () => {
 		it('elimina el pago por id', async () => {
-			mockRepo.delete.mockResolvedValue({ affected: 1 });
+			mockRepo.delete.mockResolvedValue({affected: 1});
 
 			await service.remove(5);
 

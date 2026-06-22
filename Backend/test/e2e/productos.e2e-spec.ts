@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {Test, TestingModule} from '@nestjs/testing';
+import {INestApplication, ValidationPipe} from '@nestjs/common';
 import request from 'supertest';
-import { ProductosController } from '../../src/productos/productos.controller';
-import { ProductosService } from '../../src/productos/productos.service';
+import {ProductosController} from '../../src/productos/productos.controller';
+import {ProductosService} from '../../src/productos/productos.service';
 
 const mockService = {
 	findAll: jest.fn(),
@@ -22,12 +22,10 @@ const mockProducto = {
 	descripcion: 'Pizza artesanal',
 	activo: true,
 	emoji: '🍕',
-	variantes: [
-		{ varianteId: 1, nombre: 'Grande', precio: 30000, activo: true },
-	],
+	variantes: [{varianteId: 1, nombre: 'Grande', precio: 30000, activo: true}],
 };
 
-const mockVariante = { varianteId: 1, productoId: 1, nombre: 'Grande', precio: 30000, activo: true };
+const mockVariante = {varianteId: 1, productoId: 1, nombre: 'Grande', precio: 30000, activo: true};
 
 describe('ProductosController (e2e)', () => {
 	let app: INestApplication;
@@ -35,16 +33,16 @@ describe('ProductosController (e2e)', () => {
 	beforeAll(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [ProductosController],
-			providers: [{ provide: ProductosService, useValue: mockService }],
+			providers: [{provide: ProductosService, useValue: mockService}],
 		}).compile();
 
 		app = module.createNestApplication();
 		app.use((req: any, _res: any, next: () => void) => {
-			req.user = { id: 'test-id', username: 'admin1', roles: ['admin'] };
+			req.user = {id: 'test-id', username: 'admin1', roles: ['admin']};
 			next();
 		});
 		app.useGlobalPipes(
-			new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }),
+			new ValidationPipe({whitelist: true, transform: true, transformOptions: {enableImplicitConversion: true}}),
 		);
 		await app.init();
 	});
@@ -70,9 +68,7 @@ describe('ProductosController (e2e)', () => {
 
 			await request(app.getHttpServer()).get('/productos?activo=true').expect(200);
 
-			expect(mockService.findAll).toHaveBeenCalledWith(
-				expect.objectContaining({ activo: true }),
-			);
+			expect(mockService.findAll).toHaveBeenCalledWith(expect.objectContaining({activo: true}));
 		});
 	});
 
@@ -111,7 +107,7 @@ describe('ProductosController (e2e)', () => {
 
 			const res = await request(app.getHttpServer())
 				.post('/productos')
-				.send({ productoNombre: 'Pizza', variantes: [{ nombre: 'Grande', precio: 30000 }] })
+				.send({productoNombre: 'Pizza', variantes: [{nombre: 'Grande', precio: 30000}]})
 				.expect(201);
 
 			expect(res.body.productoId).toBe(1);
@@ -127,7 +123,7 @@ describe('ProductosController (e2e)', () => {
 
 			const res = await request(app.getHttpServer())
 				.post('/productos/1/variantes')
-				.send({ nombre: 'Mediana', precio: 22000 })
+				.send({nombre: 'Mediana', precio: 22000})
 				.expect(201);
 
 			expect(res.body.varianteId).toBe(1);
@@ -139,16 +135,19 @@ describe('ProductosController (e2e)', () => {
 
 	describe('PATCH /productos/:id', () => {
 		it('actualiza el producto', async () => {
-			const updated = { ...mockProducto, productoNombre: 'Pizza Premium' };
+			const updated = {...mockProducto, productoNombre: 'Pizza Premium'};
 			mockService.update.mockResolvedValue(updated);
 
 			const res = await request(app.getHttpServer())
 				.patch('/productos/1')
-				.send({ productoNombre: 'Pizza Premium' })
+				.send({productoNombre: 'Pizza Premium'})
 				.expect(200);
 
 			expect(res.body.productoNombre).toBe('Pizza Premium');
-			expect(mockService.update).toHaveBeenCalledWith(1, expect.objectContaining({ productoNombre: 'Pizza Premium' }));
+			expect(mockService.update).toHaveBeenCalledWith(
+				1,
+				expect.objectContaining({productoNombre: 'Pizza Premium'}),
+			);
 		});
 	});
 
@@ -156,7 +155,7 @@ describe('ProductosController (e2e)', () => {
 
 	describe('DELETE /productos/:id', () => {
 		it('elimina el producto', async () => {
-			mockService.remove.mockResolvedValue({ affected: 1 });
+			mockService.remove.mockResolvedValue({affected: 1});
 
 			const res = await request(app.getHttpServer()).delete('/productos/1').expect(200);
 
@@ -169,12 +168,12 @@ describe('ProductosController (e2e)', () => {
 
 	describe('PATCH /productos/variantes/:id', () => {
 		it('actualiza una variante', async () => {
-			const updated = { ...mockVariante, precio: 35000 };
+			const updated = {...mockVariante, precio: 35000};
 			mockService.updateVariante.mockResolvedValue(updated);
 
 			const res = await request(app.getHttpServer())
 				.patch('/productos/variantes/1')
-				.send({ precio: 35000 })
+				.send({precio: 35000})
 				.expect(200);
 
 			expect(res.body.precio).toBe(35000);
@@ -186,7 +185,7 @@ describe('ProductosController (e2e)', () => {
 
 	describe('DELETE /productos/variantes/:id', () => {
 		it('elimina la variante', async () => {
-			mockService.deleteVariante.mockResolvedValue({ affected: 1 });
+			mockService.deleteVariante.mockResolvedValue({affected: 1});
 
 			const res = await request(app.getHttpServer()).delete('/productos/variantes/1').expect(200);
 

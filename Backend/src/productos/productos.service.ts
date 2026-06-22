@@ -1,9 +1,9 @@
-import {Injectable, NotFoundException} from "@nestjs/common";
-import {InjectRepository} from "@nestjs/typeorm";
-import {Repository} from "typeorm";
-import {Productos} from "./esquemas/productos.entity";
-import {ProductoVariantes} from "./esquemas/producto-variantes.entity";
-import {CreateProductosDto, FindProductosDto} from "./esquemas/productos.dto";
+import {Injectable, NotFoundException} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {Repository} from 'typeorm';
+import {Productos} from './esquemas/productos.entity';
+import {ProductoVariantes} from './esquemas/producto-variantes.entity';
+import {CreateProductosDto, FindProductosDto} from './esquemas/productos.dto';
 
 @Injectable()
 export class ProductosService {
@@ -16,7 +16,8 @@ export class ProductosService {
 
 	async findAll(query: FindProductosDto = {}, page = 1, limit = 500) {
 		const {activo} = query;
-		const qb = this.repo.createQueryBuilder('p')
+		const qb = this.repo
+			.createQueryBuilder('p')
 			.leftJoinAndSelect('p.variantes', 'variantes', 'variantes.activo = true')
 			.orderBy('p.productoNombre', 'ASC')
 			.addOrderBy('variantes.nombre', 'ASC')
@@ -60,16 +61,18 @@ export class ProductosService {
 			emoji: data.emoji,
 			personalizacion: data.personalizacion ?? null,
 		});
-		const savedProducto = await this.repo.save(producto) as Productos;
+		const savedProducto = await this.repo.save(producto);
 
 		if (data.variantes && data.variantes.length > 0) {
-			const variantes = data.variantes.map(v => this.variantesRepo.create({
-				productoId: savedProducto.productoId,
-				nombre: v.nombre,
-				precio: v.precio,
-				descripcion: v.descripcion,
-				activo: true,
-			}));
+			const variantes = data.variantes.map((v) =>
+				this.variantesRepo.create({
+					productoId: savedProducto.productoId,
+					nombre: v.nombre,
+					precio: v.precio,
+					descripcion: v.descripcion,
+					activo: true,
+				}),
+			);
 			await this.variantesRepo.save(variantes);
 			savedProducto.variantes = variantes;
 		}
@@ -83,7 +86,7 @@ export class ProductosService {
 			descripcion: data.descripcion,
 			activo: data.activo,
 			emoji: data.emoji,
-			...(data.personalizacion !== undefined ? { personalizacion: data.personalizacion } : {}),
+			...(data.personalizacion !== undefined ? {personalizacion: data.personalizacion} : {}),
 		});
 		return this.findOne(productoId);
 	}
@@ -93,18 +96,26 @@ export class ProductosService {
 		// historial de órdenes (ordenes_productos.variante_id → NULL); el nombre y el precio
 		// quedan guardados como texto en esa misma fila, así no se pierde el historial.
 		return this.repo.manager.transaction(async (m) => {
-			const variantes = await m.getRepository(ProductoVariantes).find({ where: { productoId } });
+			const variantes = await m.getRepository(ProductoVariantes).find({where: {productoId}});
 			const ids = variantes.map((v) => v.varianteId);
 			if (ids.length) {
-				await m.query('UPDATE ordenes_productos SET variante_id = NULL WHERE variante_id = ANY($1::int[])', [ids]);
+				await m.query('UPDATE ordenes_productos SET variante_id = NULL WHERE variante_id = ANY($1::int[])', [
+					ids,
+				]);
 				await m.query('DELETE FROM variantes_ingredientes WHERE variante_id = ANY($1::int[])', [ids]);
 			}
-			await m.getRepository(ProductoVariantes).delete({ productoId });
+			await m.getRepository(ProductoVariantes).delete({productoId});
 			return m.getRepository(Productos).delete(productoId);
 		});
 	}
 
-	async createVariante(productoId: number, nombre: string, precio: number, descripcion?: string, precioLeche?: number | null) {
+	async createVariante(
+		productoId: number,
+		nombre: string,
+		precio: number,
+		descripcion?: string,
+		precioLeche?: number | null,
+	) {
 		const variante = this.variantesRepo.create({
 			productoId,
 			nombre,
@@ -123,7 +134,14 @@ export class ProductosService {
 		});
 	}
 
-	async updateVariante(varianteId: number, nombre?: string, precio?: number, descripcion?: string, activo?: boolean, precioLeche?: number | null) {
+	async updateVariante(
+		varianteId: number,
+		nombre?: string,
+		precio?: number,
+		descripcion?: string,
+		activo?: boolean,
+		precioLeche?: number | null,
+	) {
 		const updateData: any = {};
 		if (nombre !== undefined) updateData.nombre = nombre;
 		if (precio !== undefined) updateData.precio = precio;

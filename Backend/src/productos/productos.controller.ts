@@ -1,93 +1,95 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from "@nestjs/common";
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from '@nestjs/common';
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
-import {ProductosService} from "./productos.service";
-import {CreateProductosDto, CreateProductoVarianteDto, FindProductosDto} from "./esquemas/productos.dto";
-import {Public} from "../auth/decorators/public.decorator";
+import {ProductosService} from './productos.service';
+import {CreateProductosDto, CreateProductoVarianteDto, FindProductosDto} from './esquemas/productos.dto';
+import {Public} from '../auth/decorators/public.decorator';
 
 @ApiTags('Productos')
-@Controller("productos")
+@Controller('productos')
 export class ProductosController {
 	constructor(private readonly service: ProductosService) {}
 
 	@Get()
 	@Public()
-	@ApiOperation({ summary: 'Obtener todos los productos con variantes' })
-	@ApiResponse({ status: 200, description: 'Lista de productos con variantes.' })
+	@ApiOperation({summary: 'Obtener todos los productos con variantes'})
+	@ApiResponse({status: 200, description: 'Lista de productos con variantes.'})
 	findAll(@Query() query: FindProductosDto) {
 		return this.service.findAll(query);
 	}
 
-	@Get(":id")
+	@Get(':id')
 	@Public()
-	@ApiOperation({ summary: 'Obtener un producto por ID' })
-	@ApiResponse({ status: 200, description: 'Producto encontrado.' })
-	findOne(@Param("id") id: number) {
+	@ApiOperation({summary: 'Obtener un producto por ID'})
+	@ApiResponse({status: 200, description: 'Producto encontrado.'})
+	findOne(@Param('id') id: number) {
 		return this.service.findOne(id);
 	}
 
 	@Get(':id/variantes')
 	@Public()
-	@ApiOperation({ summary: 'Obtener variantes de un producto' })
-	@ApiResponse({ status: 200, description: 'Variantes del producto.' })
-	getVariantes(@Param("id") id: number) {
+	@ApiOperation({summary: 'Obtener variantes de un producto'})
+	@ApiResponse({status: 200, description: 'Variantes del producto.'})
+	getVariantes(@Param('id') id: number) {
 		return this.service.getVariantes(id);
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Crear un producto con variantes' })
-	@ApiResponse({ status: 201, description: 'Producto creado.' })
+	@ApiOperation({summary: 'Crear un producto con variantes'})
+	@ApiResponse({status: 201, description: 'Producto creado.'})
 	create(@Body() dto: CreateProductosDto) {
 		return this.service.create(dto);
 	}
 
 	@Post(':id/variantes')
-	@ApiOperation({ summary: 'Agregar variante a un producto' })
-	@ApiResponse({ status: 201, description: 'Variante agregada.' })
-	addVariante(
-		@Param("id") id: number,
-		@Body() body: CreateProductoVarianteDto
-	) {
+	@ApiOperation({summary: 'Agregar variante a un producto'})
+	@ApiResponse({status: 201, description: 'Variante agregada.'})
+	addVariante(@Param('id') id: number, @Body() body: CreateProductoVarianteDto) {
 		return this.service.createVariante(id, body.nombre, body.precio, body.descripcion, body.precioLeche);
 	}
 
-	@Patch(":id")
-	@ApiOperation({ summary: 'Actualizar un producto' })
-	@ApiResponse({ status: 200, description: 'Producto actualizado.' })
-	update(@Param("id") id: number, @Body() dto: Partial<CreateProductosDto>) {
+	@Patch(':id')
+	@ApiOperation({summary: 'Actualizar un producto'})
+	@ApiResponse({status: 200, description: 'Producto actualizado.'})
+	update(@Param('id') id: number, @Body() dto: Partial<CreateProductosDto>) {
 		return this.service.update(id, dto);
 	}
 
-	@Delete(":id")
-	@ApiOperation({ summary: 'Eliminar un producto' })
-	@ApiResponse({ status: 200, description: 'Producto eliminado.' })
-	remove(@Param("id") id: number) {
+	@Delete(':id')
+	@ApiOperation({summary: 'Eliminar un producto'})
+	@ApiResponse({status: 200, description: 'Producto eliminado.'})
+	remove(@Param('id') id: number) {
 		return this.service.remove(id);
 	}
 
-	@Patch("variantes/:id/stock-bebida")
-	@ApiOperation({ summary: 'Ajustar stock de bebida de una variante (+delta o -delta)' })
-	@ApiResponse({ status: 200, description: 'Stock ajustado.' })
-	ajustarStockBebida(
-		@Param("id") id: number,
-		@Body() body: { delta: number }
-	) {
+	@Patch('variantes/:id/stock-bebida')
+	@ApiOperation({summary: 'Ajustar stock de bebida de una variante (+delta o -delta)'})
+	@ApiResponse({status: 200, description: 'Stock ajustado.'})
+	ajustarStockBebida(@Param('id') id: number, @Body() body: {delta: number}) {
 		return this.service.ajustarStockBebida(id, body.delta);
 	}
 
-	@Patch("variantes/:id")
-	@ApiOperation({ summary: 'Actualizar una variante' })
-	@ApiResponse({ status: 200, description: 'Variante actualizada.' })
+	@Patch('variantes/:id')
+	@ApiOperation({summary: 'Actualizar una variante'})
+	@ApiResponse({status: 200, description: 'Variante actualizada.'})
 	updateVariante(
-		@Param("id") id: number,
-		@Body() body: {nombre?: string; precio?: number; precioLeche?: number | null; descripcion?: string; activo?: boolean}
+		@Param('id') id: number,
+		@Body()
+		body: {nombre?: string; precio?: number; precioLeche?: number | null; descripcion?: string; activo?: boolean},
 	) {
-		return this.service.updateVariante(id, body.nombre, body.precio, body.descripcion, body.activo, body.precioLeche);
+		return this.service.updateVariante(
+			id,
+			body.nombre,
+			body.precio,
+			body.descripcion,
+			body.activo,
+			body.precioLeche,
+		);
 	}
 
-	@Delete("variantes/:id")
-	@ApiOperation({ summary: 'Eliminar una variante' })
-	@ApiResponse({ status: 200, description: 'Variante eliminada.' })
-	deleteVariante(@Param("id") id: number) {
+	@Delete('variantes/:id')
+	@ApiOperation({summary: 'Eliminar una variante'})
+	@ApiResponse({status: 200, description: 'Variante eliminada.'})
+	deleteVariante(@Param('id') id: number) {
 		return this.service.deleteVariante(id);
 	}
 }

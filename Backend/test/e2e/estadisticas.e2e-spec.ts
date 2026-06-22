@@ -1,8 +1,8 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {Test, TestingModule} from '@nestjs/testing';
+import {INestApplication, ValidationPipe} from '@nestjs/common';
 import request from 'supertest';
-import { EstadisticasController } from '../../src/estadisticas/estadisticas.controller';
-import { EstadisticasService } from '../../src/estadisticas/estadisticas.service';
+import {EstadisticasController} from '../../src/estadisticas/estadisticas.controller';
+import {EstadisticasService} from '../../src/estadisticas/estadisticas.service';
 
 const mockService = {
 	productosTop: jest.fn(),
@@ -23,16 +23,16 @@ describe('EstadisticasController (e2e)', () => {
 	beforeAll(async () => {
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [EstadisticasController],
-			providers: [{ provide: EstadisticasService, useValue: mockService }],
+			providers: [{provide: EstadisticasService, useValue: mockService}],
 		}).compile();
 
 		app = module.createNestApplication();
 		app.use((req: any, _res: any, next: () => void) => {
-			req.user = { id: 'test-id', username: 'admin1', roles: ['admin'] };
+			req.user = {id: 'test-id', username: 'admin1', roles: ['admin']};
 			next();
 		});
 		app.useGlobalPipes(
-			new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }),
+			new ValidationPipe({whitelist: true, transform: true, transformOptions: {enableImplicitConversion: true}}),
 		);
 		await app.init();
 	});
@@ -42,7 +42,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/productos-top', () => {
 		it('retorna los productos top', async () => {
-			mockService.productosTop.mockResolvedValue([{ producto: 'Pizza', totalVendido: 5 }]);
+			mockService.productosTop.mockResolvedValue([{producto: 'Pizza', totalVendido: 5}]);
 
 			const res = await request(app.getHttpServer())
 				.get('/estadisticas/productos-top?from=2025-01-01&to=2025-01-31')
@@ -65,7 +65,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/sabores-top', () => {
 		it('retorna los sabores top', async () => {
-			mockService.saboresTop.mockResolvedValue([{ sabor: 'paisa', cantidad: 3 }]);
+			mockService.saboresTop.mockResolvedValue([{sabor: 'paisa', cantidad: 3}]);
 
 			const res = await request(app.getHttpServer())
 				.get('/estadisticas/sabores-top?from=2025-01-01&to=2025-01-31')
@@ -78,7 +78,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/variantes-top', () => {
 		it('retorna las variantes top', async () => {
-			mockService.variantesTop.mockResolvedValue([{ variante: 'Grande', totalVendido: 8 }]);
+			mockService.variantesTop.mockResolvedValue([{variante: 'Grande', totalVendido: 8}]);
 
 			const res = await request(app.getHttpServer())
 				.get('/estadisticas/variantes-top?from=2025-01-01&to=2025-01-31')
@@ -90,7 +90,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/ventas-por-hora', () => {
 		it('retorna ventas por hora sin parámetros', async () => {
-			mockService.ventasPorHora.mockResolvedValue([{ hora: 12, cantidad: 3, total: 90000 }]);
+			mockService.ventasPorHora.mockResolvedValue([{hora: 12, cantidad: 3, total: 90000}]);
 
 			const res = await request(app.getHttpServer()).get('/estadisticas/ventas-por-hora').expect(200);
 
@@ -101,9 +101,7 @@ describe('EstadisticasController (e2e)', () => {
 		it('pasa fecha específica al servicio', async () => {
 			mockService.ventasPorHora.mockResolvedValue([]);
 
-			await request(app.getHttpServer())
-				.get('/estadisticas/ventas-por-hora?fecha=2025-01-15')
-				.expect(200);
+			await request(app.getHttpServer()).get('/estadisticas/ventas-por-hora?fecha=2025-01-15').expect(200);
 
 			expect(mockService.ventasPorHora).toHaveBeenCalledWith('2025-01-15', undefined, undefined);
 		});
@@ -111,7 +109,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/ventas-por-dia', () => {
 		it('retorna ventas por día', async () => {
-			mockService.ventasPorDia.mockResolvedValue([{ fecha: '2025-01-01', cantidad: 4, total: 80000 }]);
+			mockService.ventasPorDia.mockResolvedValue([{fecha: '2025-01-01', cantidad: 4, total: 80000}]);
 
 			const res = await request(app.getHttpServer())
 				.get('/estadisticas/ventas-por-dia?from=2025-01-01&to=2025-01-31')
@@ -124,7 +122,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/metodos-pago', () => {
 		it('retorna distribución de métodos de pago', async () => {
-			mockService.metodosPago.mockResolvedValue([{ metodo: 'efectivo', total: 75000, porcentaje: 75 }]);
+			mockService.metodosPago.mockResolvedValue([{metodo: 'efectivo', total: 75000, porcentaje: 75}]);
 
 			const res = await request(app.getHttpServer())
 				.get('/estadisticas/metodos-pago?from=2025-01-01&to=2025-01-31')
@@ -136,7 +134,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/resumen-periodo', () => {
 		it('retorna el resumen del período', async () => {
-			const resumen = { totalVentas: 100000, balanceNeto: 80000, ticketPromedio: 20000 };
+			const resumen = {totalVentas: 100000, balanceNeto: 80000, ticketPromedio: 20000};
 			mockService.resumenPeriodo.mockResolvedValue(resumen);
 
 			const res = await request(app.getHttpServer())
@@ -149,7 +147,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/clientes-frecuentes', () => {
 		it('retorna los clientes frecuentes', async () => {
-			mockService.clientesFrecuentes.mockResolvedValue([{ clienteNombre: 'Juan', totalOrdenes: 5 }]);
+			mockService.clientesFrecuentes.mockResolvedValue([{clienteNombre: 'Juan', totalOrdenes: 5}]);
 
 			const res = await request(app.getHttpServer()).get('/estadisticas/clientes-frecuentes').expect(200);
 
@@ -160,7 +158,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/domiciliarios', () => {
 		it('retorna stats de domiciliarios', async () => {
-			mockService.domiciliariosStats.mockResolvedValue([{ nombre: 'Carlos', entregas: 3 }]);
+			mockService.domiciliariosStats.mockResolvedValue([{nombre: 'Carlos', entregas: 3}]);
 
 			const res = await request(app.getHttpServer())
 				.get('/estadisticas/domiciliarios?from=2025-01-01&to=2025-01-31')
@@ -172,7 +170,7 @@ describe('EstadisticasController (e2e)', () => {
 
 	describe('GET /estadisticas/cliente/:telefono/historial', () => {
 		it('retorna el historial del cliente', async () => {
-			mockService.clienteHistorial.mockResolvedValue({ totalOrdenes: 3, gastoTotal: 150000 });
+			mockService.clienteHistorial.mockResolvedValue({totalOrdenes: 3, gastoTotal: 150000});
 
 			const res = await request(app.getHttpServer())
 				.get('/estadisticas/cliente/3001234567/historial')

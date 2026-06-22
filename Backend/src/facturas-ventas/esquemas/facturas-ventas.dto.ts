@@ -1,7 +1,6 @@
-import {IsString, IsNumber, IsOptional, IsDateString, IsObject, IsPositive} from "class-validator";
+import {IsString, IsNumber, IsOptional, IsDateString, IsObject, IsPositive} from 'class-validator';
 
 export class CreateFacturasVentasDto {
-
 	@IsOptional()
 	@IsString()
 	clienteNombre?: string;

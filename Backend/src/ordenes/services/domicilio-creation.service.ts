@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
-import { Clientes } from '../../clientes/esquemas/clientes.entity';
-import { ClienteDirecciones } from '../../clientes/esquemas/cliente-direcciones.entity';
-import { Domiciliarios } from '../../domiciliarios/esquemas/domiciliarios.entity';
-import { Domicilios } from '../../domicilios/esquemas/domicilios.entity';
-import { CreateOrdenesDto } from '../esquemas/ordenes.dto';
+import {BadRequestException, Injectable} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {EntityManager, Repository} from 'typeorm';
+import {Clientes} from '../../clientes/esquemas/clientes.entity';
+import {ClienteDirecciones} from '../../clientes/esquemas/cliente-direcciones.entity';
+import {Domiciliarios} from '../../domiciliarios/esquemas/domiciliarios.entity';
+import {Domicilios} from '../../domicilios/esquemas/domicilios.entity';
+import {CreateOrdenesDto} from '../esquemas/ordenes.dto';
 
 @Injectable()
 export class DomicilioCreationService {
@@ -71,11 +71,26 @@ export class DomicilioCreationService {
 				});
 			} else {
 				let updated = false;
-				if (existe.direccion !== trimmed) { existe.direccion = trimmed; updated = true; }
-				if (referencia !== undefined && existe.referencia !== referencia) { existe.referencia = referencia; updated = true; }
-				if (costoDomicilio !== undefined && existe.costoDomicilio !== costoDomicilio) { existe.costoDomicilio = costoDomicilio; updated = true; }
-				if (latitud !== undefined && existe.latitud !== latitud) { existe.latitud = latitud; updated = true; }
-				if (longitud !== undefined && existe.longitud !== longitud) { existe.longitud = longitud; updated = true; }
+				if (existe.direccion !== trimmed) {
+					existe.direccion = trimmed;
+					updated = true;
+				}
+				if (referencia !== undefined && existe.referencia !== referencia) {
+					existe.referencia = referencia;
+					updated = true;
+				}
+				if (costoDomicilio !== undefined && existe.costoDomicilio !== costoDomicilio) {
+					existe.costoDomicilio = costoDomicilio;
+					updated = true;
+				}
+				if (latitud !== undefined && existe.latitud !== latitud) {
+					existe.latitud = latitud;
+					updated = true;
+				}
+				if (longitud !== undefined && existe.longitud !== longitud) {
+					existe.longitud = longitud;
+					updated = true;
+				}
 				if (updated) await dRepo.save(existe);
 			}
 		}
@@ -130,20 +145,36 @@ export class DomicilioCreationService {
 		}
 	}
 
-	async procesarDomicilio(data: CreateOrdenesDto, facturaId: number, ordenId: number, manager?: EntityManager): Promise<void> {
+	async procesarDomicilio(
+		data: CreateOrdenesDto,
+		facturaId: number,
+		ordenId: number,
+		manager?: EntityManager,
+	): Promise<void> {
 		this.validarDatosDomicilio(data);
 
-		await this.upsertCliente(data.telefonoCliente!, data.nombreCliente, data.direccionCliente, data.referenciaCliente, data.latitudCliente, data.longitudCliente, manager, data.direccionId, data.costoDomicilio);
+		const referencia = data.referenciaCliente ?? data.referenciaDomicilio;
+		await this.upsertCliente(
+			data.telefonoCliente,
+			data.nombreCliente,
+			data.direccionCliente,
+			referencia,
+			data.latitudCliente,
+			data.longitudCliente,
+			manager,
+			data.direccionId,
+			data.costoDomicilio,
+		);
 		if (data.telefonoDomiciliario) {
 			await this.upsertDomiciliario(data.telefonoDomiciliario, manager);
 		}
 		await this.crearDomicilio(
 			facturaId,
 			ordenId,
-			data.telefonoCliente!,
+			data.telefonoCliente,
 			data.telefonoDomiciliario,
 			data.direccionCliente,
-			data.referenciaCliente,
+			referencia,
 			data.costoDomicilio,
 			data.latitudCliente,
 			data.longitudCliente,
@@ -151,10 +182,15 @@ export class DomicilioCreationService {
 		);
 	}
 
-	async updateDomicilioPorOrden(ordenId: number, data: Partial<CreateOrdenesDto>, facturaId?: number, manager?: EntityManager): Promise<void> {
+	async updateDomicilioPorOrden(
+		ordenId: number,
+		data: Partial<CreateOrdenesDto>,
+		facturaId?: number,
+		manager?: EntityManager,
+	): Promise<void> {
 		const repo = manager ? manager.getRepository(Domicilios) : this.domiciliosRepo;
 		const domicilio = await repo.findOne({where: {ordenId}});
-		
+
 		if (!domicilio) {
 			// Si deciden cambiar a domicilio una orden existente o no se habia creado
 			if (data.telefonoCliente && data.telefonoDomiciliario && facturaId) {
@@ -163,11 +199,14 @@ export class DomicilioCreationService {
 			return;
 		}
 
+		const referencia = data.referenciaCliente ?? data.referenciaDomicilio;
+
 		const updateData: Partial<Domicilios> = {};
 		if (data.direccionCliente !== undefined) updateData.direccionEntrega = data.direccionCliente;
-		if (data.referenciaCliente !== undefined) updateData.referenciaDomicilio = data.referenciaCliente;
+		if (referencia !== undefined) updateData.referenciaDomicilio = referencia;
 		if (data.telefonoCliente !== undefined) updateData.telefono = data.telefonoCliente;
-		if (data.telefonoDomiciliario !== undefined) updateData.telefonoDomiciliarioAsignado = data.telefonoDomiciliario;
+		if (data.telefonoDomiciliario !== undefined)
+			updateData.telefonoDomiciliarioAsignado = data.telefonoDomiciliario;
 		if (data.costoDomicilio !== undefined) updateData.costoDomicilio = Number(data.costoDomicilio) || 0;
 		if (data.latitudCliente !== undefined) updateData.latitud = data.latitudCliente;
 		if (data.longitudCliente !== undefined) updateData.longitud = data.longitudCliente;
@@ -176,17 +215,29 @@ export class DomicilioCreationService {
 			await repo.update(domicilio.domicilioId, updateData);
 		}
 
-		if (data.telefonoCliente !== undefined || data.nombreCliente !== undefined || data.direccionCliente !== undefined || data.referenciaCliente !== undefined || data.latitudCliente !== undefined || data.longitudCliente !== undefined || data.costoDomicilio !== undefined) {
+		if (
+			data.telefonoCliente !== undefined ||
+			data.nombreCliente !== undefined ||
+			data.direccionCliente !== undefined ||
+			referencia !== undefined ||
+			data.latitudCliente !== undefined ||
+			data.longitudCliente !== undefined ||
+			data.costoDomicilio !== undefined
+		) {
 			await this.upsertCliente(
 				data.telefonoCliente ?? domicilio.telefono,
 				data.nombreCliente,
 				data.direccionCliente ?? domicilio.direccionEntrega,
-				data.referenciaCliente ?? domicilio.referenciaDomicilio,
+				referencia ?? domicilio.referenciaDomicilio,
 				data.latitudCliente ?? domicilio.latitud,
 				data.longitudCliente ?? domicilio.longitud,
 				manager,
 				data.direccionId,
-				data.costoDomicilio !== undefined ? Number(data.costoDomicilio) : (domicilio.costoDomicilio !== undefined ? Number(domicilio.costoDomicilio) : undefined),
+				data.costoDomicilio !== undefined
+					? Number(data.costoDomicilio)
+					: domicilio.costoDomicilio !== undefined
+						? Number(domicilio.costoDomicilio)
+						: undefined,
 			);
 		}
 

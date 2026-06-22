@@ -1,11 +1,11 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {Test, TestingModule} from '@nestjs/testing';
+import {INestApplication, ValidationPipe} from '@nestjs/common';
 import request from 'supertest';
-import { AuthController } from '../../src/auth/auth.controller';
-import { AuthService } from '../../src/auth/auth.service';
-import { JwtAuthGuard } from '../../src/auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../src/auth/guards/roles.guard';
-import { Role } from '../../src/auth/roles.enum';
+import {AuthController} from '../../src/auth/auth.controller';
+import {AuthService} from '../../src/auth/auth.service';
+import {JwtAuthGuard} from '../../src/auth/guards/jwt-auth.guard';
+import {RolesGuard} from '../../src/auth/guards/roles.guard';
+import {Role} from '../../src/auth/roles.enum';
 
 const mockAuthService = {
 	login: jest.fn(),
@@ -30,24 +30,24 @@ describe('AuthController (e2e)', () => {
 	beforeAll(async () => {
 		const moduleFixture: TestingModule = await Test.createTestingModule({
 			controllers: [AuthController],
-			providers: [
-				{ provide: AuthService, useValue: mockAuthService },
-			],
+			providers: [{provide: AuthService, useValue: mockAuthService}],
 		})
-			.overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
-			.overrideGuard(RolesGuard).useValue({ canActivate: () => true })
+			.overrideGuard(JwtAuthGuard)
+			.useValue({canActivate: () => true})
+			.overrideGuard(RolesGuard)
+			.useValue({canActivate: () => true})
 			.compile();
 
 		app = moduleFixture.createNestApplication();
 
 		// Inyectar usuario para endpoints protegidos (@GetUser)
 		app.use((req: any, _res: any, next: () => void) => {
-			req.user = { id: 'uuid-test-1', username: 'testuser', roles: [Role.Admin] };
+			req.user = {id: 'uuid-test-1', username: 'testuser', roles: [Role.Admin]};
 			next();
 		});
 
 		app.useGlobalPipes(
-			new ValidationPipe({ whitelist: true, transform: true, transformOptions: { enableImplicitConversion: true } }),
+			new ValidationPipe({whitelist: true, transform: true, transformOptions: {enableImplicitConversion: true}}),
 		);
 
 		await app.init();
@@ -69,10 +69,10 @@ describe('AuthController (e2e)', () => {
 
 			const res = await request(app.getHttpServer())
 				.post('/auth/login')
-				.send({ username: 'testuser', password: 'password123' })
+				.send({username: 'testuser', password: 'password123'})
 				.expect(201);
 
-			expect(res.body).toMatchObject({ accessToken: 'jwt-access-token', username: 'testuser' });
+			expect(res.body).toMatchObject({accessToken: 'jwt-access-token', username: 'testuser'});
 			expect(mockAuthService.login).toHaveBeenCalledWith({
 				username: 'testuser',
 				password: 'password123',
@@ -80,26 +80,23 @@ describe('AuthController (e2e)', () => {
 		});
 
 		it('retorna 400 cuando falta el username', async () => {
-			await request(app.getHttpServer())
-				.post('/auth/login')
-				.send({ password: 'password123' })
-				.expect(400);
+			await request(app.getHttpServer()).post('/auth/login').send({password: 'password123'}).expect(400);
 		});
 
 		it('retorna 400 cuando la contraseña tiene menos de 8 caracteres', async () => {
 			await request(app.getHttpServer())
 				.post('/auth/login')
-				.send({ username: 'testuser', password: 'corto' })
+				.send({username: 'testuser', password: 'corto'})
 				.expect(400);
 		});
 
 		it('retorna 401 cuando las credenciales son inválidas', async () => {
-			const { UnauthorizedException } = await import('@nestjs/common');
+			const {UnauthorizedException} = await import('@nestjs/common');
 			mockAuthService.login.mockRejectedValue(new UnauthorizedException('Credenciales inválidas'));
 
 			await request(app.getHttpServer())
 				.post('/auth/login')
-				.send({ username: 'baduser', password: 'wrongpass1' })
+				.send({username: 'baduser', password: 'wrongpass1'})
 				.expect(401);
 		});
 	});
@@ -112,21 +109,20 @@ describe('AuthController (e2e)', () => {
 
 			const res = await request(app.getHttpServer())
 				.post('/auth/refresh')
-				.send({ refreshToken: 'valid-refresh-token' })
+				.send({refreshToken: 'valid-refresh-token'})
 				.expect(201);
 
-			expect(res.body).toMatchObject({ accessToken: 'jwt-access-token' });
+			expect(res.body).toMatchObject({accessToken: 'jwt-access-token'});
 			expect(mockAuthService.refreshToken).toHaveBeenCalledWith('valid-refresh-token');
 		});
 
 		it('retorna 401 con un refresh token expirado', async () => {
-			const { UnauthorizedException } = await import('@nestjs/common');
-			mockAuthService.refreshToken.mockRejectedValue(new UnauthorizedException('Refresh token inválido o expirado'));
+			const {UnauthorizedException} = await import('@nestjs/common');
+			mockAuthService.refreshToken.mockRejectedValue(
+				new UnauthorizedException('Refresh token inválido o expirado'),
+			);
 
-			await request(app.getHttpServer())
-				.post('/auth/refresh')
-				.send({ refreshToken: 'expired-token' })
-				.expect(401);
+			await request(app.getHttpServer()).post('/auth/refresh').send({refreshToken: 'expired-token'}).expect(401);
 		});
 	});
 
@@ -136,14 +132,10 @@ describe('AuthController (e2e)', () => {
 		it('retorna 200 con los datos del usuario autenticado', async () => {
 			mockAuthService.toAuthResponse.mockReturnValue(mockAuthResponse);
 
-			const res = await request(app.getHttpServer())
-				.get('/auth/me')
-				.expect(200);
+			const res = await request(app.getHttpServer()).get('/auth/me').expect(200);
 
-			expect(res.body).toMatchObject({ username: 'testuser' });
-			expect(mockAuthService.toAuthResponse).toHaveBeenCalledWith(
-				expect.objectContaining({ id: 'uuid-test-1' }),
-			);
+			expect(res.body).toMatchObject({username: 'testuser'});
+			expect(mockAuthService.toAuthResponse).toHaveBeenCalledWith(expect.objectContaining({id: 'uuid-test-1'}));
 		});
 	});
 
@@ -152,14 +144,12 @@ describe('AuthController (e2e)', () => {
 	describe('GET /auth/users', () => {
 		it('retorna 200 con lista de usuarios', async () => {
 			const users = [
-				{ id: 'uuid-1', username: 'admin', roles: [Role.Admin] },
-				{ id: 'uuid-2', username: 'cajero', roles: [Role.Cajero] },
+				{id: 'uuid-1', username: 'admin', roles: [Role.Admin]},
+				{id: 'uuid-2', username: 'cajero', roles: [Role.Cajero]},
 			];
 			mockAuthService.findAll.mockResolvedValue(users);
 
-			const res = await request(app.getHttpServer())
-				.get('/auth/users')
-				.expect(200);
+			const res = await request(app.getHttpServer()).get('/auth/users').expect(200);
 
 			expect(Array.isArray(res.body)).toBe(true);
 			expect(res.body).toHaveLength(2);
@@ -174,29 +164,27 @@ describe('AuthController (e2e)', () => {
 
 			const res = await request(app.getHttpServer())
 				.post('/auth/register')
-				.send({ username: 'nuevousuario', password: 'password123', name: 'Nuevo', roles: [Role.Mesero] })
+				.send({username: 'nuevousuario', password: 'password123', name: 'Nuevo', roles: [Role.Mesero]})
 				.expect(201);
 
-			expect(res.body).toMatchObject({ username: 'testuser' });
-			expect(mockAuthService.register).toHaveBeenCalledWith(
-				expect.objectContaining({ username: 'nuevousuario' }),
-			);
+			expect(res.body).toMatchObject({username: 'testuser'});
+			expect(mockAuthService.register).toHaveBeenCalledWith(expect.objectContaining({username: 'nuevousuario'}));
 		});
 
 		it('retorna 400 cuando la contraseña es demasiado corta', async () => {
 			await request(app.getHttpServer())
 				.post('/auth/register')
-				.send({ username: 'usuario', password: 'corta', name: 'Nombre' })
+				.send({username: 'usuario', password: 'corta', name: 'Nombre'})
 				.expect(400);
 		});
 
 		it('retorna 400 si el username ya existe', async () => {
-			const { BadRequestException } = await import('@nestjs/common');
+			const {BadRequestException} = await import('@nestjs/common');
 			mockAuthService.register.mockRejectedValue(new BadRequestException('Username ya registrado'));
 
 			await request(app.getHttpServer())
 				.post('/auth/register')
-				.send({ username: 'duplicado', password: 'password123', name: 'Dup' })
+				.send({username: 'duplicado', password: 'password123', name: 'Dup'})
 				.expect(400);
 		});
 	});

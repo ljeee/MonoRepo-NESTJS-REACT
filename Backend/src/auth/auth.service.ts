@@ -28,7 +28,7 @@ export class AuthService {
 	async findAll(): Promise<User[]> {
 		return this.usersRepository.find({
 			select: ['id', 'username', 'name', 'roles', 'createdAt'],
-			order: { createdAt: 'DESC' }
+			order: {createdAt: 'DESC'},
 		});
 	}
 
@@ -37,7 +37,7 @@ export class AuthService {
 			const uRepo = manager.getRepository(User);
 			const dRepo = manager.getRepository(Domiciliarios);
 
-			const isDomiciliario = dto.roles?.some(role => role === Role.Domiciliario);
+			const isDomiciliario = dto.roles?.some((role) => role === Role.Domiciliario);
 
 			if (isDomiciliario && !dto.telefono) {
 				throw new BadRequestException('El número de teléfono es obligatorio para registrar un domiciliario.');
@@ -56,9 +56,11 @@ export class AuthService {
 			}
 
 			const hash = await bcrypt.hash(dto.password, 12); // Factor 12 es más balanceado
-			
-			if (dto.roles?.some(role => role === Role.Admin)) {
-				throw new BadRequestException('No se permite la creación de usuarios con rol Administrador desde este endpoint.');
+
+			if (dto.roles?.some((role) => role === Role.Admin)) {
+				throw new BadRequestException(
+					'No se permite la creación de usuarios con rol Administrador desde este endpoint.',
+				);
 			}
 
 			const roles = dto.roles && dto.roles.length > 0 ? dto.roles : [Role.Mesero];
@@ -84,15 +86,18 @@ export class AuthService {
 		});
 	}
 
-	async updateUser(id: string, dto: { name?: string; username?: string; password?: string }): Promise<{ id: string; username: string; name?: string; roles: Role[] }> {
+	async updateUser(
+		id: string,
+		dto: {name?: string; username?: string; password?: string},
+	): Promise<{id: string; username: string; name?: string; roles: Role[]}> {
 		const user = await this.usersRepository.findOne({
-			where: { id },
+			where: {id},
 			select: ['id', 'username', 'name', 'passwordHash', 'roles'],
 		});
 		if (!user) throw new NotFoundException('Usuario no encontrado');
 
 		if (dto.username && dto.username !== user.username) {
-			const existing = await this.usersRepository.findOne({ where: { username: dto.username } });
+			const existing = await this.usersRepository.findOne({where: {username: dto.username}});
 			if (existing) throw new BadRequestException('El nombre de usuario ya está en uso');
 			user.username = dto.username;
 		}
@@ -100,7 +105,7 @@ export class AuthService {
 		if (dto.name !== undefined) {
 			user.name = dto.name;
 			// Sync domiciliario name if applicable
-			const dom = await this.domiciliariosRepository.findOne({ where: { userId: id } });
+			const dom = await this.domiciliariosRepository.findOne({where: {userId: id}});
 			if (dom) {
 				dom.domiciliarioNombre = dto.name;
 				await this.domiciliariosRepository.save(dom);
@@ -112,7 +117,7 @@ export class AuthService {
 		}
 
 		const saved = await this.usersRepository.save(user);
-		return { id: saved.id, username: saved.username, name: saved.name, roles: saved.roles };
+		return {id: saved.id, username: saved.username, name: saved.name, roles: saved.roles};
 	}
 
 	async login(dto: LoginDto): Promise<AuthResponseDto> {
@@ -135,7 +140,7 @@ export class AuthService {
 	async refreshToken(token: string): Promise<AuthResponseDto> {
 		try {
 			const payload = this.jwtService.verify(token);
-			
+
 			// Si es un cliente
 			if (payload.roles?.includes(Role.Cliente)) {
 				const cliente = await this.clientesRepository.findOne({
@@ -190,7 +195,7 @@ export class AuthService {
 		const cliente = await this.clientesRepository.findOne({
 			where: {telefono: dto.telefono},
 		});
-		
+
 		if (!cliente || !cliente.password) {
 			throw new UnauthorizedException('Credenciales inválidas o el usuario no está registrado');
 		}
@@ -210,7 +215,7 @@ export class AuthService {
 			roles: [Role.Cliente],
 		};
 		const accessToken = this.jwtService.sign(payload);
-		const refreshToken = this.jwtService.sign(payload, { expiresIn: '30d' });
+		const refreshToken = this.jwtService.sign(payload, {expiresIn: '30d'});
 		return {
 			id: cliente.telefono,
 			username: cliente.telefono,
@@ -228,7 +233,7 @@ export class AuthService {
 			roles: user.roles,
 		};
 		const accessToken = this.jwtService.sign(payload);
-		const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+		const refreshToken = this.jwtService.sign(payload, {expiresIn: '7d'});
 		return {
 			id: user.id,
 			username: user.username,

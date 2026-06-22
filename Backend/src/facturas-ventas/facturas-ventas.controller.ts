@@ -1,22 +1,22 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query, BadRequestException} from "@nestjs/common";
+import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query, BadRequestException} from '@nestjs/common';
 import {ApiTags, ApiOperation, ApiResponse, ApiQuery} from '@nestjs/swagger';
-import {FacturasVentasService} from "./facturas-ventas.service";
-import {AbonoDto, CreateFacturasVentasDto} from "./esquemas/facturas-ventas.dto";
+import {FacturasVentasService} from './facturas-ventas.service';
+import {AbonoDto, CreateFacturasVentasDto} from './esquemas/facturas-ventas.dto';
 
 @ApiTags('Facturas Ventas')
-@Controller("facturas-ventas")
+@Controller('facturas-ventas')
 export class FacturasVentasController {
 	constructor(private readonly service: FacturasVentasService) {}
 
 	@Get()
-	@ApiOperation({ summary: 'Obtener facturas de ventas con paginación y filtro por fechas' })
-	@ApiQuery({ name: 'from', required: false })
-	@ApiQuery({ name: 'to', required: false })
-	@ApiQuery({ name: 'page', required: false, type: Number })
-	@ApiQuery({ name: 'limit', required: false, type: Number })
-	@ApiQuery({ name: 'estado', required: false })
-	@ApiQuery({ name: 'clienteNombre', required: false })
-	@ApiQuery({ name: 'metodo', required: false })
+	@ApiOperation({summary: 'Obtener facturas de ventas con paginación y filtro por fechas'})
+	@ApiQuery({name: 'from', required: false})
+	@ApiQuery({name: 'to', required: false})
+	@ApiQuery({name: 'page', required: false, type: Number})
+	@ApiQuery({name: 'limit', required: false, type: Number})
+	@ApiQuery({name: 'estado', required: false})
+	@ApiQuery({name: 'clienteNombre', required: false})
+	@ApiQuery({name: 'metodo', required: false})
 	async findAll(
 		@Query('from') from?: string,
 		@Query('to') to?: string,
@@ -27,15 +27,17 @@ export class FacturasVentasController {
 		@Query('metodo') metodo?: string,
 	) {
 		const limitNum = limit ? Number(limit) : undefined;
-		
+
 		// Security check: Limit date range for large queries (e.g., limit: 9999)
 		if ((!limitNum || limitNum > 100) && from && to) {
 			const fromDate = new Date(from);
 			const toDate = new Date(to);
 			const diffInDays = (toDate.getTime() - fromDate.getTime()) / (1000 * 3600 * 24);
-			
+
 			if (diffInDays > 365) {
-				throw new BadRequestException('El rango de fechas no puede exceder 1 año (365 días) para consultas masivas o exportaciones.');
+				throw new BadRequestException(
+					'El rango de fechas no puede exceder 1 año (365 días) para consultas masivas o exportaciones.',
+				);
 			}
 		}
 
@@ -51,58 +53,58 @@ export class FacturasVentasController {
 	}
 
 	@Get('dia')
-	@ApiOperation({ summary: 'Obtener facturas de ventas del día actual' })
-	@ApiResponse({ status: 200, description: 'Lista de facturas de ventas del día.' })
+	@ApiOperation({summary: 'Obtener facturas de ventas del día actual'})
+	@ApiResponse({status: 200, description: 'Lista de facturas de ventas del día.'})
 	findByDay() {
 		return this.service.findByDay();
 	}
 
 	@Get('dia/stats')
-	@ApiOperation({ summary: 'Obtener estadísticas de facturas del día' })
-	@ApiResponse({ status: 200, description: 'Estadísticas: total día, pagado, pendiente.' })
+	@ApiOperation({summary: 'Obtener estadísticas de facturas del día'})
+	@ApiResponse({status: 200, description: 'Estadísticas: total día, pagado, pendiente.'})
 	getDayStats() {
 		return this.service.getDayStats();
 	}
 
 	@Get('dia/pendientes')
-	@ApiOperation({ summary: 'Obtener facturas de ventas pendientes del día actual' })
-	@ApiResponse({ status: 200, description: 'Lista de facturas de ventas pendientes del día.' })
+	@ApiOperation({summary: 'Obtener facturas de ventas pendientes del día actual'})
+	@ApiResponse({status: 200, description: 'Lista de facturas de ventas pendientes del día.'})
 	findPendingByDay() {
 		return this.service.findPendingByDay();
 	}
 
-	@Get(":id")
-	@ApiOperation({ summary: 'Obtener una factura de venta por ID' })
-	@ApiResponse({ status: 200, description: 'Factura de venta encontrada.' })
-	findOne(@Param("id") id: number) {
+	@Get(':id')
+	@ApiOperation({summary: 'Obtener una factura de venta por ID'})
+	@ApiResponse({status: 200, description: 'Factura de venta encontrada.'})
+	findOne(@Param('id') id: number) {
 		return this.service.findOne(id);
 	}
 
 	@Post()
-	@ApiOperation({ summary: 'Crear una factura de venta' })
-	@ApiResponse({ status: 201, description: 'Factura de venta creada.' })
+	@ApiOperation({summary: 'Crear una factura de venta'})
+	@ApiResponse({status: 201, description: 'Factura de venta creada.'})
 	create(@Body() dto: CreateFacturasVentasDto) {
 		return this.service.create(dto);
 	}
 
-	@Patch(":id")
-	@ApiOperation({ summary: 'Actualizar una factura de venta' })
-	@ApiResponse({ status: 200, description: 'Factura de venta actualizada.' })
-	update(@Param("id") id: number, @Body() dto: Partial<CreateFacturasVentasDto>) {
+	@Patch(':id')
+	@ApiOperation({summary: 'Actualizar una factura de venta'})
+	@ApiResponse({status: 200, description: 'Factura de venta actualizada.'})
+	update(@Param('id') id: number, @Body() dto: Partial<CreateFacturasVentasDto>) {
 		return this.service.update(id, dto);
 	}
 
-	@Patch(":id/abono")
-	@ApiOperation({ summary: 'Registrar abono parcial en efectivo a una factura pendiente' })
-	@ApiResponse({ status: 200, description: 'Abono registrado, factura actualizada.' })
-	registrarAbono(@Param("id") id: number, @Body() dto: AbonoDto) {
+	@Patch(':id/abono')
+	@ApiOperation({summary: 'Registrar abono parcial en efectivo a una factura pendiente'})
+	@ApiResponse({status: 200, description: 'Abono registrado, factura actualizada.'})
+	registrarAbono(@Param('id') id: number, @Body() dto: AbonoDto) {
 		return this.service.registrarAbono(id, dto);
 	}
 
-	@Delete(":id")
-	@ApiOperation({ summary: 'Eliminar una factura de venta' })
-	@ApiResponse({ status: 200, description: 'Factura de venta eliminada.' })
-	remove(@Param("id") id: number) {
+	@Delete(':id')
+	@ApiOperation({summary: 'Eliminar una factura de venta'})
+	@ApiResponse({status: 200, description: 'Factura de venta eliminada.'})
+	remove(@Param('id') id: number) {
 		return this.service.remove(id);
 	}
 }

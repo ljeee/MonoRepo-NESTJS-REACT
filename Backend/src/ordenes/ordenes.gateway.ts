@@ -1,19 +1,23 @@
-import {
-	WebSocketGateway,
-	WebSocketServer,
-	OnGatewayConnection,
-	OnGatewayDisconnect,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import {WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect} from '@nestjs/websockets';
+import {Server, Socket} from 'socket.io';
 
 @WebSocketGateway({
 	namespace: '/ordenes',
 	cors: {
 		origin: process.env.CORS_ORIGINS
-			? process.env.CORS_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
-			: ['tauri://localhost', 'http://tauri.localhost', 'https://tauri.localhost', 'http://localhost:1420', 'http://localhost:8081', 'http://localhost:5173'],
+			? process.env.CORS_ORIGINS.split(',')
+					.map((o) => o.trim())
+					.filter(Boolean)
+			: [
+					'tauri://localhost',
+					'http://tauri.localhost',
+					'https://tauri.localhost',
+					'http://localhost:1420',
+					'http://localhost:8081',
+					'http://localhost:5173',
+				],
 		credentials: true,
-	}
+	},
 })
 export class OrdenesGateway implements OnGatewayConnection, OnGatewayDisconnect {
 	@WebSocketServer()
@@ -42,12 +46,12 @@ export class OrdenesGateway implements OnGatewayConnection, OnGatewayDisconnect 
 	emitirOrdenActualizada(orden: any) {
 		this.server.emit('orden:actualizada', orden);
 	}
-	
+
 	emitirHandoffWhatsapp(data: any) {
-	    this.server.emit('whatsapp:handoff', data);
+		this.server.emit('whatsapp:handoff', data);
 	}
 
 	emitirActualizacionStats(data?: any) {
-		this.server.emit('stats:update', data || { timestamp: Date.now() });
+		this.server.emit('stats:update', data || {timestamp: Date.now()});
 	}
 }

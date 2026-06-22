@@ -15,7 +15,7 @@ export class OrdenesProductosService {
 		return this.repo.find({
 			take: limit,
 			skip: (page - 1) * limit,
-			relations: ['orden', 'productoObj']
+			relations: ['orden', 'productoObj'],
 		});
 	}
 

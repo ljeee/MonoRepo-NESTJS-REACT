@@ -22,7 +22,7 @@ export class ImportadorController {
 		schema: {
 			type: 'object',
 			properties: {
-				file: { type: 'string', format: 'binary' },
+				file: {type: 'string', format: 'binary'},
 			},
 		},
 	})
@@ -33,8 +33,8 @@ export class ImportadorController {
 		}
 
 		const content = file.buffer.toString('utf-8');
-		const lines = content.split(/\r?\n/).filter(line => line.trim().length > 0);
-		
+		const lines = content.split(/\r?\n/).filter((line) => line.trim().length > 0);
+
 		if (lines.length < 2) {
 			throw new BadRequestException('El archivo CSV está vacío o le faltan datos');
 		}
@@ -42,17 +42,20 @@ export class ImportadorController {
 		// Parse utility for CSV rows protecting quoted commas
 		const parseCsvRow = (text: string) => {
 			const re = /,(?=(?:(?:[^"]*"){2})*[^"]*$)/;
-			return text.split(re).map(v => v.replace(/^"|"$/g, '').trim());
+			return text.split(re).map((v) => v.replace(/^"|"$/g, '').trim());
 		};
 
 		const rawHeaders = parseCsvRow(lines[0]);
-		const headers = rawHeaders.map(h => 
-			h.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+		const headers = rawHeaders.map((h) =>
+			h
+				.toLowerCase()
+				.normalize('NFD')
+				.replace(/[\u0300-\u036f]/g, ''),
 		);
 
 		const dataRows = lines.slice(1);
 		const facturasMap = new Map<string, any>();
-		const errors: { line: number; error: string }[] = [];
+		const errors: {line: number; error: string}[] = [];
 
 		for (const [index, line] of dataRows.entries()) {
 			const values = parseCsvRow(line);
@@ -91,18 +94,20 @@ export class ImportadorController {
 				} else if (/^\d{1,2}\/\d{1,2}\/\d{4}/.test(rawFecha)) {
 					// DD/MM/YYYY — reverse to YYYY-MM-DD
 					const [d, m, y] = rawFecha.split('/');
-					parsedFecha = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`);
+					parsedFecha = new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
 				} else {
 					parsedFecha = rawFecha ? new Date(rawFecha) : new Date();
 				}
 				if (isNaN(parsedFecha.getTime())) parsedFecha = new Date();
 
-				const cleanPagoEfectivo = rawPagoEfectivo !== null && rawPagoEfectivo !== ''
-					? parseFloat(rawPagoEfectivo.replace(/[^0-9.-]+/g, ''))
-					: undefined;
-				const cleanPagoTransferencia = rawPagoTransferencia !== null && rawPagoTransferencia !== ''
-					? parseFloat(rawPagoTransferencia.replace(/[^0-9.-]+/g, ''))
-					: undefined;
+				const cleanPagoEfectivo =
+					rawPagoEfectivo !== null && rawPagoEfectivo !== ''
+						? parseFloat(rawPagoEfectivo.replace(/[^0-9.-]+/g, ''))
+						: undefined;
+				const cleanPagoTransferencia =
+					rawPagoTransferencia !== null && rawPagoTransferencia !== ''
+						? parseFloat(rawPagoTransferencia.replace(/[^0-9.-]+/g, ''))
+						: undefined;
 
 				const factura = {
 					facturaId: id ? parseInt(id, 10) : undefined,
@@ -133,7 +138,7 @@ export class ImportadorController {
 						continue;
 					}
 				}
-				await this.facturasService.create(factura as any);
+				await this.facturasService.create(factura);
 				imported.push(factura);
 			} catch (err) {
 				errors.push({line: -1, error: `Factura ID ${key}: ${err.message}`});

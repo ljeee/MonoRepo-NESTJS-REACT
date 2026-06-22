@@ -1,33 +1,96 @@
-import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
-import { PizzaSabor } from './esquemas/pizza-sabores.entity';
-import { CreatePizzaSaborDto, UpdatePizzaSaborDto } from './esquemas/pizza-sabores.dto';
+import {ConflictException, Injectable, OnModuleInit} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {QueryFailedError, Repository} from 'typeorm';
+import {PizzaSabor} from './esquemas/pizza-sabores.entity';
+import {CreatePizzaSaborDto, UpdatePizzaSaborDto} from './esquemas/pizza-sabores.dto';
 
 // Sabores precisos del menú actual con sus recargos por tamaño
 const SABORES_INICIALES: Omit<PizzaSabor, 'saborId'>[] = [
 	// ── Tradicionales (sin recargo) ──────────────────────────────────────
-	{ nombre: 'De Casa',           tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Napolitana',        tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Ranchera',          tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Hawaiana',          tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Vegetales',         tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Mexicana',          tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Carnes',            tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Pollo Tocineta',    tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Pollo Champiñones', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Pollo Maicitos',    tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
-	{ nombre: 'Jamón y Queso',     tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true },
+	{nombre: 'De Casa', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true},
+	{nombre: 'Napolitana', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true},
+	{nombre: 'Ranchera', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true},
+	{nombre: 'Hawaiana', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true},
+	{nombre: 'Vegetales', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true},
+	{nombre: 'Mexicana', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true},
+	{nombre: 'Carnes', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true},
+	{
+		nombre: 'Pollo Tocineta',
+		tipo: 'tradicional',
+		recargoPequena: 0,
+		recargoMediana: 0,
+		recargoGrande: 0,
+		activo: true,
+	},
+	{
+		nombre: 'Pollo Champiñones',
+		tipo: 'tradicional',
+		recargoPequena: 0,
+		recargoMediana: 0,
+		recargoGrande: 0,
+		activo: true,
+	},
+	{
+		nombre: 'Pollo Maicitos',
+		tipo: 'tradicional',
+		recargoPequena: 0,
+		recargoMediana: 0,
+		recargoGrande: 0,
+		activo: true,
+	},
+	{
+		nombre: 'Jamón y Queso',
+		tipo: 'tradicional',
+		recargoPequena: 0,
+		recargoMediana: 0,
+		recargoGrande: 0,
+		activo: true,
+	},
 	// ── Especiales (recargo por tamaño) ─────────────────────────────────
 	// Quesuda es más cara que los demás especiales
-	{ nombre: 'Quesuda',    tipo: 'especial', recargoPequena: 2000, recargoMediana: 3000, recargoGrande: 3000, activo: true },
-	{ nombre: 'Boloñesa',   tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
-	{ nombre: 'Pollo BBQ',  tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
-	{ nombre: 'Aborrajada', tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
-	{ nombre: 'Firu',       tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
-	{ nombre: 'Paisa',      tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true },
+	{
+		nombre: 'Quesuda',
+		tipo: 'especial',
+		recargoPequena: 2000,
+		recargoMediana: 3000,
+		recargoGrande: 3000,
+		activo: true,
+	},
+	{
+		nombre: 'Boloñesa',
+		tipo: 'especial',
+		recargoPequena: 1000,
+		recargoMediana: 2000,
+		recargoGrande: 2000,
+		activo: true,
+	},
+	{
+		nombre: 'Pollo BBQ',
+		tipo: 'especial',
+		recargoPequena: 1000,
+		recargoMediana: 2000,
+		recargoGrande: 2000,
+		activo: true,
+	},
+	{
+		nombre: 'Aborrajada',
+		tipo: 'especial',
+		recargoPequena: 1000,
+		recargoMediana: 2000,
+		recargoGrande: 2000,
+		activo: true,
+	},
+	{nombre: 'Firu', tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true},
+	{nombre: 'Paisa', tipo: 'especial', recargoPequena: 1000, recargoMediana: 2000, recargoGrande: 2000, activo: true},
 	// ── Configuración (Dfiru POS) ───────────────────────────────────────
-	{ nombre: 'RECARGO_3_SABORES', tipo: 'configuracion', recargoPequena: 0, recargoMediana: 0, recargoGrande: 3000, activo: true },
+	{
+		nombre: 'RECARGO_3_SABORES',
+		tipo: 'configuracion',
+		recargoPequena: 0,
+		recargoMediana: 0,
+		recargoGrande: 3000,
+		activo: true,
+	},
 ];
 
 @Injectable()
@@ -41,24 +104,24 @@ export class PizzaSaboresService implements OnModuleInit {
 	async onModuleInit() {
 		const count = await this.repo.count();
 		if (count === 0) {
-			await this.repo.save(SABORES_INICIALES.map(s => this.repo.create(s)));
+			await this.repo.save(SABORES_INICIALES.map((s) => this.repo.create(s)));
 			console.log('🍕 pizza_sabores seeded with', SABORES_INICIALES.length, 'sabores.');
 		}
 	}
 
 	findAll() {
-		return this.repo.find({ order: { tipo: 'ASC', nombre: 'ASC' } });
+		return this.repo.find({order: {tipo: 'ASC', nombre: 'ASC'}});
 	}
 
 	async update(saborId: number, dto: UpdatePizzaSaborDto) {
 		try {
 			await this.repo.update(saborId, {
-				...(dto.nombre !== undefined && { nombre: dto.nombre }),
-				...(dto.tipo !== undefined && { tipo: dto.tipo }),
-				...(dto.recargoPequena !== undefined && { recargoPequena: dto.recargoPequena }),
-				...(dto.recargoMediana !== undefined && { recargoMediana: dto.recargoMediana }),
-				...(dto.recargoGrande !== undefined && { recargoGrande: dto.recargoGrande }),
-				...(dto.activo !== undefined && { activo: dto.activo }),
+				...(dto.nombre !== undefined && {nombre: dto.nombre}),
+				...(dto.tipo !== undefined && {tipo: dto.tipo}),
+				...(dto.recargoPequena !== undefined && {recargoPequena: dto.recargoPequena}),
+				...(dto.recargoMediana !== undefined && {recargoMediana: dto.recargoMediana}),
+				...(dto.recargoGrande !== undefined && {recargoGrande: dto.recargoGrande}),
+				...(dto.activo !== undefined && {activo: dto.activo}),
 			});
 		} catch (error) {
 			if (error instanceof QueryFailedError && (error as any).code === '23505') {
@@ -66,7 +129,7 @@ export class PizzaSaboresService implements OnModuleInit {
 			}
 			throw error;
 		}
-		return this.repo.findOne({ where: { saborId } });
+		return this.repo.findOne({where: {saborId}});
 	}
 
 	async create(dto: CreatePizzaSaborDto) {
@@ -83,6 +146,6 @@ export class PizzaSaboresService implements OnModuleInit {
 
 	async delete(saborId: number) {
 		const result = await this.repo.delete(saborId);
-		return { deleted: !!result.affected && result.affected > 0 };
+		return {deleted: !!result.affected && result.affected > 0};
 	}
 }

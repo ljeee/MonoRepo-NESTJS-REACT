@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, Repository } from 'typeorm';
-import { CreateOrdenItemDto } from '../esquemas/ordenes.dto';
-import { ProductoVariantes } from '../../productos/esquemas/producto-variantes.entity';
-import { OrdenesProductos } from '../../ordenes-productos/esquemas/ordenes-productos.entity';
-import { PizzaSabor } from '../../pizza-sabores/esquemas/pizza-sabores.entity';
-import { resolverPersonalizacion } from '../../common/utils/personalizacion.util';
+import {BadRequestException, Injectable} from '@nestjs/common';
+import {InjectRepository} from '@nestjs/typeorm';
+import {EntityManager, Repository} from 'typeorm';
+import {CreateOrdenItemDto} from '../esquemas/ordenes.dto';
+import {ProductoVariantes} from '../../productos/esquemas/producto-variantes.entity';
+import {OrdenesProductos} from '../../ordenes-productos/esquemas/ordenes-productos.entity';
+import {PizzaSabor} from '../../pizza-sabores/esquemas/pizza-sabores.entity';
+import {resolverPersonalizacion} from '../../common/utils/personalizacion.util';
 
 @Injectable()
 export class ProductProcessingService {
@@ -76,7 +76,7 @@ export class ProductProcessingService {
 			if (!variante) {
 				throw new BadRequestException(`Variante no encontrada: ${item.varianteId}`);
 			}
-			
+
 			let precioBase = Number(variante.precio);
 			// Recargo fijo por base leche (+$1.000)
 			const RECARGO_LECHE = 1000;
@@ -112,8 +112,9 @@ export class ProductProcessingService {
 				// Calzone (y cualquier otro) mantienen su precio plano de variante.
 				if (isPizza) {
 					// Buscamos los detalles de los sabores en la DB
-					const saboresInfo = await sRepo.createQueryBuilder('s')
-						.where('s.nombre IN (:...names)', { names: saboresNames })
+					const saboresInfo = await sRepo
+						.createQueryBuilder('s')
+						.where('s.nombre IN (:...names)', {names: saboresNames})
 						.getMany();
 
 					// Identificar columna de recargo basada en el nombre de la variante
@@ -127,15 +128,17 @@ export class ProductProcessingService {
 
 					// 1. Recargo por Sabor Especial (Tomar el máximo)
 					const maxRecargoEspecial = saboresInfo
-						.filter(s => s.tipo === 'especial')
+						.filter((s) => s.tipo === 'especial')
 						.reduce((max, s) => Math.max(max, Number(s[sizeKey]) || 0), 0);
 
 					recargoTotal += maxRecargoEspecial;
 
 					// 2. Recargo por 3 Sabores (Si hay exactamente 3 nombres)
 					if (saboresNames.length >= 3) {
-						const config3 = await sRepo.findOne({ where: { nombre: 'RECARGO_3_SABORES', tipo: 'configuracion' } });
-						const extra3 = config3 ? (Number(config3[sizeKey]) || 3000) : 3000;
+						const config3 = await sRepo.findOne({
+							where: {nombre: 'RECARGO_3_SABORES', tipo: 'configuracion'},
+						});
+						const extra3 = config3 ? Number(config3[sizeKey]) || 3000 : 3000;
 						recargoTotal += extra3;
 					}
 				}
@@ -145,7 +148,15 @@ export class ProductProcessingService {
 			const cantidad = Number(item.cantidad) || 1;
 			total += precioFinalItem * cantidad;
 
-			await this.vincularProductoAOrden(ordenId, nombre, cantidad, precioFinalItem, item.varianteId, item.base ?? null, manager);
+			await this.vincularProductoAOrden(
+				ordenId,
+				nombre,
+				cantidad,
+				precioFinalItem,
+				item.varianteId,
+				item.base ?? null,
+				manager,
+			);
 			items.push({nombre, cantidad, precioUnitario: precioFinalItem});
 		}
 

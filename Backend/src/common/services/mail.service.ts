@@ -1,32 +1,35 @@
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import {Injectable} from '@nestjs/common';
+import {ConfigService} from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class MailService {
-    private transporter: nodemailer.Transporter;
+	private transporter: nodemailer.Transporter;
 
-    constructor(private readonly config: ConfigService) {
-        const mailSecure = this.config.get('MAIL_SECURE');
-        // Robust boolean parsing for environment variables
-        const isSecure = mailSecure === true || mailSecure === 'true';
+	constructor(private readonly config: ConfigService) {
+		const mailSecure = this.config.get('MAIL_SECURE');
+		// Robust boolean parsing for environment variables
+		const isSecure = mailSecure === true || mailSecure === 'true';
 
-        this.transporter = nodemailer.createTransport({
-            host: this.config.get('MAIL_HOST'),
-            port: Number(this.config.get('MAIL_PORT', 587)),
-            secure: isSecure,
-            auth: {
-                user: this.config.get('MAIL_USER'),
-                pass: this.config.get('MAIL_PASS'),
-            },
-        });
-    }
+		this.transporter = nodemailer.createTransport({
+			host: this.config.get('MAIL_HOST'),
+			port: Number(this.config.get('MAIL_PORT', 587)),
+			secure: isSecure,
+			auth: {
+				user: this.config.get('MAIL_USER'),
+				pass: this.config.get('MAIL_PASS'),
+			},
+		});
+	}
 
-    async sendCierreReport(to: string, data: any) {
-        const companyName = data.empresa?.nombreComercial || data.empresa?.razonSocial || this.config.get('COMPANY_NAME', 'Antigravity POS');
-        const nit = data.empresa?.nit || this.config.get('COMPANY_NIT', 'N/A');
-        
-        const html = `
+	async sendCierreReport(to: string, data: any) {
+		const companyName =
+			data.empresa?.nombreComercial ||
+			data.empresa?.razonSocial ||
+			this.config.get('COMPANY_NAME', 'Antigravity POS');
+		const nit = data.empresa?.nit || this.config.get('COMPANY_NIT', 'N/A');
+
+		const html = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -97,15 +100,22 @@ export class MailService {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${data.metodosPago?.map(m => {
-                                    const metodoStr = m.metodo ? String(m.metodo).replace(/_/g, ' ').toUpperCase() : 'SIN MÉTODO';
-                                    return `
+                                ${
+									data.metodosPago
+										?.map((m) => {
+											const metodoStr = m.metodo
+												? String(m.metodo).replace(/_/g, ' ').toUpperCase()
+												: 'SIN MÉTODO';
+											return `
                                     <tr>
                                         <td style="font-weight: 700;">${metodoStr}</td>
                                         <td style="text-align: right; font-weight: 900; color: #F5A524;">$${m.total.toLocaleString()}</td>
                                     </tr>
                                     `;
-                                }).join('') || '<tr><td colspan="2" style="text-align:center; opacity:0.5;">No hay datos de métodos</td></tr>'}
+										})
+										.join('') ||
+									'<tr><td colspan="2" style="text-align:center; opacity:0.5;">No hay datos de métodos</td></tr>'
+								}
                             </tbody>
                         </table>
  
@@ -121,16 +131,23 @@ export class MailService {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${data.facturas?.map(f => {
-                                    const metodoStr = f.metodo ? String(f.metodo).replace(/_/g, ' ').toUpperCase() : 'SIN MÉTODO';
-                                    return `
+                                ${
+									data.facturas
+										?.map((f) => {
+											const metodoStr = f.metodo
+												? String(f.metodo).replace(/_/g, ' ').toUpperCase()
+												: 'SIN MÉTODO';
+											return `
                                     <tr class="small-text">
                                         <td>${f.facturaId}</td>
                                         <td>${metodoStr}</td>
                                         <td style="text-align: right; font-weight: 700; color: #F1F5F9;">$${f.total.toLocaleString()}</td>
                                     </tr>
                                     `;
-                                }).join('') || '<tr><td colspan="3" style="text-align:center; opacity:0.5;">No hay transacciones registradas</td></tr>'}
+										})
+										.join('') ||
+									'<tr><td colspan="3" style="text-align:center; opacity:0.5;">No hay transacciones registradas</td></tr>'
+								}
                             </tbody>
                         </table>
                     </div>
@@ -143,16 +160,20 @@ export class MailService {
             </html>
         `;
 
-        // Support multiple recipients if 'to' is a comma-separated string
-        const recipients = typeof to === 'string' 
-            ? to.split(',').map(email => email.trim()).filter(email => !!email)
-            : to;
+		// Support multiple recipients if 'to' is a comma-separated string
+		const recipients =
+			typeof to === 'string'
+				? to
+						.split(',')
+						.map((email) => email.trim())
+						.filter((email) => !!email)
+				: to;
 
-        await this.transporter.sendMail({
-            from: `"${companyName}" <${this.config.get('MAIL_USER')}>`,
-            to: recipients,
-            subject: `Cierre de Caja - ${data.fecha} - ${companyName}`,
-            html,
-        });
-    }
+		await this.transporter.sendMail({
+			from: `"${companyName}" <${this.config.get('MAIL_USER')}>`,
+			to: recipients,
+			subject: `Cierre de Caja - ${data.fecha} - ${companyName}`,
+			html,
+		});
+	}
 }
