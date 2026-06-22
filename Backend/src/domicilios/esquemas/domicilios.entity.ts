@@ -66,5 +66,6 @@ export class Domicilios {
 	cliente: Clientes;
 
 	@ManyToOne(() => Domiciliarios, (domiciliario) => domiciliario.domicilios)
+	@JoinColumn({name: 'telefono_domiciliario_asignado'})
 	domiciliario: Domiciliarios;
 }

@@ -17,13 +17,7 @@ import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Tipos de filtro local ──────────────────────────────────────────────────
 
-type EstadoFilter = 'todas' | 'pendiente' | 'pagado';
 
-const ESTADO_TABS: { key: EstadoFilter; label: string; icon: string; color: string }[] = [
-  { key: 'todas',     label: 'Todas',      icon: 'format-list-bulleted', color: '#94A3B8' },
-  { key: 'pendiente', label: 'Pendientes', icon: 'clock-outline',        color: '#F5A524' },
-  { key: 'pagado',    label: 'Pagadas',    icon: 'check-circle-outline', color: '#10B981' },
-];
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -52,7 +46,6 @@ export default function FacturasRangoScreen() {
   const [hasSearched, setHasSearched] = useState(false);
 
   // ── Filtros locales ──
-  const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todas');
   const [metodoFilter, setMetodoFilter] = useState<MethodFilterValue>('todos');
   const [nombreFilter, setNombreFilter] = useState('');
 
@@ -105,31 +98,29 @@ export default function FacturasRangoScreen() {
 
   const isPagado = (f: FacturaItem) => f.estado === 'pagado' || f.estado === 'pagada';
 
+  const nameFiltered = useMemo(() => {
+    if (!nombreFilter.trim()) return data;
+    const q = nombreFilter.trim().toLowerCase();
+    return data.filter(f => (f.clienteNombre || '').toLowerCase().includes(q));
+  }, [data, nombreFilter]);
+
   const metodoCounts = useMemo(() => ({
-    todos:         data.length,
-    efectivo:      data.filter(f => f.metodo === 'efectivo' && isPagado(f)).length,
-    transferencia: data.filter(f => f.metodo === 'transferencia' && isPagado(f)).length,
-    mixto:         data.filter(f => f.metodo === 'efectivo_transferencia' && isPagado(f)).length,
-  }), [data]);
+    todos:         nameFiltered.length,
+    efectivo:      nameFiltered.filter(f => f.metodo === 'efectivo' && isPagado(f)).length,
+    transferencia: nameFiltered.filter(f => f.metodo === 'transferencia' && isPagado(f)).length,
+    mixto:         nameFiltered.filter(f => f.metodo === 'efectivo_transferencia' && isPagado(f)).length,
+    pendiente:     nameFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial').length,
+  }), [nameFiltered]);
 
   // ── Filtrado local en cliente ──
   const filteredData = useMemo(() => {
-    let result = data;
-    if (estadoFilter !== 'todas') {
-      result = result.filter(f => f.estado === estadoFilter);
+    if (metodoFilter === 'todos') return nameFiltered;
+    if (metodoFilter === 'pendiente') {
+      return nameFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial');
     }
-    if (metodoFilter !== 'todos') {
-      const target = metodoFilter === 'mixto' ? 'efectivo_transferencia' : metodoFilter;
-      result = result.filter(f => f.metodo === target && isPagado(f));
-    }
-    if (nombreFilter.trim()) {
-      const q = nombreFilter.trim().toLowerCase();
-      result = result.filter(f =>
-        (f.clienteNombre || '').toLowerCase().includes(q)
-      );
-    }
-    return result;
-  }, [data, estadoFilter, metodoFilter, nombreFilter]);
+    const target = metodoFilter === 'mixto' ? 'efectivo_transferencia' : metodoFilter;
+    return nameFiltered.filter(f => f.metodo === target && isPagado(f));
+  }, [nameFiltered, metodoFilter]);
 
   const computedStats = useMemo(() => calcStats(filteredData as any), [filteredData]);
 
@@ -244,7 +235,6 @@ export default function FacturasRangoScreen() {
             setTo(t);
             search(f, t);
             setHasSearched(true);
-            setEstadoFilter('todas');
             setMetodoFilter('todos');
             setNombreFilter('');
             setLocalPage(1);
@@ -265,52 +255,8 @@ export default function FacturasRangoScreen() {
               gap: 10,
             }}
           >
-            {/* Fila 1: chips de estado */}
-            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-              {ESTADO_TABS.map((tab) => {
-                const isActive = estadoFilter === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    onPress={() => { setEstadoFilter(tab.key); setLocalPage(1); }}
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 5,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 20,
-                      borderWidth: 1,
-                      backgroundColor: isActive ? 'rgba(245,165,36,0.15)' : 'rgba(255,255,255,0.04)',
-                      borderColor: isActive ? 'rgba(245,165,36,0.35)' : 'rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    <Icon name={tab.icon} size={12} color={isActive ? '#F5A524' : tab.color} />
-                    <Text style={{
-                      fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5,
-                      color: isActive ? '#F5A524' : '#64748B',
-                    }}>
-                      {tab.label}
-                    </Text>
-                    {tab.key === 'todas' && (
-                      <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
-                        <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>{data.length}</Text>
-                      </View>
-                    )}
-                    {tab.key !== 'todas' && (
-                      <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
-                        <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>
-                          {data.filter(f => f.estado === tab.key).length}
-                        </Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Fila 1b: chips por método de pago (incluye Mixto) */}
-            <MethodFilterChips value={metodoFilter} onChange={setMetodoFilter} counts={metodoCounts} includePendiente={false} />
+            {/* Chips de filtro unificados por método de pago y estado pendiente */}
+            <MethodFilterChips value={metodoFilter} onChange={(val) => { setMetodoFilter(val); setLocalPage(1); }} counts={metodoCounts} />
 
             {/* Fila 2: buscador por nombre */}
             <Input
@@ -383,15 +329,15 @@ export default function FacturasRangoScreen() {
             />
             <Text className="text-white font-black text-xl text-center">
               {from && to
-                ? (nombreFilter || estadoFilter !== 'todas')
+                ? (nombreFilter || metodoFilter !== 'todos')
                   ? 'Sin resultados con estos filtros'
                   : 'Sin facturas en este rango'
                 : 'Selecciona fechas para buscar'}
             </Text>
             <Text className="text-(--color-pos-text-muted) text-center">
               {from && to
-                ? (nombreFilter || estadoFilter !== 'todas')
-                  ? 'Prueba con otros filtros de nombre o estado.'
+                ? (nombreFilter || metodoFilter !== 'todos')
+                  ? 'Prueba con otros filtros de nombre o método.'
                   : 'No se encontraron facturas en el período.'
                 : 'Ingresa las fechas y presiona Buscar.'}
             </Text>
