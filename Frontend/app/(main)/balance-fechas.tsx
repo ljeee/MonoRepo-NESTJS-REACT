@@ -27,13 +27,7 @@ import {
 } from '../../components/ui';
 import type { MethodFilterValue } from '../../components/ui';
 
-type EstadoFilter = 'todas' | 'pendiente' | 'pagado';
 
-const ESTADO_TABS: { key: EstadoFilter; label: string; icon: string }[] = [
-    { key: 'todas', label: 'Todas', icon: 'format-list-bulleted' },
-    { key: 'pendiente', label: 'Pendientes', icon: 'clock-outline' },
-    { key: 'pagado', label: 'Pagadas', icon: 'check-circle-outline' },
-];
 
 export default function BalanceFechasScreen() {
     const { isMobile } = useBreakpoint();
@@ -49,11 +43,22 @@ export default function BalanceFechasScreen() {
     const [periodStats, setPeriodStats] = useState<any>(null);
     const [metodoStats, setMetodoStats] = useState<any[]>([]);
     const [exporting, setExporting] = useState(false);
-    const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>('todas');
     const [metodoFilter, setMetodoFilter] = useState<MethodFilterValue>('todos');
     const [nombreFilter, setNombreFilter] = useState('');
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [refreshing, setRefreshing] = useState(false);
+
+    const getApiFilters = useCallback((key: MethodFilterValue) => {
+        let est: string | undefined = undefined;
+        let met: string | undefined = undefined;
+        if (key === 'pendiente') {
+            est = 'pendiente';
+        } else if (key !== 'todos') {
+            est = 'pagado';
+            met = key;
+        }
+        return { est, met };
+    }, []);
 
     // ── Data hooks ─────────────────────────────────────────────────────────────
     const {
@@ -85,14 +90,15 @@ export default function BalanceFechasScreen() {
         if (!hasSearched) return;
         setRefreshing(true);
         try {
+            const { est, met } = getApiFilters(metodoFilter);
             await Promise.all([
-                searchF(searchedFrom, searchedTo, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter),
+                searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met),
                 fetchGastos(searchedFrom, searchedTo, 1),
                 fetchStats(searchedFrom, searchedTo)
             ]);
         } catch { /* silent */ }
         setRefreshing(false);
-    }, [hasSearched, searchedFrom, searchedTo, searchF, fetchGastos, fetchStats, estadoFilter, nombreFilter, metodoFilter]);
+    }, [hasSearched, searchedFrom, searchedTo, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, getApiFilters]);
 
     const handleSearch = useCallback((fromOverride?: string, toOverride?: string) => {
         const fromInput = fromOverride ?? from;
@@ -103,21 +109,20 @@ export default function BalanceFechasScreen() {
         setSearchedTo(tp);
         setFromF(fp); setToF(tp);
         setFromG(fp); setToG(tp);
-        searchF(fp, tp, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter);
+        const { est, met } = getApiFilters(metodoFilter);
+        searchF(fp, tp, est, nombreFilter || undefined, met);
         void fetchGastos(fp, tp, 1);
         void fetchStats(fp, tp);
         setHasSearched(true);
-    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchStats, estadoFilter, nombreFilter, metodoFilter]);
-
-    const handleSelectEstado = useCallback((key: EstadoFilter) => {
-        setEstadoFilter(key);
-        if (hasSearched) searchF(searchedFrom, searchedTo, key === 'todas' ? undefined : key, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter);
-    }, [searchedFrom, searchedTo, nombreFilter, searchF, hasSearched, metodoFilter]);
+    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, getApiFilters]);
 
     const handleSelectMetodo = useCallback((key: MethodFilterValue) => {
         setMetodoFilter(key);
-        if (hasSearched) searchF(searchedFrom, searchedTo, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, key === 'todos' ? undefined : key);
-    }, [searchedFrom, searchedTo, estadoFilter, nombreFilter, searchF, hasSearched]);
+        if (hasSearched) {
+            const { est, met } = getApiFilters(key);
+            searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met);
+        }
+    }, [searchedFrom, searchedTo, nombreFilter, searchF, hasSearched, getApiFilters]);
 
     // Debounce nombre filter
     const searchFRef = useRef(searchF);
@@ -125,10 +130,11 @@ export default function BalanceFechasScreen() {
     useEffect(() => {
         if (!hasSearched) return;
         const t = setTimeout(() => {
-            searchFRef.current(searchedFrom, searchedTo, estadoFilter === 'todas' ? undefined : estadoFilter, nombreFilter || undefined, metodoFilter === 'todos' ? undefined : metodoFilter);
+            const { est, met } = getApiFilters(metodoFilter);
+            searchFRef.current(searchedFrom, searchedTo, est, nombreFilter || undefined, met);
         }, 400);
         return () => clearTimeout(t);
-    }, [nombreFilter, searchedFrom, searchedTo, estadoFilter, metodoFilter, hasSearched]);
+    }, [nombreFilter, searchedFrom, searchedTo, metodoFilter, hasSearched, getApiFilters]);
 
     const handleToggleEstado = useCallback(async (
         facturaId: number, nuevoEstado: string, metodo?: string,
@@ -160,8 +166,9 @@ export default function BalanceFechasScreen() {
     const fetchAllForExport = async () => {
         setExporting(true);
         try {
+            const { est, met } = getApiFilters(metodoFilter);
             const [fr, gr] = await Promise.all([
-                api.facturas.getAll({ from: searchedFrom, to: searchedTo, page: 1, limit: 9999, estado: estadoFilter === 'todas' ? undefined : estadoFilter, clienteNombre: nombreFilter || undefined }),
+                api.facturas.getAll({ from: searchedFrom, to: searchedTo, page: 1, limit: 9999, estado: est, metodo: met, clienteNombre: nombreFilter || undefined }),
                 api.pagos.getAll({ from: searchedFrom, to: searchedTo, page: 1, limit: 9999 }),
             ]);
             return { mf: fr.data.map(mapFactura), mg: gr.data || [] };
@@ -181,14 +188,14 @@ export default function BalanceFechasScreen() {
                 ...mg.map(g => ['Gasto', g.pagosId ?? '', g.nombreGasto || '—', g.fechaFactura || '', `$${formatCurrency(Number(g.total) || 0)}`, g.estado || '', g.metodo || '']),
             ],
         });
-    }, [searchedFrom, searchedTo, estadoFilter, nombreFilter, api]);
+    }, [searchedFrom, searchedTo, metodoFilter, nombreFilter, api]);
 
     const handleExportCsv = useCallback(async () => {
         const { mf, mg } = await fetchAllForExport();
         if (!mf.length && !mg.length) return;
         const csv = await buildCombinedBalanceCsv(mf, mg);
         downloadCsv(csv, `contabilidad_${searchedFrom || 'inicio'}_${searchedTo || 'fin'}.csv`);
-    }, [searchedFrom, searchedTo, estadoFilter, nombreFilter, api]);
+    }, [searchedFrom, searchedTo, metodoFilter, nombreFilter, api]);
 
     // ── Derived values ─────────────────────────────────────────────────────────
     const loading = loadingFacturas || loadingGastos || exporting;
@@ -204,6 +211,7 @@ export default function BalanceFechasScreen() {
         efectivo:      metodoCount('efectivo'),
         transferencia: metodoCount('transferencia'),
         mixto:         metodoCount('mixto'),
+        pendiente:     periodStats?.countIngresosPendientes ?? 0,
     };
 
     return (
@@ -254,39 +262,8 @@ export default function BalanceFechasScreen() {
                             className="rounded-2xl mb-5 p-3"
                             style={{ gap: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}
                         >
-                            <View className="flex-row flex-wrap gap-1.5">
-                                {ESTADO_TABS.map((tab) => {
-                                    const isActive = estadoFilter === tab.key;
-                                    const count = tab.key === 'todas'
-                                        ? (periodStats?.facturas ?? 0)
-                                        : tab.key === 'pendiente'
-                                            ? (periodStats?.countIngresosPendientes ?? 0)
-                                            : (periodStats?.countIngresosPagados ?? 0);
-                                    return (
-                                        <TouchableOpacity
-                                            key={tab.key}
-                                            onPress={() => handleSelectEstado(tab.key)}
-                                            style={{
-                                                flexDirection: 'row', alignItems: 'center', gap: 5,
-                                                paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1,
-                                                backgroundColor: isActive ? 'rgba(245,165,36,0.15)' : 'rgba(255,255,255,0.04)',
-                                                borderColor: isActive ? 'rgba(245,165,36,0.35)' : 'rgba(255,255,255,0.08)',
-                                            }}
-                                        >
-                                            <Icon name={tab.icon} size={12} color={isActive ? '#F5A524' : '#64748B'} />
-                                            <Text style={{ fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: isActive ? '#F5A524' : '#64748B' }}>
-                                                {tab.label}
-                                            </Text>
-                                            <View style={{ backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 6, paddingHorizontal: 5, minWidth: 18, alignItems: 'center' }}>
-                                                <Text style={{ color: '#94A3B8', fontSize: 9, fontWeight: '900' }}>{count}</Text>
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-                            {/* Chips por método de pago (incluye Mixto) — filtra server-side */}
-                            <MethodFilterChips value={metodoFilter} onChange={handleSelectMetodo} counts={metodoCounts} includePendiente={false} />
+                            {/* Chips de filtro unificados por método de pago y estado pendiente */}
+                            <MethodFilterChips value={metodoFilter} onChange={handleSelectMetodo} counts={metodoCounts} />
 
                             <Input
                                 placeholder="Buscar por nombre de cliente..."
