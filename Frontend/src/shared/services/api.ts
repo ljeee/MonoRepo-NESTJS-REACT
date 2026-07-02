@@ -127,8 +127,8 @@ export function createApi(http: AxiosInstance) {
     update: (id: number, data: Partial<FacturaVenta>) =>
       http.patch<FacturaVenta>(`/facturas-ventas/${id}`, data).then((r) => r.data),
 
-    abono: (id: number, monto: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) =>
-      http.patch<FacturaVenta>(`/facturas-ventas/${id}/abono`, { monto, denominaciones, cambioDenominaciones }).then((r) => r.data),
+    abono: (id: number, monto: number, metodo?: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) =>
+      http.patch<FacturaVenta>(`/facturas-ventas/${id}/abono`, { monto, metodo, denominaciones, cambioDenominaciones }).then((r) => r.data),
 
     delete: (id: number) =>
       http.delete(`/facturas-ventas/${id}`).then((r) => r.data),
@@ -402,3 +402,9 @@ export function createApi(http: AxiosInstance) {
 }
 
 export type Api = ReturnType<typeof createApi>;
+
+// ─── Shared singleton instances ────────────────────────────────────────────────
+const defaultBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:3000';
+export const http = createHttpClient({ baseURL: defaultBaseUrl });
+export const api = createApi(http);
+

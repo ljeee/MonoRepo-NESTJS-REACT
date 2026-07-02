@@ -6,6 +6,8 @@ import type { Orden } from '@/src/shared';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+const timeFormatter = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
+
 type Novedad = {
     adds: number[];
     removes: string[];
@@ -77,7 +79,7 @@ const getTipoIcon = (tipo?: string) => {
 };
 
 const formatHora = (fecha: string | Date): string =>
-    new Date(fecha).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    timeFormatter.format(new Date(fecha));
 
 const formatTotal = (total?: number | null): string =>
     total != null ? `$${Number(total).toLocaleString('es-CO')}` : '';

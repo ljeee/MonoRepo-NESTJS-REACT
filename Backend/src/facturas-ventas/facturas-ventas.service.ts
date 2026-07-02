@@ -57,9 +57,21 @@ export class FacturasVentasService {
 			}
 
 			if (metodo) {
-				// 'mixto' es el alias UI de efectivo_transferencia
-				const m = metodo === 'mixto' ? 'efectivo_transferencia' : metodo;
-				qb.andWhere('f.metodo = :metodo', {metodo: m});
+				// 'mixto' es el alias UI de efectivo_transferencia.
+				// Efectivo y transferencia incluyen las facturas mixtas cuya parte
+				// correspondiente sea > 0 ("mixta con efectivo" / "mixta con QR").
+				if (metodo === 'efectivo') {
+					qb.andWhere(
+						"(f.metodo = 'efectivo' OR (f.metodo = 'efectivo_transferencia' AND COALESCE(f.pagoEfectivo, 0) > 0))",
+					);
+				} else if (metodo === 'transferencia') {
+					qb.andWhere(
+						"(f.metodo = 'transferencia' OR (f.metodo = 'efectivo_transferencia' AND COALESCE(f.pagoTransferencia, 0) > 0))",
+					);
+				} else {
+					const m = metodo === 'mixto' ? 'efectivo_transferencia' : metodo;
+					qb.andWhere('f.metodo = :metodo', {metodo: m});
+				}
 			}
 		};
 
@@ -215,15 +227,40 @@ export class FacturasVentasService {
 			throw new BadRequestException('No se puede abonar a una factura ya pagada o cancelada');
 		}
 
+		const metodoAbono = dto.metodo === 'transferencia' ? 'transferencia' : 'efectivo';
 		const nuevoMonto = (factura.montoPagado ?? 0) + dto.monto;
 		const nuevoEstado = nuevoMonto >= factura.total ? 'pagado' : 'parcial';
 
-		await this.repo.update(id, {montoPagado: nuevoMonto, estado: nuevoEstado});
+		// Acumular el desglose por método: registra cuánto del saldo entró en
+		// efectivo y cuánto por QR/transferencia (facturas "mixtas" por abonos)
+		const pagoEfectivo = (factura.pagoEfectivo ?? 0) + (metodoAbono === 'efectivo' ? dto.monto : 0);
+		const pagoTransferencia = (factura.pagoTransferencia ?? 0) + (metodoAbono === 'transferencia' ? dto.monto : 0);
+
+		const cambios: Partial<FacturasVentas> = {
+			montoPagado: nuevoMonto,
+			estado: nuevoEstado,
+			pagoEfectivo,
+			pagoTransferencia,
+		};
+
+		// Al saldarse por abonos, derivar el método final para que la factura no
+		// quede 'pagado' sin método (quedaba invisible en filtros y stats de métodos)
+		if (nuevoEstado === 'pagado') {
+			cambios.metodo =
+				pagoEfectivo > 0 && pagoTransferencia > 0
+					? 'efectivo_transferencia'
+					: pagoTransferencia > 0
+						? 'transferencia'
+						: 'efectivo';
+			cambios.fechaCobro = new Date();
+		}
+
+		await this.repo.update(id, cambios);
 
 		const fecha = getBogotaDateString();
 		const cajaOps: Promise<unknown>[] = [];
 
-		if (dto.denominaciones && Object.keys(dto.denominaciones).length > 0) {
+		if (metodoAbono === 'efectivo' && dto.denominaciones && Object.keys(dto.denominaciones).length > 0) {
 			cajaOps.push(
 				this.cajaMovimientosService.registrarEntrada({
 					denominaciones: dto.denominaciones,

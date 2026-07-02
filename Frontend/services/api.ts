@@ -1,4 +1,4 @@
-import { createHttpClient, createApi, setAuthToken as sharedSetAuthToken } from '@/src/shared';
+import { api, http, setApiBaseUrl, setAuthToken as sharedSetAuthToken } from '@/src/shared';
 
 // ─── Platform-specific base URL ───────────────────────────────────────────────
 
@@ -30,10 +30,15 @@ export function getBaseUrl(): string {
   return 'http://localhost:3000';
 }
 
-// ─── Singleton instance ───────────────────────────────────────────────────────
+// ─── Shared singleton ─────────────────────────────────────────────────────────
+// Reconfigura el singleton de @/src/shared (el mismo que usa AuthContext para
+// inyectar el token y el interceptor de refresh) en lugar de crear una segunda
+// instancia de axios — una instancia separada dejaría a las pantallas sin
+// header Authorization tras el login.
 
-const http = createHttpClient({ baseURL: getBaseUrl() });
-export const api = createApi(http);
+setApiBaseUrl(http, getBaseUrl());
+
+export { api };
 
 export function setAuthToken(token: string | null) {
   sharedSetAuthToken(http, token);

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity } from '../../tw';
+import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
 import Icon from '../ui/Icon';
 import type { Orden } from '@/src/shared';
+
+const timeFormatter = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
 
 type Props = {
     orden: Orden;
@@ -51,7 +53,7 @@ const getUrgencyInfo = (mins: number, estado?: string) => {
 /** Formatea la hora de la orden: "10:34 a. m." */
 function formatHora(fechaStr: string | Date): string {
     const d = new Date(fechaStr);
-    return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+    return timeFormatter.format(d);
 }
 
 // ── Circular Timer ────────────────────────────────────────────────────────────

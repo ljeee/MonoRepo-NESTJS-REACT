@@ -22,6 +22,7 @@ interface MapPickerProps {
 export default function MapPicker({ position, onPositionChange }: MapPickerProps) {
   const mapRef = useRef<L.Map>(null);
   const markerRef = useRef<L.Marker>(null);
+  const geoRequestedRef = useRef(false);
 
   const eventHandlers = useMemo(
     () => ({
@@ -46,22 +47,22 @@ export default function MapPicker({ position, onPositionChange }: MapPickerProps
   }
 
   useEffect(() => {
-    // Intentar obtener la ubicación del usuario si aún tiene la por defecto
-    if (position.lat === 6.2442 && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          onPositionChange({ lat: latitude, lng: longitude });
-          if (mapRef.current) {
-            mapRef.current.setView([latitude, longitude], 18);
-          }
-        },
-        () => {
-          // Ignorar errores (usuario denegó permiso o no disponible)
+    // Intentar obtener la ubicación del usuario una sola vez al montar
+    if (geoRequestedRef.current || !navigator.geolocation) return;
+    geoRequestedRef.current = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        onPositionChange({ lat: latitude, lng: longitude });
+        if (mapRef.current) {
+          mapRef.current.setView([latitude, longitude], 18);
         }
-      );
-    }
-  }, []);
+      },
+      () => {
+        // Ignorar errores (usuario denegó permiso o no disponible)
+      }
+    );
+  }, [onPositionChange]);
 
   return (
     <div className="h-[300px] w-full rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 shadow-sm relative z-0">

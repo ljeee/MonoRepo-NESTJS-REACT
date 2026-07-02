@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, memo } from 'react';
 import { ActivityIndicator, Platform, TouchableOpacity, RefreshControl } from 'react-native';
 import { View, Text, ScrollView } from '../../tw';
 import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@/src/shared';
@@ -62,7 +62,7 @@ function estadoBadge(estado?: string): 'success' | 'warning' | 'danger' | 'info'
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-function KpiCard({ icon, label, value, sub, color, accent }: {
+const KpiCard = memo(function KpiCard({ icon, label, value, sub, color, accent }: {
     icon: any; label: string; value: string; sub?: string; color: string; accent: string;
 }) {
     return (
@@ -77,11 +77,11 @@ function KpiCard({ icon, label, value, sub, color, accent }: {
             {sub ? <Text style={{ color: '#475569', fontSize: 11, marginTop: 3 }}>{sub}</Text> : null}
         </View>
     );
-}
+});
 
 // ─── Balance Banner ───────────────────────────────────────────────────────────
 
-function BalanceBanner({ ingresos, gastos }: { ingresos: number; gastos: number }) {
+const BalanceBanner = memo(function BalanceBanner({ ingresos, gastos }: { ingresos: number; gastos: number }) {
     const neto = ingresos - gastos;
     const isPos = neto >= 0;
     const margen = ingresos > 0 ? ((neto / ingresos) * 100).toFixed(1) : '0.0';
@@ -126,11 +126,11 @@ function BalanceBanner({ ingresos, gastos }: { ingresos: number; gastos: number 
             </View>
         </View>
     );
-}
+});
 
 // ─── Métodos breakdown ────────────────────────────────────────────────────────
 
-function MetodosBreakdown({ metodos }: { metodos: { metodo: string; total: number; porcentaje?: number }[] }) {
+const MetodosBreakdown = memo(function MetodosBreakdown({ metodos }: { metodos: { metodo: string; total: number; porcentaje?: number }[] }) {
     if (!metodos || !metodos.length) return null;
     const total = metodos.reduce((s, m) => s + m.total, 0);
 
@@ -159,11 +159,11 @@ function MetodosBreakdown({ metodos }: { metodos: { metodo: string; total: numbe
             })}
         </Card>
     );
-}
+});
 
 // ─── Table helpers ────────────────────────────────────────────────────────────
 
-function TableHeader({ cols }: { cols: string[] }) {
+const TableHeader = memo(function TableHeader({ cols }: { cols: string[] }) {
     return (
         <View style={{ flexDirection: 'row', paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.03)', borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.06)', gap: 8 }}>
             {cols.map((c, i) => (
@@ -173,9 +173,9 @@ function TableHeader({ cols }: { cols: string[] }) {
             ))}
         </View>
     );
-}
+});
 
-function VentaRow({ f, isMobile }: { f: FacturaVenta; isMobile: boolean }) {
+const VentaRow = memo(function VentaRow({ f, isMobile }: { f: FacturaVenta; isMobile: boolean }) {
     return (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', gap: 8 }}>
             <Text style={{ color: '#64748B', fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', width: 44 }}>#{f.facturaId}</Text>
@@ -186,9 +186,9 @@ function VentaRow({ f, isMobile }: { f: FacturaVenta; isMobile: boolean }) {
             <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, textAlign: 'right', minWidth: 80 }}>${formatCurrency(f.total ?? 0)}</Text>
         </View>
     );
-}
+});
 
-function GastoRow({ g, isMobile }: { g: FacturaPago; isMobile: boolean }) {
+const GastoRow = memo(function GastoRow({ g, isMobile }: { g: FacturaPago; isMobile: boolean }) {
     return (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', gap: 8 }}>
             <Text style={{ color: '#64748B', fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', width: 44 }}>#{g.pagosId}</Text>
@@ -199,11 +199,11 @@ function GastoRow({ g, isMobile }: { g: FacturaPago; isMobile: boolean }) {
             <Text style={{ color: '#EF4444', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, textAlign: 'right', minWidth: 80 }}>−${formatCurrency(g.total ?? 0)}</Text>
         </View>
     );
-}
+});
 
 // ─── Report card ──────────────────────────────────────────────────────────────
 
-function ReportCard({ icon, title, description, tag, onPress, loading, disabled }: {
+const ReportCard = memo(function ReportCard({ icon, title, description, tag, onPress, loading, disabled }: {
     icon: any; title: string; description: string; tag?: string;
     onPress: () => void; loading?: boolean; disabled?: boolean;
 }) {
@@ -229,7 +229,7 @@ function ReportCard({ icon, title, description, tag, onPress, loading, disabled 
             <Icon name="open-in-new" size={16} color="#334155" />
         </TouchableOpacity>
     );
-}
+});
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 

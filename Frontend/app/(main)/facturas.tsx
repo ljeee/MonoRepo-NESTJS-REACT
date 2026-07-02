@@ -12,7 +12,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Icon from '../../components/ui/Icon';
 import { ListSkeleton } from '../../components/ui/SkeletonLoader';
-import { MethodFilterChips, MethodFilterValue, DateRangeFilter } from '../../components/ui';
+import { MethodFilterChips, MethodFilterValue, DateRangeFilter, matchesMetodoFilter } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Tipos de filtro local ──────────────────────────────────────────────────
@@ -85,10 +85,10 @@ export default function FacturasRangoScreen() {
     return deleteFactura(facturaId);
   }, [deleteFactura]);
 
-  const handleAbono = useCallback(async (facturaId: number, monto: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => {
+  const handleAbono = useCallback(async (facturaId: number, monto: number, metodo: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => {
     setUpdating(facturaId);
     try {
-      await api.facturas.abono(facturaId, monto, denominaciones, cambioDenominaciones);
+      await api.facturas.abono(facturaId, monto, metodo, denominaciones, cambioDenominaciones);
       // Refresh current search results
       search(from, to);
     } finally {
@@ -106,9 +106,9 @@ export default function FacturasRangoScreen() {
 
   const metodoCounts = useMemo(() => ({
     todos:         nameFiltered.length,
-    efectivo:      nameFiltered.filter(f => f.metodo === 'efectivo' && isPagado(f)).length,
-    transferencia: nameFiltered.filter(f => f.metodo === 'transferencia' && isPagado(f)).length,
-    mixto:         nameFiltered.filter(f => f.metodo === 'efectivo_transferencia' && isPagado(f)).length,
+    efectivo:      nameFiltered.filter(f => matchesMetodoFilter(f, 'efectivo') && isPagado(f)).length,
+    transferencia: nameFiltered.filter(f => matchesMetodoFilter(f, 'transferencia') && isPagado(f)).length,
+    mixto:         nameFiltered.filter(f => matchesMetodoFilter(f, 'mixto') && isPagado(f)).length,
     pendiente:     nameFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial').length,
   }), [nameFiltered]);
 
@@ -118,8 +118,7 @@ export default function FacturasRangoScreen() {
     if (metodoFilter === 'pendiente') {
       return nameFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial');
     }
-    const target = metodoFilter === 'mixto' ? 'efectivo_transferencia' : metodoFilter;
-    return nameFiltered.filter(f => f.metodo === target && isPagado(f));
+    return nameFiltered.filter(f => matchesMetodoFilter(f, metodoFilter) && isPagado(f));
   }, [nameFiltered, metodoFilter]);
 
   const computedStats = useMemo(() => calcStats(filteredData as any), [filteredData]);

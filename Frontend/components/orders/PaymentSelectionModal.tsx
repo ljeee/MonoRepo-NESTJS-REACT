@@ -57,6 +57,9 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const [billCountsMixto, setBillCountsMixto] = useState<Record<string, number>>({});
     const [monedaMixto, setMonedaMixto] = useState('');
 
+    // ── Abono por QR (mode='partial' + transferencia) ─────────────────────────
+    const [montoAbonoQr, setMontoAbonoQr] = useState('');
+
     // ── Cambio a entregar ─────────────────────────────────────────────────────
     const [billCountsCambio, setBillCountsCambio] = useState<Record<string, number>>({});
     const [monedasCambio, setMonedasCambio] = useState('');
@@ -80,6 +83,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
             setMontoTransferencia('');
             setBillCountsMixto({});
             setMonedaMixto('');
+            setMontoAbonoQr('');
             setBillCountsCambio({});
             setMonedasCambio('');
             setStep('entrada');
@@ -149,7 +153,13 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const handleConfirm = () => {
         const cambioDens = buildDenominaciones(billCountsCambio, monedasCambio);
         if (isPartial) {
-            onSelect('efectivo', totalEfectivoFisico, 0, buildDenominaciones(billCountsEfectivo, monedasEfectivo), cambioDens);
+            if (selected === 'transferencia') {
+                onSelect('transferencia', 0, Number(montoAbonoQr) || 0);
+                return;
+            }
+            // Monto abonado = recibido − cambio entregado (el bruto inflaba montoPagado)
+            const montoNeto = totalEfectivoFisico - totalCambioSeleccionado;
+            onSelect('efectivo', montoNeto, 0, buildDenominaciones(billCountsEfectivo, monedasEfectivo), cambioDens);
             return;
         }
         if (selected === 'efectivo') {
@@ -164,6 +174,10 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
 
     const isConfirmDisabled = (() => {
         if (isPartial) {
+            if (selected === 'transferencia') {
+                const monto = Number(montoAbonoQr) || 0;
+                return monto <= 0 || monto > (totalPendiente ?? total);
+            }
             if (!hasEnteredEfectivo) return true;
             if (showCambioSection && !cambioMatch) return true;
             return false;
@@ -337,10 +351,9 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                 </View>
                             </View>
 
-                            {/* Method tab bar — hidden in partial mode (efectivo only) */}
-                            {!isPartial && (
+                            {/* Method tab bar — en abono (partial) solo efectivo y QR/transferencia */}
                             <View style={styles.tabBar}>
-                                {METHODS.map(m => {
+                                {(isPartial ? METHODS.filter(m => m.id !== 'efectivo_transferencia') : METHODS).map(m => {
                                     const isActive = selected === m.id;
                                     const isDisabled = disabledMethods.includes(m.id);
                                     return (
@@ -361,7 +374,6 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                     );
                                 })}
                             </View>
-                            )}
                         </View>
 
                         {/* ── Scrollable content ── */}
@@ -441,13 +453,42 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                             )}
 
                             {/* ════════════════ TRANSFERENCIA ════════════════ */}
-                            {selected === 'transferencia' && (
+                            {selected === 'transferencia' && !isPartial && (
                                 <View style={styles.transferBox}>
                                     <View style={styles.transferIconCircle}>
                                         <Icon name="bank" size={22} color="#8B5CF6" />
                                     </View>
                                     <Text className="text-slate-300 font-bold text-sm text-center">Confirmar transacción por</Text>
                                     <Text className="font-black text-2xl mt-1" style={{ fontFamily: 'Space Grotesk', color: '#8B5CF6' }}>${formatCurrency(total)}</Text>
+                                </View>
+                            )}
+
+                            {/* ════════════════ ABONO POR QR / TRANSFERENCIA ════════════════ */}
+                            {selected === 'transferencia' && isPartial && (
+                                <View style={styles.sectionBox}>
+                                    <Text className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2">
+                                        Monto del abono por QR / Transferencia
+                                    </Text>
+                                    <View style={styles.mixTransferInput}>
+                                        <Icon name="bank" size={16} color="#8B5CF6" />
+                                        <Text className="text-slate-400 font-black text-sm mx-2">$</Text>
+                                        <TextInput
+                                            keyboardType="numeric"
+                                            value={montoAbonoQr}
+                                            onChangeText={t => setMontoAbonoQr(t.replace(/[^0-9]/g, ''))}
+                                            placeholder="0"
+                                            placeholderTextColor="#94A3B8"
+                                            style={{ color: '#FFFFFF', fontFamily: 'SpaceGrotesk-Bold', flex: 1, fontSize: 16 }}
+                                        />
+                                    </View>
+                                    {Number(montoAbonoQr) > (totalPendiente ?? total) && (
+                                        <View style={styles.mixExceedsWarn}>
+                                            <Icon name="alert-circle" size={13} color="#FB7185" />
+                                            <Text className="text-rose-400 text-[10px] font-bold" style={{ flex: 1 }}>
+                                                Excede el saldo pendiente de ${formatCurrency(totalPendiente ?? total)}
+                                            </Text>
+                                        </View>
+                                    )}
                                 </View>
                             )}
 

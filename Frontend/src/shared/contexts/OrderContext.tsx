@@ -155,17 +155,19 @@ export function OrderProvider({ children, storage }: OrderProviderProps) {
   }, [activeSlot, formState, storage]);
 
   // ── Slot summaries for tab UI ────────────────────────────────────────────
-  const slotSummaries: SlotSummary[] = Array.from({ length: NUM_SLOTS }, (_, i) => {
-    const s = i === activeSlot ? formState : slotsRef.current[i];
-    const isEmpty = s.cart.length === 0 && !s.telefonoCliente && !s.nombreCliente;
-    return {
-      slot: i,
-      itemCount: s.cart.reduce((sum, item) => sum + item.cantidad, 0),
-      tipoPedido: s.tipoPedido,
-      nombreCliente: s.nombreCliente || s.telefonoCliente,
-      isEmpty,
-    };
-  });
+  const slotSummaries: SlotSummary[] = React.useMemo(() => {
+    return Array.from({ length: NUM_SLOTS }, (_, i) => {
+      const s = i === activeSlot ? formState : slotsRef.current[i];
+      const isEmpty = s.cart.length === 0 && !s.telefonoCliente && !s.nombreCliente;
+      return {
+        slot: i,
+        itemCount: s.cart.reduce((sum, item) => sum + item.cantidad, 0),
+        tipoPedido: s.tipoPedido,
+        nombreCliente: s.nombreCliente || s.telefonoCliente,
+        isEmpty,
+      };
+    });
+  }, [activeSlot, formState]);
 
   // ── Form mutations ───────────────────────────────────────────────────────
   const updateForm = useCallback((updates: Partial<OrderFormState>) => {
@@ -219,23 +221,36 @@ export function OrderProvider({ children, storage }: OrderProviderProps) {
     setFormState(prev => ({ ...prev, cart: [] }));
   }, []);
 
+  const contextValue = React.useMemo(() => ({
+    formState,
+    updateForm,
+    resetForm,
+    addToCart,
+    removeFromCart,
+    updateCartItem,
+    clearCart,
+    isHydrated,
+    saveNow,
+    activeSlot,
+    setActiveSlot,
+    slotSummaries,
+  }), [
+    formState,
+    updateForm,
+    resetForm,
+    addToCart,
+    removeFromCart,
+    updateCartItem,
+    clearCart,
+    isHydrated,
+    saveNow,
+    activeSlot,
+    setActiveSlot,
+    slotSummaries,
+  ]);
+
   return (
-    <OrderContext.Provider
-      value={{
-        formState,
-        updateForm,
-        resetForm,
-        addToCart,
-        removeFromCart,
-        updateCartItem,
-        clearCart,
-        isHydrated,
-        saveNow,
-        activeSlot,
-        setActiveSlot,
-        slotSummaries,
-      }}
-    >
+    <OrderContext.Provider value={contextValue}>
       {children}
     </OrderContext.Provider>
   );

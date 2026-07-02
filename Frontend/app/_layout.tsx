@@ -18,7 +18,7 @@ import { OrderProvider, ToastProvider, ApiProvider, OfflineQueueProvider, useOff
 import type { OrderStorageAdapter, OfflinePayment } from '@/src/shared';
 import { ToastContainer } from '../components/ui';
 import { useBreakpoint } from '../styles/responsive';
-import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { AuthProvider, useAuth, useAuthNavigation } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 import { useFonts, Outfit_400Regular, Outfit_700Bold, Outfit_900Black } from '@expo-google-fonts/outfit';
@@ -30,6 +30,7 @@ const asyncStorageAdapter: OrderStorageAdapter = {
 };
 
 function AppShell({ fontsReady }: { fontsReady: boolean }) {
+  useAuthNavigation();
   const { isDesktop } = useBreakpoint();
   const insets = useSafeAreaInsets();
   const isCompact = !isDesktop;
@@ -39,11 +40,7 @@ function AppShell({ fontsReady }: { fontsReady: boolean }) {
   const { showToast } = useToast();
 
   const pathname = usePathname();
-  const pathnameRef = React.useRef(pathname);
   useEffect(() => {
-    if (pathnameRef.current !== pathname) {
-      pathnameRef.current = pathname;
-    }
     setShowMobileMenu(false);
   }, [pathname]);
 

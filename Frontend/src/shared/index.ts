@@ -1,8 +1,20 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
-export * from './types/models';
+export type {
+  ProductoVariante, Personalizacion, Producto, ClienteDireccion, Cliente, Domiciliario,
+  OrdenProducto, Orden, PaginatedResponse, Domicilio, FacturaOrdenProducto, FacturaOrden,
+  FacturaDomicilio, FacturaVenta, FacturaStats, DenominacionesMap, CajaMovimiento,
+  CajaResumen, FacturaPago, OrderCartItem, CartItem, CreateOrdenProductoDto,
+  CreateOrdenDto, CreateFacturaPagoDto, CreateClienteDto, CreateDomiciliarioDto,
+  FindOrdenesParams, RegisterDto, AuthTokens, AuthUser, AuthResponse, PizzaSabor,
+  ProductoTop, SaborTop, VentaHora, VentaDia, MetodoPago, ResumenPeriodo, ClienteFrecuente,
+  VarianteTop, ClienteHistorial, EmpresaConfig, UpdateEmpresaDto, InventarioCaja,
+  InventarioCajasMovimiento, CrearCajaDto, AjustarCajasDto, CategoriaBebida, Ingrediente,
+  VarianteIngrediente, BebidaMovimiento, CreateIngredienteDto, VincularVarianteDto
+} from './types/models';
+export { DENOMINACIONES_COP, Role } from './types/models';
 
 // ─── Services ─────────────────────────────────────────────────────────────────
-export { createHttpClient, createApi, setAuthToken, setApiBaseUrl } from './services/api';
+export { createHttpClient, createApi, setAuthToken, setApiBaseUrl, http, api } from './services/api';
 export type { ApiConfig, Api } from './services/api';
 
 // ─── Contexts ─────────────────────────────────────────────────────────────────
@@ -17,6 +29,8 @@ export type { ApiProviderProps } from './contexts/ApiContext';
 
 export { OfflineQueueProvider, useOfflineQueue } from './contexts/OfflineQueueContext';
 export type { OfflinePayment, OfflineQueueStorageAdapter } from './contexts/OfflineQueueContext';
+
+export { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 export { useAntiDebounce } from './hooks/useAntiDebounce';
@@ -37,8 +51,9 @@ export { useFacturasDia, useFacturasRango, calcStats, mapFactura } from './hooks
 export { useFacturasPagosScreen, todayISO } from './hooks/use-facturas-pagos-screen';
 export { useGestionProductosScreen } from './hooks/use-gestion-productos-screen';
 export { useOrdenesSocket } from './hooks/use-ordenes-socket';
-export * from './utils/format';
-export * from './utils/dateRange';
-export * from './utils/productEmojis';
-export * from './utils/personalizacion';
+export { formatCurrency, formatDate, formatDateShort, formatCompactCurrency } from './utils/format';
+export type { DateRangeValidationResult } from './utils/dateRange';
+export { validateFlexibleDateRange, getRangeDates, getLocalDateString } from './utils/dateRange';
+export { getProductEmoji } from './utils/productEmojis';
+export { resolverPersonalizacion, PERSONALIZACION_OPCIONES } from './utils/personalizacion';
 export { mapOrdenToForm } from './utils/orderMapper';

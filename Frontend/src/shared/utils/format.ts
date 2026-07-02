@@ -1,3 +1,6 @@
+const dateTimeFormatter = new Intl.DateTimeFormat('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+const dateShortFormatter = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+
 /**
  * Formatea un número como moneda colombiana con puntos como separador de miles
  * Ej: 16000 → "16.000", 1234567 → "1.234.567"
@@ -25,7 +28,7 @@ export function formatDate(date?: string | null): string {
   if (!date) return '';
   const d = new Date(date);
   if (isNaN(d.getTime())) return date;
-  return d.toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' });
+  return dateTimeFormatter.format(d);
 }
 
 /**
@@ -35,7 +38,7 @@ export function formatDateShort(date?: string | null): string {
   if (!date) return '';
   const d = new Date(date);
   if (isNaN(d.getTime())) return date;
-  return d.toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+  return dateShortFormatter.format(d);
 }
 
 /**

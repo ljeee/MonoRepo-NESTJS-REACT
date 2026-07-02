@@ -17,6 +17,9 @@ import {
 
 import { getLocalDateString } from '../../src/shared/utils/dateRange';
 
+// Hoisted: equivalente a toLocaleTimeString() sin recrear el formatter por item
+const TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: 'numeric', second: 'numeric' });
+
 export default function MonitoreoScreen() {
     const { queue, isSyncing, syncPayments, hasItems } = useOfflineQueue();
     const { showToast } = useToast();
@@ -196,7 +199,7 @@ export default function MonitoreoScreen() {
                                         <Badge label={item.metodo} size="sm" variant="info" />
                                     </View>
                                     <Text className="text-slate-500 text-[10px] font-bold mt-1">
-                                        Generado: {new Date(item.timestamp).toLocaleTimeString()}
+                                        Generado: {TIME_FORMATTER.format(new Date(item.timestamp))}
                                     </Text>
                                 </View>
                                 <View className="items-end">

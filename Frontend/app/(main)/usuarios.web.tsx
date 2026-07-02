@@ -14,6 +14,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Role } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 
+// Hoisted: equivalente a toLocaleDateString() sin recrear el formatter por item
+const DATE_FORMATTER = new Intl.DateTimeFormat();
+
 // ─── Extracted item — avoids re-creating the closure on every render ─────────
 const UsuarioItem = memo(({ u }: { u: any }) => (
     <Card className="flex-row items-center justify-between p-5 bg-white/5 border border-white/5 rounded-[28px]">
@@ -51,7 +54,7 @@ const UsuarioItem = memo(({ u }: { u: any }) => (
             <View className="flex-row items-center gap-1 opacity-40">
                 <Icon name="clock-outline" size={10} color="#64748B" />
                 <Text className="text-slate-500 font-bold text-[8px] uppercase tracking-tighter">
-                    {new Date(u.createdAt).toLocaleDateString()}
+                    {DATE_FORMATTER.format(new Date(u.createdAt))}
                 </Text>
             </View>
         </View>

@@ -203,13 +203,15 @@ export default function BalanceFechasScreen() {
     const egresos = periodStats?.totalEgresos ?? 0;
     const neto = ingresos - egresos;
 
-    // Conteos por método del período (metodosPago ya tiene bucket 'mixto' propio).
-    // El filtrado real es server-side; estos números son del rango completo (no de la página).
+    // Conteos por método del período (metodosPago tiene bucket 'mixto' propio).
+    // El filtrado real es server-side e incluye las mixtas en efectivo y QR
+    // ("mixta con efectivo" / "mixta con QR"), así que los chips las suman.
+    // Estos números son del rango completo (no de la página).
     const metodoCount = (m: string) => metodoStats.find((x) => x.metodo === m)?.cantidad ?? 0;
     const metodoCounts = {
         todos:         periodStats?.facturas ?? 0,
-        efectivo:      metodoCount('efectivo'),
-        transferencia: metodoCount('transferencia'),
+        efectivo:      metodoCount('efectivo') + metodoCount('mixto'),
+        transferencia: metodoCount('transferencia') + metodoCount('mixto'),
         mixto:         metodoCount('mixto'),
         pendiente:     periodStats?.countIngresosPendientes ?? 0,
     };

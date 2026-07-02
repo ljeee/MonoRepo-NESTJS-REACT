@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { 
-  StyleSheet, Text, View, TextInput, TouchableOpacity, 
-  ActivityIndicator, FlatList, RefreshControl,
+  StyleSheet, Text, View, TextInput, Pressable, 
+  ActivityIndicator, RefreshControl,
   StatusBar, Platform, Linking
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
@@ -54,9 +55,7 @@ function LoginScreen() {
         secureTextEntry
       />
 
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={handleLogin}
+      <Pressable style={({pressed}) => [styles.button, pressed && {opacity: 0.5}]} onPress={handleLogin}
         disabled={loading}
       >
         {loading ? (
@@ -64,12 +63,105 @@ function LoginScreen() {
         ) : (
           <Text style={styles.buttonText}>INGRESAR</Text>
         )}
-      </TouchableOpacity>
+      </Pressable>
     </View>
   );
 }
 
 // ─── DASHBOARD SCREEN ─────────────────────────────────────────────────────────
+
+// Hoisted: no capturan nada del componente, así no se recrean por render
+const COP_FORMATTER = new Intl.NumberFormat('es-CO');
+
+const copyToClipboard = async (text: string) => {
+  await Clipboard.setStringAsync(text);
+  Toast.show({ type: 'success', text1: 'Copiado', text2: text });
+};
+
+const DomicilioCard = React.memo(function DomicilioCard({ item }: { item: Domicilio }) {
+  const isPagado = item.factura?.estado === 'pagado' || item.factura?.estado === 'pagada';
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.orderId}>#{item.orden?.ordenId || item.domicilioId}</Text>
+        <Text style={styles.clientName}>{item.cliente?.clienteNombre || item.factura?.clienteNombre || 'Sin nombre'}</Text>
+      </View>
+
+      <View style={styles.infoRow}>
+        <Text style={styles.label}>Dirección:</Text>
+        <View style={styles.infoRowValueContainer}>
+          <Text style={styles.value} numberOfLines={2}>{item.direccionEntrega || 'N/A'}</Text>
+        </View>
+        <Pressable onPress={() => copyToClipboard(item.direccionEntrega || '')} style={({pressed}) => [styles.copyBtn, pressed && {opacity: 0.5}]}>
+          <Text style={styles.copyText}>Copiar</Text>
+        </Pressable>
+      </View>
+
+      {item.referenciaDomicilio ? (
+        <View style={styles.infoRow}>
+          <Text style={styles.label}>Ref:</Text>
+          <View style={styles.infoRowValueContainer}>
+            <Text style={styles.value} numberOfLines={2}>{item.referenciaDomicilio}</Text>
+          </View>
+          <Pressable onPress={() => copyToClipboard(item.referenciaDomicilio)} style={({pressed}) => [styles.copyBtn, pressed && {opacity: 0.5}]}>
+            <Text style={styles.copyText}>Copiar</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
+      <View style={styles.infoRow}>
+        <Text style={styles.label}>Teléfono:</Text>
+        <Text style={styles.value}>{item.telefono || 'N/A'}</Text>
+        {item.telefono && (
+          <Pressable onPress={() => copyToClipboard(item.telefono)} style={({pressed}) => [styles.copyBtn, pressed && {opacity: 0.5}]}>
+            <Text style={styles.copyText}>Copiar</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {item.latitud && item.longitud ? (
+        <Pressable style={({pressed}) => [styles.mapButton, pressed && {opacity: 0.5}]} onPress={() => {
+            const lat = item.latitud;
+            const lng = item.longitud;
+            const addr = item.direccionEntrega || 'Entrega';
+            const scheme = Platform.select({
+              ios: `maps:0,0?q=${lat},${lng}(${addr})`,
+              android: `geo:0,0?q=${lat},${lng}(${addr})`
+            });
+            const webUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+            
+            if (scheme) {
+              Linking.canOpenURL(scheme)
+                .then((supported) => Linking.openURL(supported ? scheme : webUrl))
+                .catch(() => Linking.openURL(webUrl).catch(() => {}));
+            } else {
+              Linking.openURL(webUrl).catch(() => {});
+            }
+          }}
+        >
+          <Text style={styles.buttonText}>📍 IR A GOOGLE MAPS</Text>
+        </Pressable>
+      ) : null}
+
+      <View style={styles.divider} />
+
+      <View style={styles.priceRow}>
+        <View>
+          <Text style={styles.label}>Total a cobrar:</Text>
+          {isPagado ? (
+            <Text style={styles.paidText}>PAGADO</Text>
+          ) : (
+            <Text style={styles.pendingText}>PENDIENTE</Text>
+          )}
+        </View>
+        <Text style={styles.totalPrice}>
+          ${COP_FORMATTER.format(item.factura?.total || 0)}
+        </Text>
+      </View>
+    </View>
+  );
+});
 
 function DashboardScreen() {
   const { user, logout } = useAuth();
@@ -99,101 +191,9 @@ function DashboardScreen() {
     fetchDomicilios();
   };
 
-  const copyToClipboard = async (text: string) => {
-    await Clipboard.setStringAsync(text);
-    Toast.show({ type: 'success', text1: 'Copiado', text2: text });
-  };
-
-  const renderItem = ({ item }: { item: Domicilio }) => {
-    const isPagado = item.factura?.estado === 'pagado' || item.factura?.estado === 'pagada';
-    
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.orderId}>#{item.orden?.ordenId || item.domicilioId}</Text>
-          <Text style={styles.clientName}>{item.cliente?.clienteNombre || item.factura?.clienteNombre || 'Sin nombre'}</Text>
-        </View>
-
-        <View style={styles.infoRow}>
-          <Text style={styles.label}>Dirección:</Text>
-          <View style={styles.infoRowValueContainer}>
-            <Text style={styles.value} numberOfLines={2}>{item.direccionEntrega || 'N/A'}</Text>
-          </View>
-          <TouchableOpacity onPress={() => copyToClipboard(item.direccionEntrega || '')} style={styles.copyBtn}>
-            <Text style={styles.copyText}>Copiar</Text>
-          </TouchableOpacity>
-        </View>
-
-        {item.referenciaDomicilio ? (
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Ref:</Text>
-            <View style={styles.infoRowValueContainer}>
-              <Text style={styles.value} numberOfLines={2}>{item.referenciaDomicilio}</Text>
-            </View>
-            <TouchableOpacity onPress={() => copyToClipboard(item.referenciaDomicilio)} style={styles.copyBtn}>
-              <Text style={styles.copyText}>Copiar</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        <View style={styles.infoRow}>
-          <Text style={styles.label}>Teléfono:</Text>
-          <Text style={styles.value}>{item.telefono || 'N/A'}</Text>
-          {item.telefono && (
-            <TouchableOpacity onPress={() => copyToClipboard(item.telefono)} style={styles.copyBtn}>
-              <Text style={styles.copyText}>Copiar</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        {item.latitud && item.longitud ? (
-          <TouchableOpacity 
-            style={styles.mapButton} 
-            onPress={() => {
-              const lat = item.latitud;
-              const lng = item.longitud;
-              const addr = item.direccionEntrega || 'Entrega';
-              const scheme = Platform.select({
-                ios: `maps:0,0?q=${lat},${lng}(${addr})`,
-                android: `geo:0,0?q=${lat},${lng}(${addr})`
-              });
-              const webUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-              
-              if (scheme) {
-                Linking.canOpenURL(scheme).then((supported) => {
-                  if (supported) {
-                    Linking.openURL(scheme);
-                  } else {
-                    Linking.openURL(webUrl);
-                  }
-                });
-              } else {
-                Linking.openURL(webUrl);
-              }
-            }}
-          >
-            <Text style={styles.buttonText}>📍 IR A GOOGLE MAPS</Text>
-          </TouchableOpacity>
-        ) : null}
-
-        <View style={styles.divider} />
-
-        <View style={styles.priceRow}>
-          <View>
-            <Text style={styles.label}>Total a cobrar:</Text>
-            {isPagado ? (
-              <Text style={styles.paidText}>PAGADO</Text>
-            ) : (
-              <Text style={styles.pendingText}>PENDIENTE</Text>
-            )}
-          </View>
-          <Text style={styles.totalPrice}>
-            ${(item.factura?.total || 0).toLocaleString('es-CO')}
-          </Text>
-        </View>
-      </View>
-    );
-  };
+  const renderItem = useCallback(({ item }: { item: Domicilio }) => {
+    return <DomicilioCard item={item} />;
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -202,9 +202,9 @@ function DashboardScreen() {
           <Text style={styles.headerTitle}>Mis Entregas</Text>
           <Text style={styles.headerUser}>{user?.name || user?.username}</Text>
         </View>
-        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+        <Pressable onPress={logout} style={({pressed}) => [styles.logoutBtn, pressed && {opacity: 0.5}]}>
           <Text style={styles.logoutText}>Salir</Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {loading ? (
@@ -212,7 +212,7 @@ function DashboardScreen() {
           <ActivityIndicator size="large" color="#F5A524" />
         </View>
       ) : (
-        <FlatList
+        <FlashList
           data={domicilios}
           keyExtractor={item => String(item.domicilioId)}
           renderItem={renderItem}
@@ -234,9 +234,9 @@ function DashboardScreen() {
 // ─── MAIN APP WRAPPER ─────────────────────────────────────────────────────────
 
 function Main() {
-  const { user, isInitializing } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (isInitializing) {
+  if (isLoading) {
     return (
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color="#F5A524" />

@@ -59,6 +59,162 @@ function getProductoPreviewName(producto: NonNullable<Orden['productos']>[number
   return 'Producto';
 }
 
+// ─── Cards de orden (memoizadas: la lista renderiza hasta 20 por página) ──────
+
+const OrdenCard = React.memo(function OrdenCard({
+  orden,
+  onOpen,
+}: {
+  orden: Orden;
+  onOpen: (ordenId: number) => void;
+}) {
+  const ec = getEstadoColor(orden.estadoOrden);
+  const total = getOrdenTotal(orden);
+
+  return (
+    <Card onPress={() => onOpen(orden.ordenId)} className="mb-3 overflow-hidden">
+      {/* Header */}
+      <View className="flex-row justify-between items-center mb-2">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-white font-black text-base" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>#{orden.ordenId}</Text>
+          <Badge
+            label={orden.estadoOrden || 'N/A'}
+            variant={
+              orden.estadoOrden === 'pendiente'
+                ? 'warning'
+                : orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado'
+                  ? 'success'
+                  : orden.estadoOrden === 'cancelado'
+                    ? 'danger'
+                    : 'info'
+            }
+            icon={ec.icon}
+            size="sm"
+          />
+        </View>
+        <Text className="text-(--color-pos-primary) font-black text-lg" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>
+           ${formatCurrency(total)}
+        </Text>
+      </View>
+
+      {/* Meta */}
+      <View className="flex-row gap-3 mb-2">
+        <View className="flex-row items-center gap-1">
+          <Icon name="tag-outline" size={12} color="#64748B" />
+          <Text className="text-slate-400 text-[11px] font-bold uppercase">{orden.tipoPedido}</Text>
+        </View>
+        <View className="flex-row items-center gap-1">
+          <Icon name="calendar-outline" size={12} color="#64748B" />
+          <Text className="text-slate-400 text-[11px] font-bold uppercase">
+            {formatDate(orden.fechaOrden)}
+          </Text>
+        </View>
+      </View>
+
+      {/* Products preview */}
+      {orden.productos && orden.productos.length > 0 && (
+        <View className="bg-white/5 px-3 py-2 rounded-xl gap-1 border border-white/5">
+          {orden.productos.slice(0, 3).map((p, idx) => (
+            <View key={`${p.id ?? getProductoPreviewName(p)}-${idx}`} className="flex-row items-center gap-1.5">
+               <View className="w-1 h-1 rounded-full bg-(--color-pos-primary)/40" />
+               <Text className="text-slate-300 text-[11px] flex-1" numberOfLines={1}>
+                  {getProductoPreviewName(p)}
+               </Text>
+               <Text className="text-slate-500 text-[10px] font-black uppercase">x{p.cantidad}</Text>
+            </View>
+          ))}
+          {orden.productos.length > 3 && (
+            <Text className="text-slate-500 text-[10px] font-black italic uppercase text-right">
+              +{orden.productos.length - 3} más
+            </Text>
+          )}
+        </View>
+      )}
+    </Card>
+  );
+});
+
+const FsOrdenCard = React.memo(function FsOrdenCard({
+  orden,
+  cardWidth,
+  nowMinute,
+  onOpen,
+}: {
+  orden: Orden;
+  cardWidth: '100%' | '49%' | '32%';
+  nowMinute: number;
+  onOpen: (ordenId: number) => void;
+}) {
+  const ec = getEstadoColor(orden.estadoOrden);
+  const total = getOrdenTotal(orden);
+  const diffMins = Math.max(0, nowMinute - Math.floor(new Date(orden.fechaOrden).getTime() / 60000));
+  const isUrgente = diffMins >= 20 && orden.estadoOrden === 'pendiente';
+  const isPendiente = orden.estadoOrden === 'pendiente';
+  const isCompletada = orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado';
+  const isCancelado = orden.estadoOrden === 'cancelado';
+  const accentColor = isPendiente ? '#F5A524' : isCompletada ? '#10B981' : isCancelado ? '#EF4444' : '#475569';
+  const badgeVariant = isPendiente ? 'warning' : isCompletada ? 'success' : isCancelado ? 'danger' : 'info';
+  const clientName = (orden as any).nombreCliente?.trim() || (orden.factura as any)?.clienteNombre || (orden.tipoPedido?.toLowerCase() === 'mesa' ? `Mesa ${(orden as any).mesa || ''}` : 'Sin nombre');
+
+  return (
+    <TouchableOpacity
+      style={{ width: cardWidth, borderRadius: 16, overflow: 'hidden', backgroundColor: '#0C1828', borderWidth: 1, borderColor: isUrgente ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.07)', marginBottom: 0 }}
+      onPress={() => onOpen(orden.ordenId)}
+      activeOpacity={0.82}
+    >
+      {/* Status accent bar */}
+      <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: accentColor, borderTopLeftRadius: 16, borderBottomLeftRadius: 16 }} />
+
+      {/* Card header */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+          <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>#{orden.ordenId}</Text>
+          <Badge label={orden.estadoOrden || 'N/A'} variant={badgeVariant} icon={ec.icon} size="sm" />
+        </View>
+        <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 15 }}>${formatCurrency(total)}</Text>
+      </View>
+
+      {/* Client + timer */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 }}>
+        <Text style={{ color: '#F1F5F9', fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: -0.2, flex: 1 }} numberOfLines={1}>{clientName}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isUrgente ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: isUrgente ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)', marginLeft: 8 }}>
+          <Icon name="clock-outline" size={11} color={isUrgente ? '#F87171' : '#475569'} />
+          <Text style={{ color: isUrgente ? '#F87171' : '#475569', fontSize: 11, fontWeight: '800' }}>{diffMins > 0 ? `${diffMins}m` : '<1m'}</Text>
+        </View>
+      </View>
+
+      {/* Tipo + date */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
+          <Icon name="tag-outline" size={10} color="#64748B" />
+          <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{orden.tipoPedido || 'Mesa'}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <Icon name="calendar-outline" size={10} color="#334155" />
+          <Text style={{ color: '#334155', fontSize: 10, fontWeight: '700' }}>{formatDate(orden.fechaOrden)}</Text>
+        </View>
+      </View>
+
+      {/* Products list */}
+      {orden.productos && orden.productos.length > 0 && (
+        <View style={{ marginHorizontal: 12, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', gap: 6 }}>
+          {orden.productos.slice(0, 5).map((p, idx) => (
+            <View key={`${(p as any).id ?? getProductoPreviewName(p)}-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ backgroundColor: 'rgba(245,165,36,0.14)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, minWidth: 26, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(245,165,36,0.22)' }}>
+                <Text style={{ color: '#F5A524', fontSize: 11, fontWeight: '800' }}>{p.cantidad}</Text>
+              </View>
+              <Text style={{ flex: 1, color: '#CBD5E1', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{getProductoPreviewName(p)}</Text>
+            </View>
+          ))}
+          {orden.productos.length > 5 && (
+            <Text style={{ color: '#334155', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', textAlign: 'right' }}>+{orden.productos.length - 5} más</Text>
+          )}
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
+
 export default function OrdenesTodasScreen() {
   const router = useRouter();
   const { isMobile, isTablet } = useBreakpoint();
@@ -87,6 +243,8 @@ export default function OrdenesTodasScreen() {
 
   const { page, estado, from, to, result, loading, error } = state;
   const [refreshing, setRefreshing] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [timeStr, setTimeStr] = useState('');
 
   const fetchData = useCallback(
     async (p: number) => {
@@ -113,6 +271,15 @@ export default function OrdenesTodasScreen() {
     setRefreshing(false);
   }, [fetchData]);
 
+  const handleOpenOrden = useCallback((ordenId: number) => {
+    router.push(`/orden-detalle?ordenId=${ordenId}`);
+  }, [router]);
+
+  const handleOpenOrdenFs = useCallback((ordenId: number) => {
+    router.push(`/orden-detalle?ordenId=${ordenId}`);
+    setIsFullscreen(false);
+  }, [router]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       void fetchData(1);
@@ -120,9 +287,6 @@ export default function OrdenesTodasScreen() {
 
     return () => clearTimeout(timer);
   }, [fetchData]);
-
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [timeStr, setTimeStr] = useState('');
 
   useEffect(() => {
     if (!isFullscreen) return;
@@ -138,6 +302,9 @@ export default function OrdenesTodasScreen() {
   const ordenes = result?.data ?? [];
 
   const fsCardWidth = isMobile ? '100%' : isTablet ? '49%' : '32%';
+  // Cambia una vez por minuto: los timers de las FsOrdenCard memoizadas solo
+  // re-renderizan cuando el minuto avanza, no con cada tick del reloj (1s)
+  const nowMinute = Math.floor(Date.now() / 60000);
 
   return (
     <PageContainer
@@ -286,78 +453,9 @@ export default function OrdenesTodasScreen() {
 
       {/* Order cards */}
       {!loading &&
-        ordenes.map((orden) => {
-          const ec = getEstadoColor(orden.estadoOrden);
-          const total = getOrdenTotal(orden);
-
-          return (
-            <Card
-              key={orden.ordenId}
-              onPress={() =>
-                router.push(`/orden-detalle?ordenId=${orden.ordenId}`)
-              }
-              className="mb-3 overflow-hidden"
-            >
-              {/* Header */}
-              <View className="flex-row justify-between items-center mb-2">
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-white font-black text-base" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>#{orden.ordenId}</Text>
-                  <Badge
-                    label={orden.estadoOrden || 'N/A'}
-                    variant={
-                      orden.estadoOrden === 'pendiente'
-                        ? 'warning'
-                        : orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado'
-                          ? 'success'
-                          : orden.estadoOrden === 'cancelado'
-                            ? 'danger'
-                            : 'info'
-                    }
-                    icon={ec.icon}
-                    size="sm"
-                  />
-                </View>
-                <Text className="text-(--color-pos-primary) font-black text-lg" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>
-                   ${formatCurrency(total)}
-                </Text>
-              </View>
-
-              {/* Meta */}
-              <View className="flex-row gap-3 mb-2">
-                <View className="flex-row items-center gap-1">
-                  <Icon name="tag-outline" size={12} color="#64748B" />
-                  <Text className="text-slate-400 text-[11px] font-bold uppercase">{orden.tipoPedido}</Text>
-                </View>
-                <View className="flex-row items-center gap-1">
-                  <Icon name="calendar-outline" size={12} color="#64748B" />
-                  <Text className="text-slate-400 text-[11px] font-bold uppercase">
-                    {formatDate(orden.fechaOrden)}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Products preview */}
-              {orden.productos && orden.productos.length > 0 && (
-                <View className="bg-white/5 px-3 py-2 rounded-xl gap-1 border border-white/5">
-                  {orden.productos.slice(0, 3).map((p, idx) => (
-                    <View key={`${p.id ?? getProductoPreviewName(p)}-${idx}`} className="flex-row items-center gap-1.5">
-                       <View className="w-1 h-1 rounded-full bg-(--color-pos-primary)/40" />
-                       <Text className="text-slate-300 text-[11px] flex-1" numberOfLines={1}>
-                          {getProductoPreviewName(p)}
-                       </Text>
-                       <Text className="text-slate-500 text-[10px] font-black uppercase">x{p.cantidad}</Text>
-                    </View>
-                  ))}
-                  {orden.productos.length > 3 && (
-                    <Text className="text-slate-500 text-[10px] font-black italic uppercase text-right">
-                      +{orden.productos.length - 3} más
-                    </Text>
-                  )}
-                </View>
-              )}
-            </Card>
-          );
-        })}
+        ordenes.map((orden) => (
+          <OrdenCard key={orden.ordenId} orden={orden} onOpen={handleOpenOrden} />
+        ))}
 
       {/* Bottom pagination */}
       {result && result.totalPages > 1 && (
@@ -445,77 +543,15 @@ export default function OrdenesTodasScreen() {
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
             {loading && <ListSkeleton count={6} />}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-              {ordenes.map((orden) => {
-                const ec = getEstadoColor(orden.estadoOrden);
-                const total = getOrdenTotal(orden);
-                const diffMins = Math.max(0, Math.floor((Date.now() - new Date(orden.fechaOrden).getTime()) / 60000));
-                const isUrgente = diffMins >= 20 && orden.estadoOrden === 'pendiente';
-                const isPendiente = orden.estadoOrden === 'pendiente';
-                const isCompletada = orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado';
-                const isCancelado = orden.estadoOrden === 'cancelado';
-                const accentColor = isPendiente ? '#F5A524' : isCompletada ? '#10B981' : isCancelado ? '#EF4444' : '#475569';
-                const badgeVariant = isPendiente ? 'warning' : isCompletada ? 'success' : isCancelado ? 'danger' : 'info';
-                const clientName = (orden as any).nombreCliente?.trim() || (orden.factura as any)?.clienteNombre || (orden.tipoPedido?.toLowerCase() === 'mesa' ? `Mesa ${(orden as any).mesa || ''}` : 'Sin nombre');
-
-                return (
-                  <TouchableOpacity
-                    key={orden.ordenId}
-                    style={{ width: fsCardWidth, borderRadius: 16, overflow: 'hidden', backgroundColor: '#0C1828', borderWidth: 1, borderColor: isUrgente ? 'rgba(239,68,68,0.35)' : 'rgba(255,255,255,0.07)', marginBottom: 0 }}
-                    onPress={() => { router.push(`/orden-detalle?ordenId=${orden.ordenId}`); setIsFullscreen(false); }}
-                    activeOpacity={0.82}
-                  >
-                    {/* Status accent bar */}
-                    <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: accentColor, borderTopLeftRadius: 16, borderBottomLeftRadius: 16 }} />
-
-                    {/* Card header */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-                        <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>#{orden.ordenId}</Text>
-                        <Badge label={orden.estadoOrden || 'N/A'} variant={badgeVariant} icon={ec.icon} size="sm" />
-                      </View>
-                      <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 15 }}>${formatCurrency(total)}</Text>
-                    </View>
-
-                    {/* Client + timer */}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 }}>
-                      <Text style={{ color: '#F1F5F9', fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: -0.2, flex: 1 }} numberOfLines={1}>{clientName}</Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isUrgente ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.06)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: isUrgente ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.08)', marginLeft: 8 }}>
-                        <Icon name="clock-outline" size={11} color={isUrgente ? '#F87171' : '#475569'} />
-                        <Text style={{ color: isUrgente ? '#F87171' : '#475569', fontSize: 11, fontWeight: '800' }}>{diffMins > 0 ? `${diffMins}m` : '<1m'}</Text>
-                      </View>
-                    </View>
-
-                    {/* Tipo + date */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 10 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.04)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
-                        <Icon name="tag-outline" size={10} color="#64748B" />
-                        <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{orden.tipoPedido || 'Mesa'}</Text>
-                      </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                        <Icon name="calendar-outline" size={10} color="#334155" />
-                        <Text style={{ color: '#334155', fontSize: 10, fontWeight: '700' }}>{formatDate(orden.fechaOrden)}</Text>
-                      </View>
-                    </View>
-
-                    {/* Products list */}
-                    {orden.productos && orden.productos.length > 0 && (
-                      <View style={{ marginHorizontal: 12, marginBottom: 12, backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)', gap: 6 }}>
-                        {orden.productos.slice(0, 5).map((p, idx) => (
-                          <View key={`${(p as any).id ?? getProductoPreviewName(p)}-${idx}`} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <View style={{ backgroundColor: 'rgba(245,165,36,0.14)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, minWidth: 26, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(245,165,36,0.22)' }}>
-                              <Text style={{ color: '#F5A524', fontSize: 11, fontWeight: '800' }}>{p.cantidad}</Text>
-                            </View>
-                            <Text style={{ flex: 1, color: '#CBD5E1', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{getProductoPreviewName(p)}</Text>
-                          </View>
-                        ))}
-                        {orden.productos.length > 5 && (
-                          <Text style={{ color: '#334155', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', textAlign: 'right' }}>+{orden.productos.length - 5} más</Text>
-                        )}
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
+              {ordenes.map((orden) => (
+                <FsOrdenCard
+                  key={orden.ordenId}
+                  orden={orden}
+                  cardWidth={fsCardWidth}
+                  nowMinute={nowMinute}
+                  onOpen={handleOpenOrdenFs}
+                />
+              ))}
               {!loading && ordenes.length === 0 && (
                 <EmptyState icon="format-list-bulleted" message="Sin órdenes" subMessage="No hay órdenes en el período" />
               )}

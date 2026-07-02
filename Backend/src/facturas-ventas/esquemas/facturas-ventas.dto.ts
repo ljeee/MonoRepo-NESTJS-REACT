@@ -1,4 +1,4 @@
-import {IsString, IsNumber, IsOptional, IsDateString, IsObject, IsPositive} from 'class-validator';
+import {IsString, IsNumber, IsOptional, IsDateString, IsObject, IsPositive, IsIn} from 'class-validator';
 
 export class CreateFacturasVentasDto {
 	@IsOptional()
@@ -51,6 +51,11 @@ export class AbonoDto {
 	@IsNumber()
 	@IsPositive()
 	monto: number;
+
+	/** Método del abono. Por defecto 'efectivo' (compatibilidad con clientes viejos). */
+	@IsOptional()
+	@IsIn(['efectivo', 'transferencia'])
+	metodo?: 'efectivo' | 'transferencia';
 
 	@IsOptional()
 	@IsObject()

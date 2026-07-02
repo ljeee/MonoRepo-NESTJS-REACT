@@ -4,8 +4,27 @@ import { View, Text } from '../../tw';
 
 // ── Filtro por método de pago, reutilizable en las 4 vistas de facturas/balance ──
 // Mixto = facturas con metodo === 'efectivo_transferencia' (su propio bucket).
+// Efectivo y QR/Trans incluyen además las mixtas cuya parte correspondiente sea > 0
+// ("mixta con efectivo" / "mixta con QR") — misma semántica que el backend.
 
 export type MethodFilterValue = 'todos' | 'efectivo' | 'transferencia' | 'mixto' | 'pendiente';
+
+export interface FacturaMetodoLike {
+  metodo?: string | null;
+  pagoEfectivo?: number | null;
+  pagoTransferencia?: number | null;
+}
+
+/** ¿La factura entra en el bucket de método del filtro? (sin evaluar estado) */
+export function matchesMetodoFilter(
+  f: FacturaMetodoLike,
+  key: 'efectivo' | 'transferencia' | 'mixto',
+): boolean {
+  const esMixta = f.metodo === 'efectivo_transferencia';
+  if (key === 'mixto') return esMixta;
+  if (key === 'efectivo') return f.metodo === 'efectivo' || (esMixta && (f.pagoEfectivo ?? 0) > 0);
+  return f.metodo === 'transferencia' || (esMixta && (f.pagoTransferencia ?? 0) > 0);
+}
 
 export interface MethodFilterChipsProps {
   value: string;

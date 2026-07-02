@@ -120,11 +120,13 @@ export const TouchableHighlight = (
 };
 TouchableHighlight.displayName = "CSS(TouchableHighlight)";
 
-// TouchableOpacity
+// TouchableOpacity migrated to Pressable for performance (Vercel best practices)
 export const TouchableOpacity = (
-  props: React.ComponentProps<typeof RNTouchableOpacity> & { className?: string }
+  props: React.ComponentProps<typeof RNPressable> & { className?: string; activeOpacity?: number }
 ) => {
-  return useCssElement(RNTouchableOpacity as any, props as any, { className: "style" } as any) as any;
+  const activeClass = props.className && props.className.includes('active:') ? '' : ' active:opacity-50';
+  const className = props.className ? `${props.className}${activeClass}` : 'active:opacity-50';
+  return useCssElement(RNPressable as any, { ...props, className } as any, { className: "style" } as any) as any;
 };
 TouchableOpacity.displayName = "CSS(TouchableOpacity)";
 

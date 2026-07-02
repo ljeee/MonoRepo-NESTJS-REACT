@@ -19,7 +19,7 @@ import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import Badge from '../../components/ui/Badge';
 import Card from '../../components/ui/Card';
 import CajaMovimientosWidget from '../../components/ui/CajaMovimientosWidget';
-import { MethodFilterChips, MethodFilterValue } from '../../components/ui';
+import { MethodFilterChips, MethodFilterValue, matchesMetodoFilter } from '../../components/ui';
 
 // ─── Balance card ─────────────────────────────────────────────────────────────
 
@@ -411,7 +411,7 @@ export default function BalanceDiaScreen() {
         }
     }, [api, billCounts, fetchCajaResumen]);
 
-    const handleToggleEstado = async (
+    const handleToggleEstado = useCallback(async (
         facturaId: number,
         nuevoEstado: string,
         metodo?: string,
@@ -431,28 +431,29 @@ export default function BalanceDiaScreen() {
             console.error('Error updating factura estado:', error);
         }
         setUpdatingId(null);
-    };
+    }, [updateFactura, updateEstado]);
 
-    const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
+    const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
         await updateFactura(facturaId, { total: newTotal });
-    };
+    }, [updateFactura]);
 
-    const handleAbono = async (
+    const handleAbono = useCallback(async (
         facturaId: number,
         monto: number,
+        metodo: 'efectivo' | 'transferencia',
         denominaciones?: DenominacionesMap,
         cambioDenominaciones?: DenominacionesMap,
     ) => {
         setUpdatingId(facturaId);
         try {
-            await api.facturas.abono(facturaId, monto, denominaciones, cambioDenominaciones);
+            await api.facturas.abono(facturaId, monto, metodo, denominaciones, cambioDenominaciones);
             await Promise.all([refetchFacturas(), fetchCajaResumen()]);
         } catch (error) {
             console.error('Error registrando abono:', error);
         } finally {
             setUpdatingId(null);
         }
-    };
+    }, [api, refetchFacturas, fetchCajaResumen]);
 
     const ingresos = stats?.totalPagado ?? 0;
     const totalGastos = gastos.reduce((sum: number, g: FacturaPago) => sum + (Number(g.total) || 0), 0);
@@ -521,16 +522,15 @@ export default function BalanceDiaScreen() {
     );
     const methodCounts = {
         todos:         searchFilteredFacturas.length,
-        efectivo:      searchFilteredFacturas.filter((f: FacturaItem) => f.metodo === 'efectivo' && noPendiente(f)).length,
-        transferencia: searchFilteredFacturas.filter((f: FacturaItem) => f.metodo === 'transferencia' && noPendiente(f)).length,
-        mixto:         searchFilteredFacturas.filter((f: FacturaItem) => f.metodo === 'efectivo_transferencia' && noPendiente(f)).length,
+        efectivo:      searchFilteredFacturas.filter((f: FacturaItem) => matchesMetodoFilter(f, 'efectivo') && noPendiente(f)).length,
+        transferencia: searchFilteredFacturas.filter((f: FacturaItem) => matchesMetodoFilter(f, 'transferencia') && noPendiente(f)).length,
+        mixto:         searchFilteredFacturas.filter((f: FacturaItem) => matchesMetodoFilter(f, 'mixto') && noPendiente(f)).length,
         pendiente:     searchFilteredFacturas.filter((f: FacturaItem) => f.estado === 'pendiente' || f.estado === 'parcial').length,
     };
     const filteredFacturas = searchFilteredFacturas.filter((f: FacturaItem) => {
         if (filterMethod === 'todos') return true;
         if (filterMethod === 'pendiente') return f.estado === 'pendiente' || f.estado === 'parcial';
-        if (filterMethod === 'mixto') return f.metodo === 'efectivo_transferencia' && noPendiente(f);
-        return f.metodo === filterMethod && noPendiente(f);
+        return matchesMetodoFilter(f, filterMethod) && noPendiente(f);
     });
 
     return (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { RefreshControl } from 'react-native';
 import { Text, View, TextInput, TouchableOpacity } from '../../tw';
 import { useFacturasDia, calcStats, useApi } from '@/src/shared';
@@ -11,7 +11,7 @@ import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import Icon from '../../components/ui/Icon';
-import { MethodFilterChips, MethodFilterValue } from '../../components/ui';
+import { MethodFilterChips, MethodFilterValue, matchesMetodoFilter } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 
 export default function FacturasDiaScreen() {
@@ -22,7 +22,7 @@ export default function FacturasDiaScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState<MethodFilterValue>('todos');
 
-  const handleChangeEstado = async (
+  const handleChangeEstado = useCallback(async (
     facturaId: number,
     nuevoEstado: string,
     metodo?: string,
@@ -43,21 +43,21 @@ export default function FacturasDiaScreen() {
     } catch {
       setUpdating(null);
     }
-  };
+  }, [updateFactura, updateEstado]);
 
-  const handleUpdateTotal = async (facturaId: number, newTotal: number) => {
+  const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
     await updateFactura(facturaId, { total: newTotal });
-  };
+  }, [updateFactura]);
 
-  const handleAbono = async (facturaId: number, monto: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => {
+  const handleAbono = useCallback(async (facturaId: number, monto: number, metodo: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => {
     setUpdating(facturaId);
     try {
-      await api.facturas.abono(facturaId, monto, denominaciones, cambioDenominaciones);
+      await api.facturas.abono(facturaId, monto, metodo, denominaciones, cambioDenominaciones);
       await refetch();
     } finally {
       setUpdating(null);
     }
-  };
+  }, [api, refetch]);
 
   const handleExportPdf = () => {
     if (!data || data.length === 0) return;
@@ -91,17 +91,16 @@ export default function FacturasDiaScreen() {
   const isPagado = (f: FacturaItem) => f.estado === 'pagado' || f.estado === 'pagada';
   const methodCounts = {
     todos:         searchFiltered.length,
-    efectivo:      searchFiltered.filter(f => f.metodo === 'efectivo' && isPagado(f)).length,
-    transferencia: searchFiltered.filter(f => f.metodo === 'transferencia' && isPagado(f)).length,
-    mixto:         searchFiltered.filter(f => f.metodo === 'efectivo_transferencia' && isPagado(f)).length,
+    efectivo:      searchFiltered.filter(f => matchesMetodoFilter(f, 'efectivo') && isPagado(f)).length,
+    transferencia: searchFiltered.filter(f => matchesMetodoFilter(f, 'transferencia') && isPagado(f)).length,
+    mixto:         searchFiltered.filter(f => matchesMetodoFilter(f, 'mixto') && isPagado(f)).length,
     pendiente:     searchFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial').length,
   };
 
   const filteredData = searchFiltered.filter((f: FacturaItem) => {
     if (filterMethod === 'todos') return true;
     if (filterMethod === 'pendiente') return f.estado === 'pendiente' || f.estado === 'parcial';
-    if (filterMethod === 'mixto') return f.metodo === 'efectivo_transferencia' && isPagado(f);
-    return f.metodo === filterMethod && isPagado(f);
+    return matchesMetodoFilter(f, filterMethod) && isPagado(f);
   });
 
   const computedStats = React.useMemo(() => calcStats(filteredData as any), [filteredData]);

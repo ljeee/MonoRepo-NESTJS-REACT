@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, memo } from 'react';
 import { RefreshControl } from 'react-native';
 import { api } from '../../services/api';
 import type {
@@ -55,7 +55,7 @@ function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
     return full.slice(Math.max(0, firstActive - 1), Math.min(23, lastActive + 1) + 1);
 }
 
-function KpiCard({ icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
+const KpiCard = memo(function KpiCard({ icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
     return (
         <Card style={{ flex: 1, minWidth: 150, overflow: 'hidden' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', padding: 0 }}>
@@ -70,9 +70,9 @@ function KpiCard({ icon, label, value, color }: { icon: any; label: string; valu
             <View style={{ height: 3, width: '100%', opacity: 0.3, backgroundColor: color, marginTop: 12, borderRadius: 2 }} />
         </Card>
     );
-}
+});
 
-function HBar({ label, value, max, rank, color }: { label: string; value: number; max: number; rank: number; color: string }) {
+const HBar = memo(function HBar({ label, value, max, rank, color }: { label: string; value: number; max: number; rank: number; color: string }) {
     const pct = max > 0 ? (value / max) * 100 : 0;
     return (
         <View style={{ marginBottom: 14 }}>
@@ -88,7 +88,7 @@ function HBar({ label, value, max, rank, color }: { label: string; value: number
             </View>
         </View>
     );
-}
+});
 
 export default function EstadisticasPage() {
     const defaults = getDefaultDateRange();

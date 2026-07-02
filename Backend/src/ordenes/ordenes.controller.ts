@@ -47,7 +47,7 @@ export class OrdenesController {
 	}
 
 	@Post()
-	@Roles(Role.Admin, Role.Mesero, Role.Cajero)
+	@Roles(Role.Admin, Role.Mesero, Role.Cajero, Role.Cliente)
 	@ApiOperation({summary: 'Crear una orden'})
 	@ApiOkResponse({
 		description: 'Orden creada con productos asociados',
@@ -107,7 +107,16 @@ export class OrdenesController {
 			},
 		},
 	})
-	async create(@Body() dto: CreateOrdenesDto) {
+	async create(@Body() dto: CreateOrdenesDto, @GetUser() user: User) {
+		// Un cliente final solo puede crear domicilios a su propio nombre y sin
+		// manipular estado ni asignación de domiciliario
+		if (user?.roles?.includes(Role.Cliente)) {
+			dto.tipoPedido = 'domicilio';
+			dto.telefonoCliente = user.username;
+			delete (dto as Partial<CreateOrdenesDto>).estadoOrden;
+			delete (dto as Partial<CreateOrdenesDto>).fechaOrden;
+			delete (dto as Partial<CreateOrdenesDto>).telefonoDomiciliario;
+		}
 		return this.service.create(dto);
 	}
 

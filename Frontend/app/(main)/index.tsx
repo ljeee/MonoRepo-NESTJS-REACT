@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, memo } from 'react';
 import { ActivityIndicator, Platform, useWindowDimensions, RefreshControl } from 'react-native';
 import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,10 @@ import { PageContainer, Card, Icon } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 
 const CHART_H = 140; // px fijos para las barras — evita height:'%' en RN native
+
+// Formatters hoisteados: crear un Intl.DateTimeFormat por render/tick es costoso
+const CLOCK_FORMATTER = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
+const HEADER_DATE_FORMATTER = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' });
 
 function formatCurrency(n: number) {
     return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
@@ -90,7 +94,7 @@ function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatCard({ count, label, color, urgent, cardWidth }: { count: number; label: string; color: string; urgent?: boolean; cardWidth?: number }) {
+const StatCard = memo(function StatCard({ count, label, color, urgent, cardWidth }: { count: number; label: string; color: string; urgent?: boolean; cardWidth?: number }) {
     return (
         <Card className="flex-row items-center gap-3 p-4 bg-white/5 border-white/10" style={cardWidth ? { width: cardWidth } : { flex: 1, minWidth: 130 }}>
             <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: color }} />
@@ -104,9 +108,9 @@ function StatCard({ count, label, color, urgent, cardWidth }: { count: number; l
             </View>
         </Card>
     );
-}
+});
 
-function KpiCard({ label, value, color, bg, border, cardWidth }: { label: string; value: string; color: string; bg: string; border: string; cardWidth?: number }) {
+const KpiCard = memo(function KpiCard({ label, value, color, bg, border, cardWidth }: { label: string; value: string; color: string; bg: string; border: string; cardWidth?: number }) {
     return (
         <Card style={[
             { padding: 16, alignItems: 'center', backgroundColor: bg, borderColor: border },
@@ -120,9 +124,9 @@ function KpiCard({ label, value, color, bg, border, cardWidth }: { label: string
             </Text>
         </Card>
     );
-}
+});
 
-function HourChart({ ventasHoraFull, maxHora }: { ventasHoraFull: VentaHora[]; maxHora: number }) {
+const HourChart = memo(function HourChart({ ventasHoraFull, maxHora }: { ventasHoraFull: VentaHora[]; maxHora: number }) {
     return (
         <View style={{ width: '100%', flex: 1 }}>
             {/* Fila de Barras */}
@@ -158,7 +162,7 @@ function HourChart({ ventasHoraFull, maxHora }: { ventasHoraFull: VentaHora[]; m
             </View>
         </View>
     );
-}
+});
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -174,9 +178,7 @@ export default function DashboardPage() {
     const hPad = isMobile ? 16 : 24;
     const col2Width = isMobile ? Math.floor((screenWidth - hPad * 2 - cardGap) / 2) : undefined;
 
-    const [clock, setClock] = useState(() =>
-        new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
-    );
+    const [clock, setClock] = useState(() => CLOCK_FORMATTER.format(new Date()));
     const [dashboard, setDashboard] = useState<{
         loading: boolean;
         resumen: ResumenPeriodo | null;
@@ -195,7 +197,7 @@ export default function DashboardPage() {
 
     useEffect(() => {
         const id = setInterval(() => {
-            setClock(new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }));
+            setClock(CLOCK_FORMATTER.format(new Date()));
         }, 30000);
         return () => clearInterval(id);
     }, []);
@@ -304,7 +306,7 @@ export default function DashboardPage() {
                         {clock}
                     </Text>
                     <Text style={{ color: '#475569', fontSize: 9, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>
-                        {new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                        {HEADER_DATE_FORMATTER.format(new Date())}
                     </Text>
                 </View>
             </View>

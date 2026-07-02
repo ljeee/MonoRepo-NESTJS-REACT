@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { FlatList, RefreshControl } from 'react-native';
+import { RefreshControl } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { View, Text } from '../../tw';
 import { api } from '../../services/api';
 import { useRouter } from 'expo-router';
@@ -8,6 +9,9 @@ import { EmptyState } from '../../components/states/EmptyState';
 import { useAuth } from '../../contexts/AuthContext';
 import { Role } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
+
+// Hoisted: equivalente a toLocaleDateString() sin recrear el formatter por item
+const DATE_FORMATTER = new Intl.DateTimeFormat();
 
 // Extracted list item for better performance
 const UsuarioItem = memo(({ u, isMobile }: { u: any, isMobile: boolean }) => (
@@ -38,7 +42,7 @@ const UsuarioItem = memo(({ u, isMobile }: { u: any, isMobile: boolean }) => (
                     ))}
                 </View>
                 <Text className="text-zinc-600 text-[8px] font-black uppercase">
-                    {new Date(u.createdAt).toLocaleDateString()}
+                    {DATE_FORMATTER.format(new Date(u.createdAt))}
                 </Text>
             </View>
         </Card>
@@ -111,7 +115,7 @@ export default function UsuariosScreen() {
                         <ListSkeleton count={5} />
                     </View>
                 ) : (
-                    <FlatList
+                    <FlashList
                         data={usuarios}
                         className="flex-1"
                         contentContainerStyle={{ padding: 24, paddingBottom: 100 }}

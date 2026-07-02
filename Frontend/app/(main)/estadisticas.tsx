@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, memo } from 'react';
 import {
     ActivityIndicator,
     RefreshControl,
@@ -52,7 +52,7 @@ function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
 }
 
 // ── KPI Card ──
-function KpiCard({ icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
+const KpiCard = memo(function KpiCard({ icon, label, value, color }: { icon: any; label: string; value: string; color: string }) {
     return (
         <Card className="flex-1 min-w-[160px] bg-slate-900 border-white/5 overflow-hidden">
             <View className="flex-row items-center p-4">
@@ -67,7 +67,7 @@ function KpiCard({ icon, label, value, color }: { icon: any; label: string; valu
             <View className="h-1 w-full opacity-30" style={{ backgroundColor: color }} />
         </Card>
     );
-}
+});
 
 // ── Horizontal Bar ──
 function HBar({ label, value, max, rank, color }: { label: string; value: number; max: number; rank: number; color: string }) {

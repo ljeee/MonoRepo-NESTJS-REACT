@@ -88,6 +88,7 @@ export interface Orden {
   productos?: OrdenProducto[];
   factura?: FacturaVenta;
   domicilios?: Domicilio[];
+  costoDomicilio?: number;
 }
 
 export interface PaginatedResponse<T> {
@@ -111,6 +112,8 @@ export interface Domicilio {
   referenciaDomicilio?: string;
   estadoDomicilio?: string;
   costoDomicilio?: number;
+  latitud?: number;
+  longitud?: number;
   assignedUserId?: string;
   domiciliario?: {
     domiciliarioNombre?: string;
@@ -310,6 +313,7 @@ export enum Role {
   Mesero = 'mesero',
   Domiciliario = 'domiciliario',
   Cajero = 'cajero',
+  Cliente = 'cliente',
 }
 
 export interface RegisterDto {

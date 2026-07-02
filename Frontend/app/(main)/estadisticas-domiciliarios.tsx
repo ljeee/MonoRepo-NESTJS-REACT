@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { View, Text, ScrollView } from '../../tw';
 import { RefreshControl } from 'react-native';
 import { PageContainer, PageHeader, Card, Icon, ListSkeleton, Button, DateRangeFilter } from '../../components/ui';
@@ -32,7 +32,7 @@ function getColor(idx: number): string {
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
+const StatCard = memo(function StatCard({ label, value, sub, color }: { label: string; value: string | number; sub?: string; color?: string }) {
     return (
         <Card className="flex-1 p-4 border border-white/5 items-center">
             <Text className="text-slate-400 text-[9px] font-black uppercase tracking-widest mb-2">{label}</Text>
@@ -45,9 +45,9 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
             {!!sub && <Text className="text-slate-500 text-[10px] mt-1">{sub}</Text>}
         </Card>
     );
-}
+});
 
-function RankBadge({ rank }: { rank: number }) {
+const RankBadge = memo(function RankBadge({ rank }: { rank: number }) {
     const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
     if (rank <= 3) {
         return (
@@ -61,9 +61,9 @@ function RankBadge({ rank }: { rank: number }) {
             <Text className="text-slate-500 font-black text-xs">{rank}</Text>
         </View>
     );
-}
+});
 
-function DomiciliarioCard({
+const DomiciliarioCard = memo(function DomiciliarioCard({
     stat,
     rank,
     maxEntregas,
@@ -79,7 +79,7 @@ function DomiciliarioCard({
 
     return (
         <Card className="mb-4 p-5 border border-white/5 overflow-hidden">
-            {/* Top row */}
+            {/* Top row */} 
             <View className="flex-row items-center gap-4 mb-4">
                 <RankBadge rank={rank} />
 
@@ -147,7 +147,7 @@ function DomiciliarioCard({
             </View>
         </Card>
     );
-}
+});
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 

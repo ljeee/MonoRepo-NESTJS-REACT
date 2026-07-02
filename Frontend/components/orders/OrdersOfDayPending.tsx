@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, RefreshControl, ActivityIndicator, Modal, Platform } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshControl, ActivityIndicator, Modal, Platform } from 'react-native';
 import { Href, useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { useBreakpoint } from '../../styles/responsive';
@@ -238,6 +238,25 @@ export default function OrdersOfDayPending() {
 
   const numColumns = isMobile ? 1 : isTablet ? 2 : 3;
 
+  // Ordena una vez y particiona en columnas (masonry); antes se repetía el
+  // sort/filter del array completo por cada columna en cada render
+  const sortedOrders = useMemo(
+    () => [...orders].sort((a, b) => new Date(a.fechaOrden).getTime() - new Date(b.fechaOrden).getTime()),
+    [orders],
+  );
+  const columns = useMemo(
+    () => Array.from({ length: numColumns }, (_, col) => sortedOrders.filter((_, idx) => idx % numColumns === col)),
+    [sortedOrders, numColumns],
+  );
+  const fsPendientes = useMemo(
+    () => sortedOrders.filter((o) => o.estadoOrden === 'pendiente'),
+    [sortedOrders],
+  );
+  const fsColumns = useMemo(
+    () => Array.from({ length: 4 }, (_, col) => fsPendientes.filter((_, idx) => idx % 4 === col)),
+    [fsPendientes],
+  );
+
   return (
     <PageContainer scrollable={false} className="flex-1 bg-(--color-pos-bg)">
       <View className="px-5 pt-4">
@@ -350,16 +369,13 @@ export default function OrdersOfDayPending() {
         ) : (
             <View className="flex-row flex-wrap">
                 {/* Column based rendering for Masonry */}
-                {[...Array(numColumns)].map((_, colIndex) => (
+                {columns.map((columnOrders, colIndex) => (
                     <View key={`col-${colIndex}`} className={isMobile ? 'w-full' : isTablet ? 'w-1/2' : 'w-1/3'}>
-                        {[...orders]
-                            .sort((a, b) => new Date(a.fechaOrden).getTime() - new Date(b.fechaOrden).getTime())
-                            .filter((_, idx) => idx % numColumns === colIndex)
-                            .map((order) => (
-                                <React.Fragment key={order.ordenId}>
-                                    {renderOrderItem({ item: order })}
-                                </React.Fragment>
-                            ))}
+                        {columnOrders.map((order) => (
+                            <React.Fragment key={order.ordenId}>
+                                {renderOrderItem({ item: order })}
+                            </React.Fragment>
+                        ))}
                     </View>
                 ))}
             </View>
@@ -394,24 +410,20 @@ export default function OrdersOfDayPending() {
 
             <ScrollView contentContainerClassName="pb-20">
                 <View className="flex-row flex-wrap px-2">
-                     {[...Array(4)].map((_, colIndex) => (
+                     {fsColumns.map((columnOrders, colIndex) => (
                          <View key={`fs-col-${colIndex}`} style={{ width: '25%', paddingHorizontal: 6 }}>
-                             {orders
-                                 .filter(o => o.estadoOrden === 'pendiente')
-                                 .sort((a, b) => new Date(a.fechaOrden).getTime() - new Date(b.fechaOrden).getTime())
-                                 .filter((_, idx) => idx % 4 === colIndex)
-                                 .map((order) => (
-                                     <View key={order.ordenId} style={{ marginBottom: 16 }}>
-                                         <OrderCardKDS
-                                             orden={order}
-                                             onListo={() => markAsCompleted(order)}
-                                             readOnly
-                                         />
-                                     </View>
-                                 ))}
+                             {columnOrders.map((order) => (
+                                 <View key={order.ordenId} style={{ marginBottom: 16 }}>
+                                     <OrderCardKDS
+                                         orden={order}
+                                         onListo={() => markAsCompleted(order)}
+                                         readOnly
+                                     />
+                                 </View>
+                             ))}
                          </View>
                      ))}
-                     {orders.filter(o => o.estadoOrden === 'pendiente').length === 0 && (
+                     {fsPendientes.length === 0 && (
                         <View className="flex-1 items-center justify-center pt-20">
                             <Icon name="check-circle" size={100} color="#1E293B" />
                             <Text className="text-slate-700 text-3xl font-black mt-6">TODO ENTREGADO</Text>
