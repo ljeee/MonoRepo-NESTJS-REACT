@@ -12,6 +12,8 @@ import CartPanel, { CartItem } from './CartPanel';
 import MenuPicker from './MenuPicker';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
 
+const COP_FORMATTER = new Intl.NumberFormat('es-CO');
+
 let _cartIdCounter = 0;
 function nextCartId() {
   return `cart-${++_cartIdCounter}-${Date.now()}`;
@@ -643,7 +645,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                     <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Costo</Text>
                     <TextInput
                       className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                      value={formState.costoDomicilio ? Number(formState.costoDomicilio).toLocaleString('es-CO') : ''}
+                      value={formState.costoDomicilio ? COP_FORMATTER.format(Number(formState.costoDomicilio)) : ''}
                       onChangeText={(val) => {
                         const numericValue = val.replace(/\D/g, '');
                         updateForm({ costoDomicilio: numericValue });

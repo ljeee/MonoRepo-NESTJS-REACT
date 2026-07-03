@@ -26,16 +26,18 @@ function getDefaultDateRange() {
     return { from: `${y}-${m}-${d}`, to: `${y}-${m}-${d}` };
 }
 
+const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short' });
+
 function formatDayLabel(fecha: string): string {
     if (!fecha) return '--';
     const parsed = new Date(fecha);
     if (!Number.isNaN(parsed.getTime())) {
-        return parsed.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+        return DAY_LABEL_FORMATTER.format(parsed);
     }
     const normalized = fecha.length > 10 ? fecha.slice(0, 10) : fecha;
     const retry = new Date(`${normalized}T12:00:00`);
     if (!Number.isNaN(retry.getTime())) {
-        return retry.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
+        return DAY_LABEL_FORMATTER.format(retry);
     }
     return normalized;
 }

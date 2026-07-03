@@ -27,8 +27,10 @@ function formatFlavorName(name: string): string {
         .replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
+const COP_FORMATTER = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0 });
+
 function formatCurrency(n: number) {
-    return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
+    return '$' + COP_FORMATTER.format(n);
 }
 
 const PERSONALIZACION_COLORS: Record<string, { bg: string; text: string; border: string }> = {

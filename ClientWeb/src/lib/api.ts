@@ -17,29 +17,58 @@ const TOKEN_KEY = 'dfiru:accessToken';
 const REFRESH_KEY = 'dfiru:refreshToken';
 const USER_KEY = 'dfiru:user';
 
+// localStorage puede lanzar (Safari privado, storage deshabilitado): si falla,
+// se degrada a una sesión solo en memoria en vez de romper el login.
+const memoryStorage = new Map<string, string>();
+
+function storageGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return memoryStorage.get(key) ?? null;
+  }
+}
+
+function storageSet(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    memoryStorage.set(key, value);
+  }
+}
+
+function storageRemove(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // ignorar: solo queda la copia en memoria
+  }
+  memoryStorage.delete(key);
+}
+
 export const authStorage = {
-  getToken: () => localStorage.getItem(TOKEN_KEY),
-  getRefreshToken: () => localStorage.getItem(REFRESH_KEY),
+  getToken: () => storageGet(TOKEN_KEY),
+  getRefreshToken: () => storageGet(REFRESH_KEY),
   getUser(): AuthUser | null {
-    const raw = localStorage.getItem(USER_KEY);
+    const raw = storageGet(USER_KEY);
     if (!raw) return null;
     try {
       return JSON.parse(raw) as AuthUser;
     } catch {
-      localStorage.removeItem(USER_KEY);
+      storageRemove(USER_KEY);
       return null;
     }
   },
   save(auth: AuthResponse) {
     const { accessToken, refreshToken, ...user } = auth;
-    localStorage.setItem(TOKEN_KEY, accessToken);
-    localStorage.setItem(REFRESH_KEY, refreshToken);
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    storageSet(TOKEN_KEY, accessToken);
+    storageSet(REFRESH_KEY, refreshToken);
+    storageSet(USER_KEY, JSON.stringify(user));
   },
   clear() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-    localStorage.removeItem(USER_KEY);
+    storageRemove(TOKEN_KEY);
+    storageRemove(REFRESH_KEY);
+    storageRemove(USER_KEY);
   },
 };
 

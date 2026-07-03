@@ -16,6 +16,7 @@ export function useAuthNavigation() {
         const onLoginScreen = segments.includes('login' as any);
         const isDomiciliario = user?.roles?.includes(Role.Domiciliario);
         const isCocina = user?.roles?.includes(Role.Cocina);
+        const isContador = user?.roles?.includes(Role.Contador);
 
         if (!token && !onLoginScreen) {
             router.replace('/login' as any);
@@ -24,6 +25,8 @@ export function useAuthNavigation() {
                 router.replace('/mis-domicilios' as any);
             } else if (isCocina) {
                 router.replace('/ordenes' as any);
+            } else if (isContador) {
+                router.replace('/contabilidad' as any);
             } else {
                 router.replace('/' as any);
             }
@@ -38,6 +41,12 @@ export function useAuthNavigation() {
             const allowedForCocina = ['/ordenes', '/ordenes-todas', '/orden-detalle'];
             if (!allowedForCocina.some(p => currentPath.startsWith(p))) {
                 router.replace('/ordenes' as any);
+            }
+        } else if (token && isContador) {
+            const currentPath = '/' + segments.filter((s: string) => !s.startsWith('(')).join('/');
+            const allowedForContador = ['/contabilidad'];
+            if (!allowedForContador.some(p => currentPath.startsWith(p))) {
+                router.replace('/contabilidad' as any);
             }
         }
     }, [token, user, segments, isLoading, router]);

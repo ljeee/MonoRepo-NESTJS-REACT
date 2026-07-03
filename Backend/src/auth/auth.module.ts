@@ -11,6 +11,7 @@ import {Clientes} from '../clientes/esquemas/clientes.entity';
 import {JwtStrategy} from './strategies/jwt.strategy';
 import {JwtAuthGuard} from './guards/jwt-auth.guard';
 import {RolesGuard} from './guards/roles.guard';
+import {ContadorGuard} from './guards/contador.guard';
 
 @Module({
 	imports: [
@@ -33,6 +34,7 @@ import {RolesGuard} from './guards/roles.guard';
 		JwtStrategy,
 		{provide: APP_GUARD, useClass: JwtAuthGuard},
 		{provide: APP_GUARD, useClass: RolesGuard},
+		{provide: APP_GUARD, useClass: ContadorGuard},
 	],
 	exports: [AuthService],
 })

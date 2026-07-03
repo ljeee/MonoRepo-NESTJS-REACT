@@ -113,11 +113,11 @@ const DomicilioCard = React.memo(function DomicilioCard({ item }: { item: Domici
       <View style={styles.infoRow}>
         <Text style={styles.label}>Teléfono:</Text>
         <Text style={styles.value}>{item.telefono || 'N/A'}</Text>
-        {item.telefono && (
+        {item.telefono ? (
           <Pressable onPress={() => copyToClipboard(item.telefono)} style={({pressed}) => [styles.copyBtn, pressed && {opacity: 0.5}]}>
             <Text style={styles.copyText}>Copiar</Text>
           </Pressable>
-        )}
+        ) : null}
       </View>
 
       {item.latitud && item.longitud ? (

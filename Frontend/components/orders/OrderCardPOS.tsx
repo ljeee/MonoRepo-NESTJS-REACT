@@ -7,6 +7,7 @@ import type { Orden } from '@/src/shared';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 const timeFormatter = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
+const copFormatter = new Intl.NumberFormat('es-CO');
 
 type Novedad = {
     adds: number[];
@@ -82,7 +83,7 @@ const formatHora = (fecha: string | Date): string =>
     timeFormatter.format(new Date(fecha));
 
 const formatTotal = (total?: number | null): string =>
-    total != null ? `$${Number(total).toLocaleString('es-CO')}` : '';
+    total != null ? `$${copFormatter.format(Number(total))}` : '';
 
 // ── Circular mini-timer ────────────────────────────────────────────────────────
 

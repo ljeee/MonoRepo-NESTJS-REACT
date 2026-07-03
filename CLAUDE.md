@@ -104,7 +104,8 @@ Remove-Item -Recurse -Force app/.cxx, app/build, build
 
 **Módulos**: `auth · ordenes · ordenes-productos · facturas-ventas · facturas-pagos · caja-movimientos · clientes · domiciliarios · domicilios · productos · pizza-sabores · inventario-cajas · inventario-bebidas · estadisticas · contabilidad · cierres · empresa · common`.
 
-**Auth**: `JwtAuthGuard` + `RolesGuard` globales via `APP_GUARD` — toda ruta exige JWT salvo `@Public()`. Roles: `admin, cajero, cocina, mesero, domiciliario, cliente`.
+**Auth**: `JwtAuthGuard` + `RolesGuard` + `ContadorGuard` globales via `APP_GUARD` — toda ruta exige JWT salvo `@Public()`. Roles: `admin, cajero, cocina, mesero, domiciliario, cliente, contador`.
+- **Contador**: rol de SOLO LECTURA limitado a contabilidad. `ContadorGuard` bloquea todo método ≠ GET y toda ruta fuera de `/contabilidad`, `/estadisticas`, `/facturas-ventas`, `/facturas-pagos`. En el POS solo ve la pantalla Contabilidad (menú exclusivo en `Navbar.tsx` + redirect en `useAuthNavigation`).
 - **Staff**: login por username (`POST /auth/login`); `JwtStrategy` valida contra tabla `users` por `sub` (uuid).
 - **Clientes finales**: `POST /auth/cliente/login` y `/auth/cliente/registro` (públicos, teléfono + password); el token lleva `sub = teléfono` y rol `cliente`, y `JwtStrategy` lo valida contra la tabla `clientes`. `POST /ordenes` admite rol `cliente` con hardening (fuerza `tipoPedido='domicilio'` y `telefonoCliente` del token).
 - `GET /domicilios/me` matchea `telefonoDomiciliarioAsignado = user.username` — los usuarios domiciliarios deben tener `username = teléfono` (así los crea el seed).

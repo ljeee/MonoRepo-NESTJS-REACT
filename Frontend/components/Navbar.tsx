@@ -160,6 +160,7 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
 
   const isDomiciliario = user?.roles?.includes(Role.Domiciliario);
   const isCocina = user?.roles?.includes(Role.Cocina);
+  const isContador = user?.roles?.includes(Role.Contador);
 
   // ── Hooks siempre al tope (Rules of Hooks) ───────────────────────────────────
   const activeIdx = SECTIONS.findIndex((s) =>
@@ -252,6 +253,39 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
               </Pressable>
             );
           })}
+        </ScrollView>
+        {LogoutButton}
+      </>
+    );
+  }
+
+  // ── Vista exclusiva para contador (solo lectura de contabilidad) ─────────────
+  if (isContador) {
+    const active = pathname === '/contabilidad';
+    return (
+      <>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
+          {!compact && (
+            <View className="mx-4 mb-4 px-3 py-2 bg-orange-500/10 border border-orange-500/20 rounded-xl flex-row items-center gap-2">
+              <Icon name="book-account-outline" size={14} color="#F5A524" />
+              <Text className="text-orange-400 text-[10px] font-black uppercase tracking-widest">Modo Contador · Solo lectura</Text>
+            </View>
+          )}
+          <Pressable
+            className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
+            onPress={() => {
+              router.replace('/contabilidad' as any);
+              if (onClose) onClose();
+            }}
+          >
+            <View className={`w-1 h-3 rounded-full mr-4 ${active ? 'bg-orange-500' : 'bg-transparent'}`} />
+            <Icon name="book-account-outline" size={18} color={active ? '#F5A524' : '#64748B'} />
+            {!compact && (
+              <Text className={`ml-4 text-[13px] flex-1 ${active ? 'text-white font-black' : 'text-slate-400 font-medium'}`}>
+                Contabilidad
+              </Text>
+            )}
+          </Pressable>
         </ScrollView>
         {LogoutButton}
       </>

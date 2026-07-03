@@ -31,9 +31,11 @@ type DomicilioData = {
     cliente?: { clienteNombre?: string; telefono?: string };
 };
 
+const COP_FORMATTER = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0 });
+
 function formatCurrency(n?: number) {
     if (!n) return '$0';
-    return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
+    return '$' + COP_FORMATTER.format(n);
 }
 
 // ─── PagoBanner ───────────────────────────────────────────────────────────────

@@ -41,11 +41,13 @@ const TABS: { id: TabId; label: string; icon: any }[] = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const DATE_FORMATTER = new Intl.DateTimeFormat('es-CO', { day: '2-digit', month: 'short', year: '2-digit' });
+
 function fmtDate(iso?: string) {
     if (!iso) return '—';
     const d = new Date(iso);
     if (isNaN(d.getTime())) return iso.slice(0, 10);
-    return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: '2-digit' });
+    return DATE_FORMATTER.format(d);
 }
 
 function metodoLabel(m?: string) {

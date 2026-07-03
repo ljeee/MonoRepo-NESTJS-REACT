@@ -30,6 +30,65 @@ function getProductFlavors(p: OrdenProducto): string[] {
   return s;
 }
 
+type NovedadOrden = {
+  adds: number[];
+  removes: string[];
+  modifies: Record<number, 'qty' | 'flavor' | 'both'>;
+  timestamp: number;
+};
+
+// ── Items memoizados: reciben handlers estables por id y construyen los
+// closures adentro, para que el memo de OrderCardPOS/KDS sí corte re-renders ──
+
+const POSOrderItem = React.memo(function POSOrderItem({
+  item,
+  clientName,
+  novedad,
+  isPatching,
+  onOpen,
+  onEdit,
+  onPrintItem,
+  onComplete,
+}: {
+  item: Orden;
+  clientName: string;
+  novedad?: NovedadOrden;
+  isPatching: boolean;
+  onOpen: (ordenId: number) => void;
+  onEdit: (ordenId: number) => void;
+  onPrintItem?: (item: Orden) => void;
+  onComplete: (item: Orden) => void;
+}) {
+  return (
+    <View className="p-2 w-full">
+      <OrderCardPOS
+        item={item}
+        clientName={clientName}
+        novedad={novedad}
+        patchLoading={isPatching}
+        onPress={() => onOpen(item.ordenId)}
+        onEdit={() => onEdit(item.ordenId)}
+        onPrint={onPrintItem ? () => onPrintItem(item) : undefined}
+        onComplete={() => onComplete(item)}
+      />
+    </View>
+  );
+});
+
+const KDSOrderItem = React.memo(function KDSOrderItem({
+  order,
+  onComplete,
+}: {
+  order: Orden;
+  onComplete: (orden: Orden) => void;
+}) {
+  return (
+    <View style={{ marginBottom: 16 }}>
+      <OrderCardKDS orden={order} onListo={() => onComplete(order)} readOnly />
+    </View>
+  );
+});
+
 export default function OrdersOfDayPending() {
   const router = useRouter();
   const { isMobile, isTablet } = useBreakpoint();
@@ -80,7 +139,7 @@ export default function OrdersOfDayPending() {
       return;
     }
 
-    const newNovedades = { ...novedades };
+    const detected: typeof novedades = {};
     let hasNewNovedad = false;
 
     orders.forEach(currentOrder => {
@@ -121,7 +180,7 @@ export default function OrdersOfDayPending() {
       });
 
       if (adds.length > 0 || removes.length > 0 || Object.keys(modifies).length > 0) {
-        newNovedades[currentOrder.ordenId] = {
+        detected[currentOrder.ordenId] = {
           adds,
           removes,
           modifies,
@@ -132,7 +191,8 @@ export default function OrdersOfDayPending() {
     });
 
     if (hasNewNovedad) {
-      setNovedades(newNovedades);
+      // Merge funcional: no resucita entradas que el interval de limpieza borró
+      setNovedades(prev => ({ ...prev, ...detected }));
     }
     prevOrdersRef.current = orders;
   }, [orders]);
@@ -179,7 +239,7 @@ export default function OrdersOfDayPending() {
   const { addPayment, hasItems, queue, isSyncing, syncPayments } = useOfflineQueue();
   const { debounce, isProcessing } = useAntiDebounce();
 
-  const markAsCompleted = debounce(async (orden: Orden) => {
+  const completeOrden = useCallback(async (orden: Orden) => {
     setPatchLoading(orden.ordenId);
     try {
       await api.ordenes.update(orden.ordenId, { estadoOrden: 'completada' });
@@ -190,7 +250,11 @@ export default function OrdersOfDayPending() {
       setError('No se pudo completar la orden. Intente de nuevo.');
       setPatchLoading(null);
     }
-  });
+  }, [fetchOrders]);
+
+  // debounce(fn) devuelve una función nueva en cada llamada — memoizar para que
+  // los items memoizados no reciban una referencia distinta por render
+  const markAsCompleted = useMemo(() => debounce(completeOrden), [debounce, completeOrden]);
 
 
   const getClientName = useCallback((item: Orden) => {
@@ -206,34 +270,42 @@ export default function OrdersOfDayPending() {
     return nombre;
   }, []);
 
-  const renderOrderItem = useCallback(({ item }: { item: Orden }) => {
-    return (
-      <View className="p-2 w-full">
-        <OrderCardPOS
-          item={item}
-          clientName={getClientName(item)}
-          novedad={novedades[item.ordenId]}
-          patchLoading={patchLoading === item.ordenId}
-          onPress={() => router.push(`/orden-detalle?ordenId=${item.ordenId}` as Href)}
-          onEdit={() => router.push(`/editar-orden?ordenId=${item.ordenId}` as Href)}
-          onPrint={Platform.OS === 'web' ? () => printOrderReceipt({
-            ordenId: item.ordenId,
-            clienteNombre: getClientName(item),
-            tipoPedido: item.tipoPedido,
-            observaciones: item.observaciones,
-            direccion: item.domicilios?.[0]?.direccionEntrega,
-            fecha: item.fechaOrden,
-            productos: (item.productos || []).map((p) => ({
-              nombre: p.producto,
-              cantidad: p.cantidad ?? 1,
-              sabores: getProductFlavors(p).filter(Boolean),
-            })),
-          }) : undefined}
-          onComplete={() => markAsCompleted(item)}
-        />
-      </View>
-    );
-  }, [getClientName, markAsCompleted, patchLoading, router, novedades]);
+  const handleOpenOrden = useCallback((ordenId: number) => {
+    router.push(`/orden-detalle?ordenId=${ordenId}` as Href);
+  }, [router]);
+
+  const handleEditOrden = useCallback((ordenId: number) => {
+    router.push(`/editar-orden?ordenId=${ordenId}` as Href);
+  }, [router]);
+
+  const handlePrintOrden = useCallback((item: Orden) => {
+    printOrderReceipt({
+      ordenId: item.ordenId,
+      clienteNombre: getClientName(item),
+      tipoPedido: item.tipoPedido,
+      observaciones: item.observaciones,
+      direccion: item.domicilios?.[0]?.direccionEntrega,
+      fecha: item.fechaOrden,
+      productos: (item.productos || []).map((p) => ({
+        nombre: p.producto,
+        cantidad: p.cantidad ?? 1,
+        sabores: getProductFlavors(p).filter(Boolean),
+      })),
+    });
+  }, [getClientName]);
+
+  const renderOrderItem = useCallback(({ item }: { item: Orden }) => (
+    <POSOrderItem
+      item={item}
+      clientName={getClientName(item)}
+      novedad={novedades[item.ordenId]}
+      isPatching={patchLoading === item.ordenId}
+      onOpen={handleOpenOrden}
+      onEdit={handleEditOrden}
+      onPrintItem={Platform.OS === 'web' ? handlePrintOrden : undefined}
+      onComplete={markAsCompleted}
+    />
+  ), [getClientName, novedades, patchLoading, handleOpenOrden, handleEditOrden, handlePrintOrden, markAsCompleted]);
 
 
   const numColumns = isMobile ? 1 : isTablet ? 2 : 3;
@@ -413,13 +485,7 @@ export default function OrdersOfDayPending() {
                      {fsColumns.map((columnOrders, colIndex) => (
                          <View key={`fs-col-${colIndex}`} style={{ width: '25%', paddingHorizontal: 6 }}>
                              {columnOrders.map((order) => (
-                                 <View key={order.ordenId} style={{ marginBottom: 16 }}>
-                                     <OrderCardKDS
-                                         orden={order}
-                                         onListo={() => markAsCompleted(order)}
-                                         readOnly
-                                     />
-                                 </View>
+                                 <KDSOrderItem key={order.ordenId} order={order} onComplete={markAsCompleted} />
                              ))}
                          </View>
                      ))}
@@ -439,6 +505,9 @@ export default function OrdersOfDayPending() {
 }
 
 // ── Isolated clock to avoid re-rendering the whole tree every second ──
+const CLOCK_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+const CLOCK_DATE_FORMATTER = new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+
 function HeaderClock() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -448,10 +517,10 @@ function HeaderClock() {
   return (
     <View className="items-end">
       <Text className="text-white text-2xl font-black" style={{ fontFamily: 'Space Grotesk' }}>
-        {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        {CLOCK_TIME_FORMATTER.format(now)}
       </Text>
       <Text className="text-orange-500 text-[10px] font-black uppercase tracking-widest">
-        {now.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+        {CLOCK_DATE_FORMATTER.format(now)}
       </Text>
     </View>
   );

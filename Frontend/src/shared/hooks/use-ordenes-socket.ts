@@ -68,6 +68,7 @@ export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero'
     setSocket(socketInstance);
 
     return () => {
+      socketInstance.removeAllListeners();
       socketInstance.disconnect();
     };
   }, [baseUrl, dispositivo]);

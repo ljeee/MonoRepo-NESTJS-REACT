@@ -364,8 +364,8 @@ export default function ClientesScreen() {
                         </View>
                         {(dir.referencia || dir.costoDomicilio !== undefined) && (
                           <View className="flex-row items-center gap-3 mt-2 pl-6 opacity-70">
-                            {dir.referencia && <Text className="text-slate-400 text-[10px] italic flex-1">Ref: {dir.referencia}</Text>}
-                            {dir.costoDomicilio !== undefined && <Text className="text-slate-400 text-[10px] font-bold">Costo: ${formatCurrency(dir.costoDomicilio).replace('$', '')}</Text>}
+                            {dir.referencia ? <Text className="text-slate-400 text-[10px] italic flex-1">Ref: {dir.referencia}</Text> : null}
+                            {dir.costoDomicilio !== undefined ? <Text className="text-slate-400 text-[10px] font-bold">Costo: ${formatCurrency(dir.costoDomicilio).replace('$', '')}</Text> : null}
                           </View>
                         )}
                       </View>

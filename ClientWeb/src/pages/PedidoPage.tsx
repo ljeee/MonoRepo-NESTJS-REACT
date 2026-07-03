@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import MapPicker from '../components/MapPicker';
+import { lazy, memo, Suspense, useCallback, useEffect, useState } from 'react';
 import { api, getApiErrorMessage } from '../lib/api';
+
+// Leaflet (~150KB) solo se descarga cuando el mapa entra en pantalla
+const MapPicker = lazy(() => import('../components/MapPicker'));
 import { useAuth } from '../context/AuthContext';
 import type {
   CartItem,
@@ -54,7 +56,9 @@ interface ProductoCardProps {
   onAdd: (item: CartItem) => void;
 }
 
-function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
+// memo: teclear en "Tus Datos" re-renderiza PedidoPage; sin memo el catálogo
+// completo se reconciliaba por cada pulsación (onAdd es estable)
+const ProductoCard = memo(function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
   const variantes = (producto.variantes ?? []).filter((v) => v.activo);
   const personalizacion = resolverPersonalizacion(producto);
   const saboresDisponibles = saboresParaProducto(personalizacion, sabores);
@@ -122,6 +126,7 @@ function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
 
       {variantes.length > 1 ? (
         <select
+          aria-label={`Tamaño de ${producto.productoNombre}`}
           value={variante.varianteId}
           onChange={(e) => setVarianteId(Number(e.target.value))}
           className="mt-3 w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm"
@@ -142,6 +147,7 @@ function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
             <button
               key={b}
               type="button"
+              aria-pressed={base === b}
               onClick={() => setBase(b)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
                 base === b
@@ -167,6 +173,7 @@ function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
                 <button
                   key={s.saborId}
                   type="button"
+                  aria-pressed={selected}
                   onClick={() => toggleSabor(s.nombre)}
                   className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
                     selected
@@ -180,7 +187,7 @@ function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
               );
             })}
           </div>
-          {aviso ? <p className="text-xs text-red-500 mt-2">{aviso}</p> : null}
+          {aviso ? <p role="alert" className="text-xs text-red-500 mt-2">{aviso}</p> : null}
         </div>
       ) : null}
 
@@ -193,7 +200,7 @@ function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
       </button>
     </div>
   );
-}
+});
 
 // ─── Página de pedido ─────────────────────────────────────────────────────────
 
@@ -217,22 +224,31 @@ export default function PedidoPage() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  const loadCatalog = useCallback(() => {
+  const loadCatalog = useCallback((isActive: () => boolean = () => true) => {
     setCatalogLoading(true);
     setCatalogError('');
     Promise.all([api.productos.getAll(), api.pizzaSabores.getAll()])
       .then(([prods, sabs]) => {
+        if (!isActive()) return;
         setProductos(prods.filter((p) => p.activo && (p.variantes ?? []).some((v) => v.activo)));
         setSabores(sabs);
       })
       .catch((err) => {
+        if (!isActive()) return;
         setCatalogError(getApiErrorMessage(err, 'No se pudo cargar el menú.'));
       })
-      .finally(() => setCatalogLoading(false));
+      .finally(() => {
+        if (isActive()) setCatalogLoading(false);
+      });
   }, []);
 
   useEffect(() => {
-    loadCatalog();
+    // ignore flag: evita setState tras unmount (y doble fetch visible en StrictMode)
+    let active = true;
+    loadCatalog(() => active);
+    return () => {
+      active = false;
+    };
   }, [loadCatalog]);
 
   const addToCart = useCallback((item: CartItem) => {
@@ -315,7 +331,7 @@ export default function PedidoPage() {
       <main className="min-h-screen flex items-center justify-center p-4">
         <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-lg max-w-md w-full text-center border border-slate-200 dark:border-slate-700">
           <div className="w-20 h-20 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg aria-hidden="true" className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
             </svg>
           </div>
@@ -351,10 +367,10 @@ export default function PedidoPage() {
             <p className="text-center text-slate-500 py-8 animate-pulse">Cargando menú...</p>
           ) : catalogError ? (
             <div className="text-center py-8">
-              <p className="text-red-500 mb-3">{catalogError}</p>
+              <p role="alert" className="text-red-500 mb-3">{catalogError}</p>
               <button
                 type="button"
-                onClick={loadCatalog}
+                onClick={() => loadCatalog()}
                 className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-sm"
               >
                 Reintentar
@@ -449,7 +465,17 @@ export default function PedidoPage() {
             Mueve el mapa para señalar la puerta exacta de tu casa. Esto ayudará a nuestro
             domiciliario.
           </p>
-          <MapPicker position={position} onPositionChange={setPosition} />
+          <Suspense
+            fallback={
+              <div
+                className="h-[300px] w-full rounded-xl bg-slate-100 dark:bg-slate-900 animate-pulse"
+                role="status"
+                aria-label="Cargando mapa"
+              />
+            }
+          >
+            <MapPicker position={position} onPositionChange={setPosition} />
+          </Suspense>
         </section>
 
         {/* Datos */}
@@ -461,19 +487,21 @@ export default function PedidoPage() {
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Celular</label>
+              <label htmlFor="pedido-celular" className="block text-sm font-medium mb-1">Celular</label>
               <input
+                id="pedido-celular"
                 disabled
                 value={user?.username ?? ''}
                 type="tel"
                 className={`${inputClass} opacity-60 cursor-not-allowed`}
               />
-              <p className="text-xs text-slate-400 mt-1">El pedido queda a nombre de tu cuenta.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">El pedido queda a nombre de tu cuenta.</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Nombre Completo</label>
+              <label htmlFor="pedido-nombre" className="block text-sm font-medium mb-1">Nombre Completo</label>
               <input
+                id="pedido-nombre"
                 required
                 name="nombre"
                 value={formData.nombre}
@@ -485,8 +513,9 @@ export default function PedidoPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Dirección Escrita</label>
+              <label htmlFor="pedido-direccion" className="block text-sm font-medium mb-1">Dirección Escrita</label>
               <input
+                id="pedido-direccion"
                 required
                 name="direccion"
                 value={formData.direccion}
@@ -498,10 +527,11 @@ export default function PedidoPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Referencia o Detalles <span className="text-slate-400 font-normal">(Opcional)</span>
+              <label htmlFor="pedido-referencia" className="block text-sm font-medium mb-1">
+                Referencia o Detalles <span className="text-slate-500 dark:text-slate-400 font-normal">(Opcional)</span>
               </label>
               <input
+                id="pedido-referencia"
                 name="referencia"
                 value={formData.referencia}
                 onChange={handleInputChange}
@@ -520,9 +550,10 @@ export default function PedidoPage() {
             Método de Pago
           </h2>
 
-          <div className="grid grid-cols-2 gap-3">
+          <fieldset className="grid grid-cols-2 gap-3">
+            <legend className="sr-only">Método de pago</legend>
             <label
-              className={`border rounded-xl p-4 cursor-pointer transition-all text-center flex flex-col items-center gap-2 ${formData.metodo === 'efectivo' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500' : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+              className={`border rounded-xl p-4 cursor-pointer transition-all text-center flex flex-col items-center gap-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${formData.metodo === 'efectivo' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500' : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
             >
               <input
                 type="radio"
@@ -532,12 +563,12 @@ export default function PedidoPage() {
                 onChange={handleInputChange}
                 className="sr-only"
               />
-              <span className="text-2xl">💵</span>
+              <span className="text-2xl" aria-hidden="true">💵</span>
               <span className="font-medium">Efectivo</span>
             </label>
 
             <label
-              className={`border rounded-xl p-4 cursor-pointer transition-all text-center flex flex-col items-center gap-2 ${formData.metodo === 'transferencia' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500' : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+              className={`border rounded-xl p-4 cursor-pointer transition-all text-center flex flex-col items-center gap-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:ring-offset-2 ${formData.metodo === 'transferencia' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500' : 'border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
             >
               <input
                 type="radio"
@@ -547,14 +578,14 @@ export default function PedidoPage() {
                 onChange={handleInputChange}
                 className="sr-only"
               />
-              <span className="text-2xl">📱</span>
+              <span className="text-2xl" aria-hidden="true">📱</span>
               <span className="font-medium">Transferencia</span>
             </label>
-          </div>
+          </fieldset>
         </section>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-center font-medium">
+          <div role="alert" className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-center font-medium">
             {error}
           </div>
         )}

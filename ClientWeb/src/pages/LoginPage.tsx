@@ -58,10 +58,15 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Celular</label>
+            <label htmlFor="login-telefono" className="block text-sm font-medium mb-1">Celular</label>
             <input
+              id="login-telefono"
               required
               type="tel"
+              inputMode="numeric"
+              pattern="\d{7,15}"
+              maxLength={15}
+              title="Entre 7 y 15 dígitos, solo números"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
               className={inputClass}
@@ -72,10 +77,11 @@ export default function LoginPage() {
 
           {mode === 'registro' && (
             <div>
-              <label className="block text-sm font-medium mb-1">
-                Nombre <span className="text-slate-400 font-normal">(Opcional)</span>
+              <label htmlFor="login-nombre" className="block text-sm font-medium mb-1">
+                Nombre <span className="text-slate-500 dark:text-slate-400 font-normal">(Opcional)</span>
               </label>
               <input
+                id="login-nombre"
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
@@ -87,8 +93,9 @@ export default function LoginPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1">Contraseña</label>
+            <label htmlFor="login-password" className="block text-sm font-medium mb-1">Contraseña</label>
             <input
+              id="login-password"
               required
               type="password"
               minLength={8}
@@ -101,7 +108,7 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-center font-medium">
+            <div role="alert" className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-center font-medium">
               {error}
             </div>
           )}

@@ -372,9 +372,9 @@ export default function OrdenDetalleScreen() {
                               valueColor="#34D399"
                           />
                       )}
-                      {orden.observaciones && (
+                      {orden.observaciones ? (
                           <DetailItem icon="note-text-outline" label="Notas" value={orden.observaciones} italic />
-                      )}
+                      ) : null}
                   </View>
               </Card>
           </View>

@@ -200,12 +200,12 @@ function DomicilioCard({
                             {clienteNombre}
                         </Text>
                         <View className="flex-row items-center gap-2 mt-0.5">
-                            {item.orden?.ordenId && (
+                            {item.orden?.ordenId ? (
                                 <Text className="text-slate-500 font-bold text-[9px] uppercase tracking-widest">#{item.orden.ordenId}</Text>
-                            )}
-                            {item.fechaCreado && (
+                            ) : null}
+                            {item.fechaCreado ? (
                                 <Text className="text-slate-600 font-bold text-[9px] uppercase tracking-widest">• {formatDateTime(item.fechaCreado)}</Text>
-                            )}
+                            ) : null}
                         </View>
                     </View>
                     <Badge label={badge.label} variant={badge.label.toLowerCase() === 'entregado' ? 'success' : 'warning'} size="sm" />

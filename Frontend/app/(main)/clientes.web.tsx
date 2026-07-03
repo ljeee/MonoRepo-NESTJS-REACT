@@ -334,8 +334,8 @@ const ClienteFormModal = memo(({
                         </View>
                         {(dir.referencia || dir.costoDomicilio !== undefined) && (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, paddingLeft: 24, opacity: 0.7 }}>
-                            {dir.referencia && <Text className="text-slate-400 text-[10px] italic flex-1">Ref: {dir.referencia}</Text>}
-                            {dir.costoDomicilio !== undefined && <Text className="text-slate-400 text-[10px] font-bold">Costo: ${formatCurrency(dir.costoDomicilio).replace('$', '')}</Text>}
+                            {dir.referencia ? <Text className="text-slate-400 text-[10px] italic flex-1">Ref: {dir.referencia}</Text> : null}
+                            {dir.costoDomicilio !== undefined ? <Text className="text-slate-400 text-[10px] font-bold">Costo: ${formatCurrency(dir.costoDomicilio).replace('$', '')}</Text> : null}
                           </View>
                         )}
                       </View>

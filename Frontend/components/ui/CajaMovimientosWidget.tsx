@@ -11,6 +11,8 @@ import { AjusteCajaModal } from './AjusteCajaModal';
 
 const PAGE_SIZE = 15;
 
+const TIME_FORMATTER = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
+
 interface Props {
     cajaResumen: CajaResumen | null | undefined;
     onRefresh: () => void;
@@ -232,7 +234,7 @@ export default function CajaMovimientosWidget({ cajaResumen, onRefresh, isLoadin
                                                 {mov.descripcion || (mov.tipo.charAt(0).toUpperCase() + mov.tipo.slice(1))}
                                             </Text>
                                             <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, marginTop: 2 }}>
-                                                {new Date(mov.createdAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                                                {TIME_FORMATTER.format(new Date(mov.createdAt))}
                                             </Text>
                                             {renderDenomJSX(mov.denominaciones)}
                                             {mov.metodo === 'efectivo_transferencia' && (

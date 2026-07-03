@@ -762,13 +762,13 @@ export default function FacturasPagosScreen() {
                         <View className="flex-1">
                           <Text className="text-base font-bold text-white mb-1">{item.nombreGasto || 'Sin nombre'}</Text>
                           <View className="flex-row gap-4">
-                            {item.fechaFactura && (
+                            {item.fechaFactura ? (
                               <View className="flex-row items-center gap-1.5">
                                 <Icon name="calendar-outline" size={11} color="#64748B" />
                                 <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>{item.fechaFactura}</Text>
                               </View>
-                            )}
-                            {item.metodo && (
+                            ) : null}
+                            {item.metodo ? (
                               <View className="flex-row items-center gap-1.5">
                                 <Icon
                                   name={
@@ -784,7 +784,7 @@ export default function FacturasPagosScreen() {
                                   {item.metodo === 'efectivo_no_caja' ? 'Ef. No Caja' : item.metodo}
                                 </Text>
                               </View>
-                            )}
+                            ) : null}
                           </View>
                         </View>
                         <View className="items-end gap-1.5">
@@ -793,14 +793,14 @@ export default function FacturasPagosScreen() {
                               −${formatCurrency(item.total)}
                             </Text>
                           )}
-                          {item.estado && (
+                          {item.estado ? (
                             <Badge label={item.estado} variant={item.estado === 'pagado' ? 'success' : 'warning'} size="sm" />
-                          )}
+                          ) : null}
                         </View>
                       </View>
-                      {item.descripcion && (
+                      {item.descripcion ? (
                         <Text className="text-xs text-slate-400 italic mb-3 pl-3 border-l-2 border-slate-700">{item.descripcion}</Text>
-                      )}
+                      ) : null}
                       <View className="flex-row justify-end gap-2 pt-3 border-t border-white/5">
                         <Button title="Editar" icon="pencil-outline" variant="ghost" size="sm" onPress={() => onEdit(item)} disabled={deleting} />
                         <Button title="Eliminar" icon="trash-can-outline" variant="ghost" size="sm" onPress={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })} disabled={deleting} className="opacity-70" />

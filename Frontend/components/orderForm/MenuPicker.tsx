@@ -18,7 +18,9 @@ interface MenuPickerProps {
 const normalize = (s: string) =>
   (s || '').toLowerCase().replace(/,/g, '.').normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-export default function MenuPicker({ onAdd }: MenuPickerProps) {
+// memo (export al final): CreateOrderForm re-renderiza por cada tecla de sus
+// inputs; sin memo la grilla completa del menú se reconciliaba en cada pulsación
+function MenuPicker({ onAdd }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
   const { isMobile, isTablet } = useBreakpoint();
@@ -351,3 +353,5 @@ const ProductItem = React.memo(({
     </View>
   );
 });
+
+export default React.memo(MenuPicker);

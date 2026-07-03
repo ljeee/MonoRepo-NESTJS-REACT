@@ -90,6 +90,13 @@ export async function seedUsers() {
 				name: 'Mesero 5',
 				roles: [Role.Mesero],
 			},
+			// ── Contador (solo lectura de contabilidad) ─────────────────────
+			{
+				username: 'contador01',
+				password: 'contador1234',
+				name: 'Contador',
+				roles: [Role.Contador],
+			},
 		];
 
 		for (const userData of users) {

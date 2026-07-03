@@ -21,7 +21,7 @@ export default function Header() {
     <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-50">
       <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <span className="text-2xl">🍕</span>
+          <span className="text-2xl" aria-hidden="true">🍕</span>
           <span className="text-lg font-bold text-slate-900 dark:text-white">Dfiru Pizzería</span>
         </Link>
 

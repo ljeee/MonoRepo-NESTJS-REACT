@@ -22,13 +22,21 @@ export default function NosotrosPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
     api.empresa
       .get()
-      .then(setEmpresa)
+      .then((data) => {
+        if (active) setEmpresa(data);
+      })
       .catch(() => {
         // Si el API no responde se muestran los datos por defecto de la marca
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
   const nombre = empresa.nombreComercial || 'Dfiru Pizzería';
@@ -37,7 +45,7 @@ export default function NosotrosPage() {
   return (
     <main className="max-w-2xl mx-auto px-4 mt-6 pb-10 space-y-6">
       <section className="bg-white dark:bg-slate-800 p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 text-center">
-        <span className="text-6xl block mb-4">🍕</span>
+        <span className="text-6xl block mb-4" aria-hidden="true">🍕</span>
         <h1 className="text-3xl font-bold mb-2">{nombre}</h1>
         <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">
           Pizzas artesanales hechas al momento con ingredientes frescos. Pide en línea y recibe en

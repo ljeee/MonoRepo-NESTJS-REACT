@@ -11,6 +11,7 @@ const ROLES = [
     { label: 'Cocinero', value: Role.Cocina },
     { label: 'Domiciliario', value: Role.Domiciliario },
     { label: 'Mesero', value: Role.Mesero },
+    { label: 'Contador (solo lectura)', value: Role.Contador },
     // El rol Admin está prohibido en este formulario
 ];
 

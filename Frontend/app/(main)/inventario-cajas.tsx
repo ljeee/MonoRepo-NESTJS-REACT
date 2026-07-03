@@ -8,13 +8,15 @@ import type { InventarioCaja, InventarioCajasMovimiento } from '@/src/shared';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+const DATETIME_FORMATTER = new Intl.DateTimeFormat('es-CO', {
+  hour: '2-digit',
+  minute: '2-digit',
+  day: 'numeric',
+  month: 'short',
+});
+
 function formatDateShort(dateStr: string): string {
-  return new Date(dateStr).toLocaleString('es-CO', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: 'numeric',
-    month: 'short',
-  });
+  return DATETIME_FORMATTER.format(new Date(dateStr));
 }
 
 const QUICK_ADDS = [5, 10, 50];

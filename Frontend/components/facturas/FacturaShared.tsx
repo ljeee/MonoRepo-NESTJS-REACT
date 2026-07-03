@@ -347,12 +347,12 @@ export const FacturaCard = React.memo(function FacturaCard({
         )}
 
         {/* ── Notas ── */}
-        {item.descripcion && (
+        {item.descripcion ? (
           <RNView style={fc.notasBox}>
             <RNText style={fc.notasLabel}>Notas</RNText>
             <RNText style={fc.notasText}>'{item.descripcion}'</RNText>
           </RNView>
-        )}
+        ) : null}
 
         {/* ── Productos ── */}
         {item.ordenes && item.ordenes.length > 0 && (
