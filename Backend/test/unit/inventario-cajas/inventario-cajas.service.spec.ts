@@ -267,5 +267,35 @@ describe('InventarioCajasService', () => {
 			// Solo una llamada a save (agrupado)
 			expect(caja.cantidad).toBe(7);
 		});
+
+		// Regresión: antes se comparaba por IGUALDAD EXACTA contra un nombre
+		// hardcodeado ("Caja Pizza Pequeña"). Si el admin registraba la caja con
+		// cualquier otra redacción razonable, el descuento se omitía en silencio.
+		it('encuentra la caja aunque el admin la haya nombrado distinto al string hardcodeado', async () => {
+			const caja = {id: 2, nombre: 'Caja pequeña', cantidad: 15, alertaMinimo: null};
+			mockInventarioRepo.find.mockResolvedValue([caja]);
+			mockInventarioRepo.findOne.mockResolvedValue(caja);
+			mockMovimientosRepo.save.mockResolvedValue({});
+			mockInventarioRepo.save.mockImplementation(async (c: any) => c);
+
+			await service.descontarCajasParaOrden([{varianteNombre: 'Pequeña', tipoProducto: 'pizza', cantidad: 1}], 11);
+
+			expect(caja.cantidad).toBe(14);
+		});
+
+		it('reconoce papas encajadas como caja pequeña con nombre en plural', async () => {
+			const caja = {id: 3, nombre: 'Cajas Pequeñas', cantidad: 8, alertaMinimo: null};
+			mockInventarioRepo.find.mockResolvedValue([caja]);
+			mockInventarioRepo.findOne.mockResolvedValue(caja);
+			mockMovimientosRepo.save.mockResolvedValue({});
+			mockInventarioRepo.save.mockImplementation(async (c: any) => c);
+
+			await service.descontarCajasParaOrden(
+				[{varianteNombre: 'Encajadas Mexicanas', tipoProducto: 'PAPAS ENCAJADAS', cantidad: 1}],
+				12,
+			);
+
+			expect(caja.cantidad).toBe(7);
+		});
 	});
 });

@@ -104,31 +104,47 @@ export class InventarioCajasService {
 		}));
 	}
 
+	/** Palabras clave (sin tildes) que identifican cada categoría dentro del nombre
+	 * libre que el admin le puso a la caja. Antes se buscaba una IGUALDAD EXACTA
+	 * contra un nombre hardcodeado (ej. "Caja Pizza Pequeña"); si el admin creaba la
+	 * caja con cualquier otra redacción razonable ("Caja pequeña", "Cajas Pequeñas",
+	 * "Caja Personal") el descuento se omitía en silencio. Ahora basta con que el
+	 * nombre de la caja CONTENGA la palabra clave de su categoría. */
+	private static readonly PALABRAS_CLAVE_CATEGORIA: Record<string, string[]> = {
+		pequena: ['pequen', 'personal'],
+		mediana: ['median'],
+		grande: ['grand'],
+		calzone: ['calzon'],
+	};
+
 	/**
 	 * Descuenta cajas automáticamente al crear una orden de domicilio/para llevar.
-	 * Mapeo:
-	 *   - variante con "pequeña" / "personal"  → "Caja Pizza Pequeña"
-	 *   - variante con "mediana"               → "Caja Pizza Mediana"
-	 *   - variante con "grande"                → "Caja Pizza Grande"
-	 *   - tipo "calzone" (cualquier tamaño)    → "Caja Calzone"
-	 * Si la caja no existe en la BD se omite silenciosamente.
+	 * Clasifica cada producto en una categoría (pequeña/mediana/grande/calzone) y
+	 * busca, entre las cajas creadas por el admin, cualquiera cuyo nombre contenga
+	 * la palabra clave de esa categoría. Si ninguna coincide, se omite (con warning
+	 * en logs para poder detectarlo — antes fallaba sin dejar rastro).
 	 */
 	async descontarCajasParaOrden(
 		items: {varianteNombre: string; tipoProducto: string; cantidad: number}[],
 		notaOrdenId: number,
 	): Promise<void> {
-		// Agrupar por nombre de caja para hacer una sola llamada por tipo
+		// Agrupar por categoría para hacer una sola llamada por tipo
 		const acumulado = new Map<string, number>();
 
 		for (const item of items) {
-			const nombreCaja = this.resolverNombreCaja(item.varianteNombre, item.tipoProducto);
-			if (!nombreCaja) continue;
-			acumulado.set(nombreCaja, (acumulado.get(nombreCaja) ?? 0) + item.cantidad);
+			const categoria = this.resolverCategoriaCaja(item.varianteNombre, item.tipoProducto);
+			if (!categoria) continue;
+			acumulado.set(categoria, (acumulado.get(categoria) ?? 0) + item.cantidad);
 		}
 
-		for (const [nombreCaja, qty] of acumulado) {
-			const caja = await this.findCajaPorNombre(nombreCaja);
-			if (!caja) continue; // caja no registrada → ignorar
+		for (const [categoria, qty] of acumulado) {
+			const caja = await this.findCajaPorCategoria(categoria);
+			if (!caja) {
+				console.warn(
+					`[InventarioCajas] Ninguna caja registrada coincide con la categoría "${categoria}" — orden #${notaOrdenId} no descontó inventario de cajas.`,
+				);
+				continue;
+			}
 
 			const nuevaCantidad = Math.max(0, caja.cantidad - qty);
 			await this.movimientosRepo.save(
@@ -145,30 +161,31 @@ export class InventarioCajasService {
 		}
 	}
 
-	private async findCajaPorNombre(nombreCaja: string): Promise<InventarioCajas | null> {
+	private async findCajaPorCategoria(categoria: string): Promise<InventarioCajas | null> {
 		const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+		const palabrasClave = InventarioCajasService.PALABRAS_CLAVE_CATEGORIA[categoria] ?? [categoria];
 		const todas = await this.inventarioRepo.find();
-		return todas.find((c) => norm(c.nombre) === norm(nombreCaja)) ?? null;
+		return todas.find((c) => palabrasClave.some((clave) => norm(c.nombre).includes(clave))) ?? null;
 	}
 
-	private resolverNombreCaja(varianteNombre: string, tipoProducto: string): string | null {
+	private resolverCategoriaCaja(varianteNombre: string, tipoProducto: string): string | null {
 		const tipo = (tipoProducto || '').toLowerCase();
 		const variante = (varianteNombre || '').toLowerCase();
 
 		// Papas encajadas → caja pequeña (se empacan como una pizza pequeña)
-		if (tipo.includes('encajada') || variante.includes('encajada')) return 'Caja Pizza Pequeña';
+		if (tipo.includes('encajada') || variante.includes('encajada')) return 'pequena';
 
-		if (tipo.includes('calzone')) return 'Caja Calzone';
+		if (tipo.includes('calzone')) return 'calzone';
 
 		if (variante.includes('pequeña') || variante.includes('pequena') || variante.includes('personal'))
-			return 'Caja Pizza Pequeña';
+			return 'pequena';
 
-		if (variante.includes('mediana')) return 'Caja Pizza Mediana';
+		if (variante.includes('mediana')) return 'mediana';
 
-		if (variante.includes('grande')) return 'Caja Pizza Grande';
+		if (variante.includes('grande')) return 'grande';
 
 		// fallback: si es pizza pero no reconocemos tamaño
-		if (tipo.includes('pizza')) return 'Caja Pizza Grande';
+		if (tipo.includes('pizza')) return 'grande';
 
 		return null; // productos que no llevan caja (bebidas, adiciones, etc.)
 	}

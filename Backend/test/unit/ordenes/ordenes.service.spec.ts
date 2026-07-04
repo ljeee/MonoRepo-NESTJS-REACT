@@ -518,4 +518,32 @@ describe('OrdenesService', () => {
 			expect(mockGateway.emitirOrdenActualizada).toHaveBeenCalled();
 		});
 	});
+
+	// ==================== necesitaCaja (gate de descuento de cajas) ====================
+	// Regresión: el gate comparaba contra variantes inventadas ('para llevar',
+	// 'para_llevar', 'paraLlevar') que nunca coincidían con el valor real ('llevar')
+	// que usa el DTO/frontend/seeders, así que el descuento nunca se activaba para
+	// pedidos "para llevar".
+
+	describe('necesitaCaja', () => {
+		it('activa el descuento para domicilio', () => {
+			expect((service as any).necesitaCaja('domicilio')).toBe(true);
+		});
+
+		it('activa el descuento para llevar', () => {
+			expect((service as any).necesitaCaja('llevar')).toBe(true);
+		});
+
+		it('es tolerante a mayúsculas', () => {
+			expect((service as any).necesitaCaja('LLEVAR')).toBe(true);
+		});
+
+		it('NO activa el descuento para mesa', () => {
+			expect((service as any).necesitaCaja('mesa')).toBe(false);
+		});
+
+		it('NO activa el descuento cuando no hay tipoPedido', () => {
+			expect((service as any).necesitaCaja(undefined)).toBe(false);
+		});
+	});
 });

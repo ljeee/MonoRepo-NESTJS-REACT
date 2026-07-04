@@ -126,6 +126,7 @@ Remove-Item -Recurse -Force app/.cxx, app/build, build
 - **Abonos** (`PATCH /facturas-ventas/:id/abono`): `AbonoDto { monto, metodo?: 'efectivo'|'transferencia', denominaciones?, cambioDenominaciones? }`. Acumula `montoPagado` y el desglose por método; al saldarse deriva `metodo` final (mixta si hubo ambos). Solo los abonos en efectivo generan movimiento de caja. El monto que envía el modal es **neto** (recibido − cambio).
 - **Filtros por método**: helper compartido `matchesMetodoFilter` (`Frontend/components/ui/MethodFilterChips.tsx`) — "Efectivo" y "QR" incluyen facturas mixtas cuya componente sea > 0; "Mixto" es bucket propio. El `findAll` del backend aplica la misma semántica server-side (usado por balance-fechas).
 - **Caja de gastos**: `cajaOrigen: 'principal' | 'gastos'`. Gastos con `metodo: 'efectivo'` mueven la caja de gastos; `'qr'` y `'efectivo_no_caja'` no.
+- **Cajas de embalaje** (`inventario-cajas`): el `nombre` de una caja es texto libre que el admin escribe (sin enum). El descuento automático al crear una orden (`OrdenesService.necesitaCaja` → solo `'domicilio'`/`'llevar'`, nunca `'mesa'`) clasifica el producto en una categoría (`pequena|mediana|grande|calzone`, `InventarioCajasService.resolverCategoriaCaja`) y busca cualquier caja cuyo `nombre` **contenga** la palabra clave de esa categoría (tolerante a mayúsculas/tildes/plural) — **no** compara igualdad exacta, precisamente para evitar bugs de redacción ("Caja pequeña" vs "Caja Pizza Pequeña" vs "Cajas Pequeñas" deben calzar igual).
 
 ### Frontend (`Frontend/`)
 

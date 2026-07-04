@@ -138,6 +138,14 @@ export class OrdenesService {
 		return (tipoPedido || 'mesa') === 'domicilio';
 	}
 
+	/** Domicilio y para llevar empacan en caja; mesa no. 'llevar' es el único valor
+	 * real que usa el resto del sistema (DTO, frontend, seeders) — antes se comprobaba
+	 * contra variantes inventadas ('para llevar', 'para_llevar', 'paraLlevar') que
+	 * nunca coincidían, así que el descuento de cajas nunca se activaba para llevar. */
+	private necesitaCaja(tipoPedido?: string): boolean {
+		return ['domicilio', 'llevar'].includes((tipoPedido || '').toLowerCase());
+	}
+
 	private async crearOrden(
 		facturaId: number,
 		tipoPedido?: string,
@@ -200,9 +208,7 @@ export class OrdenesService {
 			}
 
 			// 4. Procesar domicilio si aplica
-			const necesitaCaja = ['domicilio', 'para llevar', 'para_llevar', 'paraLlevar'].includes(
-				(data.tipoPedido || '').toLowerCase(),
-			);
+			const necesitaCaja = this.necesitaCaja(data.tipoPedido);
 			if (this.domicilioCreationService.esDomicilio(data.tipoPedido)) {
 				await this.domicilioCreationService.procesarDomicilio(data, factura.facturaId, orden.ordenId, manager);
 			}
