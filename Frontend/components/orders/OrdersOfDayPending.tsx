@@ -234,8 +234,8 @@ export default function OrdersOfDayPending() {
     return () => clearTimeout(timer);
   }, [fetchOrders]);
 
-  const { user } = useAuth();
-  const { isConnected } = useOrdenesSocket(getBaseUrl(), user?.roles?.[0] || 'cajero', () => fetchOrders(true));
+  const { user, token } = useAuth();
+  const { isConnected } = useOrdenesSocket(getBaseUrl(), user?.roles?.[0] || 'cajero', () => fetchOrders(true), token);
   const { addPayment, hasItems, queue, isSyncing, syncPayments } = useOfflineQueue();
   const { debounce, isProcessing } = useAntiDebounce();
 

@@ -1,4 +1,4 @@
-import {IsString, IsNumber, IsOptional, IsNotEmpty, Matches} from 'class-validator';
+import {IsString, IsNumber, IsOptional, IsNotEmpty, Matches, IsLatitude, IsLongitude} from 'class-validator';
 import {ApiProperty} from '@nestjs/swagger';
 
 export class CreateDomiciliariosDto {
@@ -12,4 +12,14 @@ export class CreateDomiciliariosDto {
 	@IsOptional()
 	@IsString()
 	domiciliarioNombre?: string;
+}
+
+export class ActualizarUbicacionDto {
+	@ApiProperty({example: 6.2442})
+	@IsLatitude()
+	latitud: number;
+
+	@ApiProperty({example: -75.5812})
+	@IsLongitude()
+	longitud: number;
 }

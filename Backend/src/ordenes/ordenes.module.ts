@@ -18,6 +18,7 @@ import {CierresModule} from '../cierres/cierres.module';
 import {InventarioCajasModule} from '../inventario-cajas/inventario-cajas.module';
 import {CajaMovimientosModule} from '../caja-movimientos/caja-movimientos.module';
 import {InventarioBebidasModule} from '../inventario-bebidas/inventario-bebidas.module';
+import {AuthModule} from '../auth/auth.module';
 import {FacturaCreationService} from './services/factura-creation.service';
 import {DomicilioCreationService} from './services/domicilio-creation.service';
 import {ProductProcessingService} from './services/product-processing.service';
@@ -41,6 +42,7 @@ import {ProductProcessingService} from './services/product-processing.service';
 		InventarioCajasModule,
 		CajaMovimientosModule,
 		InventarioBebidasModule,
+		AuthModule,
 	],
 	providers: [
 		OrdenesService,

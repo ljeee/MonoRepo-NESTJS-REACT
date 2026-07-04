@@ -112,7 +112,9 @@ Remove-Item -Recurse -Force app/.cxx, app/build, build
 
 **Base de datos**: TypeORM + PostgreSQL, `synchronize: true` en dev, timezone `America/Bogota`. Columnas decimales usan `NumericTransformer` (`common/utils/numeric.transformer.ts`). Fechas por día con `getBogotaDayBoundaries` (`common/utils/date.utils.ts`).
 
-**Tiempo real**: un solo `SocketGateway` (namespace raíz) con Redis adapter. Los servicios emiten eventos en cambios de órdenes/facturas.
+**Tiempo real**: `OrdenesGateway`/`EstadisticasGateway` comparten namespace `/ordenes` (Socket.IO). La conexión exige un JWT válido en `handshake.auth.token` (verificado con `JwtService.verify`, `OrdenesGateway.handleConnection`) — sin token válido el socket se desconecta; antes solo confiaba en un string `dispositivo` sin validar identidad. El hook cliente `useOrdenesSocket(baseUrl, dispositivo, onRefresh, token)` (`Frontend/src/shared/hooks/use-ordenes-socket.ts`) no conecta si falta `token`. Se usa en `OrdersOfDayPending`, `facturas-dia.tsx` y `balance-dia.tsx` para autorefrescar con el evento `stats:update`. Hay también un `SocketGateway` inerte en `common/gateways/` (namespace raíz, solo loggea, sin emits/listens — no confundir con el de órdenes).
+
+**Ubicación del domiciliario**: RiderApp reporta su posición GPS cada 20s (mientras la app esté abierta y con sesión, vía `expo-location` + `Location.requestForegroundPermissionsAsync`) a `PATCH /domiciliarios/me/ubicacion` (`Role.Domiciliario`, matchea por `user.username` = teléfono). Se guarda en `Domiciliarios.ultimaLatitud/ultimaLongitud/ultimaUbicacionFecha`. El POS (`asignar-domiciliarios.tsx`, sección "Asignados Hoy") muestra "hace Xm" + botón que abre esa posición en Google Maps — sin librería de mapas embebida, solo REST + polling (ya existente cada 30s en esa pantalla).
 
 **Background jobs**: BullMQ + Redis; cron `@nestjs/schedule`. Cierre automático a las 00:05 Bogotá (`CierresCronService`), también al arrancar para recuperar cierres perdidos.
 

@@ -4,7 +4,7 @@ import { useToast } from '../contexts/ToastContext';
 
 const TOAST_COOLDOWN_MS = 6000; // min ms between toasts for the same orden
 
-export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero', onRefresh?: () => void) {
+export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero', onRefresh?: () => void, token?: string | null) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const { showToast } = useToast();
@@ -28,11 +28,13 @@ export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero'
   }, [showToast]);
 
   useEffect(() => {
-    if (!baseUrl) return;
+    // El backend ahora exige un JWT válido para conectar (antes bastaba con
+    // declarar un string `dispositivo` arbitrario, sin verificar identidad)
+    if (!baseUrl || !token) return;
 
     const socketInstance = io(`${baseUrl}/ordenes`, {
       transports: ['websocket'],
-      auth: { dispositivo },
+      auth: { dispositivo, token },
     });
 
     socketInstance.on('connect', () => {
@@ -71,7 +73,7 @@ export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero'
       socketInstance.removeAllListeners();
       socketInstance.disconnect();
     };
-  }, [baseUrl, dispositivo]);
+  }, [baseUrl, dispositivo, token]);
 
   return { socket, isConnected };
 }

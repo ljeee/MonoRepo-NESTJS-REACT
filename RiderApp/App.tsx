@@ -8,7 +8,51 @@ import { FlashList } from '@shopify/flash-list';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
+import * as Location from 'expo-location';
 import { AuthProvider, useAuth, api, Domicilio } from '@/src/shared';
+
+// ─── Tracking de ubicación ────────────────────────────────────────────────────
+// Mientras la app esté abierta y con sesión, reporta la posición del
+// domiciliario cada 20s vía REST (misma cadencia de polling que ya usa el
+// resto del proyecto) para que el despachador vea "hace cuánto" fue vista.
+
+const LOCATION_UPDATE_INTERVAL_MS = 20000;
+
+function useLocationTracking() {
+  useEffect(() => {
+    let cancelled = false;
+    let intervalId: ReturnType<typeof setInterval> | undefined;
+
+    const sendLocation = async () => {
+      try {
+        const { coords } = await Location.getCurrentPositionAsync({});
+        await api.domiciliarios.actualizarUbicacion(coords.latitude, coords.longitude);
+      } catch {
+        // Sin señal GPS o sin red en este momento — se reintenta en el siguiente tick
+      }
+    };
+
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (cancelled) return;
+      if (status !== 'granted') {
+        Toast.show({
+          type: 'info',
+          text1: 'Ubicación desactivada',
+          text2: 'El despachador no podrá ver dónde estás',
+        });
+        return;
+      }
+      void sendLocation();
+      intervalId = setInterval(sendLocation, LOCATION_UPDATE_INTERVAL_MS);
+    })();
+
+    return () => {
+      cancelled = true;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
+}
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
 
@@ -165,6 +209,7 @@ const DomicilioCard = React.memo(function DomicilioCard({ item }: { item: Domici
 
 function DashboardScreen() {
   const { user, logout } = useAuth();
+  useLocationTracking();
   const [domicilios, setDomicilios] = useState<Domicilio[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

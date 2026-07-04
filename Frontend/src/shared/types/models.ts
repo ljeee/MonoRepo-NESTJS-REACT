@@ -52,6 +52,10 @@ export interface Domiciliario {
   telefono: string;
   domiciliarioNombre?: string;
   userId?: string;
+  /** Última posición GPS reportada por RiderApp mientras la app está abierta */
+  ultimaLatitud?: number;
+  ultimaLongitud?: number;
+  ultimaUbicacionFecha?: string;
   user?: {
     id: string;
     username: string;

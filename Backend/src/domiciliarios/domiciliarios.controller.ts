@@ -1,9 +1,14 @@
 import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from '@nestjs/common';
-import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
+import {ApiTags, ApiOperation, ApiResponse, ApiBearerAuth} from '@nestjs/swagger';
 import {DomiciliariosService} from './domiciliarios.service';
-import {CreateDomiciliariosDto} from './esquemas/domiciliarios.dto';
+import {CreateDomiciliariosDto, ActualizarUbicacionDto} from './esquemas/domiciliarios.dto';
+import {Roles} from '../auth/decorators/roles.decorator';
+import {GetUser} from '../auth/decorators/get-user.decorator';
+import {Role} from '../auth/roles.enum';
+import {User} from '../auth/esquemas/user.entity';
 
 @ApiTags('Domiciliarios')
+@ApiBearerAuth()
 @Controller('domiciliarios')
 export class DomiciliariosController {
 	constructor(private readonly service: DomiciliariosService) {}
@@ -13,6 +18,15 @@ export class DomiciliariosController {
 	@ApiResponse({status: 200, description: 'Lista de domiciliarios.'})
 	findAll() {
 		return this.service.findAll();
+	}
+
+	@Patch('me/ubicacion')
+	@Roles(Role.Domiciliario)
+	@ApiOperation({summary: 'Actualizar la última ubicación GPS del domiciliario autenticado'})
+	@ApiResponse({status: 200, description: 'Ubicación actualizada.'})
+	actualizarUbicacion(@GetUser() user: User, @Body() dto: ActualizarUbicacionDto) {
+		// user.username = teléfono para cuentas de domiciliario (misma convención que /domicilios/me)
+		return this.service.actualizarUbicacion(user.username, dto.latitud, dto.longitud);
 	}
 
 	@Get(':telefono')

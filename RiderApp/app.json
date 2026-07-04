@@ -20,6 +20,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Dfiru Riders usa tu ubicación para que el despachador sepa dónde estás mientras entregas pedidos."
+        }
+      ]
+    ]
   }
 }

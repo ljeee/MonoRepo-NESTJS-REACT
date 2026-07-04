@@ -36,6 +36,6 @@ import {ContadorGuard} from './guards/contador.guard';
 		{provide: APP_GUARD, useClass: RolesGuard},
 		{provide: APP_GUARD, useClass: ContadorGuard},
 	],
-	exports: [AuthService],
+	exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

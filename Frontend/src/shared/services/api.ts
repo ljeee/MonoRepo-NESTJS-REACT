@@ -202,6 +202,9 @@ export function createApi(http: AxiosInstance) {
 
     delete: (telefono: string) =>
       http.delete(`/domiciliarios/${telefono}`).then((r) => r.data),
+
+    actualizarUbicacion: (latitud: number, longitud: number) =>
+      http.patch('/domiciliarios/me/ubicacion', { latitud, longitud }).then((r) => r.data),
   };
 
   // ─── Productos ──────────────────────────────────────────────────────

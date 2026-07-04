@@ -1,5 +1,8 @@
 import {WebSocketGateway, WebSocketServer, OnGatewayConnection, OnGatewayDisconnect} from '@nestjs/websockets';
 import {Server, Socket} from 'socket.io';
+import {JwtService} from '@nestjs/jwt';
+import {JwtPayload} from '../auth/types/jwt-payload.type';
+import {Role} from '../auth/roles.enum';
 
 @WebSocketGateway({
 	namespace: '/ordenes',
@@ -23,15 +26,34 @@ export class OrdenesGateway implements OnGatewayConnection, OnGatewayDisconnect 
 	@WebSocketServer()
 	server: Server;
 
+	constructor(private readonly jwtService: JwtService) {}
+
 	handleConnection(client: Socket) {
-		const dispositivo = client.handshake.auth?.dispositivo;
-		if (dispositivo) {
-			client.join(`auth:${dispositivo}`);
-			if (dispositivo === 'cocina') {
-				client.join('cocina');
-			}
+		// El socket antes confiaba ciegamente en un string `dispositivo` declarado
+		// por el cliente, sin validar identidad — cualquiera podía conectarse y
+		// escuchar todos los eventos (orden:nueva, stats:update, etc.). Ahora se
+		// exige un JWT válido para poder conectar.
+		const token = client.handshake.auth?.token;
+		if (!token) {
+			client.disconnect(true);
+			return;
 		}
-		console.log(`[Socket.IO] Cliente conectado: ${client.id} - Rol: ${dispositivo || 'desconocido'}`);
+
+		let payload: JwtPayload;
+		try {
+			payload = this.jwtService.verify<JwtPayload>(token);
+		} catch {
+			client.disconnect(true);
+			return;
+		}
+
+		const dispositivo = client.handshake.auth?.dispositivo || payload.roles?.[0] || 'desconocido';
+		client.data.user = payload;
+		client.join(`auth:${dispositivo}`);
+		if (dispositivo === 'cocina' || payload.roles?.includes(Role.Cocina)) {
+			client.join('cocina');
+		}
+		console.log(`[Socket.IO] Cliente conectado: ${client.id} - Usuario: ${payload.username} - Rol: ${dispositivo}`);
 	}
 
 	handleDisconnect(client: Socket) {

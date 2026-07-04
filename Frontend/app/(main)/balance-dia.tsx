@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, Platform } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFacturasDia, useFacturasPagosDia, useApi } from '@/src/shared';
+import { useFacturasDia, useFacturasPagosDia, useApi, useOrdenesSocket } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import type { FacturaPago, CajaResumen, DenominacionesMap } from '@/src/shared';
 import { formatCurrency, DENOMINACIONES_COP } from '@/src/shared';
@@ -20,6 +20,8 @@ import Badge from '../../components/ui/Badge';
 import Card from '../../components/ui/Card';
 import CajaMovimientosWidget from '../../components/ui/CajaMovimientosWidget';
 import { MethodFilterChips, MethodFilterValue, matchesMetodoFilter } from '../../components/ui';
+import { useAuth } from '../../contexts/AuthContext';
+import { getBaseUrl } from '../../services/api';
 
 // ─── Balance card ─────────────────────────────────────────────────────────────
 
@@ -386,6 +388,11 @@ export default function BalanceDiaScreen() {
         await Promise.all([refetchFacturas(), fetchGastos(), fetchCajaResumen()]);
         setRefreshing(false);
     }, [refetchFacturas, fetchGastos, fetchCajaResumen]);
+
+    // Sin esto la pantalla solo se actualizaba con refresh manual: un abono o
+    // cobro hecho desde otra pantalla/dispositivo no se reflejaba aquí.
+    const { user, token } = useAuth();
+    useOrdenesSocket(getBaseUrl(), user?.roles?.[0] || 'cajero', handleRefresh, token);
 
     /** Confirms the arqueo by sending current billCounts to the backend as apertura */
     const handleConfirmarApertura = useCallback(async () => {

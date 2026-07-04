@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl } from 'react-native';
+import { ActivityIndicator, RefreshControl, Linking } from 'react-native';
 import { ScrollView, Text, View, TouchableOpacity, Pressable } from '../../tw';
 import { api } from '../../services/api';
 import { useToast } from '@/src/shared';
@@ -228,6 +228,10 @@ function timeAgo(dateStr: string): string {
     if (mins < 60) return `${mins}m`;
     const hours = Math.floor(mins / 60);
     return `${hours}h`;
+}
+
+function abrirUbicacionEnMapa(lat: number, lng: number) {
+    Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`).catch(() => {});
 }
 
 export default function AsignarDomiciliariosScreen() {
@@ -582,6 +586,19 @@ export default function AsignarDomiciliariosScreen() {
                                         <Text className="text-emerald-400 text-xs font-bold">
                                             Entregando: {currentDom?.domiciliarioNombre || d.telefonoDomiciliarioAsignado}
                                         </Text>
+                                        {currentDom?.ultimaUbicacionFecha && currentDom.ultimaLatitud != null && currentDom.ultimaLongitud != null ? (
+                                            <TouchableOpacity
+                                                className="flex-row items-center gap-1.5 mt-1"
+                                                onPress={() => abrirUbicacionEnMapa(currentDom.ultimaLatitud!, currentDom.ultimaLongitud!)}
+                                            >
+                                                <Icon name="crosshairs-gps" size={12} color="#64748B" />
+                                                <Text className="text-slate-500 text-[10px] font-bold">
+                                                    Ubicación hace {timeAgo(currentDom.ultimaUbicacionFecha)} · Ver en mapa
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ) : (
+                                            <Text className="text-slate-600 text-[10px] mt-1">Sin ubicación reciente del domiciliario</Text>
+                                        )}
                                     </View>
 
                                     {/* Reasignar */}

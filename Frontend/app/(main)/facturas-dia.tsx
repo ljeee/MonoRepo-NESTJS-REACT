@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl } from 'react-native';
 import { Text, View, TextInput, TouchableOpacity } from '../../tw';
-import { useFacturasDia, calcStats, useApi } from '@/src/shared';
+import { useFacturasDia, calcStats, useApi, useOrdenesSocket } from '@/src/shared';
 import type { DenominacionesMap } from '@/src/shared';
 import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
@@ -13,6 +13,8 @@ import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import Icon from '../../components/ui/Icon';
 import { MethodFilterChips, MethodFilterValue, matchesMetodoFilter } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
+import { useAuth } from '../../contexts/AuthContext';
+import { getBaseUrl } from '../../services/api';
 
 export default function FacturasDiaScreen() {
   const { isMobile } = useBreakpoint();
@@ -21,6 +23,11 @@ export default function FacturasDiaScreen() {
   const [updating, setUpdating] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState<MethodFilterValue>('todos');
+
+  // Sin esto la pantalla solo se actualizaba con refresh manual: un abono o
+  // cobro hecho desde otra pantalla/dispositivo no se reflejaba aquí.
+  const { user, token } = useAuth();
+  useOrdenesSocket(getBaseUrl(), user?.roles?.[0] || 'cajero', refetch, token);
 
   const handleChangeEstado = useCallback(async (
     facturaId: number,

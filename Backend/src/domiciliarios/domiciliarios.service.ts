@@ -38,6 +38,14 @@ export class DomiciliariosService {
 		return this.repo.update(telefono, data);
 	}
 
+	async actualizarUbicacion(telefono: string, latitud: number, longitud: number) {
+		await this.repo.update(
+			{telefono},
+			{ultimaLatitud: latitud, ultimaLongitud: longitud, ultimaUbicacionFecha: new Date()},
+		);
+		return {ok: true};
+	}
+
 	remove(telefono: string) {
 		return this.repo.delete(telefono);
 	}
