@@ -3,12 +3,14 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {Domicilios} from './esquemas/domicilios.entity';
 import {CreateDomiciliosDto} from './esquemas/domicilios.dto';
+import {OrdenesGateway} from '../ordenes/ordenes.gateway';
 
 @Injectable()
 export class DomiciliosService {
 	constructor(
 		@InjectRepository(Domicilios)
 		private readonly repo: Repository<Domicilios>,
+		private readonly ordenesGateway: OrdenesGateway,
 	) {}
 
 	findAll(page = 1, limit = 500) {
@@ -94,8 +96,13 @@ export class DomiciliosService {
 		return this.repo.save(data);
 	}
 
-	update(id: number, data: Partial<CreateDomiciliosDto>) {
-		return this.repo.update(id, data);
+	async update(id: number, data: Partial<CreateDomiciliosDto>) {
+		const result = await this.repo.update(id, data);
+		// Notifica por socket (asignación de domiciliario, entrega marcada, etc.)
+		// para que el POS y RiderApp se refresquen solos sin depender de
+		// pull-to-refresh manual — antes esta ruta no emitía ningún evento.
+		this.ordenesGateway.emitirOrdenActualizada({domicilioId: id, ...data});
+		return result;
 	}
 
 	findByUser(telefono: string, all = false) {

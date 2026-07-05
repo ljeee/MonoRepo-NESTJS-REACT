@@ -25,9 +25,12 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Dfiru Riders usa tu ubicación para que el despachador sepa dónde estás mientras entregas pedidos."
+          "locationAlwaysAndWhenInUsePermission": "Dfiru Riders usa tu ubicación, incluso con la pantalla bloqueada, para que el despachador sepa dónde estás mientras entregas pedidos.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
         }
-      ]
+      ],
+      "expo-secure-store"
     ]
   }
 }

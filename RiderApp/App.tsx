@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { 
-  StyleSheet, Text, View, TextInput, Pressable, 
+import {
+  StyleSheet, Text, View, TextInput, Pressable,
   ActivityIndicator, RefreshControl,
   StatusBar, Platform, Linking
 } from 'react-native';
@@ -9,33 +9,50 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import * as Location from 'expo-location';
-import { AuthProvider, useAuth, api, Domicilio } from '@/src/shared';
+import * as TaskManager from 'expo-task-manager';
+import * as SecureStore from 'expo-secure-store';
+import { AuthProvider, useAuth, useOrdenesSocket, api, Domicilio } from '@/src/shared';
 
 // ─── Tracking de ubicación ────────────────────────────────────────────────────
-// Mientras la app esté abierta y con sesión, reporta la posición del
-// domiciliario cada 20s vía REST (misma cadencia de polling que ya usa el
-// resto del proyecto) para que el despachador vea "hace cuánto" fue vista.
+// Reporta la posición del domiciliario cada 3 minutos usando la API de
+// ubicación en segundo plano de expo-location — sigue funcionando con la
+// pantalla bloqueada o la app minimizada (a diferencia de un setInterval de JS,
+// que Android/iOS pausan en cuanto la app deja de estar en primer plano).
+// En Android esto requiere un foreground service con notificación persistente
+// (obligatoria por el sistema, no se puede ocultar) y que el domiciliario
+// active "Permitir todo el tiempo" en Ajustes (Android 11+ ya no lo pregunta
+// dentro de la app, solo en Ajustes del sistema).
 
-const LOCATION_UPDATE_INTERVAL_MS = 20000;
+const LOCATION_TASK_NAME = 'dfiru-rider-location-task';
+const LOCATION_UPDATE_INTERVAL_MS = 3 * 60 * 1000; // 3 minutos
+
+// El task se define en el scope del módulo (no dentro de un componente):
+// Android puede relanzar el JS en modo "headless", sin montar ningún
+// componente, solo para ejecutar este callback cuando llega una ubicación
+// con la app en background.
+TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
+  if (error) {
+    console.warn('[LocationTask]', error.message);
+    return;
+  }
+  const locations = (data as { locations?: Location.LocationObject[] } | undefined)?.locations;
+  const last = locations?.[locations.length - 1];
+  if (!last) return;
+  try {
+    await api.domiciliarios.actualizarUbicacion(last.coords.latitude, last.coords.longitude);
+  } catch {
+    // Sin red en este momento — se reintenta en el siguiente tick
+  }
+});
 
 function useLocationTracking() {
   useEffect(() => {
     let cancelled = false;
-    let intervalId: ReturnType<typeof setInterval> | undefined;
-
-    const sendLocation = async () => {
-      try {
-        const { coords } = await Location.getCurrentPositionAsync({});
-        await api.domiciliarios.actualizarUbicacion(coords.latitude, coords.longitude);
-      } catch {
-        // Sin señal GPS o sin red en este momento — se reintenta en el siguiente tick
-      }
-    };
 
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const fg = await Location.requestForegroundPermissionsAsync();
       if (cancelled) return;
-      if (status !== 'granted') {
+      if (fg.status !== 'granted') {
         Toast.show({
           type: 'info',
           text1: 'Ubicación desactivada',
@@ -43,16 +60,51 @@ function useLocationTracking() {
         });
         return;
       }
-      void sendLocation();
-      intervalId = setInterval(sendLocation, LOCATION_UPDATE_INTERVAL_MS);
+
+      const bg = await Location.requestBackgroundPermissionsAsync();
+      if (cancelled) return;
+      if (bg.status !== 'granted') {
+        Toast.show({
+          type: 'info',
+          text1: 'Ubicación solo en primer plano',
+          text2: 'Activa "Permitir todo el tiempo" en Ajustes para que funcione con la pantalla bloqueada',
+        });
+        // Igual arrancamos: al menos rastrea mientras la app esté abierta
+      }
+
+      const yaIniciado = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => false);
+      if (cancelled || yaIniciado) return;
+
+      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: LOCATION_UPDATE_INTERVAL_MS,
+        distanceInterval: 0,
+        showsBackgroundLocationIndicator: true,
+        foregroundService: {
+          notificationTitle: 'Dfiru Riders',
+          notificationBody: 'Compartiendo tu ubicación con el despachador',
+          notificationColor: '#F5A524',
+        },
+      }).catch((err) => console.warn('[LocationTask] no se pudo iniciar:', err?.message));
     })();
 
     return () => {
       cancelled = true;
-      if (intervalId) clearInterval(intervalId);
+      // Se detiene al cerrar sesión (DashboardScreen solo se desmonta en logout;
+      // bloquear la pantalla NO desmonta el componente, así que el tracking
+      // sigue corriendo en background hasta que el domiciliario cierre sesión).
+      Location.stopLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => {});
     };
   }, []);
 }
+
+// ─── Credenciales recordadas ───────────────────────────────────────────────────
+// Guardadas en Keychain/Keystore (no AsyncStorage) para no dejar la contraseña
+// en texto plano. Persisten entre sesiones — cerrar sesión no las borra, solo
+// un login exitoso distinto las sobreescribe.
+
+const CRED_USERNAME_KEY = 'dfiru_rider_username';
+const CRED_PASSWORD_KEY = 'dfiru_rider_password';
 
 // ─── LOGIN SCREEN ─────────────────────────────────────────────────────────────
 
@@ -62,6 +114,23 @@ function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Prellena con las credenciales recordadas de la última sesión, si existen
+  useEffect(() => {
+    (async () => {
+      try {
+        const [savedUsername, savedPassword] = await Promise.all([
+          SecureStore.getItemAsync(CRED_USERNAME_KEY),
+          SecureStore.getItemAsync(CRED_PASSWORD_KEY),
+        ]);
+        if (savedUsername) setUsername(savedUsername);
+        if (savedPassword) setPassword(savedPassword);
+      } catch {
+        // Sin acceso al almacenamiento seguro (raro) — el domiciliario solo
+        // tendrá que escribir sus credenciales de nuevo
+      }
+    })();
+  }, []);
+
   const handleLogin = async () => {
     if (!username || !password) {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Ingresa usuario y contraseña' });
@@ -70,7 +139,8 @@ function LoginScreen() {
     setLoading(true);
     try {
       await login(username, password);
-      // Wait a bit to let context update
+      SecureStore.setItemAsync(CRED_USERNAME_KEY, username).catch(() => {});
+      SecureStore.setItemAsync(CRED_PASSWORD_KEY, password).catch(() => {});
     } catch (err) {
       Toast.show({ type: 'error', text1: 'Error', text2: 'Credenciales inválidas' });
       setLoading(false);
@@ -122,8 +192,33 @@ const copyToClipboard = async (text: string) => {
   Toast.show({ type: 'success', text1: 'Copiado', text2: text });
 };
 
-const DomicilioCard = React.memo(function DomicilioCard({ item }: { item: Domicilio }) {
+const ESTADOS_ENTREGADO = ['entregado', 'completado', 'completada'];
+const isEntregado = (estado?: string) => ESTADOS_ENTREGADO.includes((estado || '').toLowerCase());
+
+function getProductLabel(p: { producto?: string; productoNombre?: string; cantidad: number; sabores?: string[] }): string {
+  const nombre = p.productoNombre?.trim() || p.producto?.trim() || 'Producto';
+  const sabores = p.sabores?.length ? ` (${p.sabores.join(', ')})` : '';
+  return `${p.cantidad}× ${nombre}${sabores}`;
+}
+
+const DomicilioCard = React.memo(function DomicilioCard({
+  item,
+  onComplete,
+  confirming,
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  item: Domicilio;
+  onComplete: () => void;
+  confirming: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading: boolean;
+}) {
   const isPagado = item.factura?.estado === 'pagado' || item.factura?.estado === 'pagada';
+  const entregado = isEntregado(item.estadoDomicilio);
+  const productos = item.orden?.productos ?? [];
 
   return (
     <View style={styles.card}>
@@ -164,6 +259,17 @@ const DomicilioCard = React.memo(function DomicilioCard({ item }: { item: Domici
         ) : null}
       </View>
 
+      {productos.length > 0 ? (
+        <View style={styles.productsBox}>
+          <Text style={styles.productsTitle}>Productos</Text>
+          {productos.map((p, idx) => (
+            <Text key={p.id ?? idx} style={styles.productLine} numberOfLines={1}>
+              · {getProductLabel(p)}
+            </Text>
+          ))}
+        </View>
+      ) : null}
+
       {item.latitud && item.longitud ? (
         <Pressable style={({pressed}) => [styles.mapButton, pressed && {opacity: 0.5}]} onPress={() => {
             const lat = item.latitud;
@@ -174,7 +280,7 @@ const DomicilioCard = React.memo(function DomicilioCard({ item }: { item: Domici
               android: `geo:0,0?q=${lat},${lng}(${addr})`
             });
             const webUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-            
+
             if (scheme) {
               Linking.canOpenURL(scheme)
                 .then((supported) => Linking.openURL(supported ? scheme : webUrl))
@@ -203,16 +309,53 @@ const DomicilioCard = React.memo(function DomicilioCard({ item }: { item: Domici
           ${COP_FORMATTER.format(item.factura?.total || 0)}
         </Text>
       </View>
+
+      {entregado ? (
+        <View style={styles.entregadoBox}>
+          <Text style={styles.entregadoText}>✓ DOMICILIO ENTREGADO</Text>
+        </View>
+      ) : confirming ? (
+        <View style={styles.confirmRow}>
+          <Pressable
+            style={({ pressed }) => [styles.confirmNoBtn, pressed && { opacity: 0.5 }]}
+            onPress={onCancel}
+            disabled={loading}
+          >
+            <Text style={styles.confirmNoText}>No</Text>
+          </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.confirmYesBtn, pressed && { opacity: 0.5 }]}
+            onPress={onConfirm}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#000" size="small" />
+            ) : (
+              <Text style={styles.confirmYesText}>Sí, Entregado</Text>
+            )}
+          </Pressable>
+        </View>
+      ) : (
+        <Pressable
+          style={({ pressed }) => [styles.completeBtn, pressed && { opacity: 0.5 }]}
+          onPress={onComplete}
+        >
+          <Text style={styles.buttonText}>✅ DOMICILIO ENTREGADO</Text>
+        </Pressable>
+      )}
     </View>
   );
 });
 
 function DashboardScreen() {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   useLocationTracking();
   const [domicilios, setDomicilios] = useState<Domicilio[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  const [completingId, setCompletingId] = useState<number | null>(null);
+  const [tab, setTab] = useState<'pendientes' | 'completadas'>('pendientes');
 
   const fetchDomicilios = useCallback(async () => {
     try {
@@ -231,14 +374,45 @@ function DashboardScreen() {
     fetchDomicilios();
   }, [fetchDomicilios]);
 
+  // Auto-refresca cuando el POS asigna/actualiza un domicilio o cambia una
+  // orden — el domiciliario ya no depende de pull-to-refresh manual.
+  useOrdenesSocket(api.http.defaults.baseURL || '', 'domiciliario', fetchDomicilios, token);
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchDomicilios();
   };
 
+  const handleComplete = useCallback(async (domicilioId: number) => {
+    setCompletingId(domicilioId);
+    try {
+      await api.domicilios.update(domicilioId, { estadoDomicilio: 'entregado' });
+      Toast.show({ type: 'success', text1: '¡Domicilio entregado!', text2: 'Buen trabajo 🎉' });
+      setConfirmingId(null);
+      await fetchDomicilios();
+    } catch {
+      Toast.show({ type: 'error', text1: 'Error', text2: 'No se pudo actualizar el domicilio' });
+    } finally {
+      setCompletingId(null);
+    }
+  }, [fetchDomicilios]);
+
   const renderItem = useCallback(({ item }: { item: Domicilio }) => {
-    return <DomicilioCard item={item} />;
-  }, []);
+    return (
+      <DomicilioCard
+        item={item}
+        onComplete={() => setConfirmingId(item.domicilioId)}
+        confirming={confirmingId === item.domicilioId}
+        onConfirm={() => handleComplete(item.domicilioId)}
+        onCancel={() => setConfirmingId(null)}
+        loading={completingId === item.domicilioId}
+      />
+    );
+  }, [confirmingId, completingId, handleComplete]);
+
+  const pendientes = domicilios.filter(d => !isEntregado(d.estadoDomicilio));
+  const completadas = domicilios.filter(d => isEntregado(d.estadoDomicilio));
+  const listData = tab === 'pendientes' ? pendientes : completadas;
 
   return (
     <View style={styles.container}>
@@ -252,13 +426,32 @@ function DashboardScreen() {
         </Pressable>
       </View>
 
+      <View style={styles.tabBar}>
+        <Pressable
+          style={[styles.tabBtn, tab === 'pendientes' && styles.tabBtnActive]}
+          onPress={() => setTab('pendientes')}
+        >
+          <Text style={[styles.tabText, tab === 'pendientes' && styles.tabTextActive]}>
+            Pendientes ({pendientes.length})
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tabBtn, tab === 'completadas' && styles.tabBtnActive]}
+          onPress={() => setTab('completadas')}
+        >
+          <Text style={[styles.tabText, tab === 'completadas' && styles.tabTextActive]}>
+            Completadas ({completadas.length})
+          </Text>
+        </Pressable>
+      </View>
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#F5A524" />
         </View>
       ) : (
         <FlashList
-          data={domicilios}
+          data={listData}
           keyExtractor={item => String(item.domicilioId)}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
@@ -267,7 +460,9 @@ function DashboardScreen() {
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No tienes entregas asignadas</Text>
+              <Text style={styles.emptyText}>
+                {tab === 'pendientes' ? 'No tienes entregas pendientes' : 'Aún no has completado entregas hoy'}
+              </Text>
             </View>
           }
         />
@@ -410,9 +605,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+  tabBar: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  tabBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: '#0F172A',
+  },
+  tabBtnActive: {
+    backgroundColor: '#F5A524',
+  },
+  tabText: {
+    color: '#94A3B8',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  tabTextActive: {
+    color: '#000',
+  },
   list: {
     padding: 16,
-    gap: 16,
   },
   card: {
     backgroundColor: '#1E293B',
@@ -420,6 +640,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#334155',
+    marginBottom: 16,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -467,6 +688,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+  productsBox: {
+    backgroundColor: '#0F172A',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 12,
+  },
+  productsTitle: {
+    color: '#64748B',
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  productLine: {
+    color: '#E2E8F0',
+    fontSize: 13,
+    lineHeight: 19,
+  },
   divider: {
     height: 1,
     backgroundColor: '#334155',
@@ -501,5 +741,56 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#64748B',
     fontSize: 16,
+  },
+  completeBtn: {
+    backgroundColor: '#10B981',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  entregadoBox: {
+    backgroundColor: 'rgba(16,185,129,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(16,185,129,0.3)',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  entregadoText: {
+    color: '#10B981',
+    fontWeight: 'bold',
+    fontSize: 13,
+    letterSpacing: 1,
+  },
+  confirmRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+  },
+  confirmNoBtn: {
+    flex: 1,
+    backgroundColor: '#334155',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  confirmNoText: {
+    color: '#94A3B8',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  confirmYesBtn: {
+    flex: 2,
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  confirmYesText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

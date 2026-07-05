@@ -3,6 +3,7 @@ import {getRepositoryToken} from '@nestjs/typeorm';
 import {NotFoundException} from '@nestjs/common';
 import {DomiciliosService} from '../../../src/domicilios/domicilios.service';
 import {Domicilios} from '../../../src/domicilios/esquemas/domicilios.entity';
+import {OrdenesGateway} from '../../../src/ordenes/ordenes.gateway';
 
 const makeQb = () => {
 	const qb: any = {};
@@ -16,6 +17,7 @@ const makeQb = () => {
 describe('DomiciliosService', () => {
 	let service: DomiciliosService;
 	let mockRepo: any;
+	let mockGateway: any;
 	let qb: any;
 
 	beforeEach(async () => {
@@ -27,9 +29,16 @@ describe('DomiciliosService', () => {
 			update: jest.fn(),
 			delete: jest.fn(),
 		};
+		mockGateway = {
+			emitirOrdenActualizada: jest.fn(),
+		};
 
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [DomiciliosService, {provide: getRepositoryToken(Domicilios), useValue: mockRepo}],
+			providers: [
+				DomiciliosService,
+				{provide: getRepositoryToken(Domicilios), useValue: mockRepo},
+				{provide: OrdenesGateway, useValue: mockGateway},
+			],
 		}).compile();
 
 		service = module.get<DomiciliosService>(DomiciliosService);
@@ -167,6 +176,19 @@ describe('DomiciliosService', () => {
 			await service.update(1, {estadoDomicilio: 'entregado'} as any);
 
 			expect(mockRepo.update).toHaveBeenCalledWith(1, {estadoDomicilio: 'entregado'});
+		});
+
+		// Regresión: esta ruta (asignar domiciliario, marcar entregado) no
+		// emitía ningún evento — el POS y RiderApp dependían 100% de
+		// pull-to-refresh manual para enterarse de un cambio.
+		it('emite orden:actualizada para que RiderApp/POS se refresquen solos', async () => {
+			mockRepo.update.mockResolvedValue({affected: 1});
+
+			await service.update(5, {telefonoDomiciliarioAsignado: '3001234567'} as any);
+
+			expect(mockGateway.emitirOrdenActualizada).toHaveBeenCalledWith(
+				expect.objectContaining({domicilioId: 5, telefonoDomiciliarioAsignado: '3001234567'}),
+			);
 		});
 	});
 
