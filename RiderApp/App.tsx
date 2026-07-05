@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   StyleSheet, Text, View, TextInput, Pressable,
   ActivityIndicator, RefreshControl,
-  StatusBar, Platform, Linking
+  StatusBar, Platform, Linking, PermissionsAndroid
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -45,51 +45,88 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
   }
 });
 
+// Android 13+ (API 33+) exige el permiso POST_NOTIFICATIONS para poder
+// mostrar CUALQUIER notificación — incluida la del foreground service de
+// ubicación. Sin este permiso, arrancar el servicio puede fallar o crashear
+// en algunos fabricantes/versiones en vez de solo omitir la notificación.
+async function ensureNotificationPermission(): Promise<void> {
+  if (Platform.OS !== 'android' || Platform.Version < 33) return;
+  try {
+    await PermissionsAndroid.request(
+      // @ts-ignore — constante presente en runtime aunque el tipo de esta
+      // versión de react-native aún no la incluya
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+  } catch {
+    // Si falla la solicitud, seguimos igual — el location tracking en sí
+    // no depende de que el usuario acepte ver la notificación.
+  }
+}
+
+// El tracking en segundo plano es "nice to have": si algo native-side falla
+// (versión de Android, fabricante, permisos denegados) NUNCA debe tumbar el
+// resto de la app — todo el flujo queda blindado con try/catch de punta a punta.
 function useLocationTracking() {
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-    (async () => {
-      const fg = await Location.requestForegroundPermissionsAsync();
-      if (cancelled) return;
-      if (fg.status !== 'granted') {
-        Toast.show({
-          type: 'info',
-          text1: 'Ubicación desactivada',
-          text2: 'El despachador no podrá ver dónde estás',
+    const start = async () => {
+      try {
+        const fg = await Location.requestForegroundPermissionsAsync();
+        if (cancelled) return;
+        if (fg.status !== 'granted') {
+          Toast.show({
+            type: 'info',
+            text1: 'Ubicación desactivada',
+            text2: 'El despachador no podrá ver dónde estás',
+          });
+          return;
+        }
+
+        await ensureNotificationPermission();
+        if (cancelled) return;
+
+        const bg = await Location.requestBackgroundPermissionsAsync();
+        if (cancelled) return;
+        if (bg.status !== 'granted') {
+          Toast.show({
+            type: 'info',
+            text1: 'Ubicación solo en primer plano',
+            text2: 'Activa "Permitir todo el tiempo" en Ajustes para que funcione con la pantalla bloqueada',
+          });
+          // Igual arrancamos: al menos rastrea mientras la app esté abierta
+        }
+
+        const yaIniciado = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => false);
+        if (cancelled || yaIniciado) return;
+
+        await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: LOCATION_UPDATE_INTERVAL_MS,
+          distanceInterval: 0,
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: 'Dfiru Riders',
+            notificationBody: 'Compartiendo tu ubicación con el despachador',
+            notificationColor: '#F5A524',
+          },
         });
-        return;
+      } catch (err: any) {
+        // Cualquier fallo aquí (permiso, servicio nativo, fabricante) se
+        // registra pero jamás debe propagarse — la app sigue funcionando
+        // sin rastreo de ubicación en vez de crashear.
+        console.warn('[LocationTask] no se pudo iniciar el tracking:', err?.message ?? err);
       }
+    };
 
-      const bg = await Location.requestBackgroundPermissionsAsync();
-      if (cancelled) return;
-      if (bg.status !== 'granted') {
-        Toast.show({
-          type: 'info',
-          text1: 'Ubicación solo en primer plano',
-          text2: 'Activa "Permitir todo el tiempo" en Ajustes para que funcione con la pantalla bloqueada',
-        });
-        // Igual arrancamos: al menos rastrea mientras la app esté abierta
-      }
-
-      const yaIniciado = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => false);
-      if (cancelled || yaIniciado) return;
-
-      await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: LOCATION_UPDATE_INTERVAL_MS,
-        distanceInterval: 0,
-        showsBackgroundLocationIndicator: true,
-        foregroundService: {
-          notificationTitle: 'Dfiru Riders',
-          notificationBody: 'Compartiendo tu ubicación con el despachador',
-          notificationColor: '#F5A524',
-        },
-      }).catch((err) => console.warn('[LocationTask] no se pudo iniciar:', err?.message));
-    })();
+    // Pequeño retraso: evita competir con el resto de llamadas nativas que
+    // se disparan justo al montar DashboardScreen (fetch inicial, socket).
+    timeoutId = setTimeout(() => { void start(); }, 1500);
 
     return () => {
       cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
       // Se detiene al cerrar sesión (DashboardScreen solo se desmonta en logout;
       // bloquear la pantalla NO desmonta el componente, así que el tracking
       // sigue corriendo en background hasta que el domiciliario cierre sesión).
