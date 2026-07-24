@@ -116,6 +116,12 @@ export class OrdenesController {
 			delete (dto as Partial<CreateOrdenesDto>).estadoOrden;
 			delete (dto as Partial<CreateOrdenesDto>).fechaOrden;
 			delete (dto as Partial<CreateOrdenesDto>).telefonoDomiciliario;
+			// El precio manual es una herramienta de caja (descuentos, precios
+			// pactados). Un cliente final jamás puede fijar lo que va a pagar:
+			// se descarta y el backend recalcula desde la variante.
+			dto.productos?.forEach((item) => {
+				delete item.precioUnitario;
+			});
 		}
 		return this.service.create(dto);
 	}

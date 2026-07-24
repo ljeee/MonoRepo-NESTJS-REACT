@@ -1,4 +1,4 @@
-import {IsString, IsNumber, IsOptional, IsDateString, IsArray, ValidateNested, IsIn, IsNotEmpty} from 'class-validator';
+import {IsString, IsNumber, IsOptional, IsDateString, IsArray, ValidateNested, IsIn, IsNotEmpty, Min} from 'class-validator';
 import {Transform} from 'class-transformer';
 import {ApiProperty, PartialType} from '@nestjs/swagger';
 import {Type} from 'class-transformer';
@@ -152,6 +152,22 @@ export class CreateOrdenItemDto {
 	@IsOptional()
 	@IsIn(['leche', 'agua'])
 	base?: 'leche' | 'agua';
+
+	/**
+	 * Precio manual por unidad. Cuando viene, reemplaza el precio calculado
+	 * (variante + recargos por sabor/base) — sirve para descuentos, precios
+	 * pactados o cortesías. El controller lo descarta para el rol `cliente`,
+	 * que jamás puede fijar su propio precio.
+	 */
+	@ApiProperty({
+		example: 35000,
+		required: false,
+		description: 'Precio unitario manual; sobrescribe el precio calculado. Solo para staff.',
+	})
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	precioUnitario?: number;
 }
 
 export class FindOrdenesDto {

@@ -10,6 +10,12 @@ export interface ProductoVariante {
   activo: boolean;
   /** Stock físico de unidades de bebida (gaseosas/jugos) */
   stockBebida?: number;
+  /** Categoría para agrupar en el inventario de bebidas ('gaseosa'|'jugo'|'cerveza'|'agua'|'otra'). */
+  categoriaBebida?: string | null;
+  /** Umbral de alerta de stock bajo de esta bebida. */
+  alertaBebida?: number | null;
+  /** Nivel objetivo (barra llena) del medidor de esta bebida. */
+  nivelObjetivoBebida?: number | null;
 }
 
 export type Personalizacion = 'pizza' | 'calzone' | 'jugo' | 'ninguna';
@@ -240,7 +246,15 @@ export interface OrderCartItem {
   productoNombre: string;
   varianteNombre: string;
   varianteId: number;
+  /** Precio calculado desde la variante (+ recargo de base leche). Solo referencia. */
   precioUnitario: number;
+  /**
+   * Precio manual fijado por el cajero (descuento, precio pactado, cortesía).
+   * Cuando existe, es el que se cobra y el que se envía al backend — el backend
+   * entonces NO aplica sus recargos por sabor. Si es undefined, el backend
+   * calcula el precio completo (variante + recargos).
+   */
+  precioOverride?: number;
   cantidad: number;
   sabores?: string[];
   /** Base del jugo: 'leche' | 'agua'. Undefined para productos que no son jugo. */
@@ -262,6 +276,12 @@ export interface CreateOrdenProductoDto {
   sabor3?: string;
   cantidad: number;
   base?: 'leche' | 'agua';
+  /**
+   * Precio manual por unidad. Si viene, el backend lo usa tal cual y NO aplica
+   * sus recargos por sabor/tamaño. Se envía solo cuando el cajero editó el
+   * precio; el backend lo ignora para el rol `cliente`.
+   */
+  precioUnitario?: number;
 }
 
 export interface CreateOrdenDto {
@@ -479,6 +499,8 @@ export interface InventarioCaja {
   nombre: string;
   cantidad: number;
   alertaMinimo: number | null;
+  /** Nivel objetivo (barra llena) del medidor. Null = sin objetivo. */
+  nivelObjetivo: number | null;
   enAlerta: boolean;
 }
 
@@ -497,6 +519,7 @@ export interface CrearCajaDto {
   nombre: string;
   cantidad?: number;
   alertaMinimo?: number;
+  nivelObjetivo?: number;
 }
 
 export interface AjustarCajasDto {

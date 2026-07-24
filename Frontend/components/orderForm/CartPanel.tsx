@@ -1,5 +1,5 @@
-import React from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
+import React, { useState, useCallback } from 'react';
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
 import Icon from '../ui/Icon';
 import { formatCurrency } from '@/src/shared';
 
@@ -9,21 +9,48 @@ export interface CartItem {
   varianteNombre: string;
   varianteId: number;
   precioUnitario: number;
+  /** Precio manual del cajero; cuando existe, es el que se cobra. */
+  precioOverride?: number;
   cantidad: number;
   sabores?: string[]; // Optional: for Pizza Personalizada
   base?: 'leche' | 'agua'; // Optional: for juices
 }
 
+/** Precio efectivo de la línea: el manual si lo hay, si no el calculado. */
+const precioDe = (i: CartItem) => i.precioOverride ?? i.precioUnitario;
+
 interface CartPanelProps {
   items: CartItem[];
   onRemove: (id: string) => void;
   onUpdateCantidad: (id: string, cantidad: number) => void;
+  /** `null` restaura el precio calculado del producto. */
+  onUpdatePrecio?: (id: string, precio: number | null) => void;
+  /** Copia el carrito como texto de cotización para enviar al cliente. */
+  onCopyQuote?: () => void;
   costoDomicilio?: number;
 }
 
-const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicilio = 0 }: CartPanelProps) => {
-  const subtotal = items.reduce((sum, i) => sum + i.precioUnitario * i.cantidad, 0);
+const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, onUpdatePrecio, onCopyQuote, costoDomicilio = 0 }: CartPanelProps) => {
+  const subtotal = items.reduce((sum, i) => sum + precioDe(i) * i.cantidad, 0);
   const total = subtotal + costoDomicilio;
+
+  // Edición inline del precio unitario: solo una fila a la vez.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState('');
+
+  const startEdit = useCallback((item: CartItem) => {
+    if (!onUpdatePrecio) return;
+    setEditingId(item.id);
+    setDraft(String(precioDe(item)));
+  }, [onUpdatePrecio]);
+
+  // Confirmar: vacío = restaurar el precio calculado.
+  const commitEdit = useCallback(() => {
+    if (!editingId || !onUpdatePrecio) { setEditingId(null); return; }
+    const digits = draft.replace(/\D/g, '');
+    onUpdatePrecio(editingId, digits === '' ? null : Number(digits));
+    setEditingId(null);
+  }, [editingId, draft, onUpdatePrecio]);
 
   if (items.length === 0) {
     return (
@@ -83,10 +110,53 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
                 </TouchableOpacity>
               </View>
 
-              <Text className="text-(--color-pos-primary) font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>
-                ${formatCurrency(item.precioUnitario * item.cantidad)}
-              </Text>
+              {editingId === item.id ? (
+                <View className="flex-row items-center bg-black/40 rounded-xl border border-(--color-pos-primary)/50 px-2">
+                  <Text className="text-(--color-pos-primary) font-black text-sm">$</Text>
+                  <TextInput
+                    className="text-white font-black text-sm px-1 py-1.5 min-w-[92px] text-right"
+                    value={draft}
+                    onChangeText={(v: string) => setDraft(v.replace(/\D/g, ''))}
+                    keyboardType="numeric"
+                    autoFocus
+                    selectTextOnFocus
+                    onBlur={commitEdit}
+                    onSubmitEditing={commitEdit}
+                    placeholder="0"
+                    placeholderTextColor="#475569"
+                  />
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => startEdit(item)}
+                  disabled={!onUpdatePrecio}
+                  className="items-end active:opacity-60"
+                >
+                  <Text className="text-(--color-pos-primary) font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>
+                    ${formatCurrency(precioDe(item) * item.cantidad)}
+                  </Text>
+                  {onUpdatePrecio && (
+                    <Text className="text-slate-500 text-[9px] font-bold uppercase tracking-wider mt-0.5">
+                      ${formatCurrency(precioDe(item))} c/u · tocar para editar
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
+
+            {/* Precio manual: aviso + restaurar el calculado */}
+            {item.precioOverride != null && (
+              <TouchableOpacity
+                onPress={() => onUpdatePrecio?.(item.id, null)}
+                disabled={!onUpdatePrecio}
+                className="flex-row items-center gap-1.5 mt-2 self-start bg-amber-500/15 px-2 py-1 rounded-full active:opacity-70"
+              >
+                <Icon name="tag-outline" size={10} color="#F5A524" />
+                <Text className="text-amber-400 text-[9px] font-black uppercase tracking-widest">
+                  Precio manual · antes ${formatCurrency(item.precioUnitario)} · restaurar
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Base del jugo */}
             {item.base && (
@@ -129,6 +199,16 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, costoDomicili
             ${formatCurrency(total)}
           </Text>
         </View>
+
+        {onCopyQuote && (
+          <TouchableOpacity
+            onPress={onCopyQuote}
+            className="flex-row items-center justify-center gap-2 mt-3 py-3 rounded-xl bg-white/5 border border-white/10 active:bg-white/10"
+          >
+            <Icon name="content-copy" size={15} color="#94A3B8" />
+            <Text className="text-slate-300 font-black text-xs uppercase tracking-widest">Copiar cotización</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );

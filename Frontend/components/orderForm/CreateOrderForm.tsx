@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { isAxiosError } from 'axios';
+import * as Clipboard from 'expo-clipboard';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Platform } from 'react-native';
 import { ScrollView, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingView } from '../../tw';
 import { Badge, Picker, PickerItem } from '../ui';
 import { api } from '../../services/api';
-import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce } from '@/src/shared';
+import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce, normalizePhone } from '@/src/shared';
 import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente, ClienteDireccion } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import CartPanel, { CartItem } from './CartPanel';
@@ -174,6 +175,19 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
     });
   }, [formState.cart, updateForm]);
 
+  // Precio manual por ítem (descuento, precio pactado, cortesía). `null`
+  // restaura el precio calculado — el backend vuelve a mandar y aplica sus
+  // recargos por sabor.
+  const updateCartPrecio = useCallback((id: string, precio: number | null) => {
+    updateForm({
+      cart: formState.cart.map(i =>
+        i.id === id
+          ? { ...i, precioOverride: precio === null ? undefined : Math.max(0, precio) }
+          : i,
+      ),
+    });
+  }, [formState.cart, updateForm]);
+
   // ==================== EFFECTS ====================
 
   // Buscar cliente solo cuando hay 10 dígitos y es domicilio
@@ -228,6 +242,53 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
     formState.tipoPedido === 'domicilio'
       ? (formState.nombreCliente || client?.clienteNombre || '')
       : formState.nombreCliente;
+
+  // ==================== COTIZACIÓN (copiar) ====================
+  // Arma el carrito en su estado actual como texto listo para pegar en
+  // WhatsApp y mandarle la cuenta al cliente antes de crear la orden. Usa el
+  // precio efectivo (manual si el cajero lo editó) y el mismo desglose que ve
+  // en el Resumen del Pedido.
+  const handleCopyQuote = useCallback(async () => {
+    if (formState.cart.length === 0) {
+      showToast('Agrega productos primero', 'info', 2000);
+      return;
+    }
+
+    const precioDe = (i: CartItem) => i.precioOverride ?? i.precioUnitario;
+    const lineas = formState.cart.map((i) => {
+      const extras = [
+        i.varianteNombre,
+        i.base ? (i.base === 'leche' ? 'Leche' : 'Agua') : '',
+        ...(i.sabores ?? []),
+      ].filter(Boolean).join(' / ');
+      const nombre = extras ? `${i.productoNombre} (${extras})` : i.productoNombre;
+      return `• ${i.cantidad} ${nombre} — $${COP_FORMATTER.format(precioDe(i) * i.cantidad)}`;
+    });
+
+    const costoDom = formState.tipoPedido === 'domicilio' && formState.costoDomicilio
+      ? Number(formState.costoDomicilio)
+      : 0;
+    const total = formState.cart.reduce((s, i) => s + precioDe(i) * i.cantidad, 0) + costoDom;
+
+    const texto = [
+      '🍕 *Dfiru Pizzería* — Cotización',
+      '━━━━━━━━━━━━━━━━━━━━',
+      resolvedNombreCliente ? `Cliente: ${resolvedNombreCliente}` : '',
+      formState.tipoPedido === 'domicilio' && formState.newAddress ? `📍 ${formState.newAddress}` : '',
+      '━━━━━━━━━━━━━━━━━━━━',
+      lineas.join('\n'),
+      '━━━━━━━━━━━━━━━━━━━━',
+      costoDom > 0 ? `Domicilio: $${COP_FORMATTER.format(costoDom)}` : '',
+      `*TOTAL: $${COP_FORMATTER.format(total)}*`,
+    ].filter(Boolean).join('\n');
+
+    try {
+      await Clipboard.setStringAsync(texto);
+      showToast('Cotización copiada', 'success', 2000);
+    } catch {
+      showToast('No se pudo copiar', 'error');
+    }
+  }, [formState.cart, formState.tipoPedido, formState.costoDomicilio, formState.newAddress, resolvedNombreCliente, showToast]);
 
   // ==================== SUBMIT ====================
   const handleSubmit = debounce(async () => {
@@ -291,6 +352,9 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         sabor2: item.sabores?.[1],
         sabor3: item.sabores?.[2],
         base: item.base,
+        // Solo cuando el cajero fijó un precio manual. Si va undefined, el
+        // backend calcula variante + recargos como siempre.
+        precioUnitario: item.precioOverride,
       })),
     };
 
@@ -321,11 +385,12 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
 
     if (formState.tipoPedido === 'domicilio' && formState.telefonoDomiciliario) {
       const costoDom = formState.costoDomicilio ? Number(formState.costoDomicilio) : 0;
-      const total = formState.cart.reduce((s, i) => s + i.precioUnitario * i.cantidad, 0) + costoDom;
+      // Precio efectivo: el manual del cajero si lo fijó, si no el calculado.
+      const total = formState.cart.reduce((s, i) => s + (i.precioOverride ?? i.precioUnitario) * i.cantidad, 0) + costoDom;
       const receiptProducts = formState.cart.map(i => ({
         nombre: `${i.productoNombre}${i.varianteNombre ? ' - ' + i.varianteNombre : ''}${i.base ? ` (${i.base})` : ''}${i.sabores?.length ? ' (' + i.sabores.join(', ') + ')' : ''}`,
         cantidad: i.cantidad,
-        precioUnitario: i.precioUnitario,
+        precioUnitario: i.precioOverride ?? i.precioUnitario,
       }));
       const direccion = formState.newAddress;
       sendWhatsAppDomicilio(formState.telefonoDomiciliario, {
@@ -485,7 +550,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                     <TextInput
                       className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
                       value={formState.telefonoCliente}
-                      onChangeText={(val) => updateForm({ telefonoCliente: val.replace(/\s/g, '') })}
+                      onChangeText={(val) => updateForm({ telefonoCliente: normalizePhone(val) })}
                       placeholder="321..."
                       placeholderTextColor="#475569"
                       keyboardType="numeric"
@@ -681,6 +746,8 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                 items={formState.cart}
                 onRemove={removeFromCart}
                 onUpdateCantidad={updateCartCantidad}
+                onUpdatePrecio={updateCartPrecio}
+                onCopyQuote={handleCopyQuote}
                 costoDomicilio={formState.tipoPedido === 'domicilio' && formState.costoDomicilio ? Number(formState.costoDomicilio) : 0}
               />
 

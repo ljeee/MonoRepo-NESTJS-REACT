@@ -144,7 +144,13 @@ export class ProductProcessingService {
 				}
 			}
 
-			const precioFinalItem = precioBase + recargoTotal;
+			// Un precio manual (descuento, precio pactado, cortesía) reemplaza por
+			// completo el cálculo de variante + recargos. El controller ya lo
+			// eliminó para el rol `cliente`, así que si llega hasta aquí es staff.
+			const precioManual = Number(item.precioUnitario);
+			const tienePrecioManual = item.precioUnitario != null && Number.isFinite(precioManual) && precioManual >= 0;
+
+			const precioFinalItem = tienePrecioManual ? precioManual : precioBase + recargoTotal;
 			const cantidad = Number(item.cantidad) || 1;
 			total += precioFinalItem * cantidad;
 

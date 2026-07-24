@@ -170,4 +170,21 @@ export class ProductosService {
 		variante.stockBebida = Math.max(0, (variante.stockBebida ?? 0) + delta);
 		return this.variantesRepo.save(variante);
 	}
+
+	/**
+	 * Configura los metadatos de inventario de bebida de una variante:
+	 * categoría (para agrupar), umbral de alerta y nivel objetivo del medidor.
+	 * Cada campo es opcional; `null` explícito limpia el valor.
+	 */
+	async configurarBebida(
+		varianteId: number,
+		dto: {categoriaBebida?: string | null; alertaBebida?: number | null; nivelObjetivoBebida?: number | null},
+	): Promise<ProductoVariantes> {
+		const variante = await this.variantesRepo.findOne({where: {varianteId}});
+		if (!variante) throw new NotFoundException(`Variante con ID ${varianteId} no encontrada`);
+		if (dto.categoriaBebida !== undefined) variante.categoriaBebida = dto.categoriaBebida;
+		if (dto.alertaBebida !== undefined) variante.alertaBebida = dto.alertaBebida;
+		if (dto.nivelObjetivoBebida !== undefined) variante.nivelObjetivoBebida = dto.nivelObjetivoBebida;
+		return this.variantesRepo.save(variante);
+	}
 }

@@ -9,9 +9,9 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Clipboard from 'expo-clipboard';
 import * as Location from 'expo-location';
-import * as TaskManager from 'expo-task-manager';
 import * as SecureStore from 'expo-secure-store';
-import { AuthProvider, useAuth, useOrdenesSocket, api, Domicilio } from '@/src/shared';
+import { AuthProvider, ToastProvider, useAuth, useOrdenesSocket, api, Domicilio, normalizePhone, toDialablePhone, formatPhoneDisplay } from '@/src/shared';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 // ─── Tracking de ubicación ────────────────────────────────────────────────────
 // Reporta la posición del domiciliario cada 3 minutos usando la API de
@@ -23,27 +23,7 @@ import { AuthProvider, useAuth, useOrdenesSocket, api, Domicilio } from '@/src/s
 // active "Permitir todo el tiempo" en Ajustes (Android 11+ ya no lo pregunta
 // dentro de la app, solo en Ajustes del sistema).
 
-const LOCATION_TASK_NAME = 'dfiru-rider-location-task';
-const LOCATION_UPDATE_INTERVAL_MS = 3 * 60 * 1000; // 3 minutos
-
-// El task se define en el scope del módulo (no dentro de un componente):
-// Android puede relanzar el JS en modo "headless", sin montar ningún
-// componente, solo para ejecutar este callback cuando llega una ubicación
-// con la app en background.
-TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-  if (error) {
-    console.warn('[LocationTask]', error.message);
-    return;
-  }
-  const locations = (data as { locations?: Location.LocationObject[] } | undefined)?.locations;
-  const last = locations?.[locations.length - 1];
-  if (!last) return;
-  try {
-    await api.domiciliarios.actualizarUbicacion(last.coords.latitude, last.coords.longitude);
-  } catch {
-    // Sin red en este momento — se reintenta en el siguiente tick
-  }
-});
+import { LOCATION_TASK_NAME, LOCATION_UPDATE_INTERVAL_MS } from './src/tasks/locationTask';
 
 // Android 13+ (API 33+) exige el permiso POST_NOTIFICATIONS para poder
 // mostrar CUALQUIER notificación — incluida la del foreground service de
@@ -95,21 +75,37 @@ function useLocationTracking() {
             text1: 'Ubicación solo en primer plano',
             text2: 'Activa "Permitir todo el tiempo" en Ajustes para que funcione con la pantalla bloqueada',
           });
-          // Igual arrancamos: al menos rastrea mientras la app esté abierta
+          // Importante: No iniciar startLocationUpdatesAsync si no tenemos los permisos de background, 
+          // ya que en Android 14 esto causa un SecurityException fatal que tumba la app instantáneamente.
+          return;
         }
 
         const yaIniciado = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK_NAME).catch(() => false);
         if (cancelled || yaIniciado) return;
 
         await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
-          accuracy: Location.Accuracy.Balanced,
+          accuracy: Location.Accuracy.High,
           timeInterval: LOCATION_UPDATE_INTERVAL_MS,
-          distanceInterval: 0,
+          // Si el rider recorre 50m antes de que venzan los 20s, reportar de
+          // inmediato — en moto/bici esto se dispara bastante seguido.
+          distanceInterval: 50,
           showsBackgroundLocationIndicator: true,
+          // ── iOS ────────────────────────────────────────────────────────
+          // Evita que iOS pause los updates cuando detecta que el usuario
+          // "no se está moviendo" — en entregas hay paradas constantes
+          // (esperando el pedido, en el ascensor, etc.) y queremos que
+          // el tracking siga reportando aún en esos momentos.
+          pausesUpdatesAutomatically: false,
+          activityType: Location.ActivityType.AutomotiveNavigation,
+          // ── Android ────────────────────────────────────────────────────
           foregroundService: {
             notificationTitle: 'Dfiru Riders',
-            notificationBody: 'Compartiendo tu ubicación con el despachador',
+            notificationBody: 'Compartiendo tu ubicación en tiempo real',
             notificationColor: '#F5A524',
+            // Android mantiene el foreground service vivo incluso si el
+            // usuario mata la app desde recientes — así el tracking no
+            // para hasta que el domiciliario cierre sesión.
+            killServiceOnDestroy: false,
           },
         });
       } catch (err: any) {
@@ -229,6 +225,15 @@ const copyToClipboard = async (text: string) => {
   Toast.show({ type: 'success', text1: 'Copiado', text2: text });
 };
 
+// Marca con indicativo (+57) aunque el número esté guardado en local.
+const callPhone = (telefono: string) => {
+  const dialable = toDialablePhone(telefono);
+  if (!dialable) return;
+  Linking.openURL(`tel:${dialable}`).catch(() => {
+    Toast.show({ type: 'error', text1: 'No se pudo abrir el marcador' });
+  });
+};
+
 const ESTADOS_ENTREGADO = ['entregado', 'completado', 'completada'];
 const isEntregado = (estado?: string) => ESTADOS_ENTREGADO.includes((estado || '').toLowerCase());
 
@@ -256,6 +261,10 @@ const DomicilioCard = React.memo(function DomicilioCard({
   const isPagado = item.factura?.estado === 'pagado' || item.factura?.estado === 'pagada';
   const entregado = isEntregado(item.estadoDomicilio);
   const productos = item.orden?.productos ?? [];
+  // El número puede venir guardado con indicativo desde pedidos viejos — se
+  // muestra y se copia siempre en local (10 dígitos); el +57 solo se añade al
+  // marcar.
+  const telefonoLocal = normalizePhone(item.telefono);
 
   return (
     <View style={styles.card}>
@@ -288,11 +297,16 @@ const DomicilioCard = React.memo(function DomicilioCard({
 
       <View style={styles.infoRow}>
         <Text style={styles.label}>Teléfono:</Text>
-        <Text style={styles.value}>{item.telefono || 'N/A'}</Text>
-        {item.telefono ? (
-          <Pressable onPress={() => copyToClipboard(item.telefono)} style={({pressed}) => [styles.copyBtn, pressed && {opacity: 0.5}]}>
-            <Text style={styles.copyText}>Copiar</Text>
-          </Pressable>
+        <Text style={styles.value}>{telefonoLocal ? formatPhoneDisplay(telefonoLocal) : 'N/A'}</Text>
+        {telefonoLocal ? (
+          <>
+            <Pressable onPress={() => callPhone(telefonoLocal)} style={({pressed}) => [styles.callBtn, pressed && {opacity: 0.5}]}>
+              <Text style={styles.callText}>Llamar</Text>
+            </Pressable>
+            <Pressable onPress={() => copyToClipboard(telefonoLocal)} style={({pressed}) => [styles.copyBtn, pressed && {opacity: 0.5}]}>
+              <Text style={styles.copyText}>Copiar</Text>
+            </Pressable>
+          </>
         ) : null}
       </View>
 
@@ -384,7 +398,7 @@ const DomicilioCard = React.memo(function DomicilioCard({
   );
 });
 
-function DashboardScreen() {
+function DashboardScreen({ onOpenSettings }: { onOpenSettings: () => void }) {
   const { user, token, logout } = useAuth();
   useLocationTracking();
   const [domicilios, setDomicilios] = useState<Domicilio[]>([]);
@@ -458,9 +472,14 @@ function DashboardScreen() {
           <Text style={styles.headerTitle}>Mis Entregas</Text>
           <Text style={styles.headerUser}>{user?.name || user?.username}</Text>
         </View>
-        <Pressable onPress={logout} style={({pressed}) => [styles.logoutBtn, pressed && {opacity: 0.5}]}>
-          <Text style={styles.logoutText}>Salir</Text>
-        </Pressable>
+        <View style={styles.headerActions}>
+          <Pressable onPress={onOpenSettings} style={({pressed}) => [styles.settingsBtn, pressed && {opacity: 0.5}]}>
+            <Text style={styles.settingsText}>⚙️</Text>
+          </Pressable>
+          <Pressable onPress={logout} style={({pressed}) => [styles.logoutBtn, pressed && {opacity: 0.5}]}>
+            <Text style={styles.logoutText}>Salir</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.tabBar}>
@@ -508,10 +527,64 @@ function DashboardScreen() {
   );
 }
 
+// ─── SETTINGS SCREEN ────────────────────────────────────────────────────────────
+
+function SettingsScreen({ onClose }: { onClose: () => void }) {
+  const [fgStatus, setFgStatus] = useState<Location.PermissionStatus | null>(null);
+  const [bgStatus, setBgStatus] = useState<Location.PermissionStatus | null>(null);
+
+  useEffect(() => {
+    Location.getForegroundPermissionsAsync().then(res => setFgStatus(res.status));
+    Location.getBackgroundPermissionsAsync().then(res => setBgStatus(res.status));
+  }, []);
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Pressable onPress={onClose} style={({pressed}) => [styles.backBtn, pressed && {opacity: 0.5}]}>
+          <Text style={styles.backBtnText}>← Volver</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>Ajustes</Text>
+        <View style={{ width: 60 }} />
+      </View>
+      
+      <View style={styles.list}>
+        <Text style={styles.settingsSectionTitle}>Permisos de Ubicación</Text>
+        <View style={styles.card}>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Primer plano:</Text>
+            <Text style={[styles.value, fgStatus === 'granted' ? styles.paidText : styles.pendingText]}>
+              {fgStatus === 'granted' ? 'Concedido' : fgStatus === 'denied' ? 'Denegado' : 'No solicitado'}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Segundo plano:</Text>
+            <Text style={[styles.value, bgStatus === 'granted' ? styles.paidText : styles.pendingText]}>
+              {bgStatus === 'granted' ? 'Concedido (Permitir todo el tiempo)' : bgStatus === 'denied' ? 'Denegado / Solo en uso' : 'No solicitado'}
+            </Text>
+          </View>
+          
+          <Text style={styles.settingsHelpText}>
+            Para que el despacho sepa dónde estás con la pantalla apagada, necesitas seleccionar "Permitir todo el tiempo" en los ajustes del sistema.
+          </Text>
+
+          <Pressable 
+            style={({pressed}) => [styles.completeBtn, { marginTop: 20 }, pressed && {opacity: 0.5}]} 
+            onPress={() => Linking.openSettings()}
+          >
+            <Text style={styles.buttonText}>ABRIR AJUSTES DEL SISTEMA</Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ─── MAIN APP WRAPPER ─────────────────────────────────────────────────────────
 
 function Main() {
   const { user, isLoading } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
 
   if (isLoading) {
     return (
@@ -524,7 +597,11 @@ function Main() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#0F172A" />
-      {user ? <DashboardScreen /> : <LoginScreen />}
+      {user ? (
+        showSettings ? <SettingsScreen onClose={() => setShowSettings(false)} /> : <DashboardScreen onOpenSettings={() => setShowSettings(true)} />
+      ) : (
+        <LoginScreen />
+      )}
       <Toast />
     </SafeAreaView>
   );
@@ -532,11 +609,15 @@ function Main() {
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <Main />
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <Main />
+          </AuthProvider>
+        </ToastProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -631,6 +712,20 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingsBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#334155',
+    borderRadius: 8,
+  },
+  settingsText: {
+    fontSize: 14,
+  },
   logoutBtn: {
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -641,6 +736,32 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  backBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#334155',
+    borderRadius: 8,
+    minWidth: 60,
+  },
+  backBtnText: {
+    color: '#F8FAFC',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  settingsSectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#F8FAFC',
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  settingsHelpText: {
+    color: '#94A3B8',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 16,
+    fontStyle: 'italic',
   },
   tabBar: {
     flexDirection: 'row',
@@ -722,6 +843,18 @@ const styles = StyleSheet.create({
   },
   copyText: {
     color: '#38BDF8',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  callBtn: {
+    marginLeft: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    borderRadius: 6,
+  },
+  callText: {
+    color: '#10B981',
     fontSize: 12,
     fontWeight: 'bold',
   },

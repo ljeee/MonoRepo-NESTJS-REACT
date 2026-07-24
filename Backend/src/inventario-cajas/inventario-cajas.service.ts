@@ -13,12 +13,25 @@ export class InventarioCajasService {
 		private readonly movimientosRepo: Repository<InventarioCajasMovimiento>,
 	) {}
 
+	/** Forma pública de una caja (misma en getEstado / ajustar / configurar). */
+	private toEstado(inv: InventarioCajas) {
+		return {
+			id: inv.id,
+			nombre: inv.nombre,
+			cantidad: inv.cantidad,
+			alertaMinimo: inv.alertaMinimo,
+			nivelObjetivo: inv.nivelObjetivo,
+			enAlerta: inv.alertaMinimo !== null && inv.cantidad <= inv.alertaMinimo,
+		};
+	}
+
 	/** Crear nuevo tipo de caja */
 	async crear(dto: CrearCajaDto): Promise<InventarioCajas> {
 		const inv = this.inventarioRepo.create({
 			nombre: dto.nombre,
 			cantidad: dto.cantidad || 0,
 			alertaMinimo: dto.alertaMinimo ?? null,
+			nivelObjetivo: dto.nivelObjetivo ?? null,
 		});
 		return await this.inventarioRepo.save(inv);
 	}
@@ -31,17 +44,9 @@ export class InventarioCajasService {
 	}
 
 	/** Retorna todas las cajas */
-	async getEstado(): Promise<
-		Array<{id: number; nombre: string; cantidad: number; alertaMinimo: number | null; enAlerta: boolean}>
-	> {
+	async getEstado() {
 		const cajas = await this.inventarioRepo.find({order: {id: 'ASC'}});
-		return cajas.map((inv) => ({
-			id: inv.id,
-			nombre: inv.nombre,
-			cantidad: inv.cantidad,
-			alertaMinimo: inv.alertaMinimo,
-			enAlerta: inv.alertaMinimo !== null && inv.cantidad <= inv.alertaMinimo,
-		}));
+		return cajas.map((inv) => this.toEstado(inv));
 	}
 
 	/** Ajusta la cantidad de una caja específica (positivo = agregar, negativo = restar) */
@@ -65,23 +70,18 @@ export class InventarioCajasService {
 		inv.cantidad = nuevaCantidad;
 		await this.inventarioRepo.save(inv);
 
-		return {
-			id: inv.id,
-			nombre: inv.nombre,
-			cantidad: inv.cantidad,
-			alertaMinimo: inv.alertaMinimo,
-			enAlerta: inv.alertaMinimo !== null && inv.cantidad <= inv.alertaMinimo,
-		};
+		return this.toEstado(inv);
 	}
 
-	/** Configura la cantidad mínima de alerta de una caja */
-	async configurarAlerta(cajaId: number, dto: ConfigurarAlertaDto): Promise<{alertaMinimo: number}> {
+	/** Configura el umbral de alerta y/o el nivel objetivo de una caja */
+	async configurarAlerta(cajaId: number, dto: ConfigurarAlertaDto) {
 		const inv = await this.inventarioRepo.findOne({where: {id: cajaId}});
 		if (!inv) throw new NotFoundException('Caja no encontrada');
 
-		inv.alertaMinimo = dto.alertaMinimo;
+		if (dto.alertaMinimo !== undefined) inv.alertaMinimo = dto.alertaMinimo;
+		if (dto.nivelObjetivo !== undefined) inv.nivelObjetivo = dto.nivelObjetivo;
 		await this.inventarioRepo.save(inv);
-		return {alertaMinimo: inv.alertaMinimo};
+		return this.toEstado(inv);
 	}
 
 	/** Obtiene los movimientos cargando la info de la caja a la que pertenecen */

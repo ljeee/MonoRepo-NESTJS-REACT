@@ -239,6 +239,13 @@ export function createApi(http: AxiosInstance) {
 
     ajustarStockBebida: (varianteId: number, delta: number) =>
       http.patch<ProductoVariante>(`/productos/variantes/${varianteId}/stock-bebida`, { delta }).then((r) => r.data),
+
+    // Configura categoría / umbral de alerta / nivel objetivo de una bebida.
+    configurarBebida: (
+      varianteId: number,
+      data: { categoriaBebida?: string | null; alertaBebida?: number | null; nivelObjetivoBebida?: number | null },
+    ) =>
+      http.patch<ProductoVariante>(`/productos/variantes/${varianteId}/config-bebida`, data).then((r) => r.data),
   };
 
   // ─── Pizza Sabores ──────────────────────────────────────────────────
@@ -339,8 +346,10 @@ export function createApi(http: AxiosInstance) {
     ajustar: (id: number, data: AjustarCajasDtoModel) =>
       http.post<InventarioCaja>(`/inventario-cajas/${id}/ajustar`, data).then((r) => r.data),
 
-    configurarAlerta: (id: number, alertaMinimo: number) =>
-      http.patch<{ alertaMinimo: number }>(`/inventario-cajas/${id}/alerta`, { alertaMinimo }).then((r) => r.data),
+    // Configura umbral de alerta y/o nivel objetivo. Ambos opcionales: se
+    // envía solo lo que cambia.
+    configurar: (id: number, data: { alertaMinimo?: number; nivelObjetivo?: number }) =>
+      http.patch<InventarioCaja>(`/inventario-cajas/${id}/alerta`, data).then((r) => r.data),
 
     getMovimientos: (limit = 20) =>
       http.get<InventarioCajasMovimientoModel[]>('/inventario-cajas/movimientos', { params: { limit } }).then((r) => arr<InventarioCajasMovimientoModel>(r.data)),

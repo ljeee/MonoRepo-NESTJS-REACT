@@ -55,5 +55,6 @@ export { formatCurrency, formatDate, formatDateShort, formatCompactCurrency } fr
 export type { DateRangeValidationResult } from './utils/dateRange';
 export { validateFlexibleDateRange, getRangeDates, getLocalDateString } from './utils/dateRange';
 export { getProductEmoji } from './utils/productEmojis';
+export { normalizePhone, toDialablePhone, toWhatsappPhone, formatPhoneDisplay, COUNTRY_CODE } from './utils/phone';
 export { resolverPersonalizacion, PERSONALIZACION_OPCIONES } from './utils/personalizacion';
 export { mapOrdenToForm } from './utils/orderMapper';

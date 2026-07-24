@@ -68,6 +68,17 @@ export class ProductosController {
 		return this.service.ajustarStockBebida(id, body.delta);
 	}
 
+	@Patch('variantes/:id/config-bebida')
+	@ApiOperation({summary: 'Configurar categoría, alerta y nivel objetivo de una variante de bebida'})
+	@ApiResponse({status: 200, description: 'Configuración de bebida actualizada.'})
+	configurarBebida(
+		@Param('id') id: number,
+		@Body()
+		body: {categoriaBebida?: string | null; alertaBebida?: number | null; nivelObjetivoBebida?: number | null},
+	) {
+		return this.service.configurarBebida(id, body);
+	}
+
 	@Patch('variantes/:id')
 	@ApiOperation({summary: 'Actualizar una variante'})
 	@ApiResponse({status: 200, description: 'Variante actualizada.'})

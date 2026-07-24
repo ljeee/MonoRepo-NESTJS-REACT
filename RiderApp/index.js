@@ -1,5 +1,9 @@
 import { registerRootComponent } from 'expo';
 
+// Registrar las background tasks antes de cargar la App (React) para evitar
+// crasheos por headless JS en Android al ejecutarse en segundo plano.
+import './src/tasks/locationTask';
+
 import App from './App';
 
 // registerRootComponent calls AppRegistry.registerComponent('main', () => App);

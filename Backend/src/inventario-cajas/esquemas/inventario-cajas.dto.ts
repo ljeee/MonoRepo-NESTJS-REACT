@@ -18,6 +18,12 @@ export class CrearCajaDto {
 	@IsInt()
 	@Min(0)
 	alertaMinimo?: number;
+
+	@ApiPropertyOptional({description: 'Nivel objetivo (barra llena) para el medidor'})
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	nivelObjetivo?: number;
 }
 
 export class AjustarCajasDto {
@@ -38,7 +44,14 @@ export class AjustarCajasDto {
 
 export class ConfigurarAlertaDto {
 	@ApiPropertyOptional({description: 'Cantidad mínima antes de mostrar alerta'})
+	@IsOptional()
 	@IsInt()
 	@Min(0)
-	alertaMinimo: number;
+	alertaMinimo?: number;
+
+	@ApiPropertyOptional({description: 'Nivel objetivo (barra llena) para el medidor'})
+	@IsOptional()
+	@IsInt()
+	@Min(0)
+	nivelObjetivo?: number;
 }

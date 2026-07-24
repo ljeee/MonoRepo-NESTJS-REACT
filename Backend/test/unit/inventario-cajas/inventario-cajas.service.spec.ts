@@ -154,14 +154,24 @@ describe('InventarioCajasService', () => {
 	// ==================== configurarAlerta ====================
 
 	describe('configurarAlerta', () => {
-		it('actualiza el alertaMinimo y lo retorna', async () => {
-			const inv = {id: 1, nombre: 'Caja', cantidad: 10, alertaMinimo: null};
+		it('actualiza el alertaMinimo y retorna el estado completo', async () => {
+			const inv = {id: 1, nombre: 'Caja', cantidad: 10, alertaMinimo: null, nivelObjetivo: null};
 			mockInventarioRepo.findOne.mockResolvedValue(inv);
 			mockInventarioRepo.save.mockImplementation(async (i: any) => i);
 
 			const result = await service.configurarAlerta(1, {alertaMinimo: 5});
 
-			expect(result).toEqual({alertaMinimo: 5});
+			expect(result).toMatchObject({id: 1, nombre: 'Caja', cantidad: 10, alertaMinimo: 5, enAlerta: false});
+		});
+
+		it('actualiza el nivelObjetivo cuando se envía', async () => {
+			const inv = {id: 1, nombre: 'Caja', cantidad: 10, alertaMinimo: 5, nivelObjetivo: null};
+			mockInventarioRepo.findOne.mockResolvedValue(inv);
+			mockInventarioRepo.save.mockImplementation(async (i: any) => i);
+
+			const result = await service.configurarAlerta(1, {nivelObjetivo: 100});
+
+			expect(result).toMatchObject({nivelObjetivo: 100, alertaMinimo: 5});
 		});
 
 		it('lanza NotFoundException cuando la caja no existe', async () => {

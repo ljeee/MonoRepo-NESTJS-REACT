@@ -1,5 +1,5 @@
 import { Platform, Linking } from 'react-native';
-import { formatCurrency } from '@/src/shared';
+import { formatCurrency, toWhatsappPhone } from '@/src/shared';
 
 /** Ancho del rollo de la impresora térmica (mm). Xprinter T82E = 80mm. */
 const PAPER_WIDTH_MM = 80;
@@ -191,8 +191,7 @@ export function sendWhatsAppDomicilio(
     .filter(Boolean)
     .join('\n');
 
-  let phone = telefonoDomiciliario.replace(/\D/g, '');
-  if (phone.length === 10) phone = '57' + phone;
+  const phone = toWhatsappPhone(telefonoDomiciliario);
 
   const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
   

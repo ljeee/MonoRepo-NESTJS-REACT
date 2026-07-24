@@ -26,6 +26,22 @@ export class ProductoVariantes {
 	@Column({name: 'stock_bebida', type: 'integer', default: 0})
 	stockBebida: number;
 
+	// ── Configuración del inventario de bebidas ──────────────────────────────
+	// Categoría para agrupar en la pantalla de inventario ('gaseosa' | 'jugo' |
+	// 'cerveza' | 'agua' | 'otra'). Cuando es null, la variante NO se rastrea
+	// como bebida salvo que el nombre del producto contenga "gaseosa"/"jugo"
+	// (compatibilidad con el comportamiento anterior).
+	@Column({name: 'categoria_bebida', type: 'varchar', length: 30, nullable: true})
+	categoriaBebida: string | null;
+
+	// Umbral de alerta de stock bajo para esta variante de bebida.
+	@Column({name: 'alerta_bebida', type: 'integer', nullable: true})
+	alertaBebida: number | null;
+
+	// Nivel objetivo (barra "llena") para el medidor de la UI, análogo al de cajas.
+	@Column({name: 'nivel_objetivo_bebida', type: 'integer', nullable: true})
+	nivelObjetivoBebida: number | null;
+
 	@Column({name: 'activo', type: 'boolean', default: true})
 	activo: boolean;
 

@@ -14,6 +14,13 @@ export class InventarioCajas {
 	@Column({type: 'int', nullable: true})
 	alertaMinimo: number | null;
 
+	// Nivel "lleno" de referencia para el medidor de la UI. La barra se llena
+	// contra este objetivo (no contra un divisor inventado), y la alerta se
+	// dibuja como una marca sobre esa misma escala — así dos cajas distintas
+	// son comparables. Null = sin objetivo definido (la UI cae a un fallback).
+	@Column({type: 'int', nullable: true})
+	nivelObjetivo: number | null;
+
 	@CreateDateColumn({type: 'timestamptz'})
 	actualizadoEn: Date;
 }
