@@ -76,7 +76,10 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, onUpdatePreci
                  <Text className="text-white font-black text-sm uppercase tracking-tight" numberOfLines={2}>
                    {item.productoNombre}
                  </Text>
-                 <Text className="text-slate-500 text-[10px] uppercase font-bold italic">{item.varianteNombre}</Text>
+                 <Text className="text-slate-500 text-[10px] uppercase font-bold italic" numberOfLines={1}>
+                   {item.varianteNombre}
+                   {item.cantidad > 1 ? ` · $${formatCurrency(precioDe(item))} c/u` : ''}
+                 </Text>
               </View>
               <TouchableOpacity 
                 onPress={() => onRemove(item.id)} 
@@ -110,38 +113,46 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, onUpdatePreci
                 </TouchableOpacity>
               </View>
 
-              {editingId === item.id ? (
-                <View className="flex-row items-center bg-black/40 rounded-xl border border-(--color-pos-primary)/50 px-2">
-                  <Text className="text-(--color-pos-primary) font-black text-sm">$</Text>
-                  <TextInput
-                    className="text-white font-black text-sm px-1 py-1.5 min-w-[92px] text-right"
-                    value={draft}
-                    onChangeText={(v: string) => setDraft(v.replace(/\D/g, ''))}
-                    keyboardType="numeric"
-                    autoFocus
-                    selectTextOnFocus
-                    onBlur={commitEdit}
-                    onSubmitEditing={commitEdit}
-                    placeholder="0"
-                    placeholderTextColor="#475569"
-                  />
-                </View>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => startEdit(item)}
-                  disabled={!onUpdatePrecio}
-                  className="items-end active:opacity-60"
-                >
-                  <Text className="text-(--color-pos-primary) font-black text-base" style={{ fontFamily: 'Space Grotesk' }}>
-                    ${formatCurrency(precioDe(item) * item.cantidad)}
-                  </Text>
-                  {onUpdatePrecio && (
-                    <Text className="text-slate-500 text-[9px] font-bold uppercase tracking-wider mt-0.5">
-                      ${formatCurrency(precioDe(item))} c/u · tocar para editar
+              {/*
+                El precio ocupa un "slot" de tamaño FIJO (mismo alto y ancho en
+                ambos estados). Antes el modo lectura tenía dos líneas y el de
+                edición una sola, con un input más ancho: al tocar, la fila
+                saltaba de sitio y el placeholder quedaba enorme. Ahora solo
+                cambia el contenido dentro del mismo recuadro.
+              */}
+              <View className="w-[118px] h-9 justify-center">
+                {editingId === item.id ? (
+                  <View className="flex-row items-center h-9 px-2 rounded-lg bg-black/40 border border-(--color-pos-primary)/60">
+                    <Text className="text-(--color-pos-primary) font-black text-sm">$</Text>
+                    <TextInput
+                      className="flex-1 text-white font-black text-sm text-right"
+                      style={{ padding: 0 }}
+                      value={draft}
+                      onChangeText={(v: string) => setDraft(v.replace(/\D/g, ''))}
+                      keyboardType="numeric"
+                      autoFocus
+                      selectTextOnFocus
+                      onBlur={commitEdit}
+                      onSubmitEditing={commitEdit}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={() => startEdit(item)}
+                    disabled={!onUpdatePrecio}
+                    className="flex-row items-center justify-end gap-1.5 h-9 active:opacity-60"
+                  >
+                    <Text
+                      className="text-(--color-pos-primary) font-black text-base"
+                      style={{ fontFamily: 'Space Grotesk' }}
+                      numberOfLines={1}
+                    >
+                      ${formatCurrency(precioDe(item) * item.cantidad)}
                     </Text>
-                  )}
-                </TouchableOpacity>
-              )}
+                    {onUpdatePrecio && <Icon name="pencil-outline" size={12} color="#475569" />}
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
 
             {/* Precio manual: aviso + restaurar el calculado */}

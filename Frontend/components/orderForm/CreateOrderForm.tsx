@@ -7,9 +7,11 @@ import { ScrollView, Text, TextInput, TouchableOpacity, View, KeyboardAvoidingVi
 import { Badge, Picker, PickerItem } from '../ui';
 import { api } from '../../services/api';
 import { useOrder, useToast, useClientByPhone, defaultOrderFormState, useAntiDebounce, normalizePhone } from '@/src/shared';
-import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente, ClienteDireccion } from '@/src/shared';
+import type { CreateOrdenDto, Domiciliario, Producto, ProductoVariante, OrderFormState, Cliente } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import CartPanel, { CartItem } from './CartPanel';
+import AddressPicker from './AddressPicker';
+import PrepayPicker, { emptyPrepay, type PrepayState } from './PrepayPicker';
 import MenuPicker from './MenuPicker';
 import { sendWhatsAppDomicilio } from '../../utils/printReceipt';
 
@@ -112,7 +114,6 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const [domiciliarios, setDomiciliarios] = useState<Domiciliario[]>([]);
   const [clientesList, setClientesList] = useState<Cliente[]>([]);
   const [nameSuggestions, setNameSuggestions] = useState<Cliente[]>([]);
-  const [addressSuggestions, setAddressSuggestions] = useState<ClienteDireccion[]>([]);
 
   const fetchDomiciliarios = useCallback(async () => {
     try {
@@ -123,7 +124,8 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
   const [loading, setLoading] = useState(false);
   const { client, fetchClient } = useClientByPhone();
   const { debounce } = useAntiDebounce();
-  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  // Cobro anticipado: si el cajero elige método, la orden nace ya pagada.
+  const [prepay, setPrepay] = useState<PrepayState>(emptyPrepay);
 
   // ==================== CARRITO ====================
   const addToCart = useCallback((producto: Producto, variante: ProductoVariante, sabores?: string[], base?: 'leche' | 'agua') => {
@@ -231,17 +233,18 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
     );
   }, [formState.nombreCliente, formState.tipoPedido, clientesList]);
 
-  // Limpiar sugerencias de dirección cuando no aplican
-  useEffect(() => {
-    if (formState.tipoPedido !== 'domicilio') {
-      setAddressSuggestions([]);
-    }
-  }, [formState.tipoPedido]);
-
   const resolvedNombreCliente =
     formState.tipoPedido === 'domicilio'
       ? (formState.nombreCliente || client?.clienteNombre || '')
       : formState.nombreCliente;
+
+  // Total efectivo del pedido (precio manual si el cajero lo fijó) + domicilio.
+  // Es el mismo número que muestra el CartPanel y el que debe cuadrar el pago mixto.
+  const cartTotal =
+    formState.cart.reduce((s, i) => s + (i.precioOverride ?? i.precioUnitario) * i.cantidad, 0) +
+    (formState.tipoPedido === 'domicilio' && formState.costoDomicilio
+      ? Number(formState.costoDomicilio)
+      : 0);
 
   // ==================== COTIZACIÓN (copiar) ====================
   // Arma el carrito en su estado actual como texto listo para pegar en
@@ -358,11 +361,43 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       })),
     };
 
+    // El desglose del pago mixto debe cuadrar antes de tocar el servidor.
+    if (mode !== 'edit' && prepay.metodo === 'efectivo_transferencia') {
+      const suma = (Number(prepay.efectivo) || 0) + (Number(prepay.transferencia) || 0);
+      if (suma !== cartTotal) {
+        setLoading(false);
+        showToast('El pago mixto debe sumar exactamente el total', 'error');
+        return;
+      }
+    }
+
     try {
       if (mode === 'edit' && ordenId) {
         await api.ordenes.update(ordenId, payload as any);
       } else {
-        await api.ordenes.create(payload);
+        const creada = await api.ordenes.create(payload);
+
+        // Cobro anticipado: la orden nace pagada en vez de quedar pendiente.
+        // Se reutiliza el mismo endpoint `completar` del flujo normal de caja,
+        // así los movimientos de efectivo y el desglose por método quedan
+        // registrados igual que si se cobrara desde Facturación.
+        if (prepay.metodo && creada?.ordenId) {
+          try {
+            const esMixto = prepay.metodo === 'efectivo_transferencia';
+            await api.ordenes.completar(
+              creada.ordenId,
+              prepay.metodo,
+              `prepay-${creada.ordenId}-${Date.now()}`,
+              undefined,
+              esMixto ? Number(prepay.efectivo) || 0 : undefined,
+              esMixto ? Number(prepay.transferencia) || 0 : undefined,
+            );
+          } catch {
+            // La orden YA se creó: no se puede revertir aquí sin arriesgar un
+            // duplicado. Se avisa para que la cobren desde Facturación.
+            showToast('Orden creada, pero no se pudo registrar el pago. Cóbrala en Facturación.', 'warning', 6000);
+          }
+        }
         // Persistir nombre editado en el registro del cliente si fue modificado
         if (
           formState.telefonoCliente &&
@@ -418,8 +453,17 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
       costoDomicilio: '',
       observaciones: '',
     });
+    setPrepay(emptyPrepay);
 
-    showToast(mode === 'edit' ? '¡Orden actualizada!' : '¡Orden creada exitosamente!', 'success', 2000);
+    showToast(
+      mode === 'edit'
+        ? '¡Orden actualizada!'
+        : prepay.metodo
+          ? '¡Orden creada y cobrada!'
+          : '¡Orden creada exitosamente!',
+      'success',
+      2000,
+    );
     const navTimer = setTimeout(() => {
       router.push(mode === 'edit' ? (`/orden-detalle?ordenId=${ordenId}` as any) : '/balance-dia');
     }, 2000);
@@ -622,55 +666,28 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
               {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
               {formState.tipoPedido === 'domicilio' && (
                 <View className="flex-row flex-wrap -mx-1" style={{ zIndex: 10, elevation: 10 }}>
-                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`} style={{ zIndex: 100, elevation: 100 }}>
-                    <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Dirección</Text>
-                    <View style={{ position: 'relative' }}>
-                      <TextInput
-                        className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
-                        value={formState.newAddress}
-                        onFocus={() => setShowAddressDropdown(true)}
-                        onBlur={() => {
-                          const t = setTimeout(() => setShowAddressDropdown(false), 200);
-                          pendingTimers.current.push(t);
-                        }}
-                        onChangeText={(val) => {
-                          updateForm({
-                            newAddress: val,
-                            selectedAddressId: val.trim() === '' ? undefined : formState.selectedAddressId,
-                          });
-                        }}
-                        placeholder="Escribe o edita la dirección..."
-                        placeholderTextColor="#475569"
-                      />
-                      {showAddressDropdown && (client?.direcciones?.length ?? 0) > 0 && (
-                        <View style={{
-                          position: 'absolute', top: 50, left: 0, right: 0, zIndex: 9999,
-                          backgroundColor: '#1E293B', borderRadius: 12,
-                          borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
-                          overflow: 'hidden', elevation: 10,
-                        }}>
-                          {(client?.direcciones ?? []).map((dir) => (
-                            <TouchableOpacity
-                              key={dir.id}
-                              style={{ padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' }}
-                              onPress={() => {
-                                updateForm({
-                                  selectedAddress: dir.direccion,
-                                  selectedAddressId: dir.id,
-                                  newAddress: dir.direccion,
-                                  referenciaDomicilio: dir.referencia || '',
-                                  costoDomicilio: dir.costoDomicilio?.toString() || '',
-                                });
-                                setShowAddressDropdown(false);
-                              }}
-                            >
-                              <Text style={{ color: '#F8FAFC', fontWeight: 'bold', fontSize: 13 }}>{dir.direccion}</Text>
-                              {dir.referencia ? <Text style={{ color: '#64748B', fontSize: 11 }}>Ref: {dir.referencia}</Text> : null}
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      )}
-                    </View>
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
+                    <AddressPicker
+                      direcciones={client?.direcciones ?? []}
+                      selectedId={formState.selectedAddressId}
+                      value={formState.newAddress}
+                      compact={isCompact}
+                      onChangeText={(val) =>
+                        updateForm({
+                          newAddress: val,
+                          selectedAddressId: val.trim() === '' ? undefined : formState.selectedAddressId,
+                        })
+                      }
+                      onSelect={(dir) =>
+                        updateForm({
+                          selectedAddress: dir.direccion,
+                          selectedAddressId: dir.id,
+                          newAddress: dir.direccion,
+                          referenciaDomicilio: dir.referencia || '',
+                          costoDomicilio: dir.costoDomicilio?.toString() || '',
+                        })
+                      }
+                    />
                   </View>
 
                   <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-1/2'}`}>
@@ -766,6 +783,11 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                 />
               </View>
 
+              {/* =============== COBRO ANTICIPADO =============== */}
+              {mode !== 'edit' && (
+                <PrepayPicker value={prepay} onChange={setPrepay} total={cartTotal} />
+              )}
+
               {/* =============== ACCIONES =============== */}
               <TouchableOpacity
                 className={`bg-(--color-pos-primary) py-4 rounded-xl items-center mt-4 w-full ${loading ? 'opacity-60' : ''}`}
@@ -773,7 +795,13 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                 disabled={loading}
               >
                 <Text className="text-white font-black text-lg tracking-[1px] uppercase">
-                  {loading ? (mode === 'edit' ? 'Guardando...' : 'Creando...') : (mode === 'edit' ? 'Actualizar Orden' : 'Confirmar Pedido')}
+                  {loading
+                    ? (mode === 'edit' ? 'Guardando...' : 'Creando...')
+                    : mode === 'edit'
+                      ? 'Actualizar Orden'
+                      : prepay.metodo
+                        ? 'Crear y cobrar'
+                        : 'Confirmar Pedido'}
                 </Text>
               </TouchableOpacity>
             </View>

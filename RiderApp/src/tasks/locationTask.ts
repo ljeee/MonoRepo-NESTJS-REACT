@@ -12,24 +12,35 @@ export const LOCATION_UPDATE_INTERVAL_MS = 20 * 1000; // 20 segundos — trackin
 // con la app en background.
 try {
   TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
-    if (error) {
-      console.warn('[LocationTask]', error.message);
-      return;
-    }
-    const locations = (data as { locations?: Location.LocationObject[] } | undefined)?.locations;
-    const last = locations?.[locations.length - 1];
-    if (!last) return;
-    
+    // TODO EL cuerpo va dentro de un try: esta función corre en modo headless
+    // con la app cerrada, donde una excepción no atrapada no tiene ningún
+    // ErrorBoundary por encima y se convierte en un crash del proceso.
     try {
-      // En modo headless no corrió el AuthProvider, necesitamos cargar el token manual
-      const token = await AsyncStorage.getItem('@Auth:token');
-      if (token) {
-        setAuthToken(api.http, token);
+      if (error) {
+        console.warn('[LocationTask]', error.message);
+        return;
       }
-      
-      await api.domiciliarios.actualizarUbicacion(last.coords.latitude, last.coords.longitude);
-    } catch {
-      // Sin red en este momento — se reintenta en el siguiente tick
+
+      const locations = (data as { locations?: Location.LocationObject[] } | undefined)?.locations;
+      const last = locations?.[locations.length - 1];
+      // Coordenadas defensivas: si el SO entrega un payload raro, se descarta
+      // en vez de mandar NaN al backend.
+      const lat = last?.coords?.latitude;
+      const lng = last?.coords?.longitude;
+      if (typeof lat !== 'number' || typeof lng !== 'number' || !isFinite(lat) || !isFinite(lng)) {
+        return;
+      }
+
+      // En modo headless no corrió el AuthProvider: hay que cargar el token a mano.
+      const token = await AsyncStorage.getItem('@Auth:token');
+      if (!token) return; // sesión cerrada: nada que reportar
+      setAuthToken(api.http, token);
+
+      await api.domiciliarios.actualizarUbicacion(lat, lng);
+    } catch (e: any) {
+      // Sin red, token vencido o cualquier fallo nativo: se reintenta en el
+      // siguiente tick. Jamás se propaga.
+      console.warn('[LocationTask] tick fallido:', e?.message ?? e);
     }
   });
 } catch (e) {

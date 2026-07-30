@@ -32,32 +32,40 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const showToast = useCallback((message: string, variant: ToastVariant = 'info', duration = 4000) => {
         const MAX_TOASTS = 3;
 
-        let added = false;
-        let id = '';
+        // El id se calcula AQUÍ, no dentro del updater de setToasts.
+        //
+        // Antes el updater asignaba `id` y un flag `added`, y el auto-cierre se
+        // programaba desde un setTimeout(…, 0) que los leía. Pero React no
+        // garantiza que el updater corra de forma síncrona: en React 19 puede
+        // ejecutarse durante el render, es decir DESPUÉS de ese setTimeout. En
+        // esa carrera `added` seguía en false, el temporizador jamás se creaba
+        // y el toast se quedaba pegado en pantalla para siempre (de ahí que el
+        // fallo fuera intermitente). Además, mutar variables dentro de un
+        // updater rompe con StrictMode, que lo invoca dos veces.
+        toastIdRef.current += 1;
+        const id = `toast-${toastIdRef.current}-${Date.now()}`;
 
+        // Updater PURO: sin efectos secundarios, seguro ante doble invocación.
         setToasts((prev) => {
             // Deduplicate: same message+variant already visible → skip
             if (prev.some((t) => t.message === message && t.variant === variant)) {
                 return prev;
             }
-            toastIdRef.current += 1;
-            id = `toast-${toastIdRef.current}-${Date.now()}`;
-            added = true;
             // Drop oldest if at cap
             const base = prev.length >= MAX_TOASTS ? prev.slice(-(MAX_TOASTS - 1)) : prev;
             return [...base, { id, message, variant, duration }];
         });
 
-        // Schedule auto-dismiss only if we actually added the toast
-        // We use a short delay so `id` is set before the timeout check runs
-        setTimeout(() => {
-            if (!added || !id || duration <= 0) return;
+        // El temporizador se programa siempre y de inmediato. Si el toast se
+        // descartó por duplicado o por el tope, el filtro simplemente no
+        // encuentra ese id y no hace nada.
+        if (duration > 0) {
             const timeoutId = setTimeout(() => {
                 setToasts((prev) => prev.filter((t) => t.id !== id));
                 timeoutRefs.current.delete(id);
             }, duration);
             timeoutRefs.current.set(id, timeoutId);
-        }, 0);
+        }
     }, []);
 
     const hideToast = useCallback((id: string) => {
