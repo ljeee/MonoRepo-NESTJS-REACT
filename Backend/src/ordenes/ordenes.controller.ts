@@ -155,6 +155,8 @@ export class OrdenesController {
 		@Body('pagoEfectivo') pagoEfectivo?: number,
 		@Body('pagoTransferencia') pagoTransferencia?: number,
 		@Body('denominaciones') denominaciones?: Record<string, number>,
+		@Body('cuentaTransferenciaId') cuentaTransferenciaId?: number,
+		@Body('cuentaTransferenciaNombre') cuentaTransferenciaNombre?: string,
 	) {
 		return this.service.completar(
 			id,
@@ -166,6 +168,8 @@ export class OrdenesController {
 			pagoEfectivo,
 			pagoTransferencia,
 			denominaciones,
+			cuentaTransferenciaId,
+			cuentaTransferenciaNombre,
 		);
 	}
 

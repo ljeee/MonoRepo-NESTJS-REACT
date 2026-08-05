@@ -25,9 +25,10 @@ export class FacturasVentasService {
 			estado?: string;
 			clienteNombre?: string;
 			metodo?: string;
+			cuentaTransferenciaId?: number;
 		} = {},
 	) {
-		const {from, to, page = 1, limit = 50, estado, clienteNombre, metodo} = opts;
+		const {from, to, page = 1, limit = 50, estado, clienteNombre, metodo, cuentaTransferenciaId} = opts;
 
 		// Apply all WHERE filters — uses explicit Bogotá offset so Alpine Docker
 		// (no tzdata) gives the same result as an environment with TZ=America/Bogota.
@@ -72,6 +73,10 @@ export class FacturasVentasService {
 					const m = metodo === 'mixto' ? 'efectivo_transferencia' : metodo;
 					qb.andWhere('f.metodo = :metodo', {metodo: m});
 				}
+			}
+
+			if (cuentaTransferenciaId) {
+				qb.andWhere('f.cuentaTransferenciaId = :cuentaTransferenciaId', {cuentaTransferenciaId});
 			}
 		};
 
@@ -167,6 +172,20 @@ export class FacturasVentasService {
 	async update(id: number, data: Partial<CreateFacturasVentasDto>) {
 		const completing = data.estado === 'pagada' || data.estado === 'pagado';
 
+		if (completing) {
+			const existing = await this.repo.findOne({where: {facturaId: id}});
+			const totalFactura = Number(data.total ?? existing?.total) || 0;
+			if (data.montoPagado === undefined) {
+				(data as any).montoPagado = totalFactura;
+			}
+			if (data.metodo === 'efectivo' && data.pagoEfectivo === undefined) {
+				data.pagoEfectivo = totalFactura;
+			}
+			if ((data.metodo === 'transferencia' || data.metodo === 'qr') && data.pagoTransferencia === undefined) {
+				data.pagoTransferencia = totalFactura;
+			}
+		}
+
 		if (!completing) {
 			await this.repo.update(id, data);
 			this.estadisticasGateway.emitirActualizacionStats({source: 'factura_update', id});
@@ -242,6 +261,9 @@ export class FacturasVentasService {
 			pagoEfectivo,
 			pagoTransferencia,
 		};
+
+		if (dto.cuentaTransferenciaId) cambios.cuentaTransferenciaId = dto.cuentaTransferenciaId;
+		if (dto.cuentaTransferenciaNombre) cambios.cuentaTransferenciaNombre = dto.cuentaTransferenciaNombre;
 
 		// Al saldarse por abonos, derivar el método final para que la factura no
 		// quede 'pagado' sin método (quedaba invisible en filtros y stats de métodos)

@@ -1,15 +1,9 @@
 import React from 'react';
 import { Text, TextInput, TouchableOpacity, View } from '../../tw';
 import Icon from '../ui/Icon';
-import { formatCurrency } from '@/src/shared';
+import { formatCurrency, useApi } from '@/src/shared';
 import type { IconName } from '../ui/Icon';
-
-// Marca la orden como YA PAGADA en el mismo acto de crearla, sin tener que
-// buscarla después en Facturación para cobrarla. Útil en mostrador y para
-// llevar, donde el cliente paga antes de que salga el pedido.
-//
-// Los métodos son los mismos del resto del POS:
-//   'efectivo' | 'transferencia' (UI: "QR/Trans") | 'efectivo_transferencia' (UI: "Mixto")
+import type { CuentaTransferencia } from '@/src/shared';
 
 export type PrepayMetodo = 'efectivo' | 'transferencia' | 'efectivo_transferencia';
 
@@ -17,6 +11,8 @@ export interface PrepayState {
   metodo: PrepayMetodo | null; // null = queda pendiente de cobro
   efectivo: string;
   transferencia: string;
+  cuentaTransferenciaId?: number;
+  cuentaTransferenciaNombre?: string;
 }
 
 export const emptyPrepay: PrepayState = { metodo: null, efectivo: '', transferencia: '' };
@@ -35,19 +31,55 @@ interface Props {
 }
 
 export default function PrepayPicker({ value, onChange, total }: Props) {
+  const api = useApi();
+  const [cuentas, setCuentas] = React.useState<CuentaTransferencia[]>([]);
+
+  React.useEffect(() => {
+    let unmounted = false;
+    api.empresa.cuentasTransferencia.getAll()
+      .then(res => {
+        if (unmounted) return;
+        const activas = (res || []).filter(c => c.activa);
+        setCuentas(activas);
+      })
+      .catch(() => {});
+    return () => { unmounted = true; };
+  }, [api]);
+
   const isMixto = value.metodo === 'efectivo_transferencia';
+  const isTransfer = value.metodo === 'transferencia' || isMixto;
   const efectivoNum = Number(value.efectivo) || 0;
   const transferNum = Number(value.transferencia) || 0;
   const sumaMixto = efectivoNum + transferNum;
   const descuadre = isMixto && sumaMixto !== total;
 
   const setMetodo = (metodo: PrepayMetodo | null) => {
+    const defaultCuenta = cuentas.length > 0 ? cuentas[0] : undefined;
     if (metodo === 'efectivo_transferencia') {
-      // Precarga todo en efectivo: el cajero suele ajustar solo una parte.
-      onChange({ metodo, efectivo: String(total), transferencia: '0' });
+      onChange({
+        metodo,
+        efectivo: String(total),
+        transferencia: '0',
+        cuentaTransferenciaId: defaultCuenta?.id,
+        cuentaTransferenciaNombre: defaultCuenta?.nombre,
+      });
       return;
     }
-    onChange({ metodo, efectivo: '', transferencia: '' });
+    onChange({
+      metodo,
+      efectivo: '',
+      transferencia: '',
+      cuentaTransferenciaId: metodo === 'transferencia' ? defaultCuenta?.id : undefined,
+      cuentaTransferenciaNombre: metodo === 'transferencia' ? defaultCuenta?.nombre : undefined,
+    });
+  };
+
+  const setCuenta = (cuenta: CuentaTransferencia) => {
+    onChange({
+      ...value,
+      cuentaTransferenciaId: cuenta.id,
+      cuentaTransferenciaNombre: cuenta.nombre,
+    });
   };
 
   return (
@@ -77,6 +109,33 @@ export default function PrepayPicker({ value, onChange, total }: Props) {
           );
         })}
       </View>
+
+      {isTransfer && cuentas.length > 0 && (
+        <View className="mt-2.5 bg-black/20 rounded-xl border border-white/5 p-2.5">
+          <Text className="text-[9px] font-black text-slate-400 mb-1.5 uppercase tracking-wider">
+            ¿Cuenta destino?
+          </Text>
+          <View className="flex-row flex-wrap gap-1.5">
+            {cuentas.map((c) => {
+              const active = value.cuentaTransferenciaId === c.id;
+              return (
+                <TouchableOpacity
+                  key={c.id}
+                  onPress={() => setCuenta(c)}
+                  className={`flex-row items-center gap-1 px-2 py-1 rounded-lg border ${
+                    active ? 'bg-purple-500/20 border-purple-500/50' : 'bg-black/20 border-white/5'
+                  }`}
+                >
+                  <Icon name="bank" size={11} color={active ? '#C084FC' : '#64748B'} />
+                  <Text className={`text-[10px] font-bold ${active ? 'text-purple-300' : 'text-slate-400'}`}>
+                    {c.nombre}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      )}
 
       {isMixto && (
         <View className="mt-2.5 bg-black/20 rounded-xl border border-white/5 p-3">

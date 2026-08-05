@@ -176,8 +176,17 @@ export interface FacturaVenta {
   cambioDenominaciones?: DenominacionesMap | null;
   /** Monto acumulado abonado en efectivo (parcial). Cuando alcanza total → estado pasa a pagado */
   montoPagado?: number;
+  cuentaTransferenciaId?: number | null;
+  cuentaTransferenciaNombre?: string | null;
   ordenes?: FacturaOrden[];
   domicilios?: FacturaDomicilio[];
+}
+
+export interface CuentaTransferencia {
+  id: number;
+  nombre: string;
+  activa: boolean;
+  createdAt?: string;
 }
 
 export interface FacturaStats {
@@ -477,6 +486,7 @@ export interface EmpresaConfig {
   municipio?: string;
   departamento?: string;
   tarifaIva: number;
+  recargoLeche?: number;
   updatedAt: string;
 }
 
@@ -490,6 +500,7 @@ export interface UpdateEmpresaDto {
   municipio?: string;
   departamento?: string;
   tarifaIva?: number;
+  recargoLeche?: number;
 }
 
 // ─── Inventario Cajas ─────────────────────────────────────────────────────────

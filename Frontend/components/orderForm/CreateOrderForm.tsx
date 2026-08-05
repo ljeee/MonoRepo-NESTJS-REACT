@@ -384,13 +384,18 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
         if (prepay.metodo && creada?.ordenId) {
           try {
             const esMixto = prepay.metodo === 'efectivo_transferencia';
+            const pagoEfectivo = prepay.metodo === 'efectivo' ? cartTotal : (esMixto ? Number(prepay.efectivo) || 0 : undefined);
+            const pagoTransferencia = prepay.metodo === 'transferencia' ? cartTotal : (esMixto ? Number(prepay.transferencia) || 0 : undefined);
             await api.ordenes.completar(
               creada.ordenId,
               prepay.metodo,
               `prepay-${creada.ordenId}-${Date.now()}`,
               undefined,
-              esMixto ? Number(prepay.efectivo) || 0 : undefined,
-              esMixto ? Number(prepay.transferencia) || 0 : undefined,
+              pagoEfectivo,
+              pagoTransferencia,
+              undefined,
+              prepay.cuentaTransferenciaId,
+              prepay.cuentaTransferenciaNombre,
             );
           } catch {
             // La orden YA se creó: no se puede revertir aquí sin arriesgar un

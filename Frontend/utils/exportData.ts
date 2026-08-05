@@ -108,32 +108,72 @@ export function exportFacturasPdf(facturas: FacturaItem[], periodLabel: string) 
   });
 }
 
-// ─── Libro Diario ─────────────────────────────────────────────────────────────
+export interface LibroDiarioOptions {
+  filtro?: 'completo' | 'solo_transferencias' | 'cuenta_especifica';
+  cuentaId?: number;
+  cuentaNombre?: string;
+  incluirProductos?: boolean;
+  incluirDomicilio?: boolean;
+}
 
 export function exportLibroDiario(
   facturas: FacturaItem[],
   gastos: FacturaPago[],
   from: string,
   to: string,
+  options: LibroDiarioOptions = {},
 ) {
   if (typeof window === 'undefined') return;
+
+  const {
+    filtro = 'completo',
+    cuentaId,
+    cuentaNombre,
+    incluirProductos = false,
+    incluirDomicilio = true,
+  } = options;
 
   type Entry = { fecha: string; tipo: 'ingreso' | 'egreso'; ref: string; descripcion: string; debito: number; credito: number; };
 
   const entries: Entry[] = [];
 
   for (const f of facturas) {
-    const monto = Number(f.total) || 0;
-    const isPagado = f.estado === 'pagado';
+    const costoDom = f.domicilios?.[0]?.costoDomicilio ? Number(f.domicilios[0].costoDomicilio) : 0;
+    const baseTotal = Number(f.total) || 0;
+    const total = incluirDomicilio ? baseTotal : Math.max(0, baseTotal - costoDom);
+    const isPagado = f.estado === 'pagado' || f.estado === 'pagada';
+
+    // Account filtering check
+    if (filtro === 'cuenta_especifica') {
+      if (cuentaId && f.cuentaTransferenciaId !== cuentaId) continue;
+      if (cuentaNombre && f.cuentaTransferenciaNombre !== cuentaNombre) continue;
+    } else if (filtro === 'solo_transferencias') {
+      const isTrans = f.metodo === 'transferencia' || f.metodo === 'qr';
+      const isMixtoTrans = f.metodo === 'efectivo_transferencia' && (f.pagoTransferencia ?? 0) > 0;
+      if (!isTrans && !isMixtoTrans) continue;
+    }
+
+    // Build product detail HTML string if requested
+    let prodDetail = '';
+    if (incluirProductos && f.ordenes && f.ordenes.length > 0) {
+      const prods = f.ordenes.flatMap(o => o.productos ?? []);
+      if (prods.length > 0) {
+        prodDetail = `<br/><small style="color: #64748B; font-size: 10px;">${prods.map(p => `${p.cantidad ?? 1}x ${p.productoNombre || 'Producto'}`).join(', ')}</small>`;
+      }
+    }
+
+    const cuentaInfo = f.cuentaTransferenciaNombre ? ` [Cuenta: ${f.cuentaTransferenciaNombre}]` : '';
+
     if (isPagado && f.metodo === 'efectivo_transferencia') {
       const ef = Number(f.pagoEfectivo) ?? 0;
       const trans = Number(f.pagoTransferencia) ?? 0;
-      if (ef > 0) {
+
+      if (filtro !== 'solo_transferencias' && ef > 0) {
         entries.push({
           fecha: f.fechaFactura ?? '',
           tipo: 'ingreso',
           ref: `F-${f.facturaId}`,
-          descripcion: `Venta (Efectivo) — ${f.clienteNombre || 'Sin nombre'}`,
+          descripcion: `Venta (Efectivo) — ${f.clienteNombre || 'Sin nombre'}${prodDetail}`,
           debito: ef,
           credito: 0,
         });
@@ -143,33 +183,51 @@ export function exportLibroDiario(
           fecha: f.fechaFactura ?? '',
           tipo: 'ingreso',
           ref: `F-${f.facturaId}`,
-          descripcion: `Venta (Transferencia) — ${f.clienteNombre || 'Sin nombre'}`,
+          descripcion: `Venta (Transferencia${cuentaInfo}) — ${f.clienteNombre || 'Sin nombre'}${prodDetail}`,
           debito: trans,
           credito: 0,
         });
       }
     } else {
+      const metodoLabel = f.metodo ? f.metodo.replace(/_/g, ' ') : 'efectivo';
       entries.push({
         fecha: f.fechaFactura ?? '',
         tipo: 'ingreso',
         ref: `F-${f.facturaId}`,
-        descripcion: `Venta — ${f.clienteNombre || 'Sin nombre'} (${f.metodo ? f.metodo.replace(/_/g, ' ') : 'efectivo'})`,
-        debito: isPagado ? monto : 0,
-        credito: isPagado ? 0 : monto,
+        descripcion: `Venta — ${f.clienteNombre || 'Sin nombre'} (${metodoLabel}${cuentaInfo})${prodDetail}`,
+        debito: isPagado ? total : 0,
+        credito: isPagado ? 0 : total,
       });
     }
   }
 
-  for (const g of gastos) {
-    const monto = Number(g.total) || 0;
-    entries.push({
-      fecha: g.fechaFactura ?? '',
-      tipo: 'egreso',
-      ref: `G-${g.pagosId}`,
-      descripcion: `Gasto — ${g.nombreGasto || 'Sin descripción'} (${g.metodo || 'efectivo'})`,
-      debito: 0,
-      credito: monto,
-    });
+  // Include gastos only if full report or if spending matches transfer method filter
+  if (filtro === 'completo') {
+    for (const g of gastos) {
+      const monto = Number(g.total) || 0;
+      entries.push({
+        fecha: g.fechaFactura ?? '',
+        tipo: 'egreso',
+        ref: `G-${g.pagosId}`,
+        descripcion: `Gasto — ${g.nombreGasto || 'Sin descripción'} (${g.metodo || 'efectivo'})`,
+        debito: 0,
+        credito: monto,
+      });
+    }
+  } else if (filtro === 'solo_transferencias') {
+    for (const g of gastos) {
+      if (g.metodo === 'transferencia' || g.metodo === 'qr') {
+        const monto = Number(g.total) || 0;
+        entries.push({
+          fecha: g.fechaFactura ?? '',
+          tipo: 'egreso',
+          ref: `G-${g.pagosId}`,
+          descripcion: `Gasto (Transferencia) — ${g.nombreGasto || 'Sin descripción'}`,
+          debito: 0,
+          credito: monto,
+        });
+      }
+    }
   }
 
   entries.sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''));
@@ -177,9 +235,15 @@ export function exportLibroDiario(
   const totalDebitos  = entries.reduce((s, e) => s + e.debito, 0);
   const totalCreditos = entries.reduce((s, e) => s + e.credito, 0);
 
+  const filtroSub = filtro === 'solo_transferencias'
+    ? ' (Solo Transferencias / QR)'
+    : filtro === 'cuenta_especifica'
+    ? ` (Cuenta: ${cuentaNombre || 'Específica'})`
+    : '';
+
   exportPdf({
-    title: `Libro Diario — ${from} al ${to}`,
-    subtitle: `${entries.length} asientos contables`,
+    title: `Libro Diario — ${from} al ${to}${filtroSub}`,
+    subtitle: `${entries.length} asientos contables${!incluirDomicilio ? ' (sin domicilio)' : ''}`,
     headers: ['Fecha', 'Referencia', 'Descripción', 'Débito', 'Crédito'],
     rows: entries.map(e => [
       safeDateLabel(e.fecha),

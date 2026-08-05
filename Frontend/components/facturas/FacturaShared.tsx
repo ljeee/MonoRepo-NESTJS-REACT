@@ -56,6 +56,8 @@ export interface FacturaItem {
   domicilios?: FacturaDomicilio[];
   pagoEfectivo?: number;
   pagoTransferencia?: number;
+  cuentaTransferenciaId?: number | null;
+  cuentaTransferenciaNombre?: string | null;
 }
 
 // ─── StatsHeader ──────────────────────────────────────────────────────────────
@@ -188,11 +190,11 @@ export const FacturaCard = React.memo(function FacturaCard({
 }: {
   item: FacturaItem;
   isUpdating: boolean;
-  onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => void;
+  onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap, cuentaTransferenciaId?: number, cuentaTransferenciaNombre?: string) => void;
   onUpdateTotal?: (facturaId: number, newTotal: number) => Promise<void>;
   onUpdate?: (facturaId: number, data: Partial<FacturaItem>) => Promise<void>;
   onDelete?: (facturaId: number) => Promise<boolean>;
-  onAbono?: (facturaId: number, monto: number, metodo: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => void;
+  onAbono?: (facturaId: number, monto: number, metodo: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap, cuentaTransferenciaId?: number, cuentaTransferenciaNombre?: string) => void;
   showPrint?: boolean;
   /** When explicitly false, the Cobrar button is disabled until apertura is done */
   aperturaHecha?: boolean;
@@ -291,6 +293,11 @@ export const FacturaCard = React.memo(function FacturaCard({
               />
             ) : (
               <Badge label="Sin método" variant="neutral" size="sm" />
+            )}
+            {item.cuentaTransferenciaNombre && (
+              <RNText style={{ fontFamily: 'Outfit', color: '#A78BFA', fontSize: 10, fontWeight: '700' }}>
+                QR: {item.cuentaTransferenciaNombre}
+              </RNText>
             )}
             {/* Desglose pago mixto */}
             {item.metodo === 'efectivo_transferencia' && (
@@ -504,10 +511,10 @@ export const FacturaCard = React.memo(function FacturaCard({
         total={item.total ?? 0}
         disabledMethods={metodosBloqueados}
         onClose={() => setShowPaymentModal(false)}
-        onSelect={(method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones) => {
+        onSelect={(method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones, cuentaId, cuentaNombre) => {
           setShowPaymentModal(false);
           if (item.facturaId) {
-            onToggleEstado(item.facturaId, 'pagado', method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones);
+            onToggleEstado(item.facturaId, 'pagado', method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones, cuentaId, cuentaNombre);
           }
         }}
         loading={isUpdating}
@@ -520,7 +527,7 @@ export const FacturaCard = React.memo(function FacturaCard({
         totalPendiente={saldoPendiente}
         disabledMethods={metodosBloqueados}
         onClose={() => setShowAbonoModal(false)}
-        onSelect={(method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones) => {
+        onSelect={(method, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones, cuentaId, cuentaNombre) => {
           setShowAbonoModal(false);
           if (item.facturaId && onAbono) {
             const esQr = method === 'transferencia';
@@ -530,6 +537,8 @@ export const FacturaCard = React.memo(function FacturaCard({
               esQr ? 'transferencia' : 'efectivo',
               denominaciones,
               cambioDenominaciones,
+              cuentaId,
+              cuentaNombre,
             );
           }
         }}

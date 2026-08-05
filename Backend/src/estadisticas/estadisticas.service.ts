@@ -161,17 +161,32 @@ export class EstadisticasService {
 			.getMany();
 
 		const counts: Record<string, {cantidad: number; total: number}> = {};
+		const porCuentaMap: Record<string, {cuentaNombre: string; cantidad: number; total: number}> = {};
 
 		for (const f of facturas) {
 			const metodoRaw = f.metodo ? f.metodo.toLowerCase().trim() : 'sin método';
 			// Mixto es su propio bucket: cuenta la factura UNA vez con su total completo.
-			// (Antes se dividía en efectivo+transferencia inflando `cantidad` 2x por factura mixta.)
 			const metodo = metodoRaw === 'efectivo_transferencia' ? 'mixto' : metodoRaw;
 			const total = Number(f.total) || 0;
 
 			if (!counts[metodo]) counts[metodo] = {cantidad: 0, total: 0};
 			counts[metodo].total += total;
 			counts[metodo].cantidad += 1;
+
+			// Desglose por cuenta para transferencias
+			const esTransfer = f.metodo === 'transferencia' || f.metodo === 'qr';
+			const esMixtoTrans = f.metodo === 'efectivo_transferencia' && (f.pagoTransferencia ?? 0) > 0;
+
+			if (esTransfer || esMixtoTrans) {
+				const cuentaNombre = f.cuentaTransferenciaNombre || 'Sin asignar';
+				const montoTrans = esMixtoTrans ? Number(f.pagoTransferencia) : total;
+
+				if (!porCuentaMap[cuentaNombre]) {
+					porCuentaMap[cuentaNombre] = {cuentaNombre, cantidad: 0, total: 0};
+				}
+				porCuentaMap[cuentaNombre].cantidad += 1;
+				porCuentaMap[cuentaNombre].total += montoTrans;
+			}
 		}
 
 		const list = Object.entries(counts).map(([metodo, data]) => ({
@@ -181,14 +196,16 @@ export class EstadisticasService {
 		}));
 
 		const grandTotal = list.reduce((sum, r) => sum + r.total, 0);
-
 		list.sort((a, b) => b.total - a.total);
+
+		const porCuenta = Object.values(porCuentaMap).sort((a, b) => b.total - a.total);
 
 		return list.map((r) => ({
 			metodo: r.metodo,
 			cantidad: r.cantidad,
 			total: r.total,
 			porcentaje: grandTotal > 0 ? Math.round((r.total / grandTotal) * 100) : 0,
+			porCuenta,
 		}));
 	}
 

@@ -1,5 +1,7 @@
 import {Entity, PrimaryGeneratedColumn, Column, UpdateDateColumn} from 'typeorm';
 
+import {ColumnNumericTransformer} from '../../common/utils/numeric.transformer';
+
 @Entity('empresa_config')
 export class EmpresaConfig {
 	@PrimaryGeneratedColumn()
@@ -29,9 +31,13 @@ export class EmpresaConfig {
 	@Column({type: 'text', nullable: true})
 	departamento: string;
 
-	@Column({name: 'tarifa_iva', type: 'numeric', default: 0})
+	@Column({name: 'tarifa_iva', type: 'numeric', default: 0, transformer: new ColumnNumericTransformer()})
 	tarifaIva: number;
+
+	@Column({name: 'recargo_leche', type: 'numeric', default: 1000, transformer: new ColumnNumericTransformer()})
+	recargoLeche: number;
 
 	@UpdateDateColumn({name: 'updated_at'})
 	updatedAt: Date;
 }
+

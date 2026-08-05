@@ -59,6 +59,12 @@ export class FacturasVentas {
 	@Column({name: 'monto_pagado', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	montoPagado: number;
 
+	@Column({name: 'cuenta_transferencia_id', type: 'int', nullable: true})
+	cuentaTransferenciaId: number | null;
+
+	@Column({name: 'cuenta_transferencia_nombre', type: 'text', nullable: true})
+	cuentaTransferenciaNombre: string | null;
+
 	@OneToMany(() => Ordenes, (orden) => orden.factura)
 	ordenes: Ordenes[];
 

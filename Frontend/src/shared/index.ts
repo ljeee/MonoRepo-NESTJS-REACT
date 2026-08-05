@@ -7,7 +7,7 @@ export type {
   CreateOrdenDto, CreateFacturaPagoDto, CreateClienteDto, CreateDomiciliarioDto,
   FindOrdenesParams, RegisterDto, AuthTokens, AuthUser, AuthResponse, PizzaSabor,
   ProductoTop, SaborTop, VentaHora, VentaDia, MetodoPago, ResumenPeriodo, ClienteFrecuente,
-  VarianteTop, ClienteHistorial, EmpresaConfig, UpdateEmpresaDto, InventarioCaja,
+  VarianteTop, ClienteHistorial, EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia, InventarioCaja,
   InventarioCajasMovimiento, CrearCajaDto, AjustarCajasDto, CategoriaBebida, Ingrediente,
   VarianteIngrediente, BebidaMovimiento, CreateIngredienteDto, VincularVarianteDto
 } from './types/models';

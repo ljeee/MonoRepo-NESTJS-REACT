@@ -45,6 +45,14 @@ export class CreateFacturasVentasDto {
 	@IsOptional()
 	@IsObject()
 	cambioDenominaciones?: Record<string, number>;
+
+	@IsOptional()
+	@IsNumber()
+	cuentaTransferenciaId?: number;
+
+	@IsOptional()
+	@IsString()
+	cuentaTransferenciaNombre?: string;
 }
 
 export class AbonoDto {
@@ -64,4 +72,12 @@ export class AbonoDto {
 	@IsOptional()
 	@IsObject()
 	cambioDenominaciones?: Record<string, number>;
+
+	@IsOptional()
+	@IsNumber()
+	cuentaTransferenciaId?: number;
+
+	@IsOptional()
+	@IsString()
+	cuentaTransferenciaNombre?: string;
 }

@@ -421,6 +421,8 @@ export class OrdenesService {
 		pagoEfectivo?: number,
 		pagoTransferencia?: number,
 		denominaciones?: Record<string, number>,
+		cuentaTransferenciaId?: number,
+		cuentaTransferenciaNombre?: string,
 	) {
 		return this.repo.manager.transaction(async (manager) => {
 			const oRepo = manager.getRepository(Ordenes);
@@ -452,6 +454,20 @@ export class OrdenesService {
 
 			// 3. Actualizar Factura
 			if (orden.facturaId) {
+				const totalFactura = Number(orden.factura?.total) || 0;
+				const finalPagoEfectivo =
+					metodo === 'efectivo'
+						? (pagoEfectivo ?? totalFactura)
+						: metodo === 'efectivo_transferencia'
+							? (pagoEfectivo ?? 0)
+							: 0;
+				const finalPagoTransferencia =
+					metodo === 'transferencia' || metodo === 'qr'
+						? (pagoTransferencia ?? totalFactura)
+						: metodo === 'efectivo_transferencia'
+							? (pagoTransferencia ?? 0)
+							: 0;
+
 				await this.facturaCreationService.updateFactura(
 					orden.facturaId,
 					{
@@ -461,8 +477,11 @@ export class OrdenesService {
 						fechaCobro: new Date(),
 						ipDispositivo: ip,
 						idempotencyKey,
-						pagoEfectivo,
-						pagoTransferencia,
+						pagoEfectivo: finalPagoEfectivo,
+						pagoTransferencia: finalPagoTransferencia,
+						montoPagado: totalFactura,
+						cuentaTransferenciaId,
+						cuentaTransferenciaNombre,
 					},
 					manager,
 				);

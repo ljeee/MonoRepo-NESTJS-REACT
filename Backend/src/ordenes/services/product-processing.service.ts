@@ -6,6 +6,7 @@ import {ProductoVariantes} from '../../productos/esquemas/producto-variantes.ent
 import {OrdenesProductos} from '../../ordenes-productos/esquemas/ordenes-productos.entity';
 import {PizzaSabor} from '../../pizza-sabores/esquemas/pizza-sabores.entity';
 import {resolverPersonalizacion} from '../../common/utils/personalizacion.util';
+import {EmpresaConfig} from '../../empresa/esquemas/empresa.entity';
 
 @Injectable()
 export class ProductProcessingService {
@@ -13,6 +14,7 @@ export class ProductProcessingService {
 		@InjectRepository(ProductoVariantes) private readonly variantesRepo: Repository<ProductoVariantes>,
 		@InjectRepository(OrdenesProductos) private readonly ordenesProductosRepo: Repository<OrdenesProductos>,
 		@InjectRepository(PizzaSabor) private readonly saboresRepo: Repository<PizzaSabor>,
+		@InjectRepository(EmpresaConfig) private readonly empresaRepo: Repository<EmpresaConfig>,
 	) {}
 
 	construirNombreProducto(item: CreateOrdenItemDto): string {
@@ -67,6 +69,17 @@ export class ProductProcessingService {
 
 		const vRepo = manager ? manager.getRepository(ProductoVariantes) : this.variantesRepo;
 		const sRepo = manager ? manager.getRepository(PizzaSabor) : this.saboresRepo;
+		const eRepo = manager ? manager.getRepository(EmpresaConfig) : this.empresaRepo;
+
+		let recargoLecheConfig = 1000;
+		try {
+			const empConfig = await eRepo.findOne({where: {id: 1}});
+			if (empConfig && empConfig.recargoLeche != null) {
+				recargoLecheConfig = Number(empConfig.recargoLeche);
+			}
+		} catch {
+			// Fallback to default
+		}
 
 		for (const item of productos) {
 			const variante = await vRepo.findOne({
@@ -78,10 +91,9 @@ export class ProductProcessingService {
 			}
 
 			let precioBase = Number(variante.precio);
-			// Recargo fijo por base leche (+$1.000)
-			const RECARGO_LECHE = 1000;
+			// Recargo dinámico por base leche
 			if (item.base === 'leche') {
-				precioBase += RECARGO_LECHE;
+				precioBase += recargoLecheConfig;
 			}
 
 			let nombre = (variante.producto?.productoNombre || item.tipo || 'Producto').trim();

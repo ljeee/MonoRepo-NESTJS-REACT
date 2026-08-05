@@ -17,6 +17,7 @@ export class FacturasVentasController {
 	@ApiQuery({name: 'estado', required: false})
 	@ApiQuery({name: 'clienteNombre', required: false})
 	@ApiQuery({name: 'metodo', required: false})
+	@ApiQuery({name: 'cuentaTransferenciaId', required: false, type: Number})
 	async findAll(
 		@Query('from') from?: string,
 		@Query('to') to?: string,
@@ -25,6 +26,7 @@ export class FacturasVentasController {
 		@Query('estado') estado?: string,
 		@Query('clienteNombre') clienteNombre?: string,
 		@Query('metodo') metodo?: string,
+		@Query('cuentaTransferenciaId') cuentaTransferenciaId?: string,
 	) {
 		const limitNum = limit ? Number(limit) : undefined;
 
@@ -49,6 +51,7 @@ export class FacturasVentasController {
 			estado,
 			clienteNombre,
 			metodo,
+			cuentaTransferenciaId: cuentaTransferenciaId ? Number(cuentaTransferenciaId) : undefined,
 		});
 	}
 

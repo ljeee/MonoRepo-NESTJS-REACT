@@ -23,6 +23,8 @@ import {FacturaCreationService} from './services/factura-creation.service';
 import {DomicilioCreationService} from './services/domicilio-creation.service';
 import {ProductProcessingService} from './services/product-processing.service';
 
+import {EmpresaConfig} from '../empresa/esquemas/empresa.entity';
+
 @Module({
 	imports: [
 		TypeOrmModule.forFeature([
@@ -36,6 +38,7 @@ import {ProductProcessingService} from './services/product-processing.service';
 			ProductoVariantes,
 			OrdenesProductos,
 			PizzaSabor,
+			EmpresaConfig,
 		]),
 		PizzaSaboresModule,
 		CierresModule,

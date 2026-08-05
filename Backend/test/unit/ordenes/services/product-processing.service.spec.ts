@@ -5,12 +5,14 @@ import {ProductProcessingService} from '../../../../src/ordenes/services/product
 import {ProductoVariantes} from '../../../../src/productos/esquemas/producto-variantes.entity';
 import {OrdenesProductos} from '../../../../src/ordenes-productos/esquemas/ordenes-productos.entity';
 import {PizzaSabor} from '../../../../src/pizza-sabores/esquemas/pizza-sabores.entity';
+import {EmpresaConfig} from '../../../../src/empresa/esquemas/empresa.entity';
 
 describe('ProductProcessingService', () => {
 	let service: ProductProcessingService;
 	let mockVariantesRepo: any;
 	let mockOrdenesProductosRepo: any;
 	let mockSaboresRepo: any;
+	let mockEmpresaConfigRepo: any;
 	let mockQb: any;
 
 	beforeEach(async () => {
@@ -18,6 +20,7 @@ describe('ProductProcessingService', () => {
 		mockVariantesRepo = {findOne: jest.fn()};
 		mockOrdenesProductosRepo = {save: jest.fn(), delete: jest.fn()};
 		mockSaboresRepo = {findOne: jest.fn(), createQueryBuilder: jest.fn().mockReturnValue(mockQb)};
+		mockEmpresaConfigRepo = {findOne: jest.fn().mockResolvedValue({recargoLeche: 1000})};
 
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
@@ -25,6 +28,7 @@ describe('ProductProcessingService', () => {
 				{provide: getRepositoryToken(ProductoVariantes), useValue: mockVariantesRepo},
 				{provide: getRepositoryToken(OrdenesProductos), useValue: mockOrdenesProductosRepo},
 				{provide: getRepositoryToken(PizzaSabor), useValue: mockSaboresRepo},
+				{provide: getRepositoryToken(EmpresaConfig), useValue: mockEmpresaConfigRepo},
 			],
 		}).compile();
 
@@ -283,6 +287,7 @@ describe('ProductProcessingService', () => {
 		});
 
 		it('usa los repos del manager cuando se provee', async () => {
+			const managerERepo = { findOne: jest.fn().mockResolvedValue({ recargoLeche: 1000 }) };
 			const managerVRepo = {
 				findOne: jest.fn().mockResolvedValue({
 					varianteId: 1,
@@ -294,11 +299,13 @@ describe('ProductProcessingService', () => {
 			const managerSRepo = {};
 			const managerOPRepo = {save: jest.fn().mockResolvedValue({})};
 			const manager = {
-				getRepository: jest
-					.fn()
-					.mockImplementationOnce(() => managerVRepo)
-					.mockImplementationOnce(() => managerSRepo)
-					.mockImplementationOnce(() => managerOPRepo),
+				getRepository: jest.fn().mockImplementation((entity) => {
+					if (entity === EmpresaConfig) return managerERepo;
+					if (entity === ProductoVariantes) return managerVRepo;
+					if (entity === PizzaSabor) return managerSRepo;
+					if (entity === OrdenesProductos) return managerOPRepo;
+					return {};
+				}),
 			};
 
 			await service.procesarProductos(1, [{varianteId: 1, cantidad: 1} as any], manager as any);

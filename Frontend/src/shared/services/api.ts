@@ -12,7 +12,7 @@ import type {
   MetodoPago, ResumenPeriodo, ClienteFrecuente,
   VarianteTop, ClienteHistorial,
   RegisterDto,
-  EmpresaConfig, UpdateEmpresaDto,
+  EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia,
   InventarioCaja, InventarioCajasMovimiento as InventarioCajasMovimientoModel, AjustarCajasDto as AjustarCajasDtoModel, CrearCajaDto as CrearCajaDtoModel,
   DenominacionesMap, CajaMovimiento, CajaResumen,
 } from '../types/models';
@@ -106,13 +106,13 @@ export function createApi(http: AxiosInstance) {
     cancel: (id: number, reason?: string) =>
       http.patch<Orden>(`/ordenes/${id}/cancel`, { reason }).then((r) => r.data),
     
-    completar: (id: number, metodo: string, idempotencyKey?: string, lastUpdatedAt?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap) =>
-      http.patch<Orden>(`/ordenes/${id}/completar`, { metodo, idempotencyKey, lastUpdatedAt, pagoEfectivo, pagoTransferencia, denominaciones }).then((r) => r.data),
+    completar: (id: number, metodo: string, idempotencyKey?: string, lastUpdatedAt?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap, cuentaTransferenciaId?: number, cuentaTransferenciaNombre?: string) =>
+      http.patch<Orden>(`/ordenes/${id}/completar`, { metodo, idempotencyKey, lastUpdatedAt, pagoEfectivo, pagoTransferencia, denominaciones, cuentaTransferenciaId, cuentaTransferenciaNombre }).then((r) => r.data),
   };
 
   // ─── Facturas Ventas ────────────────────────────────────────────────
   const facturas = {
-    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string; metodo?: string }) =>
+    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string; metodo?: string; cuentaTransferenciaId?: number }) =>
       http.get<{ data: FacturaVenta[]; total: number; page: number; limit: number; totalPages: number }>('/facturas-ventas', { params }).then((r) => r.data),
 
     getDay: () =>
@@ -127,8 +127,8 @@ export function createApi(http: AxiosInstance) {
     update: (id: number, data: Partial<FacturaVenta>) =>
       http.patch<FacturaVenta>(`/facturas-ventas/${id}`, data).then((r) => r.data),
 
-    abono: (id: number, monto: number, metodo?: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) =>
-      http.patch<FacturaVenta>(`/facturas-ventas/${id}/abono`, { monto, metodo, denominaciones, cambioDenominaciones }).then((r) => r.data),
+    abono: (id: number, monto: number, metodo?: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap, cuentaTransferenciaId?: number, cuentaTransferenciaNombre?: string) =>
+      http.patch<FacturaVenta>(`/facturas-ventas/${id}/abono`, { monto, metodo, denominaciones, cambioDenominaciones, cuentaTransferenciaId, cuentaTransferenciaNombre }).then((r) => r.data),
 
     delete: (id: number) =>
       http.delete(`/facturas-ventas/${id}`).then((r) => r.data),
@@ -270,6 +270,20 @@ export function createApi(http: AxiosInstance) {
 
     update: (data: UpdateEmpresaDto) =>
       http.patch<EmpresaConfig>('/empresa', data).then((r) => r.data),
+
+    cuentasTransferencia: {
+      getAll: () =>
+        http.get<CuentaTransferencia[]>('/empresa/cuentas-transferencia').then((r) => arr<CuentaTransferencia>(r.data)),
+
+      create: (nombre: string) =>
+        http.post<CuentaTransferencia>('/empresa/cuentas-transferencia', { nombre }).then((r) => r.data),
+
+      update: (id: number, data: { nombre?: string; activa?: boolean }) =>
+        http.patch<CuentaTransferencia>(`/empresa/cuentas-transferencia/${id}`, data).then((r) => r.data),
+
+      delete: (id: number) =>
+        http.delete(`/empresa/cuentas-transferencia/${id}`).then((r) => r.data),
+    },
   };
 
   // ─── Estadísticas ───────────────────────────────────────────────────

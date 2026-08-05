@@ -97,15 +97,18 @@ function MetodosPagoCard({
     qrVentas,
     gastosEfectivo,
     gastosQr,
+    qrPorCuenta = {},
 }: {
     efectivoVentas: number;
     qrVentas: number;
     gastosEfectivo: number;
     gastosQr: number;
+    qrPorCuenta?: Record<string, number>;
 }) {
     const { isMobile } = useBreakpoint();
     const netoEfectivo = efectivoVentas - gastosEfectivo;
     const netoQr = qrVentas - gastosQr;
+    const cuentasList = Object.entries(qrPorCuenta);
 
     return (
         <Card className="mb-8 overflow-hidden border-0 p-0 bg-transparent rounded-[32px]">
@@ -236,6 +239,20 @@ function MetodosPagoCard({
                         <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, letterSpacing: -0.5 }}>
                             ${formatCurrency(qrVentas)}
                         </Text>
+                        {cuentasList.length > 0 && (
+                            <View style={{ marginTop: 6, gap: 2 }}>
+                                {cuentasList.map(([cuenta, monto]) => (
+                                    <View key={cuenta} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={{ fontFamily: 'Outfit', color: '#A78BFA', fontSize: 10, fontWeight: '600' }}>
+                                            {cuenta}
+                                        </Text>
+                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 11 }}>
+                                            ${formatCurrency(monto)}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
                     </View>
 
                     {/* Divider */}
@@ -493,6 +510,19 @@ export default function BalanceDiaScreen() {
             return sum;
         }, 0);
 
+    const qrPorCuenta = facturas
+        .filter((f: FacturaItem) => f.estado === 'pagado' || f.estado === 'pagada')
+        .reduce((acc: Record<string, number>, f: FacturaItem) => {
+            const esTransfer = f.metodo === 'qr' || f.metodo === 'transferencia';
+            const esMixtoTrans = f.metodo === 'efectivo_transferencia' && (f.pagoTransferencia ?? 0) > 0;
+            if (esTransfer || esMixtoTrans) {
+                const cuentaNom = f.cuentaTransferenciaNombre || 'Sin asignar';
+                const monto = esMixtoTrans ? (f.pagoTransferencia ?? 0) : (f.total ?? 0);
+                acc[cuentaNom] = (acc[cuentaNom] || 0) + monto;
+            }
+            return acc;
+        }, {});
+
     const gastosQr = gastos
         .filter((g: FacturaPago) => g.metodo === 'qr' || g.metodo === 'transferencia')
         .reduce((sum: number, g: FacturaPago) => sum + (Number(g.total) || 0), 0);
@@ -539,6 +569,20 @@ export default function BalanceDiaScreen() {
         if (filterMethod === 'pendiente') return f.estado === 'pendiente' || f.estado === 'parcial';
         return matchesMetodoFilter(f, filterMethod) && noPendiente(f);
     });
+
+    const filteredTotal = filteredFacturas.reduce((sum: number, f: FacturaItem) => {
+        if (filterMethod === 'efectivo') {
+            if (f.metodo === 'efectivo') return sum + (f.total ?? 0);
+            if (f.metodo === 'efectivo_transferencia') return sum + (f.pagoEfectivo ?? 0);
+            return sum + (f.total ?? 0);
+        }
+        if (filterMethod === 'transferencia') {
+            if (f.metodo === 'qr' || f.metodo === 'transferencia') return sum + (f.total ?? 0);
+            if (f.metodo === 'efectivo_transferencia') return sum + (f.pagoTransferencia ?? 0);
+            return sum + (f.total ?? 0);
+        }
+        return sum + (f.total ?? 0);
+    }, 0);
 
     return (
         <PageContainer
@@ -895,6 +939,7 @@ export default function BalanceDiaScreen() {
                 qrVentas={qrVentas}
                 gastosEfectivo={gastosEfectivo}
                 gastosQr={gastosQr}
+                qrPorCuenta={qrPorCuenta}
             />
 
             {/* ── MOVIMIENTOS DE CAJA (tracking de entradas/salidas durante el día) ── */}
@@ -910,7 +955,7 @@ export default function BalanceDiaScreen() {
                     <View className="w-1.5 h-6 bg-orange-500 rounded-full" />
                     <Text className="text-white font-black text-lg uppercase tracking-widest" style={{ fontFamily: 'Space Grotesk' }}>Ventas Facturadas</Text>
                     <View className="bg-white/5 px-3 py-1 rounded-full border border-white/5 ml-2">
-                        <Text className="text-slate-500 font-bold text-xs">{filteredFacturas.length} docs</Text>
+                        <Text className="text-slate-400 font-bold text-xs">{filteredFacturas.length} docs • ${formatCurrency(filteredTotal)}</Text>
                     </View>
                 </View>
 

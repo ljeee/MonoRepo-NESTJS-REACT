@@ -2,10 +2,12 @@ import {Test, TestingModule} from '@nestjs/testing';
 import {getRepositoryToken} from '@nestjs/typeorm';
 import {EmpresaService} from '../../../src/empresa/empresa.service';
 import {EmpresaConfig} from '../../../src/empresa/esquemas/empresa.entity';
+import {CuentaTransferencia} from '../../../src/empresa/esquemas/cuenta-transferencia.entity';
 
 describe('EmpresaService', () => {
 	let service: EmpresaService;
 	let mockRepo: any;
+	let mockCuentaRepo: any;
 
 	beforeEach(async () => {
 		mockRepo = {
@@ -15,8 +17,22 @@ describe('EmpresaService', () => {
 			findOne: jest.fn(),
 		};
 
+		mockCuentaRepo = {
+			find: jest.fn().mockResolvedValue([]),
+			count: jest.fn().mockResolvedValue(0),
+			create: jest.fn().mockImplementation((dto) => dto),
+			save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 1, ...dto })),
+			findOne: jest.fn(),
+			update: jest.fn(),
+			delete: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [EmpresaService, {provide: getRepositoryToken(EmpresaConfig), useValue: mockRepo}],
+			providers: [
+				EmpresaService,
+				{provide: getRepositoryToken(EmpresaConfig), useValue: mockRepo},
+				{provide: getRepositoryToken(CuentaTransferencia), useValue: mockCuentaRepo},
+			],
 		}).compile();
 
 		service = module.get<EmpresaService>(EmpresaService);

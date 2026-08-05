@@ -1,4 +1,4 @@
-import React, { useCallback, useState, memo } from 'react';
+import React, { useCallback, useState, useEffect, memo } from 'react';
 import { ActivityIndicator, Platform, TouchableOpacity, RefreshControl } from 'react-native';
 import { View, Text, ScrollView } from '../../tw';
 import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@/src/shared';
@@ -245,6 +245,25 @@ export default function ContabilidadScreen() {
     const [exportLoading, setExportLoading] = useState('');
     const [searched, setSearched] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
+
+    const [cuentasTransfer, setCuentasTransfer] = useState<any[]>([]);
+    const [exportOptions, setExportOptions] = useState<{
+        incluirDomicilio: boolean;
+        incluirProductos: boolean;
+        filtroDiario: 'completo' | 'solo_transferencias' | 'cuenta_especifica';
+        cuentaId?: number;
+        cuentaNombre?: string;
+    }>({
+        incluirDomicilio: true,
+        incluirProductos: false,
+        filtroDiario: 'completo',
+    });
+
+    useEffect(() => {
+        api.empresa.cuentasTransferencia.getAll()
+            .then(res => setCuentasTransfer((res || []).filter((c: any) => c.activa)))
+            .catch(() => {});
+    }, [api]);
 
     const {
         data: facturas, loading: loadingF, error: errorF,
@@ -528,6 +547,108 @@ export default function ContabilidadScreen() {
                         </View>
                     )}
 
+                    {/* Opciones de Exportación */}
+                    <Text style={{ color: '#475569', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginTop: 10, marginBottom: 10 }}>Opciones de Exportación</Text>
+                    <Card style={{ marginBottom: 16, padding: 16, gap: 14 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Icon name="bike" size={16} color="#38BDF8" />
+                                <Text style={{ color: '#F8FAFC', fontSize: 12, fontWeight: '700' }}>Incluir valor de domicilios en reportes</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setExportOptions(prev => ({ ...prev, incluirDomicilio: !prev.incluirDomicilio }))}
+                                style={{
+                                    paddingHorizontal: 12,
+                                    paddingVertical: 6,
+                                    borderRadius: 10,
+                                    backgroundColor: exportOptions.incluirDomicilio ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)',
+                                    borderWidth: 1,
+                                    borderColor: exportOptions.incluirDomicilio ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)',
+                                }}
+                            >
+                                <Text style={{ color: exportOptions.incluirDomicilio ? '#34D399' : '#F87171', fontSize: 11, fontWeight: '800' }}>
+                                    {exportOptions.incluirDomicilio ? 'Sí (Con domicilio)' : 'No (Sin domicilio)'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)' }} />
+
+                        <View style={{ gap: 10 }}>
+                            <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>Configuración Libro Diario PDF</Text>
+                            
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Text style={{ color: '#CBD5E1', fontSize: 12 }}>Detallar productos en cada asiento</Text>
+                                <TouchableOpacity
+                                    onPress={() => setExportOptions(prev => ({ ...prev, incluirProductos: !prev.incluirProductos }))}
+                                    style={{
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 6,
+                                        borderRadius: 10,
+                                        backgroundColor: exportOptions.incluirProductos ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)',
+                                        borderWidth: 1,
+                                        borderColor: exportOptions.incluirProductos ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.1)',
+                                    }}
+                                >
+                                    <Text style={{ color: exportOptions.incluirProductos ? '#C084FC' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
+                                        {exportOptions.incluirProductos ? 'Activado' : 'Desactivado'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', marginTop: 4 }}>Filtro de Contenido:</Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                {[
+                                    { key: 'completo', label: 'Completo (Todo)' },
+                                    { key: 'solo_transferencias', label: 'Solo Transferencias / QR' },
+                                    { key: 'cuenta_especifica', label: 'Cuenta Específica' },
+                                ].map(f => {
+                                    const active = exportOptions.filtroDiario === f.key;
+                                    return (
+                                        <TouchableOpacity
+                                            key={f.key}
+                                            onPress={() => setExportOptions(prev => ({ ...prev, filtroDiario: f.key as any }))}
+                                            style={{
+                                                paddingHorizontal: 10,
+                                                paddingVertical: 6,
+                                                borderRadius: 8,
+                                                backgroundColor: active ? 'rgba(245,165,36,0.2)' : 'rgba(255,255,255,0.04)',
+                                                borderWidth: 1,
+                                                borderColor: active ? 'rgba(245,165,36,0.5)' : 'rgba(255,255,255,0.08)',
+                                            }}
+                                        >
+                                            <Text style={{ color: active ? '#F5A524' : '#94A3B8', fontSize: 10, fontWeight: '800' }}>{f.label}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+                            {exportOptions.filtroDiario === 'cuenta_especifica' && cuentasTransfer.length > 0 && (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                                    {cuentasTransfer.map(c => {
+                                        const sel = exportOptions.cuentaNombre === c.nombre;
+                                        return (
+                                            <TouchableOpacity
+                                                key={c.id}
+                                                onPress={() => setExportOptions(prev => ({ ...prev, cuentaId: c.id, cuentaNombre: c.nombre }))}
+                                                style={{
+                                                    paddingHorizontal: 10,
+                                                    paddingVertical: 5,
+                                                    borderRadius: 8,
+                                                    backgroundColor: sel ? 'rgba(167,139,250,0.25)' : 'rgba(0,0,0,0.3)',
+                                                    borderWidth: 1,
+                                                    borderColor: sel ? '#A78BFA' : 'rgba(255,255,255,0.1)',
+                                                }}
+                                            >
+                                                <Text style={{ color: sel ? '#F3E8FF' : '#94A3B8', fontSize: 10, fontWeight: '700' }}>{c.nombre}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
+                    </Card>
+
                     {/* Balances */}
                     <Text style={{ color: '#475569', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Balances Contables</Text>
 
@@ -557,8 +678,14 @@ export default function ContabilidadScreen() {
                         icon="book-open-page-variant-outline"
                         title="Libro Diario"
                         tag="PDF"
-                        description="Todos los asientos del período ordenados por fecha: ventas (débito) y gastos (crédito)"
-                        onPress={() => runExport('diario', (allF, allG) => exportLibroDiario(allF, allG, validRange.from, validRange.to))}
+                        description="Todos los asientos del período ordenados por fecha con filtros y opciones configuradas"
+                        onPress={() => runExport('diario', (allF, allG) => exportLibroDiario(allF, allG, validRange.from, validRange.to, {
+                            filtro: exportOptions.filtroDiario,
+                            cuentaId: exportOptions.cuentaId,
+                            cuentaNombre: exportOptions.cuentaNombre,
+                            incluirProductos: exportOptions.incluirProductos,
+                            incluirDomicilio: exportOptions.incluirDomicilio,
+                        }))}
                         loading={exportLoading === 'diario'}
                         disabled={!isWeb || !hasData}
                     />
@@ -592,9 +719,9 @@ export default function ContabilidadScreen() {
                         icon="file-table-outline"
                         title="Balance Contable Completo"
                         tag="CSV"
-                        description="Ventas + egresos + resumen por método de pago y productos más vendidos"
+                        description="Ventas + egresos + resumen por método de pago y productos más vendidos en 5 secciones"
                         onPress={() => runExport('combined', async (allF, allG) => {
-                            const csv = await buildCombinedBalanceCsv(allF, allG);
+                            const csv = await buildCombinedBalanceCsv(allF, allG, { incluirDomicilio: exportOptions.incluirDomicilio });
                             downloadCsv(csv, `balance_${validRange.from}_${validRange.to}.csv`);
                         })}
                         loading={exportLoading === 'combined'}

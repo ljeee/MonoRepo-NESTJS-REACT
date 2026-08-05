@@ -115,18 +115,17 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, onUpdatePreci
 
               {/*
                 El precio ocupa un "slot" de tamaño FIJO (mismo alto y ancho en
-                ambos estados). Antes el modo lectura tenía dos líneas y el de
-                edición una sola, con un input más ancho: al tocar, la fila
-                saltaba de sitio y el placeholder quedaba enorme. Ahora solo
-                cambia el contenido dentro del mismo recuadro.
+                ambos estados). Se fuerzan constraints minWidth: 0, width: 100%
+                y outlineStyle: none para evitar que el input HTML nativo en Web
+                se expanda con su tamaño por defecto (size=20) y desborde el div.
               */}
-              <View className="w-[118px] h-9 justify-center">
+              <View className="w-[105px] h-9 justify-center">
                 {editingId === item.id ? (
-                  <View className="flex-row items-center h-9 px-2 rounded-lg bg-black/40 border border-(--color-pos-primary)/60">
+                  <View className="flex-row items-center h-9 px-2 rounded-lg bg-black/40 border border-(--color-pos-primary)/60 overflow-hidden w-full">
                     <Text className="text-(--color-pos-primary) font-black text-sm">$</Text>
                     <TextInput
                       className="flex-1 text-white font-black text-sm text-right"
-                      style={{ padding: 0 }}
+                      style={{ padding: 0, minWidth: 0, width: '100%', maxWidth: '100%', outlineStyle: 'none' } as any}
                       value={draft}
                       onChangeText={(v: string) => setDraft(v.replace(/\D/g, ''))}
                       keyboardType="numeric"
@@ -160,10 +159,10 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, onUpdatePreci
               <TouchableOpacity
                 onPress={() => onUpdatePrecio?.(item.id, null)}
                 disabled={!onUpdatePrecio}
-                className="flex-row items-center gap-1.5 mt-2 self-start bg-amber-500/15 px-2 py-1 rounded-full active:opacity-70"
+                className="flex-row items-center gap-1.5 mt-2 self-start bg-amber-500/15 px-2.5 py-1 rounded-full active:opacity-70 max-w-full"
               >
                 <Icon name="tag-outline" size={10} color="#F5A524" />
-                <Text className="text-amber-400 text-[9px] font-black uppercase tracking-widest">
+                <Text className="text-amber-400 text-[9px] font-black uppercase tracking-wider" numberOfLines={1}>
                   Precio manual · antes ${formatCurrency(item.precioUnitario)} · restaurar
                 </Text>
               </TouchableOpacity>

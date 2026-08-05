@@ -8,7 +8,7 @@ import { BillCounter, COLOMBIAN_BILLS } from '../ui/BillCounter';
 import { useBreakpoint } from '../../styles/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatCurrency, useApi } from '@/src/shared';
-import type { DenominacionesMap } from '@/src/shared';
+import type { DenominacionesMap, CuentaTransferencia } from '@/src/shared';
 
 interface PaymentSelectionModalProps {
     visible: boolean;
@@ -20,6 +20,8 @@ interface PaymentSelectionModalProps {
         pagoTransferencia?: number,
         denominaciones?: DenominacionesMap,
         cambioDenominaciones?: DenominacionesMap,
+        cuentaTransferenciaId?: number,
+        cuentaTransferenciaNombre?: string,
     ) => void;
     loading?: boolean;
     /** 'partial' shows abono mode: single efectivo entry, monto libre ≤ totalPendiente */
@@ -46,6 +48,8 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const firstAvailable = METHODS.find(m => !disabledMethods.includes(m.id))?.id ?? 'efectivo';
     const [selected, setSelected] = useState(firstAvailable);
     const [cajaEstado, setCajaEstado] = useState<DenominacionesMap>({});
+    const [cuentas, setCuentas] = useState<CuentaTransferencia[]>([]);
+    const [selectedCuentaId, setSelectedCuentaId] = useState<number | null>(null);
 
     // ── Efectivo ──────────────────────────────────────────────────────────────
     const [billCountsEfectivo, setBillCountsEfectivo] = useState<Record<string, number>>({});
@@ -76,6 +80,19 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
         }
     }, [api]);
 
+    const fetchCuentas = useCallback(async () => {
+        try {
+            const res = await api.empresa.cuentasTransferencia.getAll();
+            const activas = (res || []).filter(c => c.activa);
+            setCuentas(activas);
+            if (activas.length > 0) {
+                setSelectedCuentaId(activas[0].id);
+            }
+        } catch {
+            setCuentas([]);
+        }
+    }, [api]);
+
     useEffect(() => {
         if (visible) {
             setBillCountsEfectivo({});
@@ -88,13 +105,14 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
             setMonedasCambio('');
             setStep('entrada');
             fetchCaja();
+            fetchCuentas();
             // Auto-switch if currently selected method is disabled
             if (disabledMethods.includes(selected)) {
                 const available = METHODS.find(m => !disabledMethods.includes(m.id));
                 if (available) setSelected(available.id);
             }
         }
-    }, [visible, selected, fetchCaja]);
+    }, [visible, selected, fetchCaja, fetchCuentas]);
 
     // ── Monto efectivo en modo mixto = total − transferencia ─────────────────
     const montoEfectivoMixto = Math.max(0, total - (Number(montoTransferencia) || 0));
@@ -152,9 +170,13 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
 
     const handleConfirm = () => {
         const cambioDens = buildDenominaciones(billCountsCambio, monedasCambio);
+        const selCuenta = cuentas.find(c => c.id === selectedCuentaId);
+        const cuentaId = selCuenta?.id;
+        const cuentaNom = selCuenta?.nombre;
+
         if (isPartial) {
             if (selected === 'transferencia') {
-                onSelect('transferencia', 0, Number(montoAbonoQr) || 0);
+                onSelect('transferencia', 0, Number(montoAbonoQr) || 0, undefined, undefined, cuentaId, cuentaNom);
                 return;
             }
             // Monto abonado = recibido − cambio entregado (el bruto inflaba montoPagado)
@@ -165,10 +187,10 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
         if (selected === 'efectivo') {
             onSelect('efectivo', total, 0, buildDenominaciones(billCountsEfectivo, monedasEfectivo), cambioDens);
         } else if (selected === 'transferencia') {
-            onSelect('transferencia', 0, total);
+            onSelect('transferencia', 0, total, undefined, undefined, cuentaId, cuentaNom);
         } else if (selected === 'efectivo_transferencia') {
             const transVal = Number(montoTransferencia) || 0;
-            onSelect('efectivo_transferencia', montoEfectivoMixto, transVal, buildDenominaciones(billCountsMixto, monedaMixto), cambioDens);
+            onSelect('efectivo_transferencia', montoEfectivoMixto, transVal, buildDenominaciones(billCountsMixto, monedaMixto), cambioDens, cuentaId, cuentaNom);
         }
     };
 
@@ -460,6 +482,33 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                     </View>
                                     <Text className="text-slate-300 font-bold text-sm text-center">Confirmar transacción por</Text>
                                     <Text className="font-black text-2xl mt-1" style={{ fontFamily: 'Space Grotesk', color: '#8B5CF6' }}>${formatCurrency(total)}</Text>
+                                </View>
+                            )}
+
+                            {(selected === 'transferencia' || selected === 'efectivo_transferencia') && cuentas.length > 0 && (
+                                <View className="mb-3 bg-black/20 rounded-xl border border-white/5 p-3">
+                                    <Text className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2">
+                                        ¿A qué cuenta fue la transferencia / QR?
+                                    </Text>
+                                    <View className="flex-row flex-wrap gap-2">
+                                        {cuentas.map(c => {
+                                            const isSel = selectedCuentaId === c.id;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={c.id}
+                                                    onPress={() => setSelectedCuentaId(c.id)}
+                                                    className={`flex-row items-center gap-1.5 px-3 py-2 rounded-xl border ${
+                                                        isSel ? 'bg-purple-500/20 border-purple-500/50' : 'bg-black/30 border-white/10'
+                                                    }`}
+                                                >
+                                                    <Icon name="bank" size={12} color={isSel ? '#C084FC' : '#64748B'} />
+                                                    <Text className={`text-xs font-bold ${isSel ? 'text-purple-300' : 'text-slate-400'}`}>
+                                                        {c.nombre}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
                                 </View>
                             )}
 

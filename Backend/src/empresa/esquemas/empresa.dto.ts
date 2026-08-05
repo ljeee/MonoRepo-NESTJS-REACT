@@ -37,4 +37,10 @@ export class UpdateEmpresaDto {
 	@IsNumber()
 	@Min(0)
 	tarifaIva?: number;
+
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	recargoLeche?: number;
 }
+
