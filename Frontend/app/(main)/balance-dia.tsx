@@ -1006,6 +1006,7 @@ export default function BalanceDiaScreen() {
                         <FacturaCard
                             item={item}
                             isUpdating={updatingId === item.facturaId}
+                            activeFilter={filterMethod}
                             onToggleEstado={handleToggleEstado}
                             onUpdateTotal={handleUpdateTotal}
                             onUpdate={updateFactura}

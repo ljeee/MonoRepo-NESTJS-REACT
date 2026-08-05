@@ -48,6 +48,16 @@ export default function BalanceFechasScreen() {
     const [updatingId, setUpdatingId] = useState<number | null>(null);
     const [refreshing, setRefreshing] = useState(false);
 
+    // ── Cuentas QR state ──
+    const [cuentas, setCuentas] = useState<any[]>([]);
+    const [selectedCuentaId, setSelectedCuentaId] = useState<number | undefined>(undefined);
+
+    useEffect(() => {
+        api.empresa.cuentasTransferencia.getAll()
+            .then(res => setCuentas((res || []).filter((c: any) => c.activa)))
+            .catch(() => {});
+    }, [api]);
+
     const getApiFilters = useCallback((key: MethodFilterValue) => {
         let est: string | undefined = undefined;
         let met: string | undefined = undefined;
@@ -92,13 +102,13 @@ export default function BalanceFechasScreen() {
         try {
             const { est, met } = getApiFilters(metodoFilter);
             await Promise.all([
-                searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met),
+                searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met, selectedCuentaId),
                 fetchGastos(searchedFrom, searchedTo, 1),
                 fetchStats(searchedFrom, searchedTo)
             ]);
         } catch { /* silent */ }
         setRefreshing(false);
-    }, [hasSearched, searchedFrom, searchedTo, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, getApiFilters]);
+    }, [hasSearched, searchedFrom, searchedTo, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, selectedCuentaId, getApiFilters]);
 
     const handleSearch = useCallback((fromOverride?: string, toOverride?: string) => {
         const fromInput = fromOverride ?? from;
@@ -110,19 +120,27 @@ export default function BalanceFechasScreen() {
         setFromF(fp); setToF(tp);
         setFromG(fp); setToG(tp);
         const { est, met } = getApiFilters(metodoFilter);
-        searchF(fp, tp, est, nombreFilter || undefined, met);
+        searchF(fp, tp, est, nombreFilter || undefined, met, selectedCuentaId);
         void fetchGastos(fp, tp, 1);
         void fetchStats(fp, tp);
         setHasSearched(true);
-    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, getApiFilters]);
+    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, selectedCuentaId, getApiFilters]);
 
     const handleSelectMetodo = useCallback((key: MethodFilterValue) => {
         setMetodoFilter(key);
         if (hasSearched) {
             const { est, met } = getApiFilters(key);
-            searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met);
+            searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met, selectedCuentaId);
         }
-    }, [searchedFrom, searchedTo, nombreFilter, searchF, hasSearched, getApiFilters]);
+    }, [searchedFrom, searchedTo, nombreFilter, searchF, hasSearched, selectedCuentaId, getApiFilters]);
+
+    const handleSelectCuenta = useCallback((cuentaId: number | undefined) => {
+        setSelectedCuentaId(cuentaId);
+        if (hasSearched) {
+            const { est, met } = getApiFilters(metodoFilter);
+            searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met, cuentaId);
+        }
+    }, [hasSearched, searchedFrom, searchedTo, metodoFilter, nombreFilter, searchF, getApiFilters]);
 
     // Debounce nombre filter
     const searchFRef = useRef(searchF);
@@ -131,10 +149,10 @@ export default function BalanceFechasScreen() {
         if (!hasSearched) return;
         const t = setTimeout(() => {
             const { est, met } = getApiFilters(metodoFilter);
-            searchFRef.current(searchedFrom, searchedTo, est, nombreFilter || undefined, met);
+            searchFRef.current(searchedFrom, searchedTo, est, nombreFilter || undefined, met, selectedCuentaId);
         }, 400);
         return () => clearTimeout(t);
-    }, [nombreFilter, searchedFrom, searchedTo, metodoFilter, hasSearched, getApiFilters]);
+    }, [nombreFilter, searchedFrom, searchedTo, metodoFilter, hasSearched, selectedCuentaId, getApiFilters]);
 
     const handleToggleEstado = useCallback(async (
         facturaId: number, nuevoEstado: string, metodo?: string,
@@ -203,6 +221,19 @@ export default function BalanceFechasScreen() {
     const egresos = periodStats?.totalEgresos ?? 0;
     const neto = ingresos - egresos;
 
+    const qrPorCuentaPeriodo = facturas
+        .filter(f => f.estado === 'pagado' || f.estado === 'pagada')
+        .reduce((acc: Record<string, number>, f) => {
+            const esTrans = f.metodo === 'transferencia' || f.metodo === 'qr';
+            const esMixtoTrans = f.metodo === 'efectivo_transferencia' && (f.pagoTransferencia ?? 0) > 0;
+            if (esTrans || esMixtoTrans) {
+                const nom = f.cuentaTransferenciaNombre || 'Sin asignar';
+                const monto = esMixtoTrans ? (f.pagoTransferencia ?? 0) : (f.total ?? 0);
+                acc[nom] = (acc[nom] || 0) + monto;
+            }
+            return acc;
+        }, {});
+
     // Conteos por método del período (metodosPago tiene bucket 'mixto' propio).
     // El filtrado real es server-side e incluye las mixtas en efectivo y QR
     // ("mixta con efectivo" / "mixta con QR"), así que los chips las suman.
@@ -266,6 +297,53 @@ export default function BalanceFechasScreen() {
                         >
                             {/* Chips de filtro unificados por método de pago y estado pendiente */}
                             <MethodFilterChips value={metodoFilter} onChange={handleSelectMetodo} counts={metodoCounts} />
+
+                            {/* Chips de filtro por Cuenta QR */}
+                            {cuentas.length > 0 && (
+                                <View style={{ gap: 6, marginTop: 2, paddingHorizontal: 2 }}>
+                                    <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Filtrar por Cuenta QR:
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                        <TouchableOpacity
+                                            onPress={() => handleSelectCuenta(undefined)}
+                                            style={{
+                                                paddingHorizontal: 10,
+                                                paddingVertical: 5,
+                                                borderRadius: 8,
+                                                backgroundColor: selectedCuentaId === undefined ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.04)',
+                                                borderWidth: 1,
+                                                borderColor: selectedCuentaId === undefined ? '#A78BFA' : 'rgba(255,255,255,0.08)',
+                                            }}
+                                        >
+                                            <Text style={{ fontFamily: 'Outfit', color: selectedCuentaId === undefined ? '#F3E8FF' : '#94A3B8', fontSize: 11, fontWeight: '700' }}>
+                                                Todas las cuentas
+                                            </Text>
+                                        </TouchableOpacity>
+                                        {cuentas.map(c => {
+                                            const isSelected = selectedCuentaId === c.id;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={c.id}
+                                                    onPress={() => handleSelectCuenta(c.id)}
+                                                    style={{
+                                                        paddingHorizontal: 10,
+                                                        paddingVertical: 5,
+                                                        borderRadius: 8,
+                                                        backgroundColor: isSelected ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.04)',
+                                                        borderWidth: 1,
+                                                        borderColor: isSelected ? '#A78BFA' : 'rgba(255,255,255,0.08)',
+                                                    }}
+                                                >
+                                                    <Text style={{ fontFamily: 'Outfit', color: isSelected ? '#F3E8FF' : '#94A3B8', fontSize: 11, fontWeight: '700' }}>
+                                                        {c.nombre}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            )}
 
                             <Input
                                 placeholder="Buscar por nombre de cliente..."
@@ -335,6 +413,27 @@ export default function BalanceFechasScreen() {
                                             ${formatCurrency(Math.abs(neto))}
                                         </Text>
                                     </View>
+
+                                    {/* Breakdown por cuenta QR en el período */}
+                                    {Object.keys(qrPorCuentaPeriodo).length > 0 && (
+                                        <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', gap: 6 }}>
+                                            <Text style={{ fontFamily: 'Outfit', color: '#A78BFA', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                                Recaudación por Cuenta QR (Período)
+                                            </Text>
+                                            <View style={{ gap: 4 }}>
+                                                {Object.entries(qrPorCuentaPeriodo).map(([cuenta, total]) => (
+                                                    <View key={cuenta} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <Text style={{ fontFamily: 'Outfit', color: '#CBD5E1', fontSize: 12 }}>
+                                                            • {cuenta}
+                                                        </Text>
+                                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#A78BFA', fontSize: 13 }}>
+                                                            ${formatCurrency(total)}
+                                                        </Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    )}
                                 </View>
                             </Card>
                         )}
@@ -376,6 +475,7 @@ export default function BalanceFechasScreen() {
                                         <FacturaCard
                                             item={item}
                                             isUpdating={updatingId === item.facturaId}
+                                            activeFilter={metodoFilter}
                                             onToggleEstado={handleToggleEstado}
                                             onUpdateTotal={handleUpdateTotal}
                                             onDelete={handleDeleteFactura}

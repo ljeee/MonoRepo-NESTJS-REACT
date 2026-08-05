@@ -180,6 +180,7 @@ export const EstadoToggle = React.memo(function EstadoToggle({
 export const FacturaCard = React.memo(function FacturaCard({
   item,
   isUpdating,
+  activeFilter,
   onToggleEstado,
   onUpdateTotal,
   onUpdate,
@@ -190,6 +191,7 @@ export const FacturaCard = React.memo(function FacturaCard({
 }: {
   item: FacturaItem;
   isUpdating: boolean;
+  activeFilter?: string;
   onToggleEstado: (facturaId: number, nuevoEstado: string, metodo?: string, pagoEfectivo?: number, pagoTransferencia?: number, denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap, cuentaTransferenciaId?: number, cuentaTransferenciaNombre?: string) => void;
   onUpdateTotal?: (facturaId: number, newTotal: number) => Promise<void>;
   onUpdate?: (facturaId: number, data: Partial<FacturaItem>) => Promise<void>;
@@ -299,27 +301,44 @@ export const FacturaCard = React.memo(function FacturaCard({
                 QR: {item.cuentaTransferenciaNombre}
               </RNText>
             )}
-            {/* Desglose pago mixto */}
-            {item.metodo === 'efectivo_transferencia' && (
-              <RNView style={fc.mixtoBox}>
-                {(item.pagoEfectivo ?? 0) > 0 && (
-                  <RNView style={fc.mixtoRow}>
-                    <RNText style={fc.mixtoEfectivo}>💵</RNText>
-                    <RNText numberOfLines={1} style={fc.mixtoEfectivoValor}>
-                      ${formatCurrency(item.pagoEfectivo!)}
-                    </RNText>
-                  </RNView>
-                )}
-                {(item.pagoTransferencia ?? 0) > 0 && (
-                  <RNView style={fc.mixtoRow}>
-                    <RNText style={fc.mixtoTransfer}>🔁</RNText>
-                    <RNText numberOfLines={1} style={fc.mixtoTransferValor}>
-                      ${formatCurrency(item.pagoTransferencia!)}
-                    </RNText>
-                  </RNView>
-                )}
-              </RNView>
-            )}
+            {/* Desglose pago mixto con prioridad según filtro activo */}
+            {item.metodo === 'efectivo_transferencia' && (() => {
+              const isQrFilter = activeFilter === 'transferencia' || activeFilter === 'qr';
+
+              const rowEfectivo = (item.pagoEfectivo ?? 0) > 0 && (
+                <RNView style={isQrFilter ? fc.mixtoRowSec : fc.mixtoRowPri}>
+                  <RNText style={isQrFilter ? fc.mixtoTextSec : fc.mixtoEfectivoPri}>
+                    💵 ${formatCurrency(item.pagoEfectivo!)}
+                  </RNText>
+                  <RNText style={fc.mixtoTag}> (Efectivo)</RNText>
+                </RNView>
+              );
+
+              const rowTransfer = (item.pagoTransferencia ?? 0) > 0 && (
+                <RNView style={isQrFilter ? fc.mixtoRowPri : fc.mixtoRowSec}>
+                  <RNText style={isQrFilter ? fc.mixtoTransferPri : fc.mixtoTextSec}>
+                    🔁 ${formatCurrency(item.pagoTransferencia!)}
+                  </RNText>
+                  <RNText style={fc.mixtoTag}> (QR)</RNText>
+                </RNView>
+              );
+
+              return (
+                <RNView style={fc.mixtoBox}>
+                  {isQrFilter ? (
+                    <>
+                      {rowTransfer}
+                      {rowEfectivo}
+                    </>
+                  ) : (
+                    <>
+                      {rowEfectivo}
+                      {rowTransfer}
+                    </>
+                  )}
+                </RNView>
+              );
+            })()}
           </RNView>
         </RNView>
 
@@ -559,12 +578,13 @@ const fc = StyleSheet.create({
   fecha: { fontFamily: 'Outfit', color: '#64748B', fontSize: 10, marginTop: 2 },
   headerRight: { alignItems: 'flex-end', gap: 4 },
   total: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 },
-  mixtoBox: { alignItems: 'flex-end', gap: 2, marginTop: 2, maxWidth: '100%' },
-  mixtoRow: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '100%' },
-  mixtoEfectivo: { fontFamily: 'Outfit', color: '#10B981', fontSize: 10 },
-  mixtoEfectivoValor: { fontFamily: 'Outfit', color: '#10B981', fontSize: 10, flexShrink: 1 },
-  mixtoTransfer: { fontFamily: 'Outfit', color: '#60A5FA', fontSize: 10 },
-  mixtoTransferValor: { fontFamily: 'Outfit', color: '#60A5FA', fontSize: 10, flexShrink: 1 },
+  mixtoBox: { alignItems: 'flex-end', gap: 2, marginTop: 4, maxWidth: '100%' },
+  mixtoRowPri: { flexDirection: 'row', alignItems: 'center', gap: 2, maxWidth: '100%' },
+  mixtoRowSec: { flexDirection: 'row', alignItems: 'center', gap: 2, maxWidth: '100%' },
+  mixtoEfectivoPri: { fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 13, fontWeight: '800' },
+  mixtoTransferPri: { fontFamily: 'SpaceGrotesk-Bold', color: '#60A5FA', fontSize: 13, fontWeight: '800' },
+  mixtoTextSec: { fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, fontWeight: '600' },
+  mixtoTag: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   domicilioTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   domicilioTagText: { fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },

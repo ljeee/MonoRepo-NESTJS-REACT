@@ -357,6 +357,7 @@ export default function FacturasRangoScreen() {
                     <FacturaCard
                       item={item}
                       isUpdating={updating === item.facturaId}
+                      activeFilter={metodoFilter}
                       onToggleEstado={handleChangeEstado}
                       onUpdateTotal={handleUpdateTotal}
                       onUpdate={updateFactura}

@@ -198,6 +198,7 @@ export default function FacturasDiaScreen() {
               <FacturaCard
                 item={item}
                 isUpdating={updating === item.facturaId}
+                activeFilter={filterMethod}
                 onToggleEstado={handleChangeEstado}
                 onUpdateTotal={handleUpdateTotal}
                 onUpdate={updateFactura}
