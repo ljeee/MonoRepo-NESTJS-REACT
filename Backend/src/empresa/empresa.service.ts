@@ -55,9 +55,9 @@ export class EmpresaService implements OnModuleInit {
 	// ─── Cuentas Transferencia ──────────────────────────────────────────────────
 	async getCuentasTransferencia(incluirInactivas = false) {
 		if (incluirInactivas) {
-			return this.cuentasRepo.find({orderBy: {id: 'ASC'}});
+			return this.cuentasRepo.find({order: {id: 'ASC'}});
 		}
-		return this.cuentasRepo.find({where: {activa: true}, orderBy: {id: 'ASC'}});
+		return this.cuentasRepo.find({where: {activa: true}, order: {id: 'ASC'}});
 	}
 
 	async crearCuentaTransferencia(nombre: string) {

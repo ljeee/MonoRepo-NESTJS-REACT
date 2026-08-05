@@ -47,6 +47,7 @@ export class FacturaCreationService {
 			usuarioCobroId?: string;
 			fechaCobro?: Date;
 			ipDispositivo?: string;
+			idempotencyKey?: string;
 			pagoEfectivo?: number;
 			pagoTransferencia?: number;
 			montoPagado?: number;

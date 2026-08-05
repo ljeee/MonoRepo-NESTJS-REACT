@@ -38,6 +38,10 @@ export class CreateFacturasVentasDto {
 	total?: number;
 
 	@IsOptional()
+	@IsNumber()
+	montoPagado?: number;
+
+	@IsOptional()
 	@IsObject()
 	denominaciones?: Record<string, number>;
 
