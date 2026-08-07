@@ -166,7 +166,10 @@ export class EstadisticasService {
 		for (const f of facturas) {
 			const metodoRaw = f.metodo ? f.metodo.toLowerCase().trim() : 'sin método';
 			// Mixto es su propio bucket: cuenta la factura UNA vez con su total completo.
-			const metodo = metodoRaw === 'efectivo_transferencia' ? 'mixto' : metodoRaw;
+			// QR se normaliza a 'transferencia' para agruparlos en la misma categoría.
+			const metodo = metodoRaw === 'efectivo_transferencia' ? 'mixto'
+				: metodoRaw === 'qr' ? 'transferencia'
+				: metodoRaw;
 			const total = Number(f.total) || 0;
 
 			if (!counts[metodo]) counts[metodo] = {cantidad: 0, total: 0};

@@ -67,7 +67,7 @@ export class FacturasVentasService {
 					);
 				} else if (metodo === 'transferencia') {
 					qb.andWhere(
-						"(f.metodo = 'transferencia' OR (f.metodo = 'efectivo_transferencia' AND COALESCE(f.pagoTransferencia, 0) > 0))",
+						"(f.metodo = 'transferencia' OR f.metodo = 'qr' OR (f.metodo = 'efectivo_transferencia' AND COALESCE(f.pagoTransferencia, 0) > 0))",
 					);
 				} else {
 					const m = metodo === 'mixto' ? 'efectivo_transferencia' : metodo;

@@ -579,7 +579,7 @@ export default function BalanceDiaScreen() {
         if (filterMethod === 'transferencia') {
             if (f.metodo === 'qr' || f.metodo === 'transferencia') return sum + (f.total ?? 0);
             if (f.metodo === 'efectivo_transferencia') return sum + (f.pagoTransferencia ?? 0);
-            return sum + (f.total ?? 0);
+            return sum;
         }
         return sum + (f.total ?? 0);
     }, 0);
