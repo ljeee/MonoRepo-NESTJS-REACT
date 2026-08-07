@@ -64,7 +64,8 @@ export default function BalanceFechasScreen() {
         if (key === 'pendiente') {
             est = 'pendiente';
         } else if (key !== 'todos') {
-            est = 'pagado';
+            // No forzamos estado='pagado': facturas pendientes también pueden tener método
+            // asignado (ej. QR pendiente). El contador ya las incluye; la lista debe coincidir.
             met = key;
         }
         return { est, met };

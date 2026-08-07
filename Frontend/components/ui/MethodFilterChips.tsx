@@ -23,7 +23,8 @@ export function matchesMetodoFilter(
   const esMixta = f.metodo === 'efectivo_transferencia';
   if (key === 'mixto') return esMixta;
   if (key === 'efectivo') return f.metodo === 'efectivo' || (esMixta && (f.pagoEfectivo ?? 0) > 0);
-  return f.metodo === 'transferencia' || (esMixta && (f.pagoTransferencia ?? 0) > 0);
+  // 'transferencia' incluye facturas con metodo='qr' (alias legacy del mismo método)
+  return f.metodo === 'transferencia' || f.metodo === 'qr' || (esMixta && (f.pagoTransferencia ?? 0) > 0);
 }
 
 export interface MethodFilterChipsProps {
