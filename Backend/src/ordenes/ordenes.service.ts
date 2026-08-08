@@ -13,6 +13,8 @@ import {InventarioCajasService} from '../inventario-cajas/inventario-cajas.servi
 import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
 import {InventarioBebidasService} from '../inventario-bebidas/inventario-bebidas.service';
 import {getBogotaDateString} from '../common/utils/date.utils';
+import {CajaMovimiento} from '../caja-movimientos/esquemas/caja-movimiento.entity';
+import {EstadisticasGateway} from '../estadisticas/estadisticas.gateway';
 
 @Injectable()
 export class OrdenesService {
@@ -26,6 +28,7 @@ export class OrdenesService {
 		private readonly inventarioCajasService: InventarioCajasService,
 		private readonly cajaMovimientosService: CajaMovimientosService,
 		private readonly inventarioBebidasService: InventarioBebidasService,
+		private readonly estadisticasGateway: EstadisticasGateway,
 	) {}
 
 	async findAll(query: FindOrdenesDto = {}) {
@@ -485,6 +488,36 @@ export class OrdenesService {
 					},
 					manager,
 				);
+
+				// REGISTRAR MOVIMIENTO EN CAJA PRINCIPAL SI TIENE PARTE EFECTIVO
+				const fecha = getBogotaDateString();
+				if (
+					(metodo === 'efectivo' || metodo === 'efectivo_transferencia') &&
+					finalPagoEfectivo > 0
+				) {
+					const denomMap =
+						denominaciones && Object.keys(denominaciones).length > 0
+							? denominaciones
+							: {coins: finalPagoEfectivo};
+
+					const cajaRepo = manager.getRepository(CajaMovimiento);
+					await cajaRepo.save({
+						fecha,
+						tipo: 'entrada',
+						cajaOrigen: 'principal',
+						denominaciones: denomMap,
+						total: finalPagoEfectivo,
+						facturaVentaId: orden.facturaId,
+						facturaPagoId: null,
+						descripcion: `Cobro factura #${orden.facturaId} (Pre-pago)${orden.factura?.clienteNombre ? ` - ${orden.factura.clienteNombre}` : ''}`,
+						metodo,
+						pagoTransferencia: finalPagoTransferencia || null,
+					});
+
+					this.estadisticasGateway.emitirActualizacionStats({source: 'caja_entrada', fecha});
+				}
+
+				this.estadisticasGateway.emitirActualizacionStats({source: 'factura_pagada', id: orden.facturaId});
 			}
 
 			// 4. Marcar Orden como Completada

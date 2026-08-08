@@ -11,6 +11,8 @@ import {CierresService} from '../../../src/cierres/cierres.service';
 import {InventarioCajasService} from '../../../src/inventario-cajas/inventario-cajas.service';
 import {CajaMovimientosService} from '../../../src/caja-movimientos/caja-movimientos.service';
 import {InventarioBebidasService} from '../../../src/inventario-bebidas/inventario-bebidas.service';
+import {EstadisticasGateway} from '../../../src/estadisticas/estadisticas.gateway';
+import {CajaMovimiento} from '../../../src/caja-movimientos/esquemas/caja-movimiento.entity';
 
 const makeQb = () => ({
 	leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -35,6 +37,7 @@ describe('OrdenesService', () => {
 	let mockInventarioService: any;
 	let mockCajaMovimientosService: any;
 	let mockInventarioBebidasService: any;
+	let mockEstadisticasGateway: any;
 
 	beforeEach(async () => {
 		qb = makeQb();
@@ -93,6 +96,10 @@ describe('OrdenesService', () => {
 			restaurarBebidasParaOrden: jest.fn().mockResolvedValue(undefined),
 		};
 
+		mockEstadisticasGateway = {
+			emitirActualizacionStats: jest.fn(),
+		};
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				OrdenesService,
@@ -105,6 +112,7 @@ describe('OrdenesService', () => {
 				{provide: InventarioCajasService, useValue: mockInventarioService},
 				{provide: CajaMovimientosService, useValue: mockCajaMovimientosService},
 				{provide: InventarioBebidasService, useValue: mockInventarioBebidasService},
+				{provide: EstadisticasGateway, useValue: mockEstadisticasGateway},
 			],
 		}).compile();
 
@@ -352,10 +360,18 @@ describe('OrdenesService', () => {
 				findOne: jest.fn().mockResolvedValueOnce(orden).mockResolvedValueOnce(fullOrden),
 				save: jest.fn().mockResolvedValue(undefined),
 			};
+			const cajaRepo = {
+				save: jest.fn().mockResolvedValue(undefined),
+			};
 			mockRepo.manager.transaction.mockImplementation(async (cb: Function) =>
-				cb({getRepository: jest.fn().mockReturnValue(oRepo)}),
+				cb({
+					getRepository: jest.fn().mockImplementation((entity) => {
+						if (entity === CajaMovimiento) return cajaRepo;
+						return oRepo;
+					}),
+				}),
 			);
-			return {oRepo, fullOrden};
+			return {oRepo, cajaRepo, fullOrden};
 		};
 
 		it('completa la orden y actualiza la factura', async () => {
