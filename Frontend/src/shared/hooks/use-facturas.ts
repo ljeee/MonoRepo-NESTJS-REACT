@@ -289,22 +289,14 @@ export function useFacturasRango(limit: number = 50) {
   const search = useCallback((f: string, t: string, est?: string, cli?: string, met?: string, cuentaId?: number) => {
     setPage(1);
     pageRef.current = 1;
-    if (est !== undefined) {
-      setEstado(est);
-      estadoRef.current = est;
-    }
-    if (cli !== undefined) {
-      setClienteNombre(cli);
-      clienteNombreRef.current = cli;
-    }
-    if (met !== undefined) {
-      setMetodo(met);
-      metodoRef.current = met;
-    }
-    if (cuentaId !== undefined) {
-      setCuentaTransferenciaId(cuentaId);
-      cuentaTransferenciaIdRef.current = cuentaId;
-    }
+    setEstado(est);
+    estadoRef.current = est;
+    setClienteNombre(cli);
+    clienteNombreRef.current = cli;
+    setMetodo(met);
+    metodoRef.current = met;
+    setCuentaTransferenciaId(cuentaId);
+    cuentaTransferenciaIdRef.current = cuentaId;
     fetchData(f, t, 1, est, cli, met, cuentaId);
   }, [fetchData]);
 

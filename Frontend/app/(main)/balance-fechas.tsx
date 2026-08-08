@@ -77,6 +77,7 @@ export default function BalanceFechasScreen() {
         setFrom: setFromF, setTo: setToF,
         search: searchF, updateEstado, updateFactura, deleteFactura,
         page: pageF, totalPages: totalPagesF, total: totalF, goToPage: goToPageF,
+        fetchData: fetchFacturas,
     } = useFacturasRango(50);
 
     const {
@@ -158,18 +159,56 @@ export default function BalanceFechasScreen() {
     const handleToggleEstado = useCallback(async (
         facturaId: number, nuevoEstado: string, metodo?: string,
         pagoEfectivo?: number, pagoTransferencia?: number,
-        denominaciones?: Record<string, number>
+        denominaciones?: Record<string, number>,
+        cambioDenominaciones?: Record<string, number>,
+        cuentaTransferenciaId?: number,
+        cuentaTransferenciaNombre?: string
     ) => {
         setUpdatingId(facturaId);
         try {
             if (nuevoEstado === 'pagado' && metodo)
-                await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones });
+                await updateFactura(facturaId, {
+                    estado: 'pagado',
+                    metodo,
+                    pagoEfectivo,
+                    pagoTransferencia,
+                    denominaciones,
+                    cambioDenominaciones,
+                    cuentaTransferenciaId,
+                    cuentaTransferenciaNombre
+                });
             else
                 await updateEstado(facturaId, nuevoEstado);
             if (searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
         } catch { /* silent */ }
         setUpdatingId(null);
     }, [updateEstado, updateFactura, searchedFrom, searchedTo, fetchStats]);
+
+    const handleAbono = useCallback(async (
+        facturaId: number,
+        monto: number,
+        metodo: 'efectivo' | 'transferencia',
+        denominaciones?: Record<string, number>,
+        cambioDenominaciones?: Record<string, number>,
+        cuentaTransferenciaId?: number,
+        cuentaTransferenciaNombre?: string
+    ) => {
+        setUpdatingId(facturaId);
+        try {
+            await api.facturas.abono(
+                facturaId,
+                monto,
+                metodo,
+                denominaciones,
+                cambioDenominaciones,
+                cuentaTransferenciaId,
+                cuentaTransferenciaNombre
+            );
+            await fetchFacturas();
+            if (searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
+        } catch { /* silent */ }
+        setUpdatingId(null);
+    }, [api, fetchFacturas, searchedFrom, searchedTo, fetchStats]);
 
     const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
         await updateFactura(facturaId, { total: newTotal });
@@ -480,6 +519,7 @@ export default function BalanceFechasScreen() {
                                             onToggleEstado={handleToggleEstado}
                                             onUpdateTotal={handleUpdateTotal}
                                             onDelete={handleDeleteFactura}
+                                            onAbono={handleAbono}
                                         />
                                     </View>
                                 ))}

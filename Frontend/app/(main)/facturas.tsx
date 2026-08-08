@@ -65,11 +65,22 @@ export default function FacturasRangoScreen() {
     pagoTransferencia?: number,
     denominaciones?: DenominacionesMap,
     cambioDenominaciones?: DenominacionesMap,
+    cuentaTransferenciaId?: number,
+    cuentaTransferenciaNombre?: string,
   ) => {
     setUpdating(facturaId);
     try {
       if (nuevoEstado === 'pagado' && metodo) {
-        await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones });
+        await updateFactura(facturaId, {
+          estado: 'pagado',
+          metodo,
+          pagoEfectivo,
+          pagoTransferencia,
+          denominaciones,
+          cambioDenominaciones,
+          cuentaTransferenciaId,
+          cuentaTransferenciaNombre
+        });
       } else {
         await updateEstado(facturaId, nuevoEstado);
       }
@@ -85,10 +96,26 @@ export default function FacturasRangoScreen() {
     return deleteFactura(facturaId);
   }, [deleteFactura]);
 
-  const handleAbono = useCallback(async (facturaId: number, monto: number, metodo: 'efectivo' | 'transferencia', denominaciones?: DenominacionesMap, cambioDenominaciones?: DenominacionesMap) => {
+  const handleAbono = useCallback(async (
+    facturaId: number,
+    monto: number,
+    metodo: 'efectivo' | 'transferencia',
+    denominaciones?: DenominacionesMap,
+    cambioDenominaciones?: DenominacionesMap,
+    cuentaTransferenciaId?: number,
+    cuentaTransferenciaNombre?: string,
+  ) => {
     setUpdating(facturaId);
     try {
-      await api.facturas.abono(facturaId, monto, metodo, denominaciones, cambioDenominaciones);
+      await api.facturas.abono(
+        facturaId,
+        monto,
+        metodo,
+        denominaciones,
+        cambioDenominaciones,
+        cuentaTransferenciaId,
+        cuentaTransferenciaNombre
+      );
       // Refresh current search results
       search(from, to);
     } finally {

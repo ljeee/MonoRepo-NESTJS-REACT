@@ -442,12 +442,23 @@ export default function BalanceDiaScreen() {
         pagoEfectivo?: number,
         pagoTransferencia?: number,
         denominaciones?: Record<string, number>,
-        cambioDenominaciones?: Record<string, number>
+        cambioDenominaciones?: Record<string, number>,
+        cuentaTransferenciaId?: number,
+        cuentaTransferenciaNombre?: string
     ) => {
         setUpdatingId(facturaId);
         try {
             if (nuevoEstado === 'pagado' && metodo) {
-                await updateFactura(facturaId, { estado: 'pagado', metodo, pagoEfectivo, pagoTransferencia, denominaciones, cambioDenominaciones });
+                await updateFactura(facturaId, {
+                    estado: 'pagado',
+                    metodo,
+                    pagoEfectivo,
+                    pagoTransferencia,
+                    denominaciones,
+                    cambioDenominaciones,
+                    cuentaTransferenciaId,
+                    cuentaTransferenciaNombre
+                });
             } else {
                 await updateEstado(facturaId, nuevoEstado);
             }
@@ -467,10 +478,20 @@ export default function BalanceDiaScreen() {
         metodo: 'efectivo' | 'transferencia',
         denominaciones?: DenominacionesMap,
         cambioDenominaciones?: DenominacionesMap,
+        cuentaTransferenciaId?: number,
+        cuentaTransferenciaNombre?: string
     ) => {
         setUpdatingId(facturaId);
         try {
-            await api.facturas.abono(facturaId, monto, metodo, denominaciones, cambioDenominaciones);
+            await api.facturas.abono(
+                facturaId,
+                monto,
+                metodo,
+                denominaciones,
+                cambioDenominaciones,
+                cuentaTransferenciaId,
+                cuentaTransferenciaNombre
+            );
             await Promise.all([refetchFacturas(), fetchCajaResumen()]);
         } catch (error) {
             console.error('Error registrando abono:', error);
