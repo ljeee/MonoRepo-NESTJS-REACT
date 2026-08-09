@@ -14,6 +14,7 @@ interface JugoBaseModalProps {
   variante: ProductoVariante;
   onAdd: (producto: Producto, variante: ProductoVariante, base: 'leche' | 'agua') => void;
   onClose: () => void;
+  recargoLeche?: number;
 }
 
 export default function JugoBaseModal({
@@ -22,9 +23,10 @@ export default function JugoBaseModal({
   variante,
   onAdd,
   onClose,
+  recargoLeche = 1000,
 }: JugoBaseModalProps) {
   const precioAgua  = Number(variante.precio);
-  const precioLeche = precioAgua + RECARGO_LECHE;
+  const precioLeche = precioAgua + recargoLeche;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -108,7 +110,7 @@ export default function JugoBaseModal({
                   ${formatCurrency(precioLeche)}
                 </Text>
                 <Text style={{ color: '#64748B', fontSize: 9, fontWeight: '700', marginTop: 2 }}>
-                  +${formatCurrency(RECARGO_LECHE)} leche
+                  +${formatCurrency(recargoLeche)} leche
                 </Text>
               </View>
             </TouchableOpacity>

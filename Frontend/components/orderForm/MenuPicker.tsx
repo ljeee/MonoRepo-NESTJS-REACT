@@ -11,6 +11,7 @@ import { Button } from '../ui';
 
 interface MenuPickerProps {
   onAdd: (producto: Producto, variante: ProductoVariante, sabores?: string[], base?: 'leche' | 'agua') => void;
+  recargoLeche?: number;
 }
 
 // Normaliza para búsqueda: minúsculas, sin tildes, coma→punto (teclado numérico CO da coma).
@@ -20,7 +21,7 @@ const normalize = (s: string) =>
 
 // memo (export al final): CreateOrderForm re-renderiza por cada tecla de sus
 // inputs; sin memo la grilla completa del menú se reconciliaba en cada pulsación
-function MenuPicker({ onAdd }: MenuPickerProps) {
+function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
   const { isMobile, isTablet } = useBreakpoint();
@@ -269,6 +270,7 @@ function MenuPicker({ onAdd }: MenuPickerProps) {
           visible={jugoModalVisible}
           producto={selectedJugoProducto}
           variante={selectedJugoVariante}
+          recargoLeche={recargoLeche}
           onAdd={(p, v, base) => {
             onAdd(p, v, undefined, base);
             setJugoModalVisible(false);

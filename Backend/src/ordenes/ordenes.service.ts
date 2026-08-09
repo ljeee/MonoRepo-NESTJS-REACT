@@ -263,7 +263,7 @@ export class OrdenesService {
 			let orden = await this.findOne(id, manager);
 
 			// 0. Bloquear edición si ya está pagada
-			if (orden.factura?.estado === 'pagada') {
+			if (orden.factura?.estado === 'pagada' || orden.factura?.estado === 'pagado') {
 				throw new BadRequestException('No se puede modificar una orden que ya ha sido pagada');
 			}
 
@@ -354,7 +354,7 @@ export class OrdenesService {
 
 	async remove(id: number) {
 		const orden = await this.findOne(id);
-		if (orden.factura?.estado === 'pagada') {
+		if (orden.factura?.estado === 'pagada' || orden.factura?.estado === 'pagado') {
 			throw new BadRequestException('No se puede eliminar una orden que ya ha sido pagada');
 		}
 		return this.repo.delete(id);
@@ -475,7 +475,7 @@ export class OrdenesService {
 					orden.facturaId,
 					{
 						metodo,
-						estado: 'pagada',
+						estado: 'pagado',
 						usuarioCobroId: userId,
 						fechaCobro: new Date(),
 						ipDispositivo: ip,

@@ -147,7 +147,7 @@ export const EstadoToggle = React.memo(function EstadoToggle({
   isUpdating: boolean;
   onToggle: () => void;
 }) {
-  const isPagado = estado === 'pagado';
+  const isPagado = estado === 'pagado' || estado === 'pagada';
   const isCancelado = estado === 'cancelado';
 
   const variant = isCancelado ? 'danger' : isPagado ? 'success' : 'warning';
@@ -222,7 +222,7 @@ export const FacturaCard = React.memo(function FacturaCard({
     }
   };
 
-  const isPagado = item.estado === 'pagado';
+  const isPagado = item.estado === 'pagado' || item.estado === 'pagada';
   const isCancelado = item.estado === 'cancelado';
   const isParcial = item.estado === 'parcial';
   const saldoPendiente = isParcial ? (item.total ?? 0) - (item.montoPagado ?? 0) : (item.total ?? 0);

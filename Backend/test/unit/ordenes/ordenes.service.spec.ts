@@ -388,7 +388,7 @@ describe('OrdenesService', () => {
 
 			expect(mockFacturaService.updateFactura).toHaveBeenCalledWith(
 				5,
-				expect.objectContaining({metodo: 'efectivo', estado: 'pagada'}),
+				expect.objectContaining({metodo: 'efectivo', estado: 'pagado'}),
 				expect.anything(),
 			);
 			const saved = oRepo.save.mock.calls[0][0];
