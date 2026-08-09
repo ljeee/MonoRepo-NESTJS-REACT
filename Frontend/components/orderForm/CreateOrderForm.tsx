@@ -682,7 +682,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
               {/* DIRECCION Y DOMICILIARIO (Solo Domicilio) */}
               {formState.tipoPedido === 'domicilio' && (
                 <View className="flex-row flex-wrap -mx-1" style={{ zIndex: 10, elevation: 10 }}>
-                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[40%]'}`}>
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[50%]'}`}>
                     <AddressPicker
                       direcciones={client?.direcciones ?? []}
                       selectedId={formState.selectedAddressId}
@@ -706,7 +706,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                     />
                   </View>
 
-                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[30%]'}`}>
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[23%]'}`}>
                     <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Referencia (Opcional)</Text>
                     <TextInput
                       className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"
@@ -717,7 +717,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                     />
                   </View>
 
-                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[18%]'}`}>
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[17%]'}`}>
                     <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Domiciliario</Text>
                     <View className="bg-black/20 rounded-lg border border-white/5 min-h-[48px] justify-center overflow-hidden">
                       <Picker
@@ -739,7 +739,7 @@ export default function CreateOrderForm({ mode = 'create', initialItem, ordenId 
                     </View>
                   </View>
 
-                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[12%]'}`}>
+                  <View className={`px-1 mb-3 ${isCompact ? 'w-full' : 'w-[10%]'}`}>
                     <Text className="text-[10px] font-black text-slate-400 ml-1 mb-1 uppercase tracking-wider">Costo</Text>
                     <TextInput
                       className="bg-black/20 rounded-lg border border-white/5 px-3 py-2 text-sm text-white min-h-[48px]"

@@ -96,7 +96,6 @@ export default function AddressPicker({
         onChangeText={onChangeText}
         placeholder="Escribe o elige una guardada..."
         placeholderTextColor="#475569"
-        multiline={!compact}
       />
 
       {hasSaved && (

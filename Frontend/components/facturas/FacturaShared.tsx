@@ -269,8 +269,6 @@ export const FacturaCard = React.memo(function FacturaCard({
     <Card style={fc.card}>
       {/* Fondo tintado según estado */}
       <RNView style={[fc.tintOverlay, { backgroundColor: bgTint }]} pointerEvents="none" />
-      {/* Stripe izquierdo semántico */}
-      <RNView style={[fc.stripe, { backgroundColor: accentColor }]} pointerEvents="none" />
 
       <RNView style={fc.body}>
         {/* ── Header ── */}
@@ -375,8 +373,10 @@ export const FacturaCard = React.memo(function FacturaCard({
         {/* ── Notas ── */}
         {item.descripcion ? (
           <RNView style={fc.notasBox}>
-            <RNText style={fc.notasLabel}>Notas</RNText>
-            <RNText style={fc.notasText}>'{item.descripcion}'</RNText>
+            <Icon name="note-text-outline" size={14} color="#F5A524" />
+            <RNView style={{ flex: 1 }}>
+              <RNText style={fc.notasText}>{item.descripcion}</RNText>
+            </RNView>
           </RNView>
         ) : null}
 
@@ -392,7 +392,7 @@ export const FacturaCard = React.memo(function FacturaCard({
                       {op.productoNombre}
                     </RNText>
                     <RNText style={fc.productoCantidad}>
-                      {op.cantidad}× ${formatCurrency(op.precioUnitario ?? 0)}
+                      {op.cantidad} u. · ${formatCurrency(op.precioUnitario ?? 0)}
                     </RNText>
                   </RNView>
                   <RNText style={fc.productoSubtotal}>
@@ -498,7 +498,7 @@ export const FacturaCard = React.memo(function FacturaCard({
                   <ActivityIndicator size="small" color={isPagado ? '#F5A524' : '#10B981'} />
                 ) : (
                   <>
-                    <Icon
+                     <Icon
                       name={isPagado ? 'undo-variant' : 'check-circle-outline'}
                       size={14}
                       color={isPagado ? '#F5A524' : '#10B981'}
@@ -513,9 +513,6 @@ export const FacturaCard = React.memo(function FacturaCard({
           </RNView>
         </RNView>
       </RNView>
-
-      {/* ── Barra de estado en la base ── */}
-      <RNView style={[fc.bottomBar, { backgroundColor: accentColor, opacity: isCancelado ? 0.6 : 0.85 }]} />
 
       <UpdateTotalModal
         visible={editing}
@@ -568,16 +565,28 @@ export const FacturaCard = React.memo(function FacturaCard({
 });
 
 const fc = StyleSheet.create({
-  card: { overflow: 'hidden', borderWidth: 0, padding: 0, marginBottom: 12, backgroundColor: 'rgba(15,23,42,0.7)' },
-  tintOverlay: { position: 'absolute', inset: 0 },
-  stripe: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, opacity: 0.7 },
-  body: { padding: 14, paddingLeft: 17 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
+  card: { 
+    overflow: 'hidden', 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.06)', 
+    borderRadius: 16, 
+    padding: 0, 
+    marginBottom: 14, 
+    backgroundColor: '#1E293B',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  tintOverlay: { position: 'absolute', inset: 0, opacity: 0.8 },
+  body: { padding: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   headerLeft: { flex: 1, paddingRight: 12 },
-  cliente: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', lineHeight: 21 },
-  fecha: { fontFamily: 'Outfit', color: '#64748B', fontSize: 10, marginTop: 2 },
+  cliente: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', lineHeight: 22, letterSpacing: 0.3 },
+  fecha: { fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, marginTop: 3 },
   headerRight: { alignItems: 'flex-end', gap: 4 },
-  total: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 },
+  total: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 19, letterSpacing: -0.5 },
   mixtoBox: { alignItems: 'flex-end', gap: 2, marginTop: 4, maxWidth: '100%' },
   mixtoRowPri: { flexDirection: 'row', alignItems: 'center', gap: 2, maxWidth: '100%' },
   mixtoRowSec: { flexDirection: 'row', alignItems: 'center', gap: 2, maxWidth: '100%' },
@@ -585,39 +594,48 @@ const fc = StyleSheet.create({
   mixtoTransferPri: { fontFamily: 'SpaceGrotesk-Bold', color: '#60A5FA', fontSize: 13, fontWeight: '800' },
   mixtoTextSec: { fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, fontWeight: '600' },
   mixtoTag: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9 },
-  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   domicilioTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   domicilioTagText: { fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
   domicilioDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(249,115,22,0.5)', marginHorizontal: 2 },
   domiciliarioNombre: { fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: 'bold' },
   direccionRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  direccionText: { fontFamily: 'Outfit', color: '#475569', fontSize: 10 },
-  notasBox: { backgroundColor: 'rgba(255,255,255,0.03)', padding: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', marginBottom: 8 },
-  notasLabel: { fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 3 },
-  notasText: { fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, fontStyle: 'italic' },
-  productosBox: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingTop: 8, marginBottom: 10 },
-  productosLabel: { fontFamily: 'Outfit', color: '#334155', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 },
-  productoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+  direccionText: { fontFamily: 'Outfit', color: '#64748B', fontSize: 11 },
+  notasBox: { 
+    backgroundColor: 'rgba(245,158,11,0.06)', 
+    paddingHorizontal: 12, 
+    paddingVertical: 9, 
+    borderRadius: 10, 
+    borderLeftWidth: 3, 
+    borderLeftColor: '#F5A524', 
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  notasText: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 12, fontWeight: '500' },
+  productosBox: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 10, marginBottom: 12 },
+  productosLabel: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, fontWeight: '700' },
+  productoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   productoInfo: { flex: 1, paddingRight: 12 },
-  productoNombre: { fontFamily: 'Outfit', color: 'rgba(255,255,255,0.8)', fontSize: 12 },
-  productoCantidad: { fontFamily: 'Outfit', color: '#475569', fontSize: 10 },
-  productoSubtotal: { fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 12 },
-  abonoBox: { marginBottom: 10 },
+  productoNombre: { fontFamily: 'Outfit', color: '#F1F5F9', fontSize: 12.5, fontWeight: '500' },
+  productoCantidad: { fontFamily: 'Outfit', color: '#64748B', fontSize: 11 },
+  productoSubtotal: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12.5 },
+  abonoBox: { marginBottom: 12 },
   abonoHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  abonoLabel: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '900' },
-  abonoSaldo: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 },
+  abonoLabel: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '900' },
+  abonoSaldo: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1 },
   progressTrack: { height: 5, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#F5A524', borderRadius: 3 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
   footerGroup: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  printBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(59,130,246,0.12)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)' },
-  confirmDeleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, backgroundColor: 'rgba(244,63,94,0.15)', borderWidth: 1, borderColor: 'rgba(244,63,94,0.3)' },
+  printBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(59,130,246,0.12)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(59,130,246,0.25)' },
+  confirmDeleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 12, backgroundColor: 'rgba(244,63,94,0.15)', borderWidth: 1, borderColor: 'rgba(244,63,94,0.3)' },
   confirmDeleteText: { fontFamily: 'Outfit', color: '#F87171', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
-  deleteBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(244,63,94,0.08)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(244,63,94,0.15)' },
-  editBtn: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  abonarBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.1)', borderWidth: 1, borderColor: 'rgba(245,165,36,0.25)' },
+  deleteBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(244,63,94,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(244,63,94,0.2)' },
+  editBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  abonarBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
   abonarText: { fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: '#F5A524' },
-  cobrarBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, borderWidth: 1 },
+  cobrarBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
   cobrarText: { fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
-  bottomBar: { height: 4 },
 });
