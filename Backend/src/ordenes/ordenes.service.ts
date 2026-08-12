@@ -553,18 +553,6 @@ export class OrdenesService {
 			const fechaStr = getBogotaDateString(new Date(updated.fechaOrden));
 			await this.cierresService.updateCierreIfExists(fechaStr);
 
-			// Registrar movimiento de caja si hay denominaciones en efectivo
-			if (denominaciones && Object.keys(denominaciones).length > 0 && (pagoEfectivo ?? 0) > 0) {
-				await this.cajaMovimientosService.registrarEntrada({
-					denominaciones,
-					facturaVentaId: orden.facturaId,
-					descripcion: `Cobro orden #${id}`,
-					fecha: fechaStr,
-					metodo,
-					pagoTransferencia,
-				});
-			}
-
 			return updated;
 		});
 	}
