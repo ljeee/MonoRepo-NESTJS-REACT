@@ -3,7 +3,7 @@ import { RefreshControl } from 'react-native';
 import { Text, View, TextInput, TouchableOpacity } from '../../tw';
 import { useFacturasDia, calcStats, useApi, useOrdenesSocket } from '@/src/shared';
 import type { DenominacionesMap } from '@/src/shared';
-import { buildCombinedBalanceCsv, buildFacturasBackupCsv, downloadCsv } from '../../utils/csvExport';
+import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
 import PageContainer from '../../components/ui/PageContainer';
@@ -17,9 +17,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getBaseUrl } from '../../services/api';
 
 export default function FacturasDiaScreen() {
-  const { isMobile } = useBreakpoint();
+  const { isMobile, width } = useBreakpoint();
   const api = useApi();
-  const { data, loading, error, refetch, stats, updateEstado, updateFactura } = useFacturasDia();
+  const { data, loading, error, refetch, updateEstado, updateFactura } = useFacturasDia();
   const [updating, setUpdating] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState<MethodFilterValue>('todos');
@@ -98,16 +98,6 @@ export default function FacturasDiaScreen() {
     exportFacturasPdf(data, 'Hoy');
   };
 
-  const handleExportBackup = async () => {
-    if (!data || data.length === 0) return;
-    const csv = await buildFacturasBackupCsv(data);
-    const today = (() => {
-      const now = new Date();
-      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    })();
-    downloadCsv(csv, `facturas_${today}.csv`);
-  };
-
   const handleExportContabilidad = async () => {
     if (!data || data.length === 0) return;
     const csv = await buildCombinedBalanceCsv(data, []);
@@ -131,13 +121,30 @@ export default function FacturasDiaScreen() {
     pendiente:     searchFiltered.filter(f => f.estado === 'pendiente' || f.estado === 'parcial').length,
   };
 
+  const [sortAsc, setSortAsc] = useState(false);
+
+  const numCols = isMobile ? 1 : width >= 1500 ? 4 : width >= 1100 ? 3 : 2;
+
   const filteredData = searchFiltered.filter((f: FacturaItem) => {
     if (filterMethod === 'todos') return true;
     if (filterMethod === 'pendiente') return f.estado === 'pendiente' || f.estado === 'parcial';
     return matchesMetodoFilter(f, filterMethod) && isPagado(f);
   });
 
+  const sortedData = React.useMemo(() => {
+    if (!sortAsc) return filteredData;
+    return [...filteredData].reverse();
+  }, [filteredData, sortAsc]);
+
   const computedStats = React.useMemo(() => calcStats(filteredData as any), [filteredData]);
+
+  const cardRows = React.useMemo(() => {
+    const rows: FacturaItem[][] = [];
+    for (let i = 0; i < sortedData.length; i += numCols) {
+      rows.push(sortedData.slice(i, i + numCols));
+    }
+    return rows;
+  }, [sortedData, numCols]);
 
   return (
     <PageContainer
@@ -189,7 +196,40 @@ export default function FacturasDiaScreen() {
             </View>
           </View>
           
-          <MethodFilterChips value={filterMethod} onChange={setFilterMethod} counts={methodCounts} />
+          <View className="flex-row items-center justify-between gap-3 flex-wrap">
+            <View className="flex-1 min-w-[280px]">
+              <MethodFilterChips value={filterMethod} onChange={setFilterMethod} counts={methodCounts} />
+            </View>
+            <View className="flex-row items-center gap-2 flex-wrap">
+              <Button
+                title="Exportar PDF"
+                icon="file-pdf-outline"
+                variant="secondary"
+                size="sm"
+                onPress={handleExportPdf}
+                disabled={!data || data.length === 0}
+                className="bg-purple-600/20 border-purple-500/30"
+              />
+              <Button
+                title="CSV Contable"
+                icon="table-large"
+                variant="secondary"
+                size="sm"
+                onPress={handleExportContabilidad}
+                disabled={!data || data.length === 0}
+                className="bg-emerald-600/20 border-emerald-500/30"
+              />
+              <TouchableOpacity
+                onPress={() => setSortAsc(prev => !prev)}
+                className="flex-row items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 active:bg-white/10"
+              >
+                <Icon name={sortAsc ? "sort-clock-ascending" : "sort-clock-descending"} size={16} color="#F5A524" />
+                <Text className="text-xs font-bold text-slate-300">
+                  {sortAsc ? "Más antiguas" : "Más recientes"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
       {/* Error */}
@@ -203,7 +243,7 @@ export default function FacturasDiaScreen() {
       {/* Content */}
       {loading && (!data || data.length === 0) ? (
         <ListSkeleton count={4} />
-      ) : filteredData.length === 0 ? (
+      ) : sortedData.length === 0 ? (
         <View className="items-center justify-center p-20 gap-4">
           <Icon name={searchQuery ? "account-search" : "receipt"} size={48} color="#64748B" />
           <Text className="text-white font-black text-xl">
@@ -214,26 +254,28 @@ export default function FacturasDiaScreen() {
           </Text>
         </View>
       ) : (
-        <View className="flex-row flex-wrap justify-between gap-y-4 pb-8">
-          {filteredData.map((item: FacturaItem, idx: number) => {
-            const isLastOddDesktop = !isMobile && filteredData.length % 2 === 1 && idx === filteredData.length - 1;
-            return (
-            <View
-              key={item.facturaId?.toString() || idx.toString()}
-              className={isMobile ? 'w-full' : isLastOddDesktop ? 'w-full' : 'w-[48.5%]'}
-            >
-              <FacturaCard
-                item={item}
-                isUpdating={updating === item.facturaId}
-                activeFilter={filterMethod}
-                onToggleEstado={handleChangeEstado}
-                onUpdateTotal={handleUpdateTotal}
-                onUpdate={updateFactura}
-                onAbono={handleAbono}
-                showPrint
-              />
+        <View className="gap-4 pb-8">
+          {cardRows.map((row, rIdx) => (
+            <View key={rIdx} className="flex-row gap-4">
+              {row.map((item: FacturaItem, idx: number) => (
+                <View key={item.facturaId?.toString() || idx.toString()} className="flex-1">
+                  <FacturaCard
+                    item={item}
+                    isUpdating={updating === item.facturaId}
+                    activeFilter={filterMethod}
+                    onToggleEstado={handleChangeEstado}
+                    onUpdateTotal={handleUpdateTotal}
+                    onUpdate={updateFactura}
+                    onAbono={handleAbono}
+                    showPrint
+                  />
+                </View>
+              ))}
+              {row.length < numCols && Array.from({ length: numCols - row.length }).map((_, i) => (
+                <View key={`empty-${i}`} className="flex-1" />
+              ))}
             </View>
-          );})}
+          ))}
         </View>
       )}
     </PageContainer>

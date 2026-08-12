@@ -288,7 +288,10 @@ describe('InventarioCajasService', () => {
 			mockMovimientosRepo.save.mockResolvedValue({});
 			mockInventarioRepo.save.mockImplementation(async (c: any) => c);
 
-			await service.descontarCajasParaOrden([{varianteNombre: 'Pequeña', tipoProducto: 'pizza', cantidad: 1}], 11);
+			await service.descontarCajasParaOrden(
+				[{varianteNombre: 'Pequeña', tipoProducto: 'pizza', cantidad: 1}],
+				11,
+			);
 
 			expect(caja.cantidad).toBe(14);
 		});

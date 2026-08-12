@@ -40,4 +40,3 @@ export class EmpresaConfig {
 	@UpdateDateColumn({name: 'updated_at'})
 	updatedAt: Date;
 }
-

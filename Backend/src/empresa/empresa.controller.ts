@@ -51,10 +51,7 @@ export class EmpresaController {
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Roles(Role.Admin, Role.Cajero)
 	@ApiOperation({summary: 'Actualizar cuenta de transferencia/QR'})
-	actualizarCuentaTransferencia(
-		@Param('id') id: string,
-		@Body() body: {nombre?: string; activa?: boolean},
-	) {
+	actualizarCuentaTransferencia(@Param('id') id: string, @Body() body: {nombre?: string; activa?: boolean}) {
 		return this.service.actualizarCuentaTransferencia(Number(id), body);
 	}
 

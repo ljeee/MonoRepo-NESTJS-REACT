@@ -100,6 +100,12 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
       return {
         costoDomicilio: numberOrZero(domicilio.costoDomicilio),
         direccionEntrega: typeof domicilio.direccionEntrega === 'string' ? domicilio.direccionEntrega : undefined,
+        referencia:
+          typeof domicilio.referenciaDomicilio === 'string'
+            ? domicilio.referenciaDomicilio
+            : typeof domicilio.referencia === 'string'
+            ? domicilio.referencia
+            : undefined,
         telefono: typeof domicilio.telefono === 'string' ? domicilio.telefono : undefined,
         domiciliario: domicilio.domiciliario
           ? {

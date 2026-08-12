@@ -21,7 +21,7 @@ describe('EmpresaService', () => {
 			find: jest.fn().mockResolvedValue([]),
 			count: jest.fn().mockResolvedValue(0),
 			create: jest.fn().mockImplementation((dto) => dto),
-			save: jest.fn().mockImplementation((dto) => Promise.resolve({ id: 1, ...dto })),
+			save: jest.fn().mockImplementation((dto) => Promise.resolve({id: 1, ...dto})),
 			findOne: jest.fn(),
 			update: jest.fn(),
 			delete: jest.fn(),

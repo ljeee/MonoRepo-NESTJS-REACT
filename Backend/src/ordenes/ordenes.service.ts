@@ -491,10 +491,7 @@ export class OrdenesService {
 
 				// REGISTRAR MOVIMIENTO EN CAJA PRINCIPAL SI TIENE PARTE EFECTIVO
 				const fecha = getBogotaDateString();
-				if (
-					(metodo === 'efectivo' || metodo === 'efectivo_transferencia') &&
-					finalPagoEfectivo > 0
-				) {
+				if ((metodo === 'efectivo' || metodo === 'efectivo_transferencia') && finalPagoEfectivo > 0) {
 					const denomMap =
 						denominaciones && Object.keys(denominaciones).length > 0
 							? denominaciones

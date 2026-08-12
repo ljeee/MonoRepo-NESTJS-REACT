@@ -22,8 +22,10 @@ import { useBreakpoint } from '../../styles/responsive';
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function FacturasRangoScreen() {
-  const { isMobile } = useBreakpoint();
+  const { isMobile, width } = useBreakpoint();
   const api = useApi();
+  const [sortAsc, setSortAsc] = useState(false);
+  const numCols = isMobile ? 1 : width >= 1500 ? 4 : width >= 1100 ? 3 : 2;
   const {
     data, loading, error,
     from, to, setFrom, setTo,
@@ -156,6 +158,19 @@ export default function FacturasRangoScreen() {
     const start = (localPage - 1) * itemsPerPage;
     return filteredData.slice(start, start + itemsPerPage);
   }, [filteredData, localPage]);
+
+  const sortedData = useMemo(() => {
+    if (!sortAsc) return paginatedData;
+    return [...paginatedData].reverse();
+  }, [paginatedData, sortAsc]);
+
+  const cardRows = useMemo(() => {
+    const rows: FacturaItem[][] = [];
+    for (let i = 0; i < sortedData.length; i += numCols) {
+      rows.push(sortedData.slice(i, i + numCols));
+    }
+    return rows;
+  }, [sortedData, numCols]);
 
   const handleExportPdf = useCallback(() => {
     if (filteredData.length === 0) return;
@@ -294,8 +309,8 @@ export default function FacturasRangoScreen() {
               leftIcon={<Icon name="account-search-outline" size={15} color="#475569" />}
             />
 
-            {/* Fila 3: botones exportar */}
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            {/* Fila 3: botones exportar + ordenar */}
+            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <Button
                 title="Exportar PDF"
                 icon="file-pdf-outline"
@@ -314,6 +329,15 @@ export default function FacturasRangoScreen() {
                 disabled={filteredData.length === 0}
                 className="bg-emerald-600/20 border-emerald-500/30"
               />
+              <TouchableOpacity
+                onPress={() => setSortAsc(prev => !prev)}
+                className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 active:bg-white/10"
+              >
+                <Icon name={sortAsc ? "sort-clock-ascending" : "sort-clock-descending"} size={15} color="#F5A524" />
+                <Text style={{ color: '#CBD5E1', fontSize: 12, fontWeight: '700' }}>
+                  {sortAsc ? "Más antiguas" : "Más recientes"}
+                </Text>
+              </TouchableOpacity>
               {/* Contador de resultados filtrados */}
               {filteredData.length !== data.length && (
                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
@@ -370,17 +394,13 @@ export default function FacturasRangoScreen() {
           </View>
         )}
 
-        {/* ── Items grid — same flex-wrap pattern as facturas-dia.tsx ────────── */}
-        {!loading && paginatedData.length > 0 && (
-          <View className="flex-row flex-wrap justify-between gap-y-4">
-            {paginatedData.map((item: FacturaItem, idx: number) => {
-              const isLastOddDesktop = !isMobile && paginatedData.length % 2 === 1 && idx === paginatedData.length - 1;
-              return (
-                <View
-                  key={item.facturaId?.toString() || idx.toString()}
-                  className={isMobile ? 'w-full' : isLastOddDesktop ? 'w-full' : 'w-[48.5%]'}
-                >
-                  <View className="flex-1 pb-4">
+        {/* ── Items grid — Equal-height card rows ────────── */}
+        {!loading && cardRows.length > 0 && (
+          <View className="gap-4 pb-4">
+            {cardRows.map((row, rIdx) => (
+              <View key={rIdx} className="flex-row gap-4">
+                {row.map((item: FacturaItem, idx: number) => (
+                  <View key={item.facturaId?.toString() || idx.toString()} className="flex-1">
                     <FacturaCard
                       item={item}
                       isUpdating={updating === item.facturaId}
@@ -392,9 +412,12 @@ export default function FacturasRangoScreen() {
                       onAbono={handleAbono}
                     />
                   </View>
-                </View>
-              );
-            })}
+                ))}
+                {row.length < numCols && Array.from({ length: numCols - row.length }).map((_, i) => (
+                  <View key={`empty-${i}`} className="flex-1" />
+                ))}
+              </View>
+            ))}
           </View>
         )}
 

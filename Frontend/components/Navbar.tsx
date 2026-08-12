@@ -43,6 +43,8 @@ const SECTIONS: NavSection[] = [
     items: [
       { label: 'Balance Global', route: '/balance-fechas', icon: 'chart-timeline-variant' },
       { label: 'Consultar Facturas', route: '/facturas', icon: 'database-search-outline' },
+      { label: 'Facturación Neta', route: '/facturacion-sin-domicilios', icon: 'cash-remove' },
+      { label: 'QR / Transferencias', route: '/qr-transferencias', icon: 'qrcode-scan' },
       { label: 'Contabilidad', route: '/contabilidad', icon: 'book-account-outline' },
       { label: 'Analíticas', route: '/estadisticas', icon: 'chart-areaspline' },
       { label: 'Analíticas Domiciliarios', route: '/estadisticas-domiciliarios', icon: 'chart-bar' },
@@ -358,7 +360,7 @@ export default function Navbar({ onClose }: { onClose?: () => void } = {}) {
         console.warn('[Navbar] Failed to read sidebar state', err);
       });
     return () => { cancelled = true; };
-  }, [isCompact]);
+  }, [isCompact, width]);
 
   const toggleCollapse = () => {
     const nextValue = !isCollapsed;

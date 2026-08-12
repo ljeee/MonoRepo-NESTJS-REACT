@@ -287,7 +287,7 @@ describe('ProductProcessingService', () => {
 		});
 
 		it('usa los repos del manager cuando se provee', async () => {
-			const managerERepo = { findOne: jest.fn().mockResolvedValue({ recargoLeche: 1000 }) };
+			const managerERepo = {findOne: jest.fn().mockResolvedValue({recargoLeche: 1000})};
 			const managerVRepo = {
 				findOne: jest.fn().mockResolvedValue({
 					varianteId: 1,

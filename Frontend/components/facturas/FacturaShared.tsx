@@ -37,6 +37,7 @@ export interface FacturaOrden {
 export interface FacturaDomicilio {
   costoDomicilio?: number;
   direccionEntrega?: string;
+  referencia?: string;
   domiciliario?: {
     domiciliarioNombre?: string;
     telefono?: string;
@@ -255,7 +256,6 @@ export const FacturaCard = React.memo(function FacturaCard({
     });
   };
 
-  const accentColor = isCancelado ? '#F43F5E' : isPagado ? '#10B981' : '#F5A524';
   const bgTint = isCancelado
     ? 'rgba(244,63,94,0.04)'
     : isPagado
@@ -263,7 +263,15 @@ export const FacturaCard = React.memo(function FacturaCard({
     : 'rgba(245,165,36,0.04)';
 
   const direccionDomicilio = item.domicilios?.[0]?.direccionEntrega;
+  const referenciaDomicilio = item.domicilios?.[0]?.referencia;
   const domiciliarioNombre = item.domicilios?.[0]?.domiciliario?.domiciliarioNombre;
+
+  const textoUbicacion = [
+    direccionDomicilio,
+    referenciaDomicilio ? `Ref: ${referenciaDomicilio}` : null,
+  ]
+    .filter(Boolean)
+    .join('  •  ');
 
   return (
     <Card style={fc.card}>
@@ -340,8 +348,8 @@ export const FacturaCard = React.memo(function FacturaCard({
           </RNView>
         </RNView>
 
-        {/* ── Tags: domicilio + dirección ── */}
-        {(esDomicilio || direccionDomicilio) && (
+        {/* ── Tags: domicilio + dirección / referencia ── */}
+        {(esDomicilio || textoUbicacion.length > 0) && (
           <RNView style={fc.tagsRow}>
             {esDomicilio && (
               <RNView style={fc.domicilioTag}>
@@ -359,26 +367,18 @@ export const FacturaCard = React.memo(function FacturaCard({
                 )}
               </RNView>
             )}
-            {direccionDomicilio && (
+            {textoUbicacion.length > 0 && (
               <RNView style={fc.direccionRow}>
-                <Icon name="map-marker-outline" size={11} color="#475569" />
-                <RNText style={fc.direccionText} numberOfLines={1}>
-                  {direccionDomicilio}
+                <Icon name="map-marker-outline" size={13} color="#94A3B8" style={{ marginTop: 1 }} />
+                <RNText style={fc.direccionText} numberOfLines={2}>
+                  {textoUbicacion}
                 </RNText>
               </RNView>
             )}
           </RNView>
         )}
 
-        {/* ── Notas ── */}
-        {item.descripcion ? (
-          <RNView style={fc.notasBox}>
-            <Icon name="note-text-outline" size={14} color="#F5A524" />
-            <RNView style={{ flex: 1 }}>
-              <RNText style={fc.notasText}>{item.descripcion}</RNText>
-            </RNView>
-          </RNView>
-        ) : null}
+        {/* ── Notas (eliminado: ya visible en el resumen de orden) ── */}
 
         {/* ── Productos ── */}
         {item.ordenes && item.ordenes.length > 0 && (
@@ -566,12 +566,14 @@ export const FacturaCard = React.memo(function FacturaCard({
 
 const fc = StyleSheet.create({
   card: { 
+    flex: 1,
+    height: '100%',
     overflow: 'hidden', 
     borderWidth: 1, 
     borderColor: 'rgba(255,255,255,0.06)', 
     borderRadius: 16, 
     padding: 0, 
-    marginBottom: 14, 
+    marginBottom: 0, 
     backgroundColor: '#1E293B',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -580,7 +582,7 @@ const fc = StyleSheet.create({
     elevation: 4,
   },
   tintOverlay: { position: 'absolute', inset: 0, opacity: 0.8 },
-  body: { padding: 16 },
+  body: { flex: 1, justifyContent: 'space-between', padding: 16 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   headerLeft: { flex: 1, paddingRight: 12 },
   cliente: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18, textTransform: 'uppercase', lineHeight: 22, letterSpacing: 0.3 },
@@ -599,8 +601,19 @@ const fc = StyleSheet.create({
   domicilioTagText: { fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
   domicilioDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'rgba(249,115,22,0.5)', marginHorizontal: 2 },
   domiciliarioNombre: { fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: 'bold' },
-  direccionRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  direccionText: { fontFamily: 'Outfit', color: '#64748B', fontSize: 11 },
+  direccionRow: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-start', 
+    gap: 5, 
+    backgroundColor: 'rgba(255,255,255,0.03)', 
+    paddingHorizontal: 10, 
+    paddingVertical: 6, 
+    borderRadius: 10, 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginTop: 4,
+  },
+  direccionText: { fontFamily: 'Outfit', color: '#CBD5E1', fontSize: 11.5, fontWeight: '500', flex: 1, lineHeight: 16 },
   notasBox: { 
     backgroundColor: 'rgba(245,158,11,0.06)', 
     paddingHorizontal: 12, 

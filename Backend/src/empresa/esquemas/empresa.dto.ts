@@ -43,4 +43,3 @@ export class UpdateEmpresaDto {
 	@Min(0)
 	recargoLeche?: number;
 }
-

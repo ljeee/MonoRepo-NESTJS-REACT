@@ -88,20 +88,21 @@ export default function PrepayPicker({ value, onChange, total }: Props) {
         ¿Ya está pagada?
       </Text>
 
-      <View className="flex-row flex-wrap gap-1.5">
+      <View className="flex-row gap-1">
         {OPCIONES.map((op) => {
           const active = value.metodo === op.key;
           return (
             <TouchableOpacity
               key={op.label}
               onPress={() => setMetodo(op.key)}
-              className={`flex-row items-center gap-1.5 px-2.5 py-2 rounded-xl border ${
+              className={`flex-1 flex-row items-center justify-center gap-1 px-1 py-2 rounded-xl border ${
                 active ? 'bg-emerald-500/15 border-emerald-500/45' : 'bg-black/20 border-white/5'
               }`}
             >
-              <Icon name={op.icon} size={13} color={active ? '#34D399' : '#64748B'} />
+              <Icon name={op.icon} size={12} color={active ? '#34D399' : '#64748B'} />
               <Text
-                className={`text-[11px] font-black ${active ? 'text-emerald-400' : 'text-slate-400'}`}
+                className={`text-[10px] font-black ${active ? 'text-emerald-400' : 'text-slate-400'}`}
+                numberOfLines={1}
               >
                 {op.label}
               </Text>
