@@ -19,8 +19,8 @@ interface MenuPickerProps {
 const normalize = (s: string) =>
   (s || '').toLowerCase().replace(/,/g, '.').normalize('NFD').replace(/[̀-ͯ]/g, '');
 
-// memo (export al final): CreateOrderForm re-renderiza por cada tecla de sus
-// inputs; sin memo la grilla completa del menú se reconciliaba en cada pulsación
+const SIZE_ORDER: Record<string, number> = { 'Pequeña': 0, 'Mediana': 1, 'Grande': 2 };
+
 function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
@@ -47,23 +47,38 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
     setVarianteSearch('');
   }, [expandedProductId]);
 
+  const queryTokens = useMemo(() => {
+    return normalize(searchQuery).split(/\s+/).filter(Boolean);
+  }, [searchQuery]);
+
   const sortedProducts = useMemo(() => {
     return [...productos].sort((a, b) => a.productoNombre.localeCompare(b.productoNombre));
   }, [productos]);
 
-  const SIZE_ORDER: Record<string, number> = { 'Pequeña': 0, 'Mediana': 1, 'Grande': 2 };
-
-  // No longer using selectedCategory
-
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) return sortedProducts;
+    if (queryTokens.length === 0) return sortedProducts;
 
-    const query = searchQuery.toLowerCase();
-    return sortedProducts.filter(p =>
-      p.productoNombre.toLowerCase().includes(query) ||
-      p.descripcion?.toLowerCase().includes(query)
-    );
-  }, [sortedProducts, searchQuery]);
+    return sortedProducts.filter(p => {
+      const prodText = normalize(p.productoNombre) + ' ' + normalize(p.descripcion || '');
+      // 1. Match en producto
+      if (queryTokens.every(token => prodText.includes(token))) {
+        return true;
+      }
+      // 2. Match en combinación de producto + variante activa
+      return (p.variantes || []).some(v => {
+        if (!v.activo) return false;
+        const varText = normalize(v.nombre);
+        return queryTokens.every(token => prodText.includes(token) || varText.includes(token));
+      });
+    });
+  }, [sortedProducts, queryTokens]);
+
+  // Auto-expandir el producto si hay una búsqueda activa y solo 1 resultado coincidente
+  useEffect(() => {
+    if (queryTokens.length > 0 && filteredProducts.length === 1) {
+      setExpandedProductId(filteredProducts[0].productoId);
+    }
+  }, [queryTokens, filteredProducts]);
 
   const productColumnClass = isMobile
     ? 'w-1/2'
@@ -83,13 +98,42 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
       .filter(v => v.activo);
   }, [expandedProducto]);
 
+  // Estado para mostrar todas las variantes si se desea saltar el filtro de búsqueda
+  const [showAllVariantesOverride, setShowAllVariantesOverride] = useState(false);
+  useEffect(() => {
+    setShowAllVariantesOverride(false);
+  }, [expandedProductId, searchQuery]);
+
   // Buscador de variante: solo cuando hay muchas (p. ej. gaseosas con muchos tamaños/marcas)
   const showVarianteSearch = expandedVariantes.length > 6;
   const visibleVariantes = useMemo(() => {
-    if (!varianteSearch.trim()) return expandedVariantes;
-    const q = normalize(varianteSearch);
-    return expandedVariantes.filter(v => normalize(v.nombre).includes(q));
-  }, [expandedVariantes, varianteSearch]);
+    if (!expandedProducto) return [];
+
+    // Si se busca específicamente en el input de variantes
+    if (varianteSearch.trim()) {
+      const q = normalize(varianteSearch);
+      return expandedVariantes.filter(v => normalize(v.nombre).includes(q));
+    }
+
+    // Si el usuario pidió ver todas
+    if (showAllVariantesOverride) {
+      return expandedVariantes;
+    }
+
+    // Si hay búsqueda en el buscador principal, filtrar las variantes que calzan
+    if (queryTokens.length > 0) {
+      const prodText = normalize(expandedProducto.productoNombre) + ' ' + normalize(expandedProducto.descripcion || '');
+      const matching = expandedVariantes.filter(v => {
+        const varText = normalize(v.nombre);
+        return queryTokens.every(token => prodText.includes(token) || varText.includes(token));
+      });
+      if (matching.length > 0) {
+        return matching;
+      }
+    }
+
+    return expandedVariantes;
+  }, [expandedProducto, expandedVariantes, varianteSearch, queryTokens, showAllVariantesOverride]);
 
   const handleSelectProduct = useCallback((id: number) => {
     setExpandedProductId(prev => (prev === id ? null : id));
@@ -127,12 +171,17 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
               <Icon name="magnify" size={20} color="#64748B" />
           </View>
           <TextInput
-              className="flex-1 pr-5 py-4 text-white font-medium"
-              placeholder="¿Qué deseas pedir hoy?"
+              className="flex-1 pr-3 py-4 text-white font-medium"
+              placeholder="¿Qué deseas pedir hoy? (ej. Pizza, Grande, Doble carne...)"
               placeholderTextColor="#64748B"
               value={searchQuery}
               onChangeText={setSearchQuery}
           />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')} className="pr-4 py-2" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Icon name="close" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
       </View>
 
       <View className="p-4 pb-6">
@@ -140,7 +189,7 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
           {filteredProducts.length === 0 ? (
             <View className="w-full py-20 items-center opacity-50">
               <Icon name="tag-off-outline" size={64} color="#64748B" />
-              <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-xs">Sin resultados</Text>
+              <Text className="text-slate-400 font-bold mt-4 uppercase tracking-widest text-xs">Sin resultados para &ldquo;{searchQuery}&rdquo;</Text>
             </View>
           ) : (
             filteredProducts.map((producto) => (
@@ -155,6 +204,7 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
                 setSelectedProducto={setSelectedProducto}
                 setSelectedVariante={setSelectedVariante}
                 setModalVisible={setModalVisible}
+                queryTokens={queryTokens}
               />
             ))
           )}
@@ -165,7 +215,7 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
       {expandedProducto && (
         <View className="mt-2 px-2">
           <View className="bg-(--color-pos-surface) rounded-3xl border border-(--color-pos-primary)/30 shadow-2xl overflow-hidden">
-            <View className="flex-row items-center justify-between px-5 py-3 border-b border-white/5 bg-white/5">
+            <View className="flex-row items-center justify-between px-5 py-3 border-b border-white/5 bg-white/5 flex-wrap gap-2">
               <View className="flex-row items-center flex-1 mr-2">
                 <View className="w-8 h-8 rounded-xl bg-(--color-pos-primary)/20 items-center justify-center mr-3">
                   <Text className="text-lg">
@@ -179,13 +229,28 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
                   {expandedProducto.productoNombre}
                 </Text>
               </View>
-              <TouchableOpacity
-                onPress={() => setExpandedProductId(null)}
-                className="p-3"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Icon name="close" size={20} color="#64748B" />
-              </TouchableOpacity>
+
+              <View className="flex-row items-center gap-2">
+                {visibleVariantes.length < expandedVariantes.length && !showAllVariantesOverride && (
+                  <TouchableOpacity
+                    onPress={() => setShowAllVariantesOverride(true)}
+                    className="px-2.5 py-1 rounded-xl bg-white/5 border border-white/10 active:bg-white/10 flex-row items-center gap-1"
+                  >
+                    <Icon name="eye-outline" size={13} color="#F5A524" />
+                    <Text className="text-[10px] font-bold text-amber-400">
+                      Ver todas ({expandedVariantes.length})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  onPress={() => setExpandedProductId(null)}
+                  className="p-2"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Icon name="close" size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {showVarianteSearch && (
@@ -212,9 +277,22 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
 
             <View className="flex-row flex-wrap p-4 gap-3">
               {visibleVariantes.length === 0 ? (
-                <Text className="text-slate-500 italic py-2">
-                  {varianteSearch ? `Sin coincidencias para "${varianteSearch}"` : 'Sin variantes disponibles'}
-                </Text>
+                <View className="w-full py-4 items-center gap-2">
+                  <Text className="text-slate-500 italic">
+                    {varianteSearch || searchQuery ? `Sin coincidencias para la búsqueda actual` : 'Sin variantes disponibles'}
+                  </Text>
+                  {expandedVariantes.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        setVarianteSearch('');
+                        setShowAllVariantesOverride(true);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20"
+                    >
+                      <Text className="text-amber-400 text-xs font-bold">Ver todas las variantes ({expandedVariantes.length})</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               ) : (
                 visibleVariantes.map((variante) => {
                 const producto = expandedProducto;
@@ -323,15 +401,28 @@ interface ProductItemProps {
   setSelectedProducto: (p: Producto) => void;
   setSelectedVariante: (v: ProductoVariante) => void;
   setModalVisible: (v: boolean) => void;
+  queryTokens: string[];
 }
 
 const ProductItem = React.memo(({
   producto, isSelected, onSelect, onAdd, isMobile, columnClass,
-  setSelectedProducto, setSelectedVariante, setModalVisible
+  setSelectedProducto, setSelectedVariante, setModalVisible, queryTokens
 }: ProductItemProps) => {
 
   const emoji = getProductEmoji(producto.productoNombre, producto.emoji);
   const handlePress = useCallback(() => onSelect(producto.productoId), [onSelect, producto.productoId]);
+
+  const matchingVariantNames = useMemo(() => {
+    if (queryTokens.length === 0) return [];
+    const prodText = normalize(producto.productoNombre) + ' ' + normalize(producto.descripcion || '');
+    // Si el nombre del producto ya cubre todos los tokens, no es necesario destacar variantes individuales
+    const prodMatchesAll = queryTokens.every(t => prodText.includes(t));
+    if (prodMatchesAll) return [];
+
+    return (producto.variantes || [])
+      .filter(v => v.activo && queryTokens.every(t => prodText.includes(t) || normalize(v.nombre).includes(t)))
+      .map(v => v.nombre);
+  }, [producto, queryTokens]);
 
   return (
     <View className={`px-1 mb-2 ${columnClass}`}>
@@ -348,6 +439,14 @@ const ProductItem = React.memo(({
             <Text style={{ fontSize: 26 }}>{emoji}</Text>
         </View>
 
+        {matchingVariantNames.length > 0 && (
+          <View className="mb-1 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md max-w-full">
+            <Text className="text-amber-400 text-[9px] font-black uppercase text-center" numberOfLines={1}>
+              {matchingVariantNames.join(', ')}
+            </Text>
+          </View>
+        )}
+
         <View className={`w-6 h-6 rounded-full items-center justify-center ${isSelected ? 'bg-(--color-pos-primary)' : 'bg-white/5'}`}>
              <Icon name={isSelected ? "check" : "chevron-down"} size={14} color={isSelected ? '#000' : '#64748B'} />
         </View>
@@ -356,4 +455,9 @@ const ProductItem = React.memo(({
   );
 });
 
-export default React.memo(MenuPicker);
+ProductItem.displayName = 'ProductItem';
+
+const MemoizedMenuPicker = React.memo(MenuPicker);
+MemoizedMenuPicker.displayName = 'MenuPicker';
+
+export default MemoizedMenuPicker;

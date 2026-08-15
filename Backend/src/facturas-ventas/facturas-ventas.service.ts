@@ -76,7 +76,11 @@ export class FacturasVentasService {
 			}
 
 			if (cuentaTransferenciaId) {
-				qb.andWhere('f.cuentaTransferenciaId = :cuentaTransferenciaId', {cuentaTransferenciaId});
+				if (cuentaTransferenciaId === -1) {
+					qb.andWhere('f.cuentaTransferenciaId IS NULL');
+				} else {
+					qb.andWhere('f.cuentaTransferenciaId = :cuentaTransferenciaId', {cuentaTransferenciaId});
+				}
 			}
 		};
 
