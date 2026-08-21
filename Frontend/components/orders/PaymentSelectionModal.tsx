@@ -50,6 +50,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const [cajaEstado, setCajaEstado] = useState<DenominacionesMap>({});
     const [cuentas, setCuentas] = useState<CuentaTransferencia[]>([]);
     const [selectedCuentaId, setSelectedCuentaId] = useState<number | null>(null);
+    const [fetchingCuentas, setFetchingCuentas] = useState(false);
 
     // ── Efectivo ──────────────────────────────────────────────────────────────
     const [billCountsEfectivo, setBillCountsEfectivo] = useState<Record<string, number>>({});
@@ -81,38 +82,53 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     }, [api]);
 
     const fetchCuentas = useCallback(async () => {
+        setFetchingCuentas(true);
         try {
             const res = await api.empresa.cuentasTransferencia.getAll();
             const activas = (res || []).filter(c => c.activa);
             setCuentas(activas);
             if (activas.length > 0) {
-                setSelectedCuentaId(activas[0].id);
+                setSelectedCuentaId(prev => prev ?? activas[0].id);
+            } else {
+                setSelectedCuentaId(null);
             }
         } catch {
             setCuentas([]);
+            setSelectedCuentaId(null);
+        } finally {
+            setFetchingCuentas(false);
         }
     }, [api]);
 
+    // ── Reset + fetch solo cuando el modal abre ──────────────────────────────
+    // NO incluir `selected` aquí — si lo incluimos, fetchCuentas() se dispara
+    // cada vez que el usuario cambia de tab, reseteando selectedCuentaId a null
+    // y causando que las transferencias se guarden sin cuenta asignada.
     useEffect(() => {
-        if (visible) {
-            setBillCountsEfectivo({});
-            setMonedasEfectivo('');
-            setMontoTransferencia('');
-            setBillCountsMixto({});
-            setMonedaMixto('');
-            setMontoAbonoQr('');
-            setBillCountsCambio({});
-            setMonedasCambio('');
-            setStep('entrada');
-            fetchCaja();
-            fetchCuentas();
-            // Auto-switch if currently selected method is disabled
-            if (disabledMethods.includes(selected)) {
-                const available = METHODS.find(m => !disabledMethods.includes(m.id));
-                if (available) setSelected(available.id);
-            }
+        if (!visible) return;
+        setBillCountsEfectivo({});
+        setMonedasEfectivo('');
+        setMontoTransferencia('');
+        setBillCountsMixto({});
+        setMonedaMixto('');
+        setMontoAbonoQr('');
+        setBillCountsCambio({});
+        setMonedasCambio('');
+        setStep('entrada');
+        setSelectedCuentaId(null);
+        fetchCaja();
+        fetchCuentas();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible]);
+
+    // ── Auto-switch de método si el seleccionado está deshabilitado ──────────
+    useEffect(() => {
+        if (!visible) return;
+        if (disabledMethods.includes(selected)) {
+            const available = METHODS.find(m => !disabledMethods.includes(m.id));
+            if (available) setSelected(available.id);
         }
-    }, [visible, selected, fetchCaja, fetchCuentas]);
+    }, [visible, selected, disabledMethods]);
 
     // ── Monto efectivo en modo mixto = total − transferencia ─────────────────
     const montoEfectivoMixto = Math.max(0, total - (Number(montoTransferencia) || 0));
@@ -194,7 +210,13 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
         }
     };
 
+    const needsCuenta = selected === 'transferencia' || selected === 'efectivo_transferencia';
+    const cuentaReady = !needsCuenta || (!fetchingCuentas && selectedCuentaId !== null);
+
     const isConfirmDisabled = (() => {
+        // Bloquear siempre si la cuenta de transferencia es requerida y no está lista
+        if (!cuentaReady) return true;
+
         if (isPartial) {
             if (selected === 'transferencia') {
                 const monto = Number(montoAbonoQr) || 0;
@@ -485,30 +507,57 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                 </View>
                             )}
 
-                            {(selected === 'transferencia' || selected === 'efectivo_transferencia') && cuentas.length > 0 && (
-                                <View className="mb-3 bg-black/20 rounded-xl border border-white/5 p-3">
+                            {(selected === 'transferencia' || selected === 'efectivo_transferencia') && (
+                                <View style={{
+                                    marginBottom: 12,
+                                    backgroundColor: 'rgba(0,0,0,0.2)',
+                                    borderRadius: 12,
+                                    borderWidth: 1,
+                                    borderColor: selectedCuentaId === null && !fetchingCuentas
+                                        ? 'rgba(244,63,94,0.35)'
+                                        : 'rgba(255,255,255,0.05)',
+                                    padding: 12,
+                                }}>
                                     <Text className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2">
                                         ¿A qué cuenta fue la transferencia / QR?
                                     </Text>
-                                    <View className="flex-row flex-wrap gap-2">
-                                        {cuentas.map(c => {
-                                            const isSel = selectedCuentaId === c.id;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={c.id}
-                                                    onPress={() => setSelectedCuentaId(c.id)}
-                                                    className={`flex-row items-center gap-1.5 px-3 py-2 rounded-xl border ${
-                                                        isSel ? 'bg-purple-500/20 border-purple-500/50' : 'bg-black/30 border-white/10'
-                                                    }`}
-                                                >
-                                                    <Icon name="bank" size={12} color={isSel ? '#C084FC' : '#64748B'} />
-                                                    <Text className={`text-xs font-bold ${isSel ? 'text-purple-300' : 'text-slate-400'}`}>
-                                                        {c.nombre}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
+
+                                    {fetchingCuentas ? (
+                                        <Text className="text-slate-500 text-xs text-center py-2">Cargando cuentas...</Text>
+                                    ) : cuentas.length === 0 ? (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(244,63,94,0.08)', borderRadius: 10, padding: 10, borderWidth: 1, borderColor: 'rgba(244,63,94,0.2)' }}>
+                                            <Icon name="alert-circle-outline" size={14} color="#F43F5E" />
+                                            <Text style={{ color: '#F87171', fontSize: 11, fontFamily: 'Outfit', flex: 1 }}>
+                                                No hay cuentas de transferencia activas. Configúralas en Ajustes.
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <View className="flex-row flex-wrap gap-2">
+                                            {cuentas.map(c => {
+                                                const isSel = selectedCuentaId === c.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={c.id}
+                                                        onPress={() => setSelectedCuentaId(c.id)}
+                                                        className={`flex-row items-center gap-1.5 px-3 py-2 rounded-xl border ${
+                                                            isSel ? 'bg-purple-500/20 border-purple-500/50' : 'bg-black/30 border-white/10'
+                                                        }`}
+                                                    >
+                                                        <Icon name="bank" size={12} color={isSel ? '#C084FC' : '#64748B'} />
+                                                        <Text className={`text-xs font-bold ${isSel ? 'text-purple-300' : 'text-slate-400'}`}>
+                                                            {c.nombre}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    )}
+
+                                    {selectedCuentaId === null && !fetchingCuentas && cuentas.length > 0 && (
+                                        <Text style={{ color: '#F87171', fontSize: 10, fontFamily: 'Outfit', marginTop: 6 }}>
+                                            ⚠ Debes seleccionar una cuenta para confirmar.
+                                        </Text>
+                                    )}
                                 </View>
                             )}
 
