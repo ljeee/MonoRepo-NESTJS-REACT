@@ -124,10 +124,23 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
   };
 }
 
-export function calcStats(list: FacturaVenta[]): FacturaStats {
+export function calcStats(list: FacturaVenta[], activeFilter?: string): FacturaStats {
   const nonCancelled = list.filter((f) => f.estado !== 'cancelado');
-  const total = nonCancelled.reduce((s, f) => s + (Number(f.total) || 0), 0);
-  const pagado = nonCancelled.filter((f) => f.estado === 'pagado' || f.estado === 'pagada').reduce((s, f) => s + (Number(f.total) || 0), 0);
+
+  // When filtering by a specific method, mixed invoices should only count
+  // their relevant portion (pagoEfectivo or pagoTransferencia), not the full total.
+  const getMontoParaFiltro = (f: FacturaVenta): number => {
+    if (f.metodo === 'efectivo_transferencia') {
+      if (activeFilter === 'efectivo') return Number(f.pagoEfectivo) || 0;
+      if (activeFilter === 'transferencia' || activeFilter === 'qr') return Number(f.pagoTransferencia) || 0;
+    }
+    return Number(f.total) || 0;
+  };
+
+  const total = nonCancelled.reduce((s, f) => s + getMontoParaFiltro(f), 0);
+  const pagado = nonCancelled
+    .filter((f) => f.estado === 'pagado' || f.estado === 'pagada')
+    .reduce((s, f) => s + getMontoParaFiltro(f), 0);
   return { totalDia: total, totalPagado: pagado, totalPendiente: total - pagado, count: nonCancelled.length };
 }
 

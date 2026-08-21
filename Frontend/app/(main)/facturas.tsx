@@ -150,7 +150,7 @@ export default function FacturasRangoScreen() {
     return nameFiltered.filter(f => matchesMetodoFilter(f, metodoFilter) && isPagado(f));
   }, [nameFiltered, metodoFilter]);
 
-  const computedStats = useMemo(() => calcStats(filteredData as any), [filteredData]);
+  const computedStats = useMemo(() => calcStats(filteredData as any, metodoFilter === 'todos' ? undefined : metodoFilter), [filteredData, metodoFilter]);
 
   const totalLocalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
 

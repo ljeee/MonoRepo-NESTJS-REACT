@@ -300,7 +300,13 @@ export const FacturaCard = React.memo(function FacturaCard({
           </RNView>
           <RNView style={fc.headerRight}>
             <RNText style={fc.total}>
-              ${formatCurrency(item.total ?? 0)}
+              ${formatCurrency(
+                item.metodo === 'efectivo_transferencia' && (activeFilter === 'efectivo')
+                  ? (item.pagoEfectivo ?? 0)
+                  : item.metodo === 'efectivo_transferencia' && (activeFilter === 'transferencia' || activeFilter === 'qr')
+                  ? (item.pagoTransferencia ?? 0)
+                  : (item.total ?? 0)
+              )}
             </RNText>
             {item.metodo ? (
               <Badge

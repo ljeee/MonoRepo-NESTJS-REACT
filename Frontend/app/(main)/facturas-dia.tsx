@@ -136,7 +136,7 @@ export default function FacturasDiaScreen() {
     return [...filteredData].reverse();
   }, [filteredData, sortAsc]);
 
-  const computedStats = React.useMemo(() => calcStats(filteredData as any), [filteredData]);
+  const computedStats = React.useMemo(() => calcStats(filteredData as any, filterMethod === 'todos' ? undefined : filterMethod), [filteredData, filterMethod]);
 
   const cardRows = React.useMemo(() => {
     const rows: FacturaItem[][] = [];
