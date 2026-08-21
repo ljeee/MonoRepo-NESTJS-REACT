@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, Linking } from 'react-native';
+import { ActivityIndicator, RefreshControl, Linking, Alert, Platform } from 'react-native';
 import { ScrollView, Text, View, TouchableOpacity, Pressable } from '../../tw';
 import { api } from '../../services/api';
 import { useToast } from '@/src/shared';
@@ -302,6 +302,51 @@ export default function AsignarDomiciliariosScreen() {
         }
     };
 
+    const handleReenviar = (domicilioId: number) => {
+        const entry = asignados.find(d => d.domicilioId === domicilioId);
+        if (entry && entry.telefonoDomiciliarioAsignado && typeof window !== 'undefined') {
+            sendWhatsAppDomicilio(entry.telefonoDomiciliarioAsignado, {
+                clienteNombre: entry.cliente?.clienteNombre || entry.factura?.clienteNombre || 'Sin nombre',
+                direccion: entry.direccionEntrega || 'Sin dirección',
+                referencia: entry.referenciaDomicilio || undefined,
+                telefonoCliente: entry.telefono || undefined,
+                productos: (entry.orden?.productos || []).map(p => ({
+                    nombre: p.producto, cantidad: p.cantidad, precioUnitario: Number(p.precioUnitario) || 0,
+                })),
+                total: Number(entry.factura?.total || 0),
+                costoDomicilio: Number(entry.costoDomicilio || 0),
+                metodo: entry.factura?.estado || 'N/A',
+            });
+        }
+    };
+
+    const handleDelete = (domicilioId: number) => {
+        if (Platform.OS === 'web') {
+            if (window.confirm('¿Seguro que deseas eliminar este domicilio?')) {
+                executeDelete(domicilioId);
+            }
+        } else {
+            Alert.alert('Eliminar', '¿Seguro que deseas eliminar este domicilio?', [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Eliminar', style: 'destructive', onPress: () => executeDelete(domicilioId) }
+            ]);
+        }
+    };
+
+    const executeDelete = async (domicilioId: number) => {
+        setAssigning(prev => ({ ...prev, [domicilioId]: true }));
+        try {
+            await api.domicilios.remove(domicilioId);
+            showToast('Domicilio eliminado', 'success');
+            void fetchData();
+        } catch {
+            showToast('Error al eliminar domicilio', 'error');
+        } finally {
+            setAssigning(prev => ({ ...prev, [domicilioId]: false }));
+        }
+    };
+
+
     const onRefresh = () => {
         setRefreshing(true);
         void fetchData();
@@ -413,20 +458,29 @@ export default function AsignarDomiciliariosScreen() {
                                             {clienteNombre}
                                         </Text>
                                     </View>
-                                    <View className="items-end">
-                                        <Text
-                                            className="font-black text-sm"
-                                            style={{
-                                                color: (d.factura?.estado === 'pagado' || d.factura?.estado === 'pagada')
-                                                    ? '#10B981'
-                                                    : '#F5A524',
-                                            }}
+                                    <View className="items-end flex-row gap-3">
+                                        <TouchableOpacity 
+                                            onPress={() => handleDelete(d.domicilioId)}
+                                            className="p-1 rounded-full bg-red-500/10 border border-red-500/20"
+                                            disabled={isAssigning}
                                         >
-                                            {formatCurrency(total)}
-                                        </Text>
-                                        <Text className="text-slate-600 text-[9px] mt-0.5">
-                                            {timeAgo(d.fechaCreado)}
-                                        </Text>
+                                            <Icon name="trash-can-outline" size={14} color="#EF4444" />
+                                        </TouchableOpacity>
+                                        <View className="items-end">
+                                            <Text
+                                                className="font-black text-sm"
+                                                style={{
+                                                    color: (d.factura?.estado === 'pagado' || d.factura?.estado === 'pagada')
+                                                        ? '#10B981'
+                                                        : '#F5A524',
+                                                }}
+                                            >
+                                                {formatCurrency(total)}
+                                            </Text>
+                                            <Text className="text-slate-600 text-[9px] mt-0.5">
+                                                {timeAgo(d.fechaCreado)}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
 
@@ -570,16 +624,27 @@ export default function AsignarDomiciliariosScreen() {
                             return (
                                 <Card key={d.domicilioId} className={`p-4 ${isMobile ? 'w-full' : 'min-w-[320px] max-w-[480px] flex-1'}`}>
                                     {/* Cabecera compacta */}
-                                    <View className="flex-row justify-between mb-2">
-                                        <Text className="text-(--color-pos-primary) font-black text-xs" style={{ fontFamily: 'Space Grotesk' }}>
-                                            #{d.orden?.ordenId ?? d.domicilioId}
-                                        </Text>
-                                        <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>
-                                            {clienteNombre}
-                                        </Text>
-                                        <Text className="text-slate-400 text-xs">
-                                            {formatCurrency(total)}
-                                        </Text>
+                                    <View className="flex-row justify-between mb-2 items-center">
+                                        <View className="flex-row items-center gap-2">
+                                            <Text className="text-(--color-pos-primary) font-black text-xs" style={{ fontFamily: 'Space Grotesk' }}>
+                                                #{d.orden?.ordenId ?? d.domicilioId}
+                                            </Text>
+                                            <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>
+                                                {clienteNombre}
+                                            </Text>
+                                        </View>
+                                        <View className="flex-row items-center gap-3">
+                                            <TouchableOpacity 
+                                                onPress={() => handleDelete(d.domicilioId)}
+                                                className="p-1 rounded-full bg-red-500/10 border border-red-500/20"
+                                                disabled={isAssigning}
+                                            >
+                                                <Icon name="trash-can-outline" size={14} color="#EF4444" />
+                                            </TouchableOpacity>
+                                            <Text className="text-slate-400 text-xs">
+                                                {formatCurrency(total)}
+                                            </Text>
+                                        </View>
                                     </View>
                                     
                                     <View className="mb-2">
@@ -626,6 +691,13 @@ export default function AsignarDomiciliariosScreen() {
                                                     ))}
                                                 </Picker>
                                             </View>
+                                            <TouchableOpacity
+                                                className={`px-4 rounded-xl items-center justify-center ${isAssigning ? 'opacity-50' : ''} bg-emerald-500/10 border border-emerald-500/20`}
+                                                onPress={() => handleReenviar(d.domicilioId)}
+                                                disabled={isAssigning}
+                                            >
+                                                <Icon name="whatsapp" size={16} color="#10B981" />
+                                            </TouchableOpacity>
                                             <TouchableOpacity
                                                 className={`px-4 rounded-xl items-center justify-center ${isAssigning ? 'opacity-50' : ''} ${
                                                     selectedDomiciliario[d.domicilioId] && selectedDomiciliario[d.domicilioId] !== d.telefonoDomiciliarioAsignado

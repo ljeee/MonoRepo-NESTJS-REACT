@@ -75,7 +75,7 @@ export default function PageContainer({
     return (
         <KeyboardAvoidingView 
             className={`flex-1 ${className}`} 
-            style={[{ backgroundColor: '#0C0F1A' }, style]}
+            style={[{ backgroundColor: '#060E1A' }, style]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         >

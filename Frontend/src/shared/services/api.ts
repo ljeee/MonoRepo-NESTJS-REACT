@@ -332,6 +332,9 @@ export function createApi(http: AxiosInstance) {
 
     update: (id: number, data: any) =>
       http.patch<any>(`/domicilios/${id}`, data).then((r) => r.data),
+
+    remove: (id: number) =>
+      http.delete<any>(`/domicilios/${id}`).then((r) => r.data),
   };
 
   // ─── Cierres de Caja ───────────────────────────────────────────────

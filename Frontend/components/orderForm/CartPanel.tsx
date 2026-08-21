@@ -1,7 +1,9 @@
 import React, { useState, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from '../../tw';
 import Icon from '../ui/Icon';
 import { formatCurrency } from '@/src/shared';
+import { useBreakpoint } from '../../styles/responsive';
 
 export interface CartItem {
   id: string; // unique key for the cart row
@@ -31,6 +33,7 @@ interface CartPanelProps {
 }
 
 const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, onUpdatePrecio, onCopyQuote, costoDomicilio = 0 }: CartPanelProps) => {
+  const { isMobile } = useBreakpoint();
   const subtotal = items.reduce((sum, i) => sum + precioDe(i) * i.cantidad, 0);
   const total = subtotal + costoDomicilio;
 
@@ -60,138 +63,147 @@ const CartPanel = React.memo(({ items, onRemove, onUpdateCantidad, onUpdatePreci
     );
   }
 
+  // En móvil (APK) limitar a ~500px para no empujar el botón de confirmar fuera de vista.
+  // En web desktop dejar que crezca sin límite ya que la columna es sticky.
+  const useScroll = Platform.OS !== 'web' || isMobile;
+
+  const ItemList = (
+    <>{items.map((item) => (
+      <View key={item.id} className="py-3.5 border-b border-white/10">
+        {/* Top Row: Name and Delete */}
+        <View className="flex-row justify-between items-start mb-1">
+          <View className="flex-1 mr-2">
+             <Text className="text-white font-black text-sm uppercase tracking-tight" numberOfLines={2}>
+               {item.productoNombre}
+             </Text>
+             <Text className="text-slate-500 text-[10px] uppercase font-bold italic" numberOfLines={1}>
+               {item.varianteNombre}
+               {item.cantidad > 1 ? ` · $${formatCurrency(precioDe(item))} c/u` : ''}
+             </Text>
+          </View>
+          <TouchableOpacity 
+            onPress={() => onRemove(item.id)} 
+            className="w-7 h-7 items-center justify-center rounded-lg bg-red-500/10 active:bg-red-500/20"
+          >
+            <Text className="text-red-500 font-bold text-xs">✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Bottom Row: Controls and Price */}
+        <View className="flex-row items-center justify-between mt-2">
+          <View className="flex-row items-center bg-black/30 rounded-xl p-1 px-2 border border-white/5">
+            <TouchableOpacity
+              onPress={() =>
+                item.cantidad > 1
+                  ? onUpdateCantidad(item.id, item.cantidad - 1)
+                  : onRemove(item.id)
+              }
+              className="w-6 h-6 items-center justify-center rounded-lg bg-white/5 active:bg-white/10"
+            >
+              <Text className="text-white font-black">−</Text>
+            </TouchableOpacity>
+
+            <Text className="text-white font-black mx-3 text-xs">{item.cantidad}</Text>
+
+            <TouchableOpacity
+              onPress={() => onUpdateCantidad(item.id, item.cantidad + 1)}
+              className="w-6 h-6 items-center justify-center rounded-lg bg-white/5 active:bg-white/10"
+            >
+              <Text className="text-white font-black">+</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="w-[105px] h-9 justify-center">
+            {editingId === item.id ? (
+              <View className="flex-row items-center h-9 px-2 rounded-lg bg-black/40 border border-(--color-pos-primary)/60 overflow-hidden w-full">
+                <Text className="text-(--color-pos-primary) font-black text-sm">$</Text>
+                <TextInput
+                  className="flex-1 text-white font-black text-sm text-right"
+                  style={{ padding: 0, minWidth: 0, width: '100%', maxWidth: '100%', outlineStyle: 'none' } as any}
+                  value={draft}
+                  onChangeText={(v: string) => setDraft(v.replace(/\D/g, ''))}
+                  keyboardType="numeric"
+                  autoFocus
+                  selectTextOnFocus
+                  onBlur={commitEdit}
+                  onSubmitEditing={commitEdit}
+                />
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => startEdit(item)}
+                disabled={!onUpdatePrecio}
+                className="flex-row items-center justify-end gap-1.5 h-9 active:opacity-60"
+              >
+                <Text
+                  className="text-(--color-pos-primary) font-black text-base"
+                  style={{ fontFamily: 'Space Grotesk' }}
+                  numberOfLines={1}
+                >
+                  ${formatCurrency(precioDe(item) * item.cantidad)}
+                </Text>
+                {onUpdatePrecio && <Icon name="pencil-outline" size={12} color="#475569" />}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Precio manual: aviso + restaurar el calculado */}
+        {item.precioOverride != null && (
+          <TouchableOpacity
+            onPress={() => onUpdatePrecio?.(item.id, null)}
+            disabled={!onUpdatePrecio}
+            className="flex-row items-center gap-1.5 mt-2 self-start bg-amber-500/15 px-2.5 py-1 rounded-full active:opacity-70 max-w-full"
+          >
+            <Icon name="tag-outline" size={10} color="#F5A524" />
+            <Text className="text-amber-400 text-[9px] font-black uppercase tracking-wider" numberOfLines={1}>
+              Precio manual · antes ${formatCurrency(item.precioUnitario)} · restaurar
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Base del jugo */}
+        {item.base && (
+          <View className="flex-row mt-1.5 gap-1">
+            <View
+              className={`px-2 py-0.5 rounded-full ${item.base === 'leche' ? 'bg-amber-500/15' : 'bg-sky-500/15'}`}
+            >
+              <Text
+                className={`text-[9px] font-black uppercase tracking-widest ${item.base === 'leche' ? 'text-amber-400' : 'text-sky-400'}`}
+              >
+                {item.base === 'leche' ? '🥛 Leche' : '💧 Agua'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Flavors (if any) */}
+        {item.sabores && item.sabores.length > 0 && (
+          <Text className="text-slate-400 text-[9px] font-bold mt-2 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-md" numberOfLines={1}>
+            {item.sabores.join(' — ')}
+          </Text>
+        )}
+      </View>
+    ))}</>
+  );
+
   return (
     <View className="bg-(--color-pos-bg)/50 rounded-2xl p-5 border border-white/5 mb-5">
       <View className="flex-row items-center gap-2 mb-4">
         <Icon name="cart-outline" size={16} color="#94A3B8" />
         <Text className="text-white font-black uppercase tracking-widest text-base opacity-80">Resumen del pedido</Text>
+        <View className="bg-white/10 rounded-full px-2 py-0.5 ml-auto">
+          <Text className="text-slate-400 text-[10px] font-black">{items.length}</Text>
+        </View>
       </View>
 
-      <ScrollView className="max-h-72" nestedScrollEnabled>
-        {items.map((item) => (
-          <View key={item.id} className="py-3.5 border-b border-white/10">
-            {/* Top Row: Name and Delete */}
-            <View className="flex-row justify-between items-start mb-1">
-              <View className="flex-1 mr-2">
-                 <Text className="text-white font-black text-sm uppercase tracking-tight" numberOfLines={2}>
-                   {item.productoNombre}
-                 </Text>
-                 <Text className="text-slate-500 text-[10px] uppercase font-bold italic" numberOfLines={1}>
-                   {item.varianteNombre}
-                   {item.cantidad > 1 ? ` · $${formatCurrency(precioDe(item))} c/u` : ''}
-                 </Text>
-              </View>
-              <TouchableOpacity 
-                onPress={() => onRemove(item.id)} 
-                className="w-7 h-7 items-center justify-center rounded-lg bg-red-500/10 active:bg-red-500/20"
-              >
-                <Text className="text-red-500 font-bold text-xs">✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Bottom Row: Controls and Price */}
-            <View className="flex-row items-center justify-between mt-2">
-              <View className="flex-row items-center bg-black/30 rounded-xl p-1 px-2 border border-white/5">
-                <TouchableOpacity
-                  onPress={() =>
-                    item.cantidad > 1
-                      ? onUpdateCantidad(item.id, item.cantidad - 1)
-                      : onRemove(item.id)
-                  }
-                  className="w-6 h-6 items-center justify-center rounded-lg bg-white/5 active:bg-white/10"
-                >
-                  <Text className="text-white font-black">−</Text>
-                </TouchableOpacity>
-
-                <Text className="text-white font-black mx-3 text-xs">{item.cantidad}</Text>
-
-                <TouchableOpacity
-                  onPress={() => onUpdateCantidad(item.id, item.cantidad + 1)}
-                  className="w-6 h-6 items-center justify-center rounded-lg bg-white/5 active:bg-white/10"
-                >
-                  <Text className="text-white font-black">+</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/*
-                El precio ocupa un "slot" de tamaño FIJO (mismo alto y ancho en
-                ambos estados). Se fuerzan constraints minWidth: 0, width: 100%
-                y outlineStyle: none para evitar que el input HTML nativo en Web
-                se expanda con su tamaño por defecto (size=20) y desborde el div.
-              */}
-              <View className="w-[105px] h-9 justify-center">
-                {editingId === item.id ? (
-                  <View className="flex-row items-center h-9 px-2 rounded-lg bg-black/40 border border-(--color-pos-primary)/60 overflow-hidden w-full">
-                    <Text className="text-(--color-pos-primary) font-black text-sm">$</Text>
-                    <TextInput
-                      className="flex-1 text-white font-black text-sm text-right"
-                      style={{ padding: 0, minWidth: 0, width: '100%', maxWidth: '100%', outlineStyle: 'none' } as any}
-                      value={draft}
-                      onChangeText={(v: string) => setDraft(v.replace(/\D/g, ''))}
-                      keyboardType="numeric"
-                      autoFocus
-                      selectTextOnFocus
-                      onBlur={commitEdit}
-                      onSubmitEditing={commitEdit}
-                    />
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => startEdit(item)}
-                    disabled={!onUpdatePrecio}
-                    className="flex-row items-center justify-end gap-1.5 h-9 active:opacity-60"
-                  >
-                    <Text
-                      className="text-(--color-pos-primary) font-black text-base"
-                      style={{ fontFamily: 'Space Grotesk' }}
-                      numberOfLines={1}
-                    >
-                      ${formatCurrency(precioDe(item) * item.cantidad)}
-                    </Text>
-                    {onUpdatePrecio && <Icon name="pencil-outline" size={12} color="#475569" />}
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {/* Precio manual: aviso + restaurar el calculado */}
-            {item.precioOverride != null && (
-              <TouchableOpacity
-                onPress={() => onUpdatePrecio?.(item.id, null)}
-                disabled={!onUpdatePrecio}
-                className="flex-row items-center gap-1.5 mt-2 self-start bg-amber-500/15 px-2.5 py-1 rounded-full active:opacity-70 max-w-full"
-              >
-                <Icon name="tag-outline" size={10} color="#F5A524" />
-                <Text className="text-amber-400 text-[9px] font-black uppercase tracking-wider" numberOfLines={1}>
-                  Precio manual · antes ${formatCurrency(item.precioUnitario)} · restaurar
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Base del jugo */}
-            {item.base && (
-              <View className="flex-row mt-1.5 gap-1">
-                <View
-                  className={`px-2 py-0.5 rounded-full ${item.base === 'leche' ? 'bg-amber-500/15' : 'bg-sky-500/15'}`}
-                >
-                  <Text
-                    className={`text-[9px] font-black uppercase tracking-widest ${item.base === 'leche' ? 'text-amber-400' : 'text-sky-400'}`}
-                  >
-                    {item.base === 'leche' ? '🥛 Leche' : '💧 Agua'}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* Flavors (if any) */}
-            {item.sabores && item.sabores.length > 0 && (
-              <Text className="text-slate-400 text-[9px] font-bold mt-2 uppercase tracking-widest bg-white/5 px-2 py-1 rounded-md" numberOfLines={1}>
-                {item.sabores.join(' — ')}
-              </Text>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+      {useScroll ? (
+        <ScrollView style={{ maxHeight: 500 }} nestedScrollEnabled>
+          {ItemList}
+        </ScrollView>
+      ) : (
+        <View>{ItemList}</View>
+      )}
 
       <View className="mt-4 pt-4 border-t border-white/10">
         {costoDomicilio > 0 && (

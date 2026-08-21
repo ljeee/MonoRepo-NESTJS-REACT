@@ -8,6 +8,7 @@ import { useBreakpoint } from '../../styles/responsive';
 import { printReceipt } from '../../utils/printReceipt';
 import UpdateTotalModal from './UpdateTotalModal';
 import PaymentSelectionModal from '../orders/PaymentSelectionModal';
+import AssignCuentaModal from './AssignCuentaModal';
 import Badge from '../ui/Badge';
 import Card from '../ui/Card';
 import Icon from '../ui/Icon';
@@ -205,6 +206,7 @@ export const FacturaCard = React.memo(function FacturaCard({
   const [editing, setEditing] = React.useState(false);
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [showAbonoModal, setShowAbonoModal] = React.useState(false);
+  const [showAssignCuenta, setShowAssignCuenta] = React.useState(false);
   const [updateLoading, setUpdateLoading] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
@@ -262,6 +264,13 @@ export const FacturaCard = React.memo(function FacturaCard({
     ? 'rgba(16,185,129,0.04)'
     : 'rgba(245,165,36,0.04)';
 
+  const statusColor = isCancelado
+    ? '#F43F5E'
+    : isPagado
+    ? '#10B981'
+    : '#F5A524';
+
+
   const direccionDomicilio = item.domicilios?.[0]?.direccionEntrega;
   const referenciaDomicilio = item.domicilios?.[0]?.referencia;
   const domiciliarioNombre = item.domicilios?.[0]?.domiciliario?.domiciliarioNombre;
@@ -274,7 +283,7 @@ export const FacturaCard = React.memo(function FacturaCard({
     .join('  •  ');
 
   return (
-    <Card style={fc.card}>
+    <Card style={[fc.card, { borderLeftWidth: 4, borderLeftColor: statusColor }]}>
       {/* Fondo tintado según estado */}
       <RNView style={[fc.tintOverlay, { backgroundColor: bgTint }]} pointerEvents="none" />
 
@@ -302,10 +311,28 @@ export const FacturaCard = React.memo(function FacturaCard({
             ) : (
               <Badge label="Sin método" variant="neutral" size="sm" />
             )}
-            {item.cuentaTransferenciaNombre && (
-              <RNText style={{ fontFamily: 'Outfit', color: '#A78BFA', fontSize: 10, fontWeight: '700' }}>
-                QR: {item.cuentaTransferenciaNombre}
-              </RNText>
+            
+            {(item.metodo === 'transferencia' || item.metodo === 'qr' || item.metodo === 'efectivo_transferencia') && (
+              <TouchableOpacity
+                onPress={() => onUpdate && item.facturaId && setShowAssignCuenta(true)}
+                disabled={!onUpdate || !item.facturaId || isUpdating}
+              >
+                {item.cuentaTransferenciaNombre ? (
+                  <RNView style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)', gap: 4 }}>
+                    <Icon name="qrcode-scan" size={10} color="#A78BFA" />
+                    <RNText style={{ fontFamily: 'Outfit', color: '#A78BFA', fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>
+                      {item.cuentaTransferenciaNombre}
+                    </RNText>
+                  </RNView>
+                ) : (
+                  <RNView style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,63,94,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(244,63,94,0.3)', gap: 4 }}>
+                    <Icon name="alert-circle-outline" size={10} color="#F43F5E" />
+                    <RNText style={{ fontFamily: 'Outfit', color: '#F43F5E', fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>
+                      Sin Asignar
+                    </RNText>
+                  </RNView>
+                )}
+              </TouchableOpacity>
             )}
             {/* Desglose pago mixto con prioridad según filtro activo */}
             {item.metodo === 'efectivo_transferencia' && (() => {
@@ -522,6 +549,25 @@ export const FacturaCard = React.memo(function FacturaCard({
         onCancel={() => setEditing(false)}
       />
 
+      <AssignCuentaModal
+        visible={showAssignCuenta}
+        loading={updateLoading}
+        onCancel={() => setShowAssignCuenta(false)}
+        onConfirm={async (id, nombre) => {
+            if (item.facturaId && onUpdate) {
+                setUpdateLoading(true);
+                try {
+                    await onUpdate(item.facturaId, { cuentaTransferenciaId: id, cuentaTransferenciaNombre: nombre });
+                } catch (err) {
+                    console.error('Error in AssignCuenta:', err);
+                } finally {
+                    setUpdateLoading(false);
+                    setShowAssignCuenta(false);
+                }
+            }
+        }}
+      />
+
       <PaymentSelectionModal
         visible={showPaymentModal}
         total={item.total ?? 0}
@@ -627,13 +673,13 @@ const fc = StyleSheet.create({
     gap: 8,
   },
   notasText: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 12, fontWeight: '500' },
-  productosBox: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 10, marginBottom: 12 },
-  productosLabel: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 8, fontWeight: '700' },
-  productoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  productosBox: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, marginBottom: 16 },
+  productosLabel: { fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10, fontWeight: '700' },
+  productoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
   productoInfo: { flex: 1, paddingRight: 12 },
-  productoNombre: { fontFamily: 'Outfit', color: '#F1F5F9', fontSize: 12.5, fontWeight: '500' },
-  productoCantidad: { fontFamily: 'Outfit', color: '#64748B', fontSize: 11 },
-  productoSubtotal: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 12.5 },
+  productoNombre: { fontFamily: 'Outfit', color: '#F1F5F9', fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  productoCantidad: { fontFamily: 'Outfit', color: '#94A3B8', fontSize: 12 },
+  productoSubtotal: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14 },
   abonoBox: { marginBottom: 12 },
   abonoHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   abonoLabel: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '900' },

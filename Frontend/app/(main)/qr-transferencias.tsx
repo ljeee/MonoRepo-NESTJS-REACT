@@ -153,14 +153,15 @@ export default function QrTransferenciasScreen() {
             const esMixtoTrans = f.metodo === 'efectivo_transferencia' && (f.pagoTransferencia ?? 0) > 0;
             if (!esTransfer && !esMixtoTrans) return;
 
-            const cuentaNom = f.cuentaTransferenciaNombre || 'Sin asignar';
+            const cuentaLocal = cuentas.find(c => c.id === f.cuentaTransferenciaId);
+            const cuentaNom = cuentaLocal?.nombre || f.cuentaTransferenciaNombre || 'Sin asignar';
             const monto = esMixtoTrans ? (f.pagoTransferencia ?? 0) : (f.total ?? 0);
             if (!breakdown[cuentaNom]) breakdown[cuentaNom] = { total: 0, count: 0 };
             breakdown[cuentaNom].total += monto;
             breakdown[cuentaNom].count += 1;
         });
         return breakdown;
-    }, [facturas]);
+    }, [facturas, cuentas]);
 
     const sortedData = useMemo(() => {
         if (!sortAsc) return facturas;
@@ -437,6 +438,7 @@ export default function QrTransferenciasScreen() {
                                                     onUpdateTotal={handleUpdateTotal}
                                                     onDelete={handleDeleteFactura}
                                                     onAbono={handleAbono}
+                                                    onUpdate={updateFactura}
                                                 />
                                             </View>
                                         ))}
