@@ -49,6 +49,8 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
     metodo: typeof factura.metodo === 'string' ? factura.metodo : undefined,
     pagoEfectivo: typeof factura.pagoEfectivo === 'number' || typeof factura.pagoEfectivo === 'string' ? numberOrZero(factura.pagoEfectivo) : undefined,
     pagoTransferencia: typeof factura.pagoTransferencia === 'number' || typeof factura.pagoTransferencia === 'string' ? numberOrZero(factura.pagoTransferencia) : undefined,
+    cuentaTransferenciaId: typeof factura.cuentaTransferenciaId === 'number' ? factura.cuentaTransferenciaId : null,
+    cuentaTransferenciaNombre: typeof factura.cuentaTransferenciaNombre === 'string' ? factura.cuentaTransferenciaNombre : null,
     ordenes: rawOrdenes.map((rawOrden) => {
       const orden = asRecord(rawOrden);
       const rawProductos = asArray(orden.productos);

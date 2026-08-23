@@ -46,6 +46,26 @@ export default function PrepayPicker({ value, onChange, total }: Props) {
     return () => { unmounted = true; };
   }, [api]);
 
+  // Auto-asignar primera cuenta cuando cargan y el método requiere transferencia
+  // pero aún no hay cuenta seleccionada (puede pasar si el usuario seleccionó el
+  // método antes de que la petición API resolviera).
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+  const onChangeRef = React.useRef(onChange);
+  onChangeRef.current = onChange;
+  React.useEffect(() => {
+    if (cuentas.length === 0) return;
+    const v = valueRef.current;
+    const isTransferMethod = v.metodo === 'transferencia' || v.metodo === 'efectivo_transferencia';
+    if (isTransferMethod && !v.cuentaTransferenciaId) {
+      onChangeRef.current({
+        ...v,
+        cuentaTransferenciaId: cuentas[0].id,
+        cuentaTransferenciaNombre: cuentas[0].nombre,
+      });
+    }
+  }, [cuentas]);
+
   const isMixto = value.metodo === 'efectivo_transferencia';
   const isTransfer = value.metodo === 'transferencia' || isMixto;
   const efectivoNum = Number(value.efectivo) || 0;
