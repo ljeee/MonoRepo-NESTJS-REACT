@@ -177,7 +177,7 @@ describe('Analítica contra PostgreSQL (PGlite)', () => {
 		const domiciliarios = await svc.domiciliarios(F);
 		expect(domiciliarios.filas[0]).toEqual(expect.objectContaining({nombre: 'Pedro', entregas: 1, ganancia: 5000}));
 		// Resumen diario: cuántos domicilios salieron cada día y de quién (día en hora de Bogotá).
-		expect(domiciliarios.totales).toEqual({domicilios: 1, sinRepartidor: 0, entregados: 1, costoDomicilios: 5000});
+		expect(domiciliarios.totales).toEqual({domicilios: 1, sinRepartidor: 0, asignados: 1, entregados: 1, costoDomicilios: 5000, aPagar: 5000});
 		expect(domiciliarios.porDia).toEqual([
 			{dia: '2026-05-11', telefono: '3110000000', nombre: 'Pedro', domicilios: 1, entregas: 1, ganancia: 5000},
 		]);

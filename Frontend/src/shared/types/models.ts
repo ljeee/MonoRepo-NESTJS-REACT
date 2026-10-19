@@ -926,13 +926,26 @@ export interface ClientesAnalitica {
   }[];
 }
 
+/**
+ * Un domicilio cuenta para su repartidor desde que se le ASIGNA (no hace falta marcarlo entregado) y se le paga
+ * su costo de domicilio (`ganancia`). Los cancelados no cuentan. `entregas`/`entregados` son el mismo número,
+ * conservados para los POS viejos.
+ */
 export interface DomiciliariosAnalitica {
   periodo: PeriodoAnalitica;
-  filas: { telefono: string; nombre: string; asignados: number; entregas: number; ganancia: number; ticketPromedio: number }[];
+  filas: { telefono: string; nombre: string; asignados: number; entregas?: number; ganancia: number; ticketPromedio: number }[];
   /** Domicilios del período, también los que no tienen repartidor. Ausente en servidores viejos. */
-  totales?: { domicilios: number; sinRepartidor: number; entregados: number; costoDomicilios: number };
+  totales?: {
+    domicilios: number;
+    sinRepartidor: number;
+    asignados?: number;
+    entregados?: number;
+    costoDomicilios: number;
+    /** Costo de domicilio de los asignados: lo que se paga a los domiciliarios. */
+    aPagar?: number;
+  };
   /** Una fila por día (hora de Bogotá) y repartidor; telefono null = sin repartidor. */
-  porDia?: { dia: string; telefono: string | null; nombre: string; domicilios: number; entregas: number; ganancia: number }[];
+  porDia?: { dia: string; telefono: string | null; nombre: string; domicilios: number; entregas?: number; ganancia: number }[];
 }
 
 export interface OpcionesAnalitica {

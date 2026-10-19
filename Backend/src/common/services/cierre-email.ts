@@ -230,7 +230,7 @@ export function construirSeccionesCierre(r: ResumenCierre, opciones: {tituloVent
 	return [s1, s2, s3, s4, s5, s6, s7];
 }
 
-/** Sección de domiciliarios: cuántos domicilios salieron, cuántos entregó cada repartidor y cuánto se les paga. */
+/** Sección de domiciliarios: cuántos domicilios salieron, cuántos llevó cada repartidor y cuánto se les paga. */
 export function construirSeccionDomiciliarios(numero: number, d: DomiciliariosCierre): string {
 	const t = d.totales;
 	const aPagar = d.filas.reduce((s, f) => s + f.ganancia, 0);
@@ -238,9 +238,9 @@ export function construirSeccionDomiciliarios(numero: number, d: DomiciliariosCi
 		fila('Domicilios', String(t?.domicilios ?? d.filas.reduce((s, f) => s + f.asignados, 0)), {negrita: true}),
 		...(t?.sinRepartidor ? [fila('Sin repartidor asignado', String(t.sinRepartidor), {sub: true, color: '#F5A524'})] : []),
 		...d.filas.map((f) =>
-			fila(`↳ ${esc(f.nombre)} — ${f.entregas} entregado${f.entregas === 1 ? '' : 's'} de ${f.asignados}`, cop(f.ganancia), {sub: true}),
+			fila(`↳ ${esc(f.nombre)} — ${f.asignados} domicilio${f.asignados === 1 ? '' : 's'}`, cop(f.ganancia), {sub: true}),
 		),
-		fila('A pagar a domiciliarios (costo de domicilio de lo entregado)', cop(aPagar), {negrita: true, color: '#F5A524'}),
+		fila('A pagar a domiciliarios (costo de domicilio de lo asignado)', cop(aPagar), {negrita: true, color: '#F5A524'}),
 	].join('');
 	return seccion(numero, 'Domiciliarios', d.filas.length || t?.domicilios ? cuerpo : '<tr><td colspan="2" style="text-align:center; opacity:0.5;">Sin domicilios</td></tr>');
 }

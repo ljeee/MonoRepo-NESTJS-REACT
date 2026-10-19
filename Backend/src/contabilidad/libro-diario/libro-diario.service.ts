@@ -9,6 +9,7 @@ import {MailService} from '../../common/services/mail.service';
 import {getBogotaRange} from '../../common/utils/date.utils';
 import {
 	sqlCobrado,
+	sqlDomicilioCuenta,
 	sqlFacturaValida,
 	sqlFechaBogota,
 	sqlMontoEfectivo,
@@ -214,7 +215,7 @@ export class LibroDiarioService {
 					(SELECT o.tipo_pedido FROM ordenes o WHERE o.factura_id = f.factura_id ORDER BY o.orden_id LIMIT 1) AS tipo_pedido,
 					f.estado, COALESCE(f.total, 0)::float8 AS total, ${sqlCobrado('f')}::float8 AS cobrado,
 					${sqlMontoEfectivo('f')}::float8 AS efectivo, ${sqlPorCobrar('f')}::float8 AS por_cobrar,
-					COALESCE((SELECT d.costo_domicilio FROM domicilios d WHERE d.factura_id = f.factura_id ORDER BY d.domicilio_id LIMIT 1), 0)::float8 AS costo_dom
+					COALESCE((SELECT d.costo_domicilio FROM domicilios d WHERE d.factura_id = f.factura_id AND ${sqlDomicilioCuenta('d')} ORDER BY d.domicilio_id LIMIT 1), 0)::float8 AS costo_dom
 				 FROM facturas_ventas f WHERE ${donde}
 				 ORDER BY f."fechaFactura", f.factura_id`,
 				[start, end],

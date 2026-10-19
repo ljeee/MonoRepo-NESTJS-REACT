@@ -12,7 +12,7 @@ import type { PropsTabAnalitica } from './tipos';
 import { TextoError } from './TabResumen';
 
 type FilaDomiciliario = DomiciliariosAnalitica['filas'][number];
-type FilaDia = { dia: string; domicilios: number; entregas: number; ganancia: number; detalle: string };
+type FilaDia = { dia: string; domicilios: number; sinRepartidor: number; ganancia: number; detalle: string };
 
 const FORMATO_DIA = new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
 
@@ -24,24 +24,26 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
   });
   const filas = useMemo(() => datos.data?.filas ?? [], [datos.data]);
 
+  // Cada domicilio cuenta para su repartidor desde que se le asigna (no hace falta marcarlo entregado).
   const totales = useMemo(
     () =>
       filas.reduce(
-        (t, f) => ({ asignados: t.asignados + f.asignados, entregas: t.entregas + f.entregas, ganancia: t.ganancia + f.ganancia }),
-        { asignados: 0, entregas: 0, ganancia: 0 },
+        (t, f) => ({ asignados: t.asignados + f.asignados, ganancia: t.ganancia + f.ganancia }),
+        { asignados: 0, ganancia: 0 },
       ),
     [filas],
   );
+  const sinRepartidor = datos.data?.totales?.sinRepartidor ?? 0;
 
-  // Día a día: domicilios del día, entregados, lo que se paga y cuántos llevó cada repartidor.
+  // Día a día: domicilios del día, sin repartidor, lo que se paga y cuántos llevó cada repartidor.
   const porDia = useMemo<FilaDia[]>(() => {
     const dias = new Map<string, FilaDia>();
     for (const d of datos.data?.porDia ?? []) {
-      const fila = dias.get(d.dia) ?? { dia: d.dia, domicilios: 0, entregas: 0, ganancia: 0, detalle: '' };
+      const fila = dias.get(d.dia) ?? { dia: d.dia, domicilios: 0, sinRepartidor: 0, ganancia: 0, detalle: '' };
       fila.domicilios += d.domicilios;
-      fila.entregas += d.entregas;
+      if (d.telefono == null) fila.sinRepartidor += d.domicilios;
       fila.ganancia += d.ganancia;
-      fila.detalle = [fila.detalle, `${d.nombre} ${d.telefono == null ? d.domicilios : d.entregas}`].filter(Boolean).join(' · ');
+      fila.detalle = [fila.detalle, `${d.nombre} ${d.domicilios}`].filter(Boolean).join(' · ');
       dias.set(d.dia, fila);
     }
     return [...dias.values()].sort((a, b) => b.dia.localeCompare(a.dia));
@@ -51,11 +53,17 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
     () => [
       { key: 'dia', label: 'Día', width: 110, render: (d) => <Num v={FORMATO_DIA.format(new Date(`${d.dia}T12:00:00`))} /> },
       { key: 'domicilios', label: 'Domicilios', width: 90, align: 'right', render: (d) => <Num v={formatearValor(d.domicilios)} /> },
-      { key: 'entregas', label: 'Entregados', width: 90, align: 'right', render: (d) => <Num v={formatearValor(d.entregas)} /> },
+      {
+        key: 'sinRepartidor',
+        label: 'Sin repartidor',
+        width: 100,
+        align: 'right',
+        render: (d) => <Num v={d.sinRepartidor ? formatearValor(d.sinRepartidor) : '—'} />,
+      },
       { key: 'ganancia', label: 'A pagar', width: 100, align: 'right', render: (d) => <Num v={formatearValor(d.ganancia, 'monedaCompacta')} /> },
       {
         key: 'detalle',
-        label: 'Por domiciliario (entregas)',
+        label: 'Por domiciliario',
         render: (d) => <Text className="text-slate-300 text-[11px]">{d.detalle}</Text>,
       },
     ],
@@ -76,16 +84,8 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
           </View>
         ),
       },
-      { key: 'asignados', label: 'Asignados', width: 84, align: 'right', render: (d) => <Num v={formatearValor(d.asignados)} /> },
-      { key: 'entregas', label: 'Entregas', width: 84, align: 'right', render: (d) => <Num v={formatearValor(d.entregas)} /> },
-      {
-        key: 'efectividad',
-        label: '% entrega',
-        width: 84,
-        align: 'right',
-        render: (d) => <Num v={d.asignados ? `${Math.round((d.entregas / d.asignados) * 100)}%` : '—'} />,
-      },
-      { key: 'ganancia', label: 'Domicilios', width: 100, align: 'right', render: (d) => <Num v={formatearValor(d.ganancia, 'monedaCompacta')} /> },
+      { key: 'asignados', label: 'Domicilios', width: 90, align: 'right', render: (d) => <Num v={formatearValor(d.asignados)} /> },
+      { key: 'ganancia', label: 'A pagar', width: 100, align: 'right', render: (d) => <Num v={formatearValor(d.ganancia, 'monedaCompacta')} /> },
       { key: 'ticket', label: 'Ticket prom.', width: 100, align: 'right', render: (d) => <Num v={formatearValor(d.ticketPromedio, 'monedaCompacta')} /> },
     ],
     [],
@@ -100,29 +100,40 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
           icon="moped"
           color="#3B82F6"
           value={formatearValor(datos.data?.totales?.domicilios ?? totales.asignados)}
-          sub={datos.data?.totales?.sinRepartidor ? `${datos.data.totales.sinRepartidor} sin repartidor` : `${formatearValor(totales.asignados)} asignados`}
+          sub={sinRepartidor ? `${formatearValor(sinRepartidor)} sin repartidor` : 'Todos con repartidor'}
         />
         <StatCard
-          label="Entregados"
-          icon="check-decagram-outline"
+          label="Con repartidor"
+          icon="account-check-outline"
           color="#10B981"
-          value={formatearValor(totales.entregas)}
-          sub={totales.asignados ? `${Math.round((totales.entregas / totales.asignados) * 100)}% de los asignados` : undefined}
+          value={formatearValor(totales.asignados)}
+          sub="Cuentan desde que se asignan"
         />
-        <StatCard label="Costo de domicilios" icon="cash-fast" color="#F5A524" value={formatearValor(totales.ganancia, 'monedaCompacta')} sub="Lo que ganan los domiciliarios" />
+        <StatCard
+          label="A pagar a domiciliarios"
+          icon="cash-fast"
+          color="#F5A524"
+          value={formatearValor(totales.ganancia, 'monedaCompacta')}
+          sub="Costo de domicilio de lo asignado"
+        />
       </View>
 
       <View style={styles.grilla}>
         <ChartCard
           className={isMobile ? 'w-full' : 'w-[calc(40%-8px)]'}
-          title="Entregas por domiciliario"
+          title="Domicilios por domiciliario"
           icon="podium"
           color="#10B981"
           loading={datos.loading}
           empty={!filas.length}
         >
           <BarList
-            items={filas.map((d) => ({ key: d.telefono, label: d.nombre, value: d.entregas, sublabel: `${d.asignados} asignados` }))}
+            items={filas.map((d) => ({
+              key: d.telefono,
+              label: d.nombre,
+              value: d.asignados,
+              sublabel: `${formatearValor(d.ganancia, 'monedaCompacta')} a pagar`,
+            }))}
             onPressItem={(telefono) => onFiltrar('domiciliario', telefono)}
           />
         </ChartCard>
@@ -132,7 +143,7 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
             rows={filas}
             rowKey={(d) => d.telefono}
             onRowPress={(d) => onFiltrar('domiciliario', d.telefono)}
-            minWidth={600}
+            minWidth={460}
             emptyText="Sin domicilios asignados en el período"
           />
         </ChartCard>

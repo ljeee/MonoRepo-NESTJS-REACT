@@ -33,7 +33,7 @@ describe('Libro diario (PGlite)', () => {
 		await pg.exec(`
 			INSERT INTO cuentas_transferencia (nombre) VALUES ('Nequi'), ('Bancolombia');
 			INSERT INTO domiciliarios (telefono, domiciliario_nombre) VALUES ('3110000000', 'Pedro');
-			-- 1: efectivo con domicilio entregado y productos (la misma pizza a precio del menú y con precio manual)
+			-- 1: efectivo con domicilio y productos (la misma pizza a precio del menú y con precio manual)
 			INSERT INTO facturas_ventas ("fechaFactura", estado, metodo, total, monto_pagado, pago_efectivo, cliente_nombre)
 			VALUES ('2026-10-02 19:00:00-05', 'pagado', 'efectivo', 60000, 60000, 60000, 'Ana');
 			-- 2: QR completo a Nequi
@@ -58,8 +58,11 @@ describe('Libro diario (PGlite)', () => {
 				(1, 'Coca Cola - Personal', 2, 4000, 'bebida', 4000, false),
 				(3, 'Pizza - Mediana (Hawaiana)', 1, 25000, 'pizza', 25000, false);
 			INSERT INTO domicilios (factura_id, orden_id, telefono_domiciliario_asignado, costo_domicilio, estado_domicilio) VALUES
-				(1, 1, '3110000000', 5000, 'entregado'),
-				(4, 2, NULL, 3000, 'pendiente');
+				-- asignado pero nadie lo marcó entregado (lo normal en la operación): igual cuenta para Pedro
+				(1, 1, '3110000000', 5000, 'pendiente'),
+				(4, 2, NULL, 3000, 'pendiente'),
+				-- cancelado: no cuenta en ninguna cifra (ni para Pedro ni en el costo de domicilios)
+				(2, NULL, '3110000000', 4000, 'cancelado');
 
 			INSERT INTO facturas_pagos (total, nombre_gasto, estado, fecha_factura, metodo, categoria, tipo_gasto, cuenta_origen_id) VALUES
 				(20000, 'Queso', 'pagado', '2026-10-02', 'efectivo', 'insumos', 'costo', NULL),
@@ -106,12 +109,26 @@ describe('Libro diario (PGlite)', () => {
 		});
 		expect(l.totales.cobrado).toBe(210000);
 		expect(l.saldoEtiqueta).toContain('Balance de caja');
+		// Cada domicilio cuenta para su repartidor desde que se le asigna; el cancelado no.
 		expect(l.domiciliarios?.totales).toEqual({
 			domicilios: 2,
 			sinRepartidor: 1,
+			asignados: 1,
 			entregados: 1,
 			costoDomicilios: 8000,
+			aPagar: 5000,
 		});
+		expect(l.domiciliarios?.filas).toEqual([
+			{telefono: '3110000000', nombre: 'Pedro', asignados: 1, entregas: 1, ganancia: 5000, ticketPromedio: 60000},
+		]);
+		// Las mismas cifras de domicilios en el libro, el resumen (cierre, correo, pantallas de dinero) y la analítica.
+		const d = l.domiciliarios!;
+		expect(l.totales.domicilios).toBe(r.ventas.costoDomicilios);
+		expect(d.totales.costoDomicilios).toBe(r.ventas.costoDomicilios);
+		expect(d.totales.aPagar).toBe(d.filas.reduce((s, f) => s + f.ganancia, 0));
+		expect(d.totales.asignados).toBe(d.filas.reduce((s, f) => s + f.asignados, 0));
+		expect(d.porDia.reduce((s, x) => s + x.domicilios, 0)).toBe(d.totales.domicilios);
+		expect(l.ventas.find((v) => v.id === 2)?.domicilio).toBe(0);
 	});
 
 	it('cada venta dice cómo se pagó: efectivo, QR con la cuenta, abonos a dos cuentas, mixto y pendiente', async () => {

@@ -326,16 +326,18 @@ function seccionesCompleto(l: LibroDiario): Content[] {
 					]
 				: []),
 		]),
-		...seccion('8. Domiciliarios'),
+		...seccion(
+			'8. Domiciliarios',
+			'Cada domicilio cuenta para su repartidor desde que se le asigna; se le paga el costo de domicilio.',
+		),
 		d
 			? tabla(
-					['Domiciliario', 'Asignados', 'Entregados', '$A pagar'],
-					['*', 70, 70, 90],
+					['Domiciliario', 'Domicilios', '$A pagar'],
+					['*', 70, 90],
 					[
 						...d.filas.map((f) => [
 							celda(`${f.nombre} · ${f.telefono}`),
 							entero(f.asignados),
-							entero(f.entregas),
 							dinero(f.ganancia),
 						]),
 						...(d.totales?.sinRepartidor
@@ -343,7 +345,6 @@ function seccionesCompleto(l: LibroDiario): Content[] {
 									[
 										celda('Sin repartidor asignado', {color: GRIS}),
 										entero(d.totales.sinRepartidor),
-										entero(0),
 										dinero(0),
 									],
 								]
@@ -351,9 +352,8 @@ function seccionesCompleto(l: LibroDiario): Content[] {
 						...(d.filas.length || d.totales?.domicilios
 							? [
 									filaTotal([
-										celda(`TOTAL · ${d.totales?.domicilios ?? 0} domicilios`),
-										celda(''),
-										entero(d.totales?.entregados ?? 0),
+										celda('TOTAL'),
+										entero(d.totales?.domicilios ?? d.filas.reduce((s, f) => s + f.asignados, 0)),
 										dinero(aPagar),
 									]),
 								]

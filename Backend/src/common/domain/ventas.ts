@@ -8,8 +8,13 @@
 
 export const ESTADOS_FACTURA_COBRADA = ['pagado', 'pagada'] as const;
 export const ESTADO_ANULADO = 'cancelado';
-/** Estados de domicilio que cuentan como entregado (mismo criterio que RiderApp). */
-export const ESTADOS_DOMICILIO_ENTREGADO = ['entregado', 'completado', 'completada'] as const;
+/**
+ * Un domicilio cuenta (para el repartidor, lo que se le paga y los totales) desde que se ASIGNA: no depende de
+ * que alguien lo marque «entregado», que en la operación casi nunca pasa. Solo se excluye el cancelado.
+ */
+export function sqlDomicilioCuenta(d = 'd'): string {
+	return `COALESCE(lower(${d}.estado_domicilio), '') <> '${ESTADO_ANULADO}'`;
+}
 
 export type MetodoPagoNormalizado = 'efectivo' | 'transferencia' | 'mixto' | 'sin_metodo' | 'otro';
 

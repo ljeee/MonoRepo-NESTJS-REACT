@@ -62,7 +62,7 @@ describe('CierresService', () => {
 				balance: {devengado: 85000, cobrado: 70000},
 			}),
 		};
-		mockAnaliticaService.domiciliarios = jest.fn().mockResolvedValue({filas: [], totales: {domicilios: 0, sinRepartidor: 0, entregados: 0, costoDomicilios: 0}, porDia: []});
+		mockAnaliticaService.domiciliarios = jest.fn().mockResolvedValue({filas: [], totales: {domicilios: 0, sinRepartidor: 0, asignados: 0, entregados: 0, costoDomicilios: 0, aPagar: 0}, porDia: []});
 		mockMailService = {configurado: jest.fn().mockReturnValue(true)};
 		mockLibroDiario = {
 			destinatarios: jest.fn().mockResolvedValue(['dueno@x.com', 'conta@x.com']),

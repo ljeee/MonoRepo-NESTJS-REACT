@@ -119,11 +119,10 @@ export function construirCsvLibroDiario(l: LibroDiario): string {
 		}
 		const d = l.domiciliarios;
 		if (d) {
-			csv += '\r\n' + filaCsv(['Domiciliario', 'Teléfono', 'Asignados', 'Entregados', 'A pagar'].map(t));
-			for (const f of d.filas)
-				csv += filaCsv([t(f.nombre), t(f.telefono), n(f.asignados), n(f.entregas), n(f.ganancia)]);
+			csv += '\r\n' + filaCsv(['Domiciliario', 'Teléfono', 'Domicilios', 'A pagar'].map(t));
+			for (const f of d.filas) csv += filaCsv([t(f.nombre), t(f.telefono), n(f.asignados), n(f.ganancia)]);
 			if (d.totales?.sinRepartidor)
-				csv += filaCsv([t('Sin repartidor'), t(''), n(d.totales.sinRepartidor), n(0), n(0)]);
+				csv += filaCsv([t('Sin repartidor'), t(''), n(d.totales.sinRepartidor), n(0)]);
 		}
 	}
 	return csv;

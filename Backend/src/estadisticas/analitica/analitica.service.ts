@@ -2,8 +2,8 @@ import {Injectable} from '@nestjs/common';
 import {InjectDataSource} from '@nestjs/typeorm';
 import {DataSource} from 'typeorm';
 import {
-	ESTADOS_DOMICILIO_ENTREGADO,
 	sqlCobrado,
+	sqlDomicilioCuenta,
 	sqlFechaBogota,
 	sqlMetodoNormalizado,
 	sqlMontoEfectivo,
@@ -887,25 +887,24 @@ export class AnaliticaService {
 
 	async domiciliarios(dto: FiltrosAnaliticaDto) {
 		const periodo = calcularPeriodo(dto.from, dto.to, false);
+		// Cada domicilio cuenta para su repartidor desde que se le ASIGNA (no hace falta marcarlo entregado), y lo
+		// que se le paga es el costo de domicilio de esos. Solo se excluyen los cancelados (sqlDomicilioCuenta).
 		const p = new ParametrosSql();
-		const entregados = p.agregar([...ESTADOS_DOMICILIO_ENTREGADO]);
 		const sql = `SELECT d.telefono_domiciliario_asignado AS telefono,
 				MAX(dm.domiciliario_nombre) AS nombre,
 				COUNT(*)::int AS asignados,
-				COUNT(*) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregados}))::int AS entregas,
-				COALESCE(SUM(d.costo_domicilio) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregados})), 0)::float8 AS ganancia,
-				COALESCE(AVG(f.total) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregados})), 0)::float8 AS ticket_promedio
+				COALESCE(SUM(d.costo_domicilio), 0)::float8 AS ganancia,
+				COALESCE(AVG(f.total), 0)::float8 AS ticket_promedio
 			FROM domicilios d
 			JOIN facturas_ventas f ON f.factura_id = d.factura_id
 			LEFT JOIN domiciliarios dm ON dm.telefono = d.telefono_domiciliario_asignado
-			WHERE ${[...condicionesFactura(dto, periodo.actual, p), `d.telefono_domiciliario_asignado IS NOT NULL`].join(' AND ')}
+			WHERE ${[...condicionesFactura(dto, periodo.actual, p), `d.telefono_domiciliario_asignado IS NOT NULL`, sqlDomicilioCuenta('d')].join(' AND ')}
 			GROUP BY d.telefono_domiciliario_asignado
-			ORDER BY entregas DESC, asignados DESC`;
+			ORDER BY asignados DESC, ganancia DESC`;
 		const filas = await this.consultar<{
 			telefono: string;
 			nombre: string | null;
 			asignados: number;
-			entregas: number;
 			ganancia: number;
 			ticket_promedio: number;
 		}>(sql, p);
@@ -913,46 +912,57 @@ export class AnaliticaService {
 		// Todos los domicilios del período (también los que aún no tienen repartidor) y el detalle por día y
 		// repartidor: lo que mostraba la vista "Resumen domiciliarios" (cuántos salieron hoy, cuánto se les paga).
 		const pT = new ParametrosSql();
-		const entregadosT = pT.agregar([...ESTADOS_DOMICILIO_ENTREGADO]);
-		const [totales] = await this.consultar<{total: number; sin_repartidor: number; entregados: number; costo: number}>(
+		const [totales] = await this.consultar<{total: number; sin_repartidor: number; costo: number; a_pagar: number}>(
 			`SELECT COUNT(*)::int AS total,
 				COUNT(*) FILTER (WHERE d.telefono_domiciliario_asignado IS NULL)::int AS sin_repartidor,
-				COUNT(*) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregadosT}))::int AS entregados,
-				COALESCE(SUM(d.costo_domicilio), 0)::float8 AS costo
+				COALESCE(SUM(d.costo_domicilio), 0)::float8 AS costo,
+				COALESCE(SUM(d.costo_domicilio) FILTER (WHERE d.telefono_domiciliario_asignado IS NOT NULL), 0)::float8 AS a_pagar
 			 FROM domicilios d JOIN facturas_ventas f ON f.factura_id = d.factura_id
-			 WHERE ${condicionesFactura(dto, periodo.actual, pT).join(' AND ')}`,
+			 WHERE ${[...condicionesFactura(dto, periodo.actual, pT), sqlDomicilioCuenta('d')].join(' AND ')}`,
 			pT,
 		);
 		const pD = new ParametrosSql();
-		const entregadosD = pD.agregar([...ESTADOS_DOMICILIO_ENTREGADO]);
-		const porDia = await this.consultar<{dia: string; telefono: string | null; nombre: string | null; domicilios: number; entregas: number; ganancia: number}>(
+		const porDia = await this.consultar<{
+			dia: string;
+			telefono: string | null;
+			nombre: string | null;
+			domicilios: number;
+			ganancia: number;
+		}>(
 			`SELECT to_char(${sqlFechaBogota('f')}, 'YYYY-MM-DD') AS dia, d.telefono_domiciliario_asignado AS telefono,
 				MAX(dm.domiciliario_nombre) AS nombre, COUNT(*)::int AS domicilios,
-				COUNT(*) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregadosD}))::int AS entregas,
-				COALESCE(SUM(d.costo_domicilio) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregadosD})), 0)::float8 AS ganancia
+				COALESCE(SUM(d.costo_domicilio) FILTER (WHERE d.telefono_domiciliario_asignado IS NOT NULL), 0)::float8 AS ganancia
 			 FROM domicilios d JOIN facturas_ventas f ON f.factura_id = d.factura_id
 			 LEFT JOIN domiciliarios dm ON dm.telefono = d.telefono_domiciliario_asignado
-			 WHERE ${condicionesFactura(dto, periodo.actual, pD).join(' AND ')}
-			 GROUP BY 1, 2 ORDER BY 1, entregas DESC`,
+			 WHERE ${[...condicionesFactura(dto, periodo.actual, pD), sqlDomicilioCuenta('d')].join(' AND ')}
+			 GROUP BY 1, 2 ORDER BY 1, domicilios DESC`,
 			pD,
 		);
 
+		const total = num(totales?.total);
+		const sinRepartidor = num(totales?.sin_repartidor);
 		return {
 			periodo: this.describirPeriodo(dto, periodo),
 			filas: filas.map((f) => ({
 				telefono: f.telefono,
 				nombre: f.nombre ?? f.telefono,
 				asignados: num(f.asignados),
-				entregas: num(f.entregas),
+				/** @deprecated igual a `asignados` (cuenta desde que se asigna); se conserva para los POS viejos. */
+				entregas: num(f.asignados),
 				ganancia: num(f.ganancia),
 				ticketPromedio: Math.round(num(f.ticket_promedio)),
 			})),
-			/** Domicilios del período: todos, sin repartidor, entregados y costo de domicilio cobrado (todos). */
+			/** Domicilios del período (sin los cancelados): todos, sin repartidor, asignados y su costo. */
 			totales: {
-				domicilios: num(totales?.total),
-				sinRepartidor: num(totales?.sin_repartidor),
-				entregados: num(totales?.entregados),
+				domicilios: total,
+				sinRepartidor,
+				asignados: total - sinRepartidor,
+				/** @deprecated igual a `asignados`; se conserva para los POS viejos. */
+				entregados: total - sinRepartidor,
+				/** Costo de domicilio de todos (también los que aún no tienen repartidor). */
 				costoDomicilios: num(totales?.costo),
+				/** Costo de domicilio de los asignados: lo que se paga a los domiciliarios. */
+				aPagar: num(totales?.a_pagar),
 			},
 			/** Una fila por día y repartidor (telefono null = sin repartidor), para el resumen diario/mensual. */
 			porDia: porDia.map((d) => ({
@@ -960,7 +970,8 @@ export class AnaliticaService {
 				telefono: d.telefono,
 				nombre: d.telefono == null ? 'Sin repartidor' : (d.nombre ?? d.telefono),
 				domicilios: num(d.domicilios),
-				entregas: num(d.entregas),
+				/** @deprecated = `domicilios` de un repartidor (0 en «Sin repartidor»); se conserva para los POS viejos. */
+				entregas: d.telefono == null ? 0 : num(d.domicilios),
 				ganancia: num(d.ganancia),
 			})),
 		};
@@ -1032,7 +1043,7 @@ export class AnaliticaService {
 			this.consultar<{costo: number}>(
 				`SELECT COALESCE(SUM(d.costo_domicilio), 0)::float8 AS costo
 				 FROM domicilios d JOIN facturas_ventas f ON f.factura_id = d.factura_id
-				 WHERE ${condicionesFactura(vacio, periodo.actual, pD).join(' AND ')}`,
+				 WHERE ${[...condicionesFactura(vacio, periodo.actual, pD), sqlDomicilioCuenta('d')].join(' AND ')}`,
 				pD,
 			),
 			// facturas_pagos.fecha_factura es DATE (sin hora): se compara contra las fechas tal cual.
