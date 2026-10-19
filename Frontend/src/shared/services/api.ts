@@ -1,20 +1,42 @@
 import axios, { AxiosInstance } from 'axios';
+import { invalidarConsultas } from '../utils/consultas';
 import type {
   AuthResponse,
   Cliente, ClienteDireccion, CreateClienteDto,
-  CreateDomiciliarioDto, CreateFacturaPagoDto,
+  CreateDomiciliarioDto, CreateFacturaPagoDto, FindFacturasPagosParams,
   CreateOrdenDto, Domiciliario,
   FacturaPago, FacturaStats, FacturaVenta,
   FindOrdenesParams, Orden, PaginatedResponse,
   Producto, ProductoVariante,
   PizzaSabor,
-  ProductoTop, SaborTop, VentaHora, VentaDia,
-  MetodoPago, ResumenPeriodo, ClienteFrecuente,
-  VarianteTop, ClienteHistorial,
+  SaborGrupo, GuardarSaborGrupoDto,
+  ClienteHistorial,
   RegisterDto,
   EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia,
-  InventarioCaja, InventarioCajasMovimiento as InventarioCajasMovimientoModel, AjustarCajasDto as AjustarCajasDtoModel, CrearCajaDto as CrearCajaDtoModel,
+  InventarioItem, MovimientosInventarioPagina, InventarioRegla, SugerenciaReglaCaja, EstadoInventario,
+  CrearItemInventarioDto, ActualizarItemInventarioDto, GuardarReglaInventarioDto, TipoItemInventario, TipoMovimientoManual,
   DenominacionesMap, CajaMovimiento, CajaResumen,
+} from '../types/models';
+import type {
+  AgrupacionProductos,
+  CalidadDatosAnalitica,
+  ClientesAnalitica,
+  CombinacionesAnalitica,
+  DomiciliariosAnalitica,
+  FiltrosAnalitica,
+  GranularidadSerie,
+  HorariosAnalitica,
+  MatrizSaboresAnalitica,
+  MetricaSabor,
+  MixAnalitica,
+  OpcionesAnalitica,
+  OrdenProductos,
+  OrdenClientesAnalitica,
+  ProductosAnalitica,
+  ResumenAnalitica,
+  ResumenGeneral,
+  SaboresAnalitica,
+  SerieAnalitica,
 } from '../types/models';
 
 // ─── Factory: crea instancia configurada ──────────────────────────────────────
@@ -31,10 +53,18 @@ export function createHttpClient(config: ApiConfig): AxiosInstance {
     headers: { 'Content-Type': 'application/json' },
   });
 
+  // Una escritura (cobrar, editar, borrar, egresos…) deja viejas las búsquedas guardadas por el cooldown
+  // (utils/consultas.ts): la siguiente búsqueda se pide de nuevo. También si falla: pudo haberse aplicado.
+  const esEscritura = (metodo?: string) => !!metodo && !['get', 'head', 'options'].includes(metodo.toLowerCase());
+
   // Interceptor: log errors
   http.interceptors.response.use(
-    (res) => res,
+    (res) => {
+      if (esEscritura(res.config?.method)) invalidarConsultas();
+      return res;
+    },
     (err) => {
+      if (esEscritura(err.config?.method)) invalidarConsultas();
       const msg = err.response?.data?.message || err.message || 'Error de red';
       console.error('[API]', err.config?.method?.toUpperCase(), err.config?.url, msg);
       return Promise.reject(err);
@@ -112,8 +142,21 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Facturas Ventas ────────────────────────────────────────────────
   const facturas = {
-    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string; metodo?: string; cuentaTransferenciaId?: number }) =>
-      http.get<{ data: FacturaVenta[]; total: number; page: number; limit: number; totalPages: number }>('/facturas-ventas', { params }).then((r) => r.data),
+    /**
+     * `limit: 0` (o sin limit, con from+to) = TODO el rango sin paginar. `cuentaTransferenciaId: -1` = sin cuenta.
+     * `conTransferencia` = solo ventas con dinero cobrado por QR/transferencia (mixtas y abonos QR incluidos).
+     * `cursor` = paginación por clave para traer un rango completo por tandas: 'inicio' y luego el `siguiente`
+     * de cada respuesta (null = no hay más). Úsalo con `traerPorCursor` (utils/paginas.ts).
+     */
+    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number; estado?: string; clienteNombre?: string; metodo?: string; cuentaTransferenciaId?: number; conTransferencia?: boolean; cursor?: string }) =>
+      http.get<PaginatedResponse<FacturaVenta>>('/facturas-ventas', { params }).then((r) => r.data),
+
+    /**
+     * CSV de TODAS las facturas del rango, generado por el servidor por tandas (sirve para rangos de años sin
+     * cargar nada en el celular). Devuelve el archivo como Blob.
+     */
+    exportarCsv: (params: { from: string; to: string; conTransferencia?: boolean; cuentaTransferenciaId?: number }) =>
+      http.get<Blob>('/facturas-ventas/export', { params, responseType: 'blob' }).then((r) => r.data),
 
     getDay: () =>
       http.get<FacturaVenta[]>('/facturas-ventas/dia').then((r) => arr<FacturaVenta>(r.data)),
@@ -136,7 +179,8 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Facturas Pagos (Gastos) ────────────────────────────────────────
   const pagos = {
-    getAll: (params?: { from?: string; to?: string; page?: number; limit?: number }) =>
+    /** Sin `limit` (o limit=0) devuelve TODOS los egresos del rango. */
+    getAll: (params?: FindFacturasPagosParams) =>
       http.get<PaginatedResponse<FacturaPago>>('/facturas-pagos', { params }).then((r) => r.data),
 
     getDay: () =>
@@ -154,8 +198,36 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Clientes ───────────────────────────────────────────────────────
   const clientes = {
-    getAll: () =>
-      http.get<Cliente[]>('/clientes').then((r) => arr<Cliente>(r.data)),
+    getAll: (params?: { page?: number; limit?: number; search?: string }) =>
+      http
+        .get<Cliente[] | PaginatedResponse<Cliente>>('/clientes', { params })
+        .then((r) => {
+          if (Array.isArray(r.data)) return r.data;
+          if (r.data && Array.isArray((r.data as any).data)) {
+            if (params?.page !== undefined || params?.limit !== undefined) {
+              return r.data as any;
+            }
+            return (r.data as any).data as Cliente[];
+          }
+          return [];
+        }),
+
+    getPage: (page: number, limit = 500, search?: string) =>
+      http
+        .get<PaginatedResponse<Cliente> | Cliente[]>('/clientes', { params: { page, limit, search } })
+        .then((r) => {
+          if (r.data && Array.isArray((r.data as any).data)) {
+            return r.data as PaginatedResponse<Cliente>;
+          }
+          const items = Array.isArray(r.data) ? r.data : [];
+          return {
+            data: items,
+            total: items.length,
+            page,
+            limit,
+            totalPages: Math.ceil(items.length / limit) || 1,
+          };
+        }),
 
     getByPhone: (telefono: string) =>
       http.get<Cliente>(`/clientes/${telefono}`).then((r) => r.data),
@@ -203,8 +275,8 @@ export function createApi(http: AxiosInstance) {
     delete: (telefono: string) =>
       http.delete(`/domiciliarios/${telefono}`).then((r) => r.data),
 
-    actualizarUbicacion: (latitud: number, longitud: number) =>
-      http.patch('/domiciliarios/me/ubicacion', { latitud, longitud }).then((r) => r.data),
+    actualizarUbicacion: (latitud: number, longitud: number, capturadaEn?: number) =>
+      http.patch('/domiciliarios/me/ubicacion', { latitud, longitud, capturadaEn }).then((r) => r.data),
   };
 
   // ─── Productos ──────────────────────────────────────────────────────
@@ -237,21 +309,15 @@ export function createApi(http: AxiosInstance) {
     deleteVariante: (varianteId: number) =>
       http.delete(`/productos/variantes/${varianteId}`).then((r) => r.data),
 
-    ajustarStockBebida: (varianteId: number, delta: number) =>
-      http.patch<ProductoVariante>(`/productos/variantes/${varianteId}/stock-bebida`, { delta }).then((r) => r.data),
-
-    // Configura categoría / umbral de alerta / nivel objetivo de una bebida.
-    configurarBebida: (
-      varianteId: number,
-      data: { categoriaBebida?: string | null; alertaBebida?: number | null; nivelObjetivoBebida?: number | null },
-    ) =>
-      http.patch<ProductoVariante>(`/productos/variantes/${varianteId}/config-bebida`, data).then((r) => r.data),
   };
 
   // ─── Pizza Sabores ──────────────────────────────────────────────────
   const pizzaSabores = {
-    getAll: () =>
-      http.get<PizzaSabor[]>('/pizza-sabores').then((r) => arr<PizzaSabor>(r.data)),
+    /** Sin `grupoId` trae los sabores de todos los grupos. */
+    getAll: (grupoId?: number) =>
+      http
+        .get<PizzaSabor[]>('/pizza-sabores', { params: grupoId != null ? { grupoId } : undefined })
+        .then((r) => arr<PizzaSabor>(r.data)),
 
     create: (data: Partial<PizzaSabor>) =>
       http.post<PizzaSabor>('/pizza-sabores', data).then((r) => r.data),
@@ -261,6 +327,21 @@ export function createApi(http: AxiosInstance) {
 
     delete: (id: number) =>
       http.delete(`/pizza-sabores/${id}`).then((r) => r.data),
+  };
+
+  // ─── Grupos de sabores ──────────────────────────────────────────────
+  const saborGrupos = {
+    getAll: () =>
+      http.get<SaborGrupo[]>('/sabor-grupos').then((r) => arr<SaborGrupo>(r.data)),
+
+    create: (data: GuardarSaborGrupoDto) =>
+      http.post<SaborGrupo>('/sabor-grupos', data).then((r) => r.data),
+
+    update: (id: number, data: Partial<GuardarSaborGrupoDto>) =>
+      http.patch<SaborGrupo>(`/sabor-grupos/${id}`, data).then((r) => r.data),
+
+    delete: (id: number) =>
+      http.delete(`/sabor-grupos/${id}`).then((r) => r.data),
   };
 
   // ─── Empresa ────────────────────────────────────────────────────────
@@ -288,33 +369,6 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Estadísticas ───────────────────────────────────────────────────
   const estadisticas = {
-    productosTop: (from: string, to: string, limit = 10) =>
-      http.get<ProductoTop[]>('/estadisticas/productos-top', { params: { from, to, limit } }).then((r) => arr<ProductoTop>(r.data)),
-
-    saboresTop: (from: string, to: string, limit = 10) =>
-      http.get<SaborTop[]>('/estadisticas/sabores-top', { params: { from, to, limit } }).then((r) => arr<SaborTop>(r.data)),
-
-    variantesTop: (from: string, to: string, limit = 10) =>
-      http.get<VarianteTop[]>('/estadisticas/variantes-top', { params: { from, to, limit } }).then((r) => arr<VarianteTop>(r.data)),
-
-    ventasPorHora: (fecha?: string, from?: string, to?: string) =>
-      http.get<VentaHora[]>('/estadisticas/ventas-por-hora', { params: { fecha, from, to } }).then((r) => arr<VentaHora>(r.data)),
-
-    ventasPorDia: (from: string, to: string) =>
-      http.get<VentaDia[]>('/estadisticas/ventas-por-dia', { params: { from, to } }).then((r) => arr<VentaDia>(r.data)),
-
-    metodosPago: (from: string, to: string) =>
-      http.get<MetodoPago[]>('/estadisticas/metodos-pago', { params: { from, to } }).then((r) => arr<MetodoPago>(r.data)),
-
-    resumenPeriodo: (from: string, to: string) =>
-      http.get<ResumenPeriodo>('/estadisticas/resumen-periodo', { params: { from, to } }).then((r) => r.data),
-
-    clientesFrecuentes: (limit = 10, from?: string, to?: string) =>
-      http.get<ClienteFrecuente[]>('/estadisticas/clientes-frecuentes', { params: { limit, from, to } }).then((r) => arr<ClienteFrecuente>(r.data)),
-
-    domiciliariosStats: (from: string, to: string) =>
-      http.get<any[]>('/estadisticas/domiciliarios', { params: { from, to } }).then((r) => arr<any>(r.data)),
-
     clienteHistorial: (telefono: string) =>
       http.get<ClienteHistorial>(`/estadisticas/cliente/${telefono}/historial`).then((r) => r.data),
   };
@@ -339,37 +393,47 @@ export function createApi(http: AxiosInstance) {
 
   // ─── Cierres de Caja ───────────────────────────────────────────────
   const cierres = {
-    ejecutar: (fecha: string, observaciones?: string) =>
-      http.post('/cierres', { fecha, observaciones }).then((r) => r.data),
+    /** `enviarEmail`: manda el reporte al REPORT_EMAIL (mismas secciones que la pantalla de cierre). */
+    ejecutar: (fecha: string, observaciones?: string, enviarEmail?: boolean) =>
+      http.post('/cierres', { fecha, observaciones, enviarEmail }).then((r) => r.data),
 
-    getHistory: () =>
-      http.get<any[]>('/cierres').then((r) => arr<any>(r.data)),
+    /** Todos los cierres (uno por día); `limit` opcional para solo los últimos. */
+    getHistory: (limit?: number) =>
+      http.get<any[]>('/cierres', { params: limit ? { limit } : undefined }).then((r) => arr<any>(r.data)),
 
     delete: (id: string | number) =>
       http.delete(`/cierres/${id}`).then((r) => r.data),
   };
 
-  // ─── Inventario Cajas ──────────────────────────────────────────────
-  const inventarioCajas = {
-    getEstado: () =>
-      http.get<InventarioCaja[]>('/inventario-cajas').then((r) => arr<InventarioCaja>(r.data)),
+  // ─── Inventario unificado (cajas + bebidas embotelladas) ──────────
+  const inventario = {
+    /** ¿Terminó la migración? Mientras no, el resto responde 503. */
+    estado: () => http.get<EstadoInventario>('/inventario/estado').then((r) => r.data),
 
-    crear: (data: CrearCajaDtoModel) =>
-      http.post<InventarioCaja>('/inventario-cajas', data).then((r) => r.data),
+    items: (params: { tipo?: TipoItemInventario; inactivos?: boolean } = {}) =>
+      http.get<InventarioItem[]>('/inventario/items', { params }).then((r) => arr<InventarioItem>(r.data)),
 
-    eliminar: (id: number) =>
-      http.delete(`/inventario-cajas/${id}`).then((r) => r.data),
+    crearItem: (data: CrearItemInventarioDto) => http.post<InventarioItem>('/inventario/items', data).then((r) => r.data),
 
-    ajustar: (id: number, data: AjustarCajasDtoModel) =>
-      http.post<InventarioCaja>(`/inventario-cajas/${id}/ajustar`, data).then((r) => r.data),
+    actualizarItem: (id: number, data: ActualizarItemInventarioDto) =>
+      http.patch<InventarioItem>(`/inventario/items/${id}`, data).then((r) => r.data),
 
-    // Configura umbral de alerta y/o nivel objetivo. Ambos opcionales: se
-    // envía solo lo que cambia.
-    configurar: (id: number, data: { alertaMinimo?: number; nivelObjetivo?: number }) =>
-      http.patch<InventarioCaja>(`/inventario-cajas/${id}/alerta`, data).then((r) => r.data),
+    /** entrada/salida: cantidad > 0 · ajuste: delta con signo · conteo: lo contado (fija el valor). */
+    mover: (id: number, data: { tipo: TipoMovimientoManual; cantidad: number; nota?: string }) =>
+      http.post<InventarioItem>(`/inventario/items/${id}/movimientos`, data).then((r) => r.data),
 
-    getMovimientos: (limit = 20) =>
-      http.get<InventarioCajasMovimientoModel[]>('/inventario-cajas/movimientos', { params: { limit } }).then((r) => arr<InventarioCajasMovimientoModel>(r.data)),
+    movimientos: (params: { itemId?: number; tipoItem?: TipoItemInventario; limit?: number; offset?: number } = {}) =>
+      http.get<MovimientosInventarioPagina>('/inventario/movimientos', { params }).then((r) => r.data),
+
+    reglas: (params: { itemId?: number; varianteId?: number } = {}) =>
+      http.get<InventarioRegla[]>('/inventario/reglas', { params }).then((r) => arr<InventarioRegla>(r.data)),
+
+    sugerencias: () =>
+      http.get<SugerenciaReglaCaja[]>('/inventario/reglas/sugerencias').then((r) => arr<SugerenciaReglaCaja>(r.data)),
+
+    guardarRegla: (data: GuardarReglaInventarioDto) => http.post<{ id: number }>('/inventario/reglas', data).then((r) => r.data),
+
+    eliminarRegla: (id: number) => http.delete(`/inventario/reglas/${id}`).then((r) => r.data),
   };
 
   const cajaDenominaciones = {
@@ -389,25 +453,53 @@ export function createApi(http: AxiosInstance) {
       http.post<CajaMovimiento>('/caja-movimientos/ajuste', { cajaOrigen: 'principal', ...data }).then((r) => r.data),
   };
 
-  const inventarioBebidas = {
-    findAll: () =>
-      http.get<import('../types/models').Ingrediente[]>('/inventario-bebidas').then((r) => r.data),
-    create: (dto: import('../types/models').CreateIngredienteDto) =>
-      http.post<import('../types/models').Ingrediente>('/inventario-bebidas', dto).then((r) => r.data),
-    update: (id: number, dto: Partial<import('../types/models').CreateIngredienteDto> & { activo?: boolean; rendimientoPorUnidad?: number; alertaMinimo?: number }) =>
-      http.patch<import('../types/models').Ingrediente>(`/inventario-bebidas/${id}`, dto).then((r) => r.data),
-    remove: (id: number) =>
-      http.delete(`/inventario-bebidas/${id}`).then((r) => r.data),
-    ajustar: (id: number, delta: number, descripcion?: string) =>
-      http.patch<import('../types/models').Ingrediente>(`/inventario-bebidas/${id}/ajustar`, { delta, descripcion }).then((r) => r.data),
-    getVinculos: () =>
-      http.get<import('../types/models').VarianteIngrediente[]>('/inventario-bebidas/vinculos/all').then((r) => r.data),
-    vincular: (dto: import('../types/models').VincularVarianteDto) =>
-      http.post<import('../types/models').VarianteIngrediente>('/inventario-bebidas/vinculos', dto).then((r) => r.data),
-    desvincular: (varianteId: number) =>
-      http.delete(`/inventario-bebidas/vinculos/${varianteId}`).then((r) => r.data),
-    getMovimientos: (limit = 20) =>
-      http.get<import('../types/models').BebidaMovimiento[]>('/inventario-bebidas/movimientos', { params: { limit } }).then((r) => r.data),
+  /**
+   * Query params de analítica: las listas viajan unidas por comas (?tipoPedido=mesa,domicilio)
+   * — es lo que entiende el DTO del backend sin depender del parser de query de Express.
+   */
+  const paramsAnalitica = (filtros: object) => {
+    const params: Record<string, string | number | boolean> = {};
+    for (const [clave, valor] of Object.entries(filtros)) {
+      if (valor == null || valor === '') continue;
+      if (Array.isArray(valor)) {
+        if (valor.length) params[clave] = valor.join(',');
+      } else if (typeof valor === 'string' || typeof valor === 'number' || typeof valor === 'boolean') {
+        params[clave] = valor;
+      }
+    }
+    return params;
+  };
+
+  const analitica = {
+    resumen: (filtros: FiltrosAnalitica) =>
+      http.get<ResumenAnalitica>('/estadisticas/analitica/resumen', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    productos: (
+      filtros: FiltrosAnalitica & { agrupar?: AgrupacionProductos; orden?: OrdenProductos; limit?: number; offset?: number; q?: string },
+    ) => http.get<ProductosAnalitica>('/estadisticas/analitica/productos', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    sabores: (filtros: FiltrosAnalitica & { metrica?: MetricaSabor; limit?: number }) =>
+      http.get<SaboresAnalitica>('/estadisticas/analitica/sabores', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    saboresMatriz: (filtros: FiltrosAnalitica & { metrica?: MetricaSabor }) =>
+      http.get<MatrizSaboresAnalitica>('/estadisticas/analitica/sabores/matriz', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    combinaciones: (filtros: FiltrosAnalitica & { limit?: number }) =>
+      http
+        .get<CombinacionesAnalitica>('/estadisticas/analitica/sabores/combinaciones', { params: paramsAnalitica(filtros) })
+        .then((r) => r.data),
+    serie: (filtros: FiltrosAnalitica & { granularidad?: GranularidadSerie }) =>
+      http.get<SerieAnalitica>('/estadisticas/analitica/serie', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    horarios: (filtros: FiltrosAnalitica) =>
+      http.get<HorariosAnalitica>('/estadisticas/analitica/horarios', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    mix: (filtros: FiltrosAnalitica) =>
+      http.get<MixAnalitica>('/estadisticas/analitica/mix', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    /** Paginado en el servidor: `limit`/`offset` y `orden`; `total` y `resumen` son de TODO el período. */
+    clientes: (filtros: FiltrosAnalitica & { limit?: number; offset?: number; orden?: OrdenClientesAnalitica; telefonos?: string[] }) =>
+      http.get<ClientesAnalitica>('/estadisticas/analitica/clientes', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    domiciliarios: (filtros: FiltrosAnalitica) =>
+      http.get<DomiciliariosAnalitica>('/estadisticas/analitica/domiciliarios', { params: paramsAnalitica(filtros) }).then((r) => r.data),
+    opciones: () => http.get<OpcionesAnalitica>('/estadisticas/analitica/opciones').then((r) => r.data),
+    calidadDatos: () => http.get<CalidadDatosAnalitica>('/estadisticas/analitica/calidad-datos').then((r) => r.data),
+    /** Resumen de dinero (ventas, gastos, balance). Para todo el staff, no solo analítica. */
+    resumenGeneral: (from: string, to: string) =>
+      http.get<ResumenGeneral>('/estadisticas/resumen', { params: { from, to } }).then((r) => r.data),
   };
 
   return {
@@ -421,11 +513,12 @@ export function createApi(http: AxiosInstance) {
     cierres,
     productos,
     pizzaSabores,
+    saborGrupos,
     estadisticas,
+    analitica,
     empresa,
-    inventarioCajas,
+    inventario,
     cajaDenominaciones,
-    inventarioBebidas,
     http,
   };
 }

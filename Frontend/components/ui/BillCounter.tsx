@@ -1,14 +1,12 @@
 /**
  * BillCounter — contador de billetes/monedas para denominaciones COP.
- * Usado en PaymentSelectionModal (billetes recibidos y cambio a entregar)
- * y en el formulario de gastos (facturas-pagos).
+ * Es una fila: la lista completa de denominaciones es `DenominacionCounter` (cobro, cambio, gastos y ajustes de caja).
  */
 import React from 'react';
 import { View, Text, TouchableOpacity } from '../../tw';
 import Icon from './Icon';
 import { formatCurrency } from '@/src/shared';
 
-export const COLOMBIAN_BILLS = [200000, 100000, 50000, 20000, 10000, 5000, 2000] as const;
 
 export interface BillCounterProps {
     bill: number;

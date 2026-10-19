@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useLoginForm } from '../../hooks/use-login-form';
 import {
     Platform,
     Keyboard,
@@ -10,11 +11,8 @@ import {
     ScrollView,
     Dimensions,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../../contexts/AuthContext';
-import { Icon } from '../../components/ui';
+import { Icon, AnimatedOrb } from '../../components/ui';
 import { View, Text } from '../../tw';
-import { useRouter } from 'expo-router';
 import {
     useSharedValue,
     useAnimatedStyle,
@@ -22,8 +20,6 @@ import {
     withSpring,
     withDelay,
     withSequence,
-    withRepeat,
-    Easing,
     interpolate,
     interpolateColor,
 } from 'react-native-reanimated';
@@ -32,51 +28,6 @@ import { Animated } from '../../tw/animated';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ── Orb decorativo animado ──────────────────────────────────────────────────
-function AnimatedOrb({ delay = 0, size = 200, color = '#F5A524', style }: any) {
-    const opacity = useSharedValue(0.15);
-    const scale = useSharedValue(1);
-
-    useEffect(() => {
-        opacity.value = withRepeat(
-            withSequence(
-                withTiming(0.25, { duration: 3000 + delay * 500 }),
-                withTiming(0.12, { duration: 3000 + delay * 500 }),
-            ),
-            -1,
-            true,
-        );
-        scale.value = withRepeat(
-            withSequence(
-                withTiming(1.08, { duration: 4000 + delay * 600, easing: Easing.inOut(Easing.sin) }),
-                withTiming(0.95, { duration: 4000 + delay * 600, easing: Easing.inOut(Easing.sin) }),
-            ),
-            -1,
-            true,
-        );
-    }, []);
-
-    const animStyle = useAnimatedStyle(() => ({
-        opacity: opacity.value,
-        transform: [{ scale: scale.value }],
-    }));
-
-    return (
-        <Animated.View
-            style={[
-                animStyle,
-                {
-                    position: 'absolute',
-                    width: size,
-                    height: size,
-                    borderRadius: size / 2,
-                    backgroundColor: color,
-                },
-                style,
-            ]}
-        />
-    );
-}
-
 // ── Input animado ──────────────────────────────────────────────────────────
 function AnimatedInput({
     label,
@@ -174,13 +125,6 @@ function AnimatedInput({
 
 // ── Pantalla principal ─────────────────────────────────────────────────────
 export default function LoginScreen() {
-    const { login } = useAuth();
-    const router = useRouter();
-    const [usuario, setUsuario] = useState('');
-    const [contrasena, setContrasena] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [recordar, setRecordar] = useState(false);
     const passRef = useRef<TextInput>(null);
 
     // Animaciones de entrada
@@ -198,21 +142,6 @@ export default function LoginScreen() {
         cardY.value = withDelay(350, withSpring(0, { damping: 16, stiffness: 90 }));
     }, []);
 
-    useEffect(() => {
-        const loadCreds = async () => {
-            try {
-                const stored = await AsyncStorage.getItem('@App:credenciales');
-                if (stored) {
-                    const { user, pass } = JSON.parse(stored);
-                    setUsuario(user);
-                    setContrasena(pass);
-                    setRecordar(true);
-                }
-            } catch {}
-        };
-        loadCreds();
-    }, []);
-
     const shake = () => {
         shakeX.value = withSequence(
             withTiming(-10, { duration: 60 }),
@@ -224,29 +153,8 @@ export default function LoginScreen() {
         );
     };
 
-    const handleLogin = async () => {
-        if (!usuario || !contrasena) {
-            setError('Por favor completa todos los campos');
-            shake();
-            return;
-        }
-        try {
-            setLoading(true);
-            setError('');
-            await login(usuario, contrasena);
-            if (recordar) {
-                await AsyncStorage.setItem('@App:credenciales', JSON.stringify({ user: usuario, pass: contrasena }));
-            } else {
-                await AsyncStorage.removeItem('@App:credenciales');
-            }
-            router.replace('/');
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Credenciales incorrectas o error de conexión');
-            shake();
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { usuario, setUsuario, contrasena, setContrasena, loading, error, recordar, setRecordar, handleLogin } =
+        useLoginForm(shake);
 
     // Estilos animados
     const logoStyle = useAnimatedStyle(() => ({

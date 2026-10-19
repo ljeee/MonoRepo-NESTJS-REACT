@@ -30,8 +30,9 @@ export class EmpresaController {
 	}
 
 	// ─── Cuentas Transferencia / QR ──────────────────────────────────────────────
+	/** Solo staff autenticado (antes público): el contador la lee en Contabilidad (ver ContadorGuard). */
 	@Get('cuentas-transferencia')
-	@Public()
+	@ApiBearerAuth()
 	@ApiOperation({summary: 'Listar cuentas de transferencia/QR'})
 	getCuentasTransferencia() {
 		return this.service.getCuentasTransferencia(true);

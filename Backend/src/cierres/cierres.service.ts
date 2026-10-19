@@ -3,11 +3,10 @@ import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {CierreCaja} from './esquemas/cierre.entity';
 import {EstadisticasService} from '../estadisticas/estadisticas.service';
+import {AnaliticaService} from '../estadisticas/analitica/analitica.service';
 import {MailService} from '../common/services/mail.service';
 import {ConfigService} from '@nestjs/config';
 import {EmpresaService} from '../empresa/empresa.service';
-import {Cron, CronExpression} from '@nestjs/schedule';
-import {getBogotaDateString} from '../common/utils/date.utils';
 
 @Injectable()
 export class CierresService {
@@ -17,6 +16,7 @@ export class CierresService {
 		@InjectRepository(CierreCaja)
 		private readonly cierreRepo: Repository<CierreCaja>,
 		private readonly statsService: EstadisticasService,
+		private readonly analiticaService: AnaliticaService,
 		private readonly mailService: MailService,
 		private readonly config: ConfigService,
 		private readonly empresaService: EmpresaService,
@@ -34,21 +34,25 @@ export class CierresService {
 			throw new BadRequestException(`Ya existe un cierre para la fecha ${fecha}`);
 		}
 
-		// Obtener resumen del periodo (un solo día)
-		const resumen = await this.statsService.resumenPeriodo(fecha, fecha);
-		const metodosPago = await this.statsService.metodosPago(fecha, fecha);
-		const productosTop = await this.statsService.productosTop(fecha, fecha, 5);
+		// Mismas cifras que ven las pantallas de dinero (balance del día, cierre de caja): las
+		// definiciones únicas de GET /estadisticas/resumen, no una suma aparte.
+		const resumen = await this.analiticaService.resumenGeneral(fecha, fecha);
+		const metodosPago = this.metodosDelCierre(resumen);
+		// Agrupado por producto + variante (antes por el texto completo, que fragmentaba por sabor).
+		const productosTop = await this.analiticaService.topProductosCierre(fecha, 5);
 		const facturas = await this.statsService.facturasDetalle(fecha, fecha);
 
 		const cierre = this.cierreRepo.create({
 			...(existing || {}),
 			fecha,
-			totalVentas: resumen.totalVentas,
-			totalEgresos: resumen.totalEgresos,
-			balanceNeto: resumen.balanceNeto,
-			totalFacturas: resumen.facturas,
-			totalOrdenes: resumen.ordenes + resumen.cancelados,
-			ticketPromedio: resumen.ticketPromedio,
+			totalVentas: resumen.ventas.facturado,
+			totalEgresos: resumen.gastos.total,
+			// Balance de caja (cobrado − gastos pagados): UNA sola definición en pantallas y correo.
+			balanceNeto: resumen.balance.cobrado,
+			resumen,
+			totalFacturas: resumen.ventas.facturas,
+			totalOrdenes: resumen.ventas.ordenes + resumen.ventas.canceladas,
+			ticketPromedio: resumen.ventas.ticket,
 			metodosPago,
 			productosTop,
 			observaciones: observations || (existing ? existing.observaciones : undefined),
@@ -79,20 +83,32 @@ export class CierresService {
 	}
 
 	/**
-	 * Tarea programada para el cierre automático a las 11:59 PM.
-	 * Esto asegura que recibas un solo correo al día con el consolidado final.
+	 * Detalle por método del cierre (lo lee mail.service y se guarda en `metodosPago`): lo COBRADO en
+	 * efectivo y por QR/transferencia (mixtas y abonos repartidos), el desglose por cuenta de
+	 * transferencia y lo que quedó por cobrar. Antes sumaba el total de cada factura al método de su
+	 * etiqueta aunque estuviera pendiente, y una mixta aparecía como un método aparte.
 	 */
-	@Cron('59 23 * * *')
-	async handleAutomaticDailyClosing() {
-		const hoy = getBogotaDateString();
-		this.logger.log(`Iniciando cierre automático programado para: ${hoy}`);
-
-		const systemId = '00000000-0000-0000-0000-000000000000';
-		try {
-			await this.generalCierre(hoy, systemId, 'Cierre automático programado de fin de día.', true, true);
-		} catch (error) {
-			this.logger.error(`Error en el cierre automático de ${hoy}:`, error);
-		}
+	private metodosDelCierre(resumen: Awaited<ReturnType<AnaliticaService['resumenGeneral']>>) {
+		const {ventas} = resumen;
+		const facturasDe = (clave: string) => ventas.porMetodo.find((m) => m.clave === clave)?.facturas ?? 0;
+		const pendientes = ventas.porEstado
+			.filter((e) => e.clave === 'pendiente' || e.clave === 'parcial')
+			.reduce((t, e) => t + e.facturas, 0);
+		const filas = [
+			{metodo: 'efectivo', cantidad: facturasDe('efectivo') + facturasDe('mixto'), total: ventas.cobradoPorMetodo.efectivo, porCuenta: []},
+			{
+				metodo: 'transferencia',
+				cantidad: facturasDe('transferencia') + facturasDe('mixto'),
+				total: ventas.cobradoPorMetodo.transferencia,
+				porCuenta: ventas.porCuenta.map((c) => ({cuentaNombre: c.cuenta, cantidad: c.facturas, total: c.monto})),
+			},
+			{metodo: 'por_cobrar', cantidad: pendientes, total: ventas.porCobrar, porCuenta: []},
+		].filter((f) => f.total > 0);
+		const cobrado = ventas.cobradoPorMetodo.efectivo + ventas.cobradoPorMetodo.transferencia;
+		return filas.map((f) => ({
+			...f,
+			porcentaje: f.metodo !== 'por_cobrar' && cobrado > 0 ? Math.round((f.total / cobrado) * 100) : 0,
+		}));
 	}
 
 	async updateCierreIfExists(fecha: string) {
@@ -106,8 +122,9 @@ export class CierresService {
 		return null;
 	}
 
-	async getHistory() {
-		return this.cierreRepo.find({order: {fecha: 'DESC'}, take: 30});
+	/** Todos los cierres (uno por día); `limite` > 0 devuelve solo los más recientes. */
+	async getHistory(limite?: number) {
+		return this.cierreRepo.find({order: {fecha: 'DESC'}, ...(limite && limite > 0 ? {take: limite} : {})});
 	}
 
 	async deleteCierre(id: string) {

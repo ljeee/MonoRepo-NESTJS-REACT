@@ -1,16 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { Platform, TouchableOpacity } from 'react-native';
 import { ScrollView, View, Text, TextInput } from '../../tw';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Animated } from '../../tw/animated';
-import { FadeInUp, FadeInRight, FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { Easing, useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence, withSpring, withDelay } from 'react-native-reanimated';
+import { FadeInUp, FadeInRight, FadeInDown } from 'react-native-reanimated';
 import { api } from '../../services/api';
-import { useToast } from '@/src/shared';
-import { Icon, PageContainer, PageHeader, Card, Button } from '../../components/ui';
+import { useToast, isCobrada, formatCurrency } from '@/src/shared';
+import { Icon, PageContainer, PageHeader, Card, Button, AnimatedOrb, IconButton, LoadingState } from '../../components/ui';
 import { ErrorState } from '../../components/states/ErrorState';
 import MenuPicker from '../../components/orderForm/MenuPicker';
-import type { Producto, ProductoVariante } from '@/src/shared';
+import type { Producto, ProductoVariante, OrdenProductoSaborDetalle } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -21,6 +20,8 @@ interface ProductoEdit {
     tipo: string;       // nombre legible para display (puede incluir sabores embebidos)
     cantidad: number;
     precioUnitario: number;
+    /** Precio fijado a mano por el cajero: se reenvía al guardar para que el backend no lo recalcule */
+    precioManual?: boolean;
     sabores?: string[];
     base?: 'leche' | 'agua';  // base de jugo, para re-enviar al backend
     tamano?: string;
@@ -40,57 +41,6 @@ interface OrdenInfo {
 
 let _counter = 0;
 function nextId() { return `ep-${++_counter}-${Date.now()}`; }
-
-function formatCOP(n: number) {
-    return n.toLocaleString('es-CO');
-}
-
-// ── Animated Decorative Component ───────────────────────────────────────────
-function AnimatedOrb({ delay = 0, size = 200, color = '#F5A524', style }: any) {
-    const opacity = useSharedValue(0.15);
-    const scale = useSharedValue(1);
-
-    useEffect(() => {
-        opacity.value = withRepeat(
-            withSequence(
-                withTiming(0.25, { duration: 3000 + delay * 500 }),
-                withTiming(0.12, { duration: 3000 + delay * 500 }),
-            ),
-            -1,
-            true,
-        );
-        scale.value = withRepeat(
-            withSequence(
-                withTiming(1.08, { duration: 4000 + delay * 600, easing: Easing.inOut(Easing.sin) }),
-                withTiming(0.95, { duration: 4000 + delay * 600, easing: Easing.inOut(Easing.sin) }),
-            ),
-            -1,
-            true,
-        );
-    }, []);
-
-    const animStyle = useAnimatedStyle(() => ({
-        opacity: opacity.value,
-        transform: [{ scale: scale.value }],
-    }));
-
-    return (
-        <Animated.View
-            style={[
-                animStyle,
-                {
-                    position: 'absolute',
-                    width: size,
-                    height: size,
-                    borderRadius: size / 2,
-                    backgroundColor: color,
-                    zIndex: -1,
-                },
-                style,
-            ]}
-        />
-    );
-}
 
 // ─── ProductRow ───────────────────────────────────────────────────────────────
 
@@ -116,7 +66,7 @@ function ProductRow({ item, index, onRemove, onQtyChange, isPaid }: {
                         </Text>
                     )}
                     <Text className="font-black text-(--color-pos-primary) text-[12px] mt-1" style={{ fontFamily: 'Space Grotesk' }}>
-                        ${formatCOP(subtotal)}
+                        ${formatCurrency(subtotal)}
                     </Text>
                 </View>
 
@@ -181,9 +131,7 @@ function AddProductPanel({ onAdd, onClose }: { onAdd: (p: ProductoEdit) => void;
                     <Text className="font-black text-white text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>
                         Añadir Producto
                     </Text>
-                    <TouchableOpacity onPress={onClose} className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center">
-                        <Icon name="close" size={20} color="#94A3B8" />
-                    </TouchableOpacity>
+                    <IconButton icon="close" accessibilityLabel="Cerrar" onPress={onClose} />
                 </View>
                 <ScrollView 
                     contentContainerClassName="p-4" 
@@ -232,12 +180,23 @@ export default function EditarOrdenScreen() {
                     ? (baseMatch[1].toLowerCase() as 'leche' | 'agua')
                     : undefined;
 
-                // Extraer sabores — en el paréntesis que queda tras quitar la base
-                const textSinBase = productoStr.replace(/\s*\((leche|agua)\)\s*$/i, '').trim();
-                const saboresMatch = textSinBase.match(/\(([^)]+)\)\s*$/);
-                const sabores = saboresMatch
-                    ? saboresMatch[1].split(/\s*\+\s*/).map((s: string) => s.trim()).filter(Boolean)
-                    : [];
+                // Sabores: el detalle estructurado (saboresDetalle) manda, en el orden en que se
+                // pidieron. Las líneas del histórico sin detalle caen al texto: el paréntesis que
+                // queda tras quitar la base.
+                const saboresDetalle: OrdenProductoSaborDetalle[] = Array.isArray(p.saboresDetalle) ? p.saboresDetalle : [];
+                let sabores: string[];
+                if (saboresDetalle.length > 0) {
+                    sabores = [...saboresDetalle]
+                        .sort((a, b) => a.posicion - b.posicion)
+                        .map((s) => s.saborNombre)
+                        .filter(Boolean);
+                } else {
+                    const textSinBase = productoStr.replace(/\s*\((leche|agua)\)\s*$/i, '').trim();
+                    const saboresMatch = textSinBase.match(/\(([^)]+)\)\s*$/);
+                    sabores = saboresMatch
+                        ? saboresMatch[1].split(/\s*\+\s*/).map((s: string) => s.trim()).filter(Boolean)
+                        : [];
+                }
 
                 return {
                     _clientId: nextId(),
@@ -245,6 +204,7 @@ export default function EditarOrdenScreen() {
                     tipo: productoStr,
                     cantidad: p.cantidad || 1,
                     precioUnitario: p.precioUnitario ?? p.variante?.precio ?? p.productoObj?.precio ?? 0,
+                    precioManual: p.precioManual === true,
                     sabores,
                     base,
                 };
@@ -253,7 +213,8 @@ export default function EditarOrdenScreen() {
         }).catch(() => setError('Error al cargar la orden')).finally(() => setLoadingOrden(false));
     }, [ordenId]);
 
-    const isPaid = (orden?.factura?.estado || '').toLowerCase() === 'pagada';
+    // 'pagado' es el estado actual; 'pagada' el histórico (antes solo se miraba este)
+    const isPaid = isCobrada(orden?.factura);
     const isDomicilio = orden?.tipoPedido?.toLowerCase() === 'domicilio';
     const costoDom = isDomicilio ? Number(costoDomicilio || 0) : 0;
     const subtotal = products.reduce((s: number, p: ProductoEdit) => s + p.precioUnitario * p.cantidad, 0);
@@ -288,6 +249,10 @@ export default function EditarOrdenScreen() {
                             sabor2: p.sabores?.[1],
                             sabor3: p.sabores?.[2],
                             base: p.base ?? undefined,
+                            // Solo el precio pactado a mano: sin él el backend recalcula la línea
+                            // a precio de lista y el descuento se perdía al editar. Las demás
+                            // líneas no lo envían para que se apliquen los recargos vigentes.
+                            ...(p.precioManual ? { precioUnitario: Number(p.precioUnitario) } : {}),
                         };
                     }) as any,
             });
@@ -304,8 +269,7 @@ export default function EditarOrdenScreen() {
     if (loadingOrden) {
         return (
             <PageContainer className="items-center justify-center">
-                <ActivityIndicator size="large" color="#F5A524" />
-                <Text className="text-slate-500 font-bold mt-4">Cargando orden...</Text>
+                <LoadingState message="Cargando orden..." padded={false} />
             </PageContainer>
         );
     }
@@ -324,10 +288,10 @@ export default function EditarOrdenScreen() {
     return (
         <PageContainer scrollable={false} className="bg-(--color-pos-bg)">
             {/* Orbs de fondo */}
-            <AnimatedOrb size={400} color="#F5A524" delay={0} style={{ top: -100, right: -100 }} />
-            <AnimatedOrb size={300} color="#8B5CF6" delay={1} style={{ bottom: -50, left: -100 }} />
+            <AnimatedOrb size={400} color="#F5A524" delay={0} style={{ top: -100, right: -100, zIndex: -1 }} />
+            <AnimatedOrb size={300} color="#8B5CF6" delay={1} style={{ bottom: -50, left: -100, zIndex: -1 }} />
 
-            <View className={`px-4 pt-4 ${!isMobile ? 'px-8' : ''}`}>
+            <View className="pt-1">
                <Animated.View entering={FadeInDown.springify()}>
                    <PageHeader 
                        title={`Editar Orden #${orden.ordenId}`}
@@ -378,7 +342,7 @@ export default function EditarOrdenScreen() {
             <ScrollView 
                 showsVerticalScrollIndicator={false} 
                 className="flex-1 px-4"
-                contentContainerClassName={`pb-20 ${!isMobile ? 'px-4' : ''}`}
+                contentContainerClassName="pb-20"
                 keyboardShouldPersistTaps="handled"
             >
                 <View className="max-w-4xl mx-auto w-full">
@@ -481,7 +445,7 @@ export default function EditarOrdenScreen() {
                                     <View className="gap-y-4">
                                         <View className="flex-row justify-between">
                                             <Text className="font-bold text-slate-400 text-sm">Productos</Text>
-                                            <Text className="font-black text-white text-sm" style={{ fontFamily: 'Space Grotesk' }}>${formatCOP(subtotal)}</Text>
+                                            <Text className="font-black text-white text-sm" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(subtotal)}</Text>
                                         </View>
                                         {isDomicilio && (
                                             <View className="flex-row justify-between items-center my-1">
@@ -503,7 +467,7 @@ export default function EditarOrdenScreen() {
                                                     </View>
                                                 ) : (
                                                     <Text className="font-black text-emerald-500 text-sm" style={{ fontFamily: 'Space Grotesk' }}>
-                                                        +${formatCOP(costoDom)}
+                                                        +${formatCurrency(costoDom)}
                                                     </Text>
                                                 )}
                                             </View>
@@ -513,7 +477,7 @@ export default function EditarOrdenScreen() {
                                             <Text className="font-black text-white text-lg uppercase tracking-wider" style={{ fontFamily: 'Space Grotesk' }}>Total</Text>
                                             <View className="items-end">
                                                 <Text className="font-black text-(--color-pos-primary) text-2xl sm:text-4xl" style={{ fontFamily: 'Space Grotesk' }}>
-                                                    ${formatCOP(total)}
+                                                    ${formatCurrency(total)}
                                                 </Text>
                                             </View>
                                         </View>

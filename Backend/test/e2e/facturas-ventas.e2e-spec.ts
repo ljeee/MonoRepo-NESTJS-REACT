@@ -71,6 +71,19 @@ describe('FacturasVentasController (e2e)', () => {
 			);
 		});
 
+		it('limit=0 (todo el rango) y conTransferencia llegan al servicio; el tope de 1 año sigue valiendo', async () => {
+			mockService.findAll.mockResolvedValue({data: [], total: 0, page: 1, limit: 0, totalPages: 1});
+
+			await request(app.getHttpServer())
+				.get('/facturas-ventas?from=2025-01-01&to=2025-12-31&limit=0&conTransferencia=true&cuentaTransferenciaId=-1')
+				.expect(200);
+
+			expect(mockService.findAll).toHaveBeenCalledWith(
+				expect.objectContaining({limit: 0, conTransferencia: true, cuentaTransferenciaId: -1}),
+			);
+			await request(app.getHttpServer()).get('/facturas-ventas?from=2023-01-01&to=2025-01-01&limit=0').expect(400);
+		});
+
 		it('retorna 400 si el rango de fechas excede 365 días', async () => {
 			await request(app.getHttpServer()).get('/facturas-ventas?from=2023-01-01&to=2025-01-01').expect(400);
 		});

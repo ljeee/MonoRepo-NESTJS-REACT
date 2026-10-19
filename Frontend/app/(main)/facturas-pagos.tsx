@@ -1,12 +1,13 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, TextInput as RNTextInput } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+
 import { useFocusEffect } from 'expo-router';
 import { Text, TouchableOpacity, View } from '../../tw';
 import { EmptyState } from '../../components/states/EmptyState';
 import { ErrorState } from '../../components/states/ErrorState';
 import { useFacturasPagosScreen, todayISO, useApi } from '@/src/shared';
 import type { CajaResumen, DenominacionesMap } from '@/src/shared';
-import { formatCurrency } from '@/src/shared';
+import { formatCurrency, sumDenominaciones, CATEGORIAS_GASTO, TIPO_GASTO_META, nombreCategoria, tipoDeGasto } from '@/src/shared';
+import { ChipGroup, DateRangeFilter, CardGrid } from '../../components/ui';
 import { getLocalDateString } from '../../src/shared/utils/dateRange';
 import { useBreakpoint } from '../../styles/responsive';
 import PageContainer from '../../components/ui/PageContainer';
@@ -18,8 +19,16 @@ import Icon from '../../components/ui/Icon';
 import Badge from '../../components/ui/Badge';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import { ListSkeleton } from '../../components/ui/SkeletonLoader';
-import { BillCounter, COLOMBIAN_BILLS } from '../../components/ui/BillCounter';
+import { Paginator } from '../../components/ui/Paginator';
+import { ArqueoSwitch } from '../../components/ui/ArqueoSwitch';
+import { useArqueoActivo, aperturaVigente } from '../../hooks/use-arqueo';
+import { useCuentasTransferencia } from '../../hooks/use-cuentas-transferencia';
+import { BILLETES_COP } from '@/src/shared';
+import { DenominacionCounter } from '../../components/ui/DenominacionCounter';
+import { ConteoCajaGrid, EstadoCajaLista } from '../../components/ui/ConteoCaja';
 import CajaMovimientosWidget from '../../components/ui/CajaMovimientosWidget';
+import { PosRefreshControl } from '../../components/ui/PosRefreshControl';
+import { GastoCard } from '../../components/facturas/GastoCard';
 
 export default function FacturasPagosScreen() {
   const { isMobile } = useBreakpoint();
@@ -27,7 +36,7 @@ export default function FacturasPagosScreen() {
 
   // ── Arqueo Caja de Gastos (backend-driven) ──────────────────────────────────
   const dateKey = getLocalDateString();
-  const EMPTY_BILLS = Object.fromEntries(COLOMBIAN_BILLS.map((b) => [String(b), 0])) as Record<string, number>;
+  const EMPTY_BILLS = Object.fromEntries(BILLETES_COP.map((b) => [String(b), 0])) as Record<string, number>;
 
   const [billCountsGastos, setBillCountsGastos] = useState<Record<string, number>>(EMPTY_BILLS);
   const [monedasGastos, setMonedasGastos]     = useState('');
@@ -35,16 +44,27 @@ export default function FacturasPagosScreen() {
   const [cajaResumenGastos, setCajaResumenGastos] = useState<CajaResumen | null>(null);
   const [confirmandoApertura, setConfirmandoApertura] = useState(false);
   const [aperturaError, setAperturaError] = useState<string | null>(null);
+  const { arqueoActivo, arqueoDesde } = useArqueoActivo();
+  const [reArqueando, setReArqueando] = useState(false);
 
   // ── Historial de gastos ─────────────────────────────────────────────────────
   const GASTOS_PAGE_SIZE = 15;
   const [showHistorial, setShowHistorial] = useState(false);
   const [historialPage, setHistorialPage] = useState(0);
 
-  const aperturaConfirmada = (cajaResumenGastos?.movimientos ?? []).some((m) => m.tipo === 'apertura');
-  const baseGastos = (cajaResumenGastos?.movimientos ?? [])
-    .filter((m) => m.tipo === 'apertura')
-    .reduce((sum, m) => sum + (Number(m.total) || 0), 0);
+  // Cuenta como arqueada solo con un conteo posterior al último encendido del arqueo.
+  const aperturaConfirmada = !!aperturaVigente(cajaResumenGastos?.movimientos, arqueoDesde);
+  // Recién reactivado y sin conteo nuevo: abrir el formulario para que se cuente a mano.
+  const conteoPendientePorReactivacion = arqueoActivo && !!arqueoDesde && !aperturaConfirmada && cajaResumenGastos !== null;
+  useEffect(() => {
+    if (conteoPendientePorReactivacion) setIsArqueoCollapsed(false);
+  }, [conteoPendientePorReactivacion]);
+  // El saldo parte del ÚLTIMO arqueo del día (igual que el backend): un conteo nuevo reemplaza al anterior.
+  const movimientosGastos = cajaResumenGastos?.movimientos ?? [];
+  const idxUltimoArqueo = movimientosGastos.map((m) => m.tipo).lastIndexOf('apertura');
+  const desdeArqueo = idxUltimoArqueo >= 0 ? movimientosGastos.slice(idxUltimoArqueo) : movimientosGastos;
+  const baseGastos = idxUltimoArqueo >= 0 ? Number(movimientosGastos[idxUltimoArqueo].total) || 0 : 0;
+  const salidasDesdeArqueo = desdeArqueo.filter((m) => m.tipo === 'salida').reduce((sum, m) => sum + (Number(m.total) || 0), 0);
 
   const fetchCajaResumenGastos = useCallback(async () => {
     try {
@@ -73,8 +93,9 @@ export default function FacturasPagosScreen() {
         setAperturaError('Ingresa al menos un billete o monto en monedas.');
         return;
       }
-      await api.cajaDenominaciones.apertura(denomMap, 'Apertura caja gastos', 'gastos');
+      await api.cajaDenominaciones.apertura(denomMap, aperturaConfirmada ? 'Arqueo caja gastos (nuevo conteo)' : 'Apertura caja gastos', 'gastos');
       await fetchCajaResumenGastos();
+      setReArqueando(false);
       setIsArqueoCollapsed(true);
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'Error al confirmar apertura';
@@ -82,7 +103,7 @@ export default function FacturasPagosScreen() {
     } finally {
       setConfirmandoApertura(false);
     }
-  }, [api, billCountsGastos, monedasGastos, fetchCajaResumenGastos]);
+  }, [api, billCountsGastos, monedasGastos, fetchCajaResumenGastos, aperturaConfirmada]);
 
   const handleUpdateBillGastos = (bill: string, count: number) => {
     setBillCountsGastos((prev) => ({ ...prev, [bill]: count }));
@@ -123,6 +144,12 @@ export default function FacturasPagosScreen() {
     setFechaFactura,
     metodo,
     setMetodo,
+    cuentaOrigenId,
+    setCuentaOrigenId,
+    categoria,
+    setCategoria,
+    tipoGasto,
+    setTipoGasto,
     denominaciones,
     setDenominaciones,
     monedas,
@@ -139,20 +166,21 @@ export default function FacturasPagosScreen() {
     onSubmit,
     onEdit,
     onDelete,
-    handleSearchRange,
     displayData,
     displayLoading,
     displayError,
   } = useFacturasPagosScreen();
 
+  // Cuentas de las que puede salir un pago QR: las activas, más la que ya tenía un egreso en edición.
+  const { cuentas: todasCuentas } = useCuentasTransferencia({ incluirInactivas: true });
+  const cuentasOrigen = useMemo(() => todasCuentas.filter((c) => c.activa || c.id === cuentaOrigenId), [todasCuentas, cuentaOrigenId]);
+
   return (
     <PageContainer
       refreshControl={
-        <RefreshControl
+        <PosRefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#F5A524"
-          colors={["#F5A524"]}
         />
       }
     >
@@ -187,13 +215,12 @@ export default function FacturasPagosScreen() {
       {/* ── Arqueo Caja de Gastos ─────────────────────────────────────────── */}
       {(() => {
         // Gastos en efectivo del día = total salidas registradas en caja gastos
-        const gastosEfectivo = cajaResumenGastos?.totalSalidas ?? 0;
+        const gastosEfectivo = salidasDesdeArqueo;
 
         // Antes de apertura: conteo desde inputs locales. Después: estado vivo del backend.
         const conteoFisico = aperturaConfirmada
           ? (cajaResumenGastos?.totalEfectivo ?? 0)
-          : COLOMBIAN_BILLS.reduce((sum, b) => sum + (billCountsGastos[String(b)] ?? 0) * b, 0) +
-            (Number(monedasGastos) || 0);
+          : sumDenominaciones(billCountsGastos, monedasGastos);
 
         const efectivoEsperado = baseGastos - gastosEfectivo;
 
@@ -208,9 +235,27 @@ export default function FacturasPagosScreen() {
         const diferenciaVariant: 'success' | 'warning' | 'danger' =
           diferencia === 0 ? 'success' : diferencia > 0 ? 'warning' : 'danger';
 
+        if (!arqueoActivo) {
+          return (
+            <Card className="mb-6 overflow-hidden border border-white/5 bg-slate-900/60 p-6 rounded-[28px]">
+              <ArqueoSwitch />
+              <View className="flex-row items-center gap-2 mb-1">
+                <Icon name="cash-lock-open" size={18} color="#94A3B8" />
+                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 }}>
+                  Caja de gastos sin arqueo
+                </Text>
+              </View>
+              <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11 }}>
+                Los gastos en efectivo se registran sin contar billetes ni validar contra el conteo.
+              </Text>
+            </Card>
+          );
+        }
+
         return (
           <>
           <Card className="mb-6 overflow-hidden border border-white/5 bg-slate-900/60 p-6 rounded-[28px] shadow-xl">
+            <ArqueoSwitch />
             {/* Cabecera */}
             <View className="flex-row justify-between items-center mb-4 flex-wrap gap-2 border-b border-white/5 pb-4">
               <View className="flex-row items-center gap-2">
@@ -296,7 +341,7 @@ export default function FacturasPagosScreen() {
                   />
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={{ fontFamily: 'Outfit', color: aperturaConfirmada ? '#10B981' : '#E2E8F0', fontSize: 14, fontWeight: 'bold' }} numberOfLines={1} ellipsizeMode="tail">
-                      Arqueo de Apertura (Gastos)
+                      Arqueo de caja (Gastos)
                     </Text>
                     <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11 }} numberOfLines={1} ellipsizeMode="tail">
                       {aperturaConfirmada
@@ -316,7 +361,7 @@ export default function FacturasPagosScreen() {
 
               {/* Contenido desplegable (Gastos) */}
               {!isArqueoCollapsed && (
-                aperturaConfirmada ? (
+                aperturaConfirmada && !reArqueando ? (
                   /* ── Live state: from backend cajaResumenGastos ── */
                   <View className="mt-2 bg-emerald-500/5 border border-emerald-500/15 p-4 rounded-2xl">
                     <View className="flex-row items-center gap-2 mb-4">
@@ -326,43 +371,7 @@ export default function FacturasPagosScreen() {
                       </Text>
                     </View>
 
-                    <View className="gap-1.5">
-                      {/* Billetes */}
-                      {COLOMBIAN_BILLS.map((den) => {
-                        const qty = cajaResumenGastos?.estadoActual?.[String(den)] ?? 0;
-                        if (qty === 0) return null;
-                        return (
-                          <View key={den} className="flex-row items-center justify-between px-3 py-2 rounded-xl bg-white/[0.03]">
-                            <View className="flex-row items-center gap-2">
-                              <View className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                              <Text className="text-sm text-slate-300 w-20">${formatCurrency(den)}</Text>
-                            </View>
-                            <View className="flex-row items-center gap-3">
-                              <Text className="text-slate-500 text-xs">×{qty}</Text>
-                              <Text className="text-sm text-emerald-400 font-bold w-24 text-right">${formatCurrency(qty * den)}</Text>
-                            </View>
-                          </View>
-                        );
-                      })}
-
-                      {/* Monedas */}
-                      {(cajaResumenGastos?.estadoActual?.['coins'] ?? 0) > 0 && (
-                        <View className="flex-row items-center justify-between px-3 py-2 rounded-xl bg-yellow-500/5 border border-yellow-500/10">
-                          <View className="flex-row items-center gap-2">
-                            <View className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-                            <Text className="text-sm text-slate-300 w-20">Monedas</Text>
-                          </View>
-                          <View className="flex-row items-center gap-3">
-                            <Text className="text-slate-500 text-xs">total</Text>
-                            <Text className="text-sm text-yellow-400 font-bold w-24 text-right">${formatCurrency(cajaResumenGastos!.estadoActual!['coins'])}</Text>
-                          </View>
-                        </View>
-                      )}
-
-                      {(!cajaResumenGastos?.estadoActual || Object.values(cajaResumenGastos.estadoActual).every(v => (v ?? 0) <= 0)) && (
-                        <Text className="text-slate-600 text-xs text-center py-2">Sin denominaciones en caja</Text>
-                      )}
-                    </View>
+                    <EstadoCajaLista estado={cajaResumenGastos?.estadoActual} />
 
                     <View className="flex-row justify-between items-center mt-4 pt-3 border-t border-white/5 flex-wrap gap-2">
                       <View>
@@ -376,12 +385,20 @@ export default function FacturasPagosScreen() {
                           Apertura: ${formatCurrency(baseGastos)} • Salidas: ${formatCurrency(cajaResumenGastos?.totalSalidas ?? 0)}
                         </Text>
                       </View>
+                      <View className="flex-row gap-2">
+                      <TouchableOpacity
+                        onPress={() => setReArqueando(true)}
+                        className="px-3 py-2 bg-amber-500/10 active:bg-amber-500/20 rounded-xl border border-amber-500/25"
+                      >
+                        <Text className="uppercase text-[11px]" style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524' }}>Nuevo arqueo</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => setIsArqueoCollapsed(true)}
                         className="px-3 py-2 bg-white/5 active:bg-white/10 rounded-xl border border-white/10"
                       >
                         <Text className="uppercase text-[11px]" style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8' }}>Cerrar</Text>
                       </TouchableOpacity>
+                    </View>
                     </View>
                   </View>
                 ) : (
@@ -394,52 +411,12 @@ export default function FacturasPagosScreen() {
                       </Text>
                     </View>
                     
-                    <View className="flex-row flex-wrap gap-2.5">
-                      {COLOMBIAN_BILLS.map((den) => {
-                        const qty = billCountsGastos[String(den)] || 0;
-                        const subtotal = qty * den;
-                        return (
-                          <View key={den} className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
-                            <View className="flex-row justify-between items-center mb-1">
-                              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 11 }}>${den >= 1000 ? `${den/1000}K` : den}</Text>
-                              <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>x {den >= 1000 ? `${den/1000}k` : '1'}</Text>
-                            </View>
-                            <RNTextInput
-                              className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
-                              placeholder="0"
-                              placeholderTextColor="#475569"
-                              keyboardType="numeric"
-                              value={qty ? qty.toString() : ''}
-                              onChangeText={(val) => {
-                                const v = Number(val.replace(/[^0-9]/g, '')) || 0;
-                                handleUpdateBillGastos(String(den), v);
-                              }}
-                            />
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                              ${formatCurrency(subtotal)}
-                            </Text>
-                          </View>
-                        );
-                      })}
-
-                      <View className="w-[48%] md:w-[23%] bg-white/[0.02] border border-white/5 rounded-xl p-2.5">
-                        <View className="flex-row justify-between items-center mb-1">
-                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 11 }}>Monedas</Text>
-                          <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#64748B', fontSize: 9 }}>Monto total</Text>
-                        </View>
-                        <RNTextInput
-                          className="text-white bg-white/5 border border-white/10 rounded-lg text-center font-bold text-sm h-8 p-0"
-                          placeholder="0"
-                          placeholderTextColor="#475569"
-                          keyboardType="numeric"
-                          value={monedasGastos}
-                          onChangeText={(val) => setMonedasGastos(val.replace(/[^0-9]/g, ''))}
-                        />
-                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 9, textAlign: 'right', marginTop: 4 }}>
-                          ${formatCurrency(Number(monedasGastos) || 0)}
-                        </Text>
-                      </View>
-                    </View>
+                    <ConteoCajaGrid
+                      value={{ ...billCountsGastos, coins: Number(monedasGastos) || 0 }}
+                      onChangeValue={(clave, cantidad) =>
+                        clave === 'coins' ? setMonedasGastos(cantidad ? String(cantidad) : '') : handleUpdateBillGastos(clave, cantidad)
+                      }
+                    />
 
                     {aperturaError && (
                       <View className="flex-row items-center gap-2 mt-3 p-3 bg-red-500/10 rounded-xl border border-red-500/20">
@@ -467,8 +444,13 @@ export default function FacturasPagosScreen() {
                         <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 12 }}>
                           Arqueado: <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC' }}>${formatCurrency(conteoFisico)}</Text>
                         </Text>
+                        {reArqueando && (
+                          <TouchableOpacity onPress={() => setReArqueando(false)} className="px-3 py-2 bg-white/5 rounded-xl border border-white/10">
+                            <Text className="uppercase text-[11px]" style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8' }}>Cancelar</Text>
+                          </TouchableOpacity>
+                        )}
                         <Button
-                          title={confirmandoApertura ? 'Confirmando...' : 'Confirmar Apertura'}
+                          title={confirmandoApertura ? 'Confirmando...' : aperturaConfirmada ? 'Confirmar nuevo arqueo' : 'Confirmar arqueo'}
                           icon="check-circle-outline"
                           variant="primary"
                           size="sm"
@@ -554,7 +536,46 @@ export default function FacturasPagosScreen() {
                   </TouchableOpacity>
                 ))}
               </View>
+              {metodo === 'qr' && (
+                <View className="mt-4">
+                  <Text className="text-[10px] font-black text-slate-400 mb-3 ml-1 uppercase tracking-widest">Sale de la cuenta *</Text>
+                  <ChipGroup
+                    options={cuentasOrigen.map((c) => ({ value: c.id, label: c.activa ? c.nombre : `${c.nombre} (inactiva)`, icon: 'bank-outline' as const }))}
+                    value={cuentaOrigenId}
+                    onChange={(v) => setCuentaOrigenId(v ?? null)}
+                    color="#A78BFA"
+                  />
+                  {cuentasOrigen.length === 0 && (
+                    <Text className="text-[10px] text-red-400 mt-2 ml-1">No hay cuentas de transferencia activas: créalas en Ajustes del negocio.</Text>
+                  )}
+                </View>
+              )}
             </View>
+          </View>
+
+          {/* Clasificación contable: costo vs gasto operativo, y categoría (nómina, servicios, insumos…) */}
+          <View className="mb-6">
+            <Text className="text-[10px] font-black text-slate-400 mb-3 ml-1 uppercase tracking-widest">Tipo de egreso *</Text>
+            <ChipGroup
+              size="md"
+              options={[
+                { value: 'costo', label: 'Costo', icon: 'package-variant-closed' as const },
+                { value: 'gasto', label: 'Gasto operativo', icon: 'domain' as const },
+              ]}
+              value={tipoGasto}
+              onChange={(v) => v && setTipoGasto(v as 'costo' | 'gasto')}
+              color={tipoGasto ? TIPO_GASTO_META[tipoGasto].color : '#F5A524'}
+            />
+            <Text className="text-[10px] text-slate-500 mt-2 ml-1">
+              {tipoGasto ? TIPO_GASTO_META[tipoGasto].descripcion : 'Costo = lo que cuesta producir lo que se vende. Gasto = lo que cuesta operar el negocio.'}
+            </Text>
+            <Text className="text-[10px] font-black text-slate-400 mt-5 mb-3 ml-1 uppercase tracking-widest">Categoría *</Text>
+            <ChipGroup
+              options={CATEGORIAS_GASTO.map((c) => ({ value: c.id, label: c.corto, icon: c.icon as any }))}
+              value={categoria === 'general' ? null : categoria}
+              onChange={(v) => v && setCategoria(v)}
+              color="#F5A524"
+            />
           </View>
 
           {/* Denominaciones — solo efectivo (de caja), no edición */}
@@ -564,23 +585,15 @@ export default function FacturasPagosScreen() {
                 <View className="w-1.5 h-4 bg-amber-500 rounded-full" />
                 <Text className="text-amber-300 text-xs font-black uppercase tracking-widest">Billetes entregados *</Text>
               </View>
-              <View className="gap-1.5">
-                {COLOMBIAN_BILLS.map((bill) => (
-                  <BillCounter
-                    key={bill}
-                    bill={bill}
-                    count={denominaciones[String(bill)] ?? 0}
-                    onChange={(newCount) =>
-                      setDenominaciones({ ...denominaciones, [String(bill)]: newCount })
-                    }
-                    // null = stock aún no cargado (o fetch fallido) → sin límite ni badge
-                    // number = stock conocido → mostrar badge y limitar
-                    enCaja={disponibleDenominaciones !== null ? (disponibleDenominaciones[String(bill)] ?? 0) : undefined}
-                    limitByStock={disponibleDenominaciones !== null}
-                    variant="expense"
-                  />
-                ))}
-              </View>
+              <DenominacionCounter
+                value={denominaciones}
+                onChange={setDenominaciones}
+                // null = stock aún no cargado (o fetch fallido) → sin límite ni badge
+                // mapa = stock conocido → mostrar badge y limitar
+                disponible={disponibleDenominaciones}
+                limitarPorDisponible
+                variant="expense"
+              />
               {/* Monedas — total en un solo campo */}
               <View className="mt-3 flex-row items-center gap-3">
                 <Icon name="cash" size={14} color="#F5A524" />
@@ -660,39 +673,18 @@ export default function FacturasPagosScreen() {
 
       {/* ── Range filter ── */}
       {showRangeFilter && (
-        <Card padding="md" className="mb-10">
-          <View className="flex-row items-center gap-3 mb-8">
-            <Icon name="calendar-range" size={20} color="#F5A524" />
-            <Text className="text-lg font-bold text-white">Filtrar por Calendario</Text>
-          </View>
-          <View className={`flex-row gap-4 mb-2 ${isMobile ? 'flex-col' : ''}`}>
-            <Input
-              label="Desde"
-              value={from}
-              onChangeText={setFrom}
-              placeholder="2025-11-01"
-              containerStyle={{ flex: 1, minWidth: 140 }}
-              leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
-            />
-            <Input
-              label="Hasta"
-              value={to}
-              onChangeText={setTo}
-              placeholder="2025-11-30"
-              containerStyle={{ flex: 1, minWidth: 140 }}
-              leftIcon={<Icon name="calendar" size={16} color="#64748B" />}
-            />
-          </View>
-          <Button
-            title={loadingRango ? 'Buscando...' : 'Buscar'}
-            icon="magnify"
-            variant="primary"
-            size="sm"
-            onPress={handleSearchRange}
-            loading={loadingRango}
-            disabled={!from || !to}
-          />
-        </Card>
+        <DateRangeFilter
+          from={from}
+          to={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+          onSearch={(f, t) => {
+            setFrom(f);
+            setTo(t);
+            fetchRango(f, t);
+          }}
+          loading={loadingRango}
+        />
       )}
 
       {/* ── Error / Loading ── */}
@@ -755,83 +747,26 @@ export default function FacturasPagosScreen() {
             {/* Lista paginada */}
             {showHistorial && (
               <>
-                <View className="gap-3 mt-3">
-                  {visibleData.map((item, idx) => (
-                    <Card key={item.pagosId?.toString() || idx.toString()} padding="md" className="bg-white/[0.02] border border-white/5 rounded-[20px]">
-                      <View className="flex-row justify-between items-start mb-3">
-                        <View className="flex-1">
-                          <Text className="text-base font-bold text-white mb-1">{item.nombreGasto || 'Sin nombre'}</Text>
-                          <View className="flex-row gap-4">
-                            {item.fechaFactura ? (
-                              <View className="flex-row items-center gap-1.5">
-                                <Icon name="calendar-outline" size={11} color="#64748B" />
-                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10 }}>{item.fechaFactura}</Text>
-                              </View>
-                            ) : null}
-                            {item.metodo ? (
-                              <View className="flex-row items-center gap-1.5">
-                                <Icon
-                                  name={
-                                    item.metodo === 'efectivo' ? 'cash' :
-                                    item.metodo === 'qr' ? 'qrcode' :
-                                    item.metodo === 'efectivo_no_caja' ? 'cash-off' :
-                                    'credit-card-outline'
-                                  }
-                                  size={11}
-                                  color="#64748B"
-                                />
-                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase' }}>
-                                  {item.metodo === 'efectivo_no_caja' ? 'Ef. No Caja' : item.metodo}
-                                </Text>
-                              </View>
-                            ) : null}
-                          </View>
-                        </View>
-                        <View className="items-end gap-1.5">
-                          {item.total !== undefined && (
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#EF4444', fontSize: 16 }}>
-                              −${formatCurrency(item.total)}
-                            </Text>
-                          )}
-                          {item.estado ? (
-                            <Badge label={item.estado} variant={item.estado === 'pagado' ? 'success' : 'warning'} size="sm" />
-                          ) : null}
-                        </View>
-                      </View>
-                      {item.descripcion ? (
-                        <Text className="text-xs text-slate-400 italic mb-3 pl-3 border-l-2 border-slate-700">{item.descripcion}</Text>
-                      ) : null}
-                      <View className="flex-row justify-end gap-2 pt-3 border-t border-white/5">
-                        <Button title="Editar" icon="pencil-outline" variant="ghost" size="sm" onPress={() => onEdit(item)} disabled={deleting} />
-                        <Button title="Eliminar" icon="trash-can-outline" variant="ghost" size="sm" onPress={() => setDeleteTarget({ id: item.pagosId!, name: item.nombreGasto || 'gasto' })} disabled={deleting} className="opacity-70" />
-                      </View>
-                    </Card>
-                  ))}
+                <View className="mt-3">
+                  <CardGrid
+                    kind="panel"
+                    data={visibleData}
+                    keyExtractor={(item, i) => item.pagosId?.toString() ?? String(i)}
+                    renderItem={(item) => (
+                      <GastoCard
+                        gasto={item}
+                        nombreCuenta={item.cuentaOrigenId != null ? todasCuentas.find((c) => c.id === item.cuentaOrigenId)?.nombre : undefined}
+                        onEdit={onEdit}
+                        onDelete={(g) => setDeleteTarget({ id: g.pagosId!, name: g.nombreGasto || 'gasto' })}
+                        disabled={deleting}
+                      />
+                    )}
+                  />
                 </View>
 
                 {/* Paginación */}
                 {totalPages > 1 && (
-                  <View className="flex-row items-center justify-between mt-4 pt-3 border-t border-white/5">
-                    <TouchableOpacity
-                      onPress={() => setHistorialPage(p => Math.max(0, p - 1))}
-                      disabled={historialPage === 0}
-                      className={`flex-row items-center gap-1 px-3 py-2 rounded-xl border ${historialPage === 0 ? 'border-white/5 opacity-30' : 'border-white/10 bg-white/5 active:bg-white/10'}`}
-                    >
-                      <Icon name="chevron-left" size={16} color="#94A3B8" />
-                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 11 }}>Anterior</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11 }}>
-                      Pág. <Text style={{ color: '#94A3B8', fontWeight: 'bold' }}>{historialPage + 1}</Text> / {totalPages}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setHistorialPage(p => Math.min(totalPages - 1, p + 1))}
-                      disabled={historialPage >= totalPages - 1}
-                      className={`flex-row items-center gap-1 px-3 py-2 rounded-xl border ${historialPage >= totalPages - 1 ? 'border-white/5 opacity-30' : 'border-white/10 bg-white/5 active:bg-white/10'}`}
-                    >
-                      <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 11 }}>Siguiente</Text>
-                      <Icon name="chevron-right" size={16} color="#94A3B8" />
-                    </TouchableOpacity>
-                  </View>
+                  <Paginator page={historialPage + 1} totalPages={totalPages} onChange={(p) => setHistorialPage(p - 1)} />
                 )}
               </>
             )}

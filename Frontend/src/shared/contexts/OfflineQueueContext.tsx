@@ -8,6 +8,9 @@ export interface OfflinePayment {
   retryCount: number;
   pagoEfectivo?: number;
   pagoTransferencia?: number;
+  /** Obligatoria en el servidor si hay parte por transferencia/QR. */
+  cuentaTransferenciaId?: number;
+  cuentaTransferenciaNombre?: string;
 }
 
 export interface OfflineQueueStorageAdapter {
@@ -17,7 +20,7 @@ export interface OfflineQueueStorageAdapter {
 
 export interface OfflineQueueContextType {
   queue: OfflinePayment[];
-  addPayment: (ordenId: number, metodo: string, idempotencyKey: string, pagoEfectivo?: number, pagoTransferencia?: number) => Promise<void>;
+  addPayment: (ordenId: number, metodo: string, idempotencyKey: string, pagoEfectivo?: number, pagoTransferencia?: number, cuentaTransferenciaId?: number, cuentaTransferenciaNombre?: string) => Promise<void>;
   syncPayments: () => Promise<void>;
   isSyncing: boolean;
   hasItems: boolean;
@@ -63,7 +66,7 @@ export function OfflineQueueProvider({ children, storage, onSyncPayment }: Offli
     });
   }, [queue, isHydrated, storage]);
 
-  const addPayment = useCallback(async (ordenId: number, metodo: string, idempotencyKey: string, pagoEfectivo?: number, pagoTransferencia?: number) => {
+  const addPayment = useCallback(async (ordenId: number, metodo: string, idempotencyKey: string, pagoEfectivo?: number, pagoTransferencia?: number, cuentaTransferenciaId?: number, cuentaTransferenciaNombre?: string) => {
     const newPayment: OfflinePayment = {
       ordenId,
       metodo,
@@ -72,6 +75,8 @@ export function OfflineQueueProvider({ children, storage, onSyncPayment }: Offli
       retryCount: 0,
       pagoEfectivo,
       pagoTransferencia,
+      cuentaTransferenciaId,
+      cuentaTransferenciaNombre,
     };
     setQueue(prev => [...prev, newPayment]);
   }, []);

@@ -46,6 +46,35 @@ describe('DomiciliariosService', () => {
 		});
 	});
 
+	describe('actualizarUbicacion', () => {
+		it('guarda la posición con la hora del GPS cuando es razonable', async () => {
+			mockRepo.update.mockResolvedValue({affected: 1});
+			const hace2min = Date.now() - 120_000;
+
+			await service.actualizarUbicacion('3001234567', 6.2, -75.5, hace2min);
+
+			const [, cambios] = mockRepo.update.mock.calls[0];
+			expect(cambios.ultimaUbicacionFecha.getTime()).toBe(hace2min);
+		});
+
+		it('ignora una hora futura o de hace más de un día y usa la del servidor', async () => {
+			mockRepo.update.mockResolvedValue({affected: 1});
+
+			await service.actualizarUbicacion('3001234567', 6.2, -75.5, Date.now() + 3600_000);
+			await service.actualizarUbicacion('3001234567', 6.2, -75.5, Date.now() - 3 * 24 * 3600_000);
+
+			for (const [, cambios] of mockRepo.update.mock.calls) {
+				expect(Math.abs(cambios.ultimaUbicacionFecha.getTime() - Date.now())).toBeLessThan(5000);
+			}
+		});
+
+		it('responde 404 si no hay domiciliario con ese teléfono (no finge que guardó)', async () => {
+			mockRepo.update.mockResolvedValue({affected: 0});
+
+			await expect(service.actualizarUbicacion('3009999999', 6.2, -75.5)).rejects.toThrow(NotFoundException);
+		});
+	});
+
 	describe('findOne', () => {
 		it('retorna el domiciliario cuando existe', async () => {
 			const dom = {telefono: '3001234567'};

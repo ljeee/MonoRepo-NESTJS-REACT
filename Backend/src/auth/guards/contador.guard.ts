@@ -4,9 +4,16 @@ import {Role} from '../roles.enum';
 /**
  * Prefijos de ruta que el rol contador puede consultar (solo lectura).
  * Cubre lo que consume la pantalla de Contabilidad: reportes contables,
- * estadísticas, facturas de ventas y gastos.
+ * estadísticas, facturas de ventas, gastos y las cuentas de transferencia.
  */
-const CONTADOR_ALLOWED_PREFIXES = ['/contabilidad', '/estadisticas', '/facturas-ventas', '/facturas-pagos'];
+const CONTADOR_ALLOWED_PREFIXES = [
+	'/contabilidad',
+	'/estadisticas',
+	'/facturas-ventas',
+	'/facturas-pagos',
+	// Contabilidad filtra y agrupa las transferencias por cuenta (solo lectura: el guard exige GET).
+	'/empresa/cuentas-transferencia',
+];
 
 /**
  * El rol contador es de SOLO LECTURA y limitado a contabilidad:

@@ -4,6 +4,7 @@ import { Text } from '../../tw';
 import Card from './Card';
 import Icon from './Icon';
 import Button from './Button';
+import { Paginator } from './Paginator';
 import { CajaMovimiento, CajaResumen, useApi } from '@/src/shared';
 import { formatCurrency } from '@/src/shared';
 import { getLocalDateString } from '../../src/shared/utils/dateRange';
@@ -254,29 +255,7 @@ export default function CajaMovimientosWidget({ cajaResumen, onRefresh, isLoadin
 
                     {/* ── Paginación ── */}
                     {totalPages > 1 && (
-                        <View className="flex-row items-center justify-between mt-4 pt-3 border-t border-white/5">
-                            <TouchableOpacity
-                                onPress={() => setPage(p => Math.max(0, p - 1))}
-                                disabled={page === 0}
-                                className={`flex-row items-center gap-1 px-3 py-2 rounded-xl border ${page === 0 ? 'border-white/5 opacity-30' : 'border-white/10 bg-white/5 active:bg-white/10'}`}
-                            >
-                                <Icon name="chevron-left" size={16} color="#94A3B8" />
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 11 }}>Anterior</Text>
-                            </TouchableOpacity>
-
-                            <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11 }}>
-                                Pág. <Text style={{ color: '#94A3B8', fontWeight: 'bold' }}>{page + 1}</Text> / {totalPages}
-                            </Text>
-
-                            <TouchableOpacity
-                                onPress={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                                disabled={page >= totalPages - 1}
-                                className={`flex-row items-center gap-1 px-3 py-2 rounded-xl border ${page >= totalPages - 1 ? 'border-white/5 opacity-30' : 'border-white/10 bg-white/5 active:bg-white/10'}`}
-                            >
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 11 }}>Siguiente</Text>
-                                <Icon name="chevron-right" size={16} color="#94A3B8" />
-                            </TouchableOpacity>
-                        </View>
+                        <Paginator page={page + 1} totalPages={totalPages} onChange={(p) => setPage(p - 1)} />
                     )}
                 </>
             )}

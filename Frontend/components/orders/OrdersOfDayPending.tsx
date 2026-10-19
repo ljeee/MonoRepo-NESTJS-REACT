@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ActivityIndicator, Modal, Platform } from 'react-native';
+import { ActivityIndicator, Modal, Platform } from 'react-native';
 import { Href, useRouter } from 'expo-router';
 import { api } from '../../services/api';
 import { useBreakpoint } from '../../styles/responsive';
@@ -7,7 +7,7 @@ import { EmptyState } from '../states/EmptyState';
 import { ErrorState } from '../states/ErrorState';
 import { ListSkeleton } from '../ui/SkeletonLoader';
 import { PageContainer, PageHeader, Button, Card, Badge, Icon } from '../ui';
-import { formatDate, useOrdenesSocket, useOfflineQueue, useAntiDebounce } from '@/src/shared';
+import { formatDate, useOrdenesSocket, useOfflineQueue, useAntiDebounce, nombreVisibleOrden } from '@/src/shared';
 import { getBaseUrl } from '../../services/api';
 import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +15,7 @@ import type { Orden, OrdenProducto } from '@/src/shared';
 import { printOrderReceipt } from '../../utils/printReceipt';
 import OrderCardKDS from './OrderCardKDS';
 import OrderCardPOS from './OrderCardPOS';
+import { PosRefreshControl } from '../ui/PosRefreshControl';
 
 function getErrorStatusCode(error: unknown): number | undefined {
   const status = (error as any)?.response?.status;
@@ -257,18 +258,7 @@ export default function OrdersOfDayPending() {
   const markAsCompleted = useMemo(() => debounce(completeOrden), [debounce, completeOrden]);
 
 
-  const getClientName = useCallback((item: Orden) => {
-    const nombre = item.factura?.clienteNombre || item.nombreCliente;
-    if (!nombre) return 'Sin nombre';
-    if (item.tipoPedido === 'mesa') {
-      return /^\d+$/.test(nombre)
-        ? `Mesa ${nombre}`
-        : nombre.startsWith('Mesa')
-          ? nombre
-          : `Mesa ${nombre}`;
-    }
-    return nombre;
-  }, []);
+  const getClientName = useCallback((item: Orden) => nombreVisibleOrden(item), []);
 
   const handleOpenOrden = useCallback((ordenId: number) => {
     router.push(`/orden-detalle?ordenId=${ordenId}` as Href);
@@ -331,7 +321,7 @@ export default function OrdersOfDayPending() {
 
   return (
     <PageContainer scrollable={false} className="flex-1 bg-(--color-pos-bg)">
-      <View className="px-5 pt-4">
+      <View className="pt-1">
         <PageHeader
           title={filter === 'pendientes' ? 'Pendientes' : 'Hoy'}
           icon="clipboard-text-outline"
@@ -415,11 +405,9 @@ export default function OrdersOfDayPending() {
         className="flex-1 px-2"
         contentContainerClassName="pb-20"
         refreshControl={
-            <RefreshControl
+            <PosRefreshControl
                 refreshing={refreshing}
                 onRefresh={() => fetchOrders(true)}
-                tintColor="#F5A524"
-                colors={["#F5A524"]}
                 progressBackgroundColor="#1E293B"
             />
         }

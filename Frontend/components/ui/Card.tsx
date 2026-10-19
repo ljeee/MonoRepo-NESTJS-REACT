@@ -7,8 +7,11 @@ import { springs, timings } from '../../styles/tokens';
 interface CardProps {
     children?: ReactNode;
     onPress?: () => void;
-    variant?: 'default' | 'elevated' | 'outlined';
+    /** solid = panel sólido (KPI, gráficas, modales); inset = caja dentro de otra tarjeta. */
+    variant?: 'default' | 'elevated' | 'outlined' | 'solid' | 'inset';
     padding?: 'none' | 'sm' | 'md' | 'lg';
+    /** Escala de `styles/tokens.ts` → `radius`: sm 8 · md 12 · lg 16 (por defecto) · xl 24. Úsala en vez de `rounded-*` en `className`. */
+    radius?: 'sm' | 'md' | 'lg' | 'xl';
     className?: string;
     style?: any;
     delay?: number;
@@ -19,6 +22,7 @@ export default function Card({
     onPress,
     variant = 'default',
     padding = 'md',
+    radius = 'lg',
     className = '',
     style,
     delay = 0,
@@ -65,9 +69,18 @@ export default function Card({
         default: 'bg-white/[0.04] border border-white/[0.07]',
         elevated: 'bg-white/[0.05] border border-white/[0.08] shadow-xl',
         outlined: 'bg-transparent border border-white/10',
+        solid: 'bg-slate-900 border border-white/5',
+        inset: 'bg-black/20 border border-white/5',
     };
 
-    const combinedClasses = `rounded-2xl ${paddingClasses[padding]} ${variantClasses[variant]} ${className}`;
+    const radiusClasses = {
+        sm: 'rounded-lg',
+        md: 'rounded-xl',
+        lg: 'rounded-2xl',
+        xl: 'rounded-3xl',
+    };
+
+    const combinedClasses = `${radiusClasses[radius]} ${paddingClasses[padding]} ${variantClasses[variant]} ${className}`;
 
     if (onPress) {
         return (

@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { isAxiosError } from 'axios';
 import { useApi } from '../contexts/ApiContext';
 import type { FacturaVenta, FacturaStats } from '../types/models';
+import { cobrado, isAnulada, montoEfectivo, montoTransferencia } from '../domain/factura';
+import { ordenarRecientesPrimero, traerPorCursor } from '../utils/paginas';
+import { claveConsulta, consultarConCooldown } from '../utils/consultas';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -42,8 +45,13 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
   return {
     facturaId: typeof factura.facturaId === 'number' ? factura.facturaId : undefined,
     clienteNombre: typeof factura.clienteNombre === 'string' ? factura.clienteNombre : undefined,
+    telefonoCliente: typeof factura.telefonoCliente === 'string' ? factura.telefonoCliente : null,
     fechaFactura: typeof factura.fechaFactura === 'string' ? factura.fechaFactura : undefined,
+    fechaCobro: typeof factura.fechaCobro === 'string' ? factura.fechaCobro : null,
     total: numberOrZero(factura.total),
+    // Sin este campo, el saldo de una factura con abono (estado 'parcial') se calculaba
+    // como el total completo y el cajero volvía a cobrar lo ya abonado.
+    montoPagado: factura.montoPagado != null ? numberOrZero(factura.montoPagado) : undefined,
     descripcion: typeof factura.descripcion === 'string' ? factura.descripcion : undefined,
     estado: typeof factura.estado === 'string' ? factura.estado : undefined,
     metodo: typeof factura.metodo === 'string' ? factura.metodo : undefined,
@@ -51,6 +59,16 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
     pagoTransferencia: typeof factura.pagoTransferencia === 'number' || typeof factura.pagoTransferencia === 'string' ? numberOrZero(factura.pagoTransferencia) : undefined,
     cuentaTransferenciaId: typeof factura.cuentaTransferenciaId === 'number' ? factura.cuentaTransferenciaId : null,
     cuentaTransferenciaNombre: typeof factura.cuentaTransferenciaNombre === 'string' ? factura.cuentaTransferenciaNombre : null,
+    desgloseTransferencia: asArray(factura.desgloseTransferencia).length
+      ? asArray(factura.desgloseTransferencia).map((raw) => {
+          const e = asRecord(raw);
+          return {
+            cuentaId: typeof e.cuentaId === 'number' ? e.cuentaId : null,
+            cuenta: typeof e.cuenta === 'string' ? e.cuenta : null,
+            monto: numberOrZero(e.monto),
+          };
+        })
+      : null,
     ordenes: rawOrdenes.map((rawOrden) => {
       const orden = asRecord(rawOrden);
       const rawProductos = asArray(orden.productos);
@@ -84,6 +102,7 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
             subtotal = precioUnitario * cantidad;
           }
 
+          const listaRaw = producto.precioLista;
           return {
             cantidad,
             precioUnitario,
@@ -92,6 +111,9 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
               typeof productoRaw === 'string'
                 ? productoRaw
                 : (typeof productoObj.nombre === 'string' ? productoObj.nombre : 'Producto'),
+            // Para el libro diario: qué líneas se cobraron con precio cambiado a mano y cuál era el del menú.
+            precioManual: producto.precioManual === true,
+            precioLista: listaRaw === null || listaRaw === undefined || listaRaw === '' ? null : numberOrZero(listaRaw),
           };
         }),
       };
@@ -127,23 +149,25 @@ export function mapFactura(rawFactura: unknown): FacturaVenta {
 }
 
 export function calcStats(list: FacturaVenta[], activeFilter?: string): FacturaStats {
-  const nonCancelled = list.filter((f) => f.estado !== 'cancelado');
+  const validas = list.filter((f) => !isAnulada(f));
+  const porMetodo = activeFilter === 'efectivo' || activeFilter === 'transferencia' || activeFilter === 'qr';
 
-  // When filtering by a specific method, mixed invoices should only count
-  // their relevant portion (pagoEfectivo or pagoTransferencia), not the full total.
-  const getMontoParaFiltro = (f: FacturaVenta): number => {
+  // Con filtro por método, una mixta solo aporta su parte de ese método (no el total).
+  const totalDe = (f: FacturaVenta): number => {
     if (f.metodo === 'efectivo_transferencia') {
       if (activeFilter === 'efectivo') return Number(f.pagoEfectivo) || 0;
       if (activeFilter === 'transferencia' || activeFilter === 'qr') return Number(f.pagoTransferencia) || 0;
     }
     return Number(f.total) || 0;
   };
+  // Cobrado con las definiciones del dominio: incluye abonos de las parciales (antes una
+  // factura con abono contaba como 100% pendiente).
+  const cobradoDe = (f: FacturaVenta): number =>
+    !porMetodo ? cobrado(f) : activeFilter === 'efectivo' ? montoEfectivo(f) : montoTransferencia(f);
 
-  const total = nonCancelled.reduce((s, f) => s + getMontoParaFiltro(f), 0);
-  const pagado = nonCancelled
-    .filter((f) => f.estado === 'pagado' || f.estado === 'pagada')
-    .reduce((s, f) => s + getMontoParaFiltro(f), 0);
-  return { totalDia: total, totalPagado: pagado, totalPendiente: total - pagado, count: nonCancelled.length };
+  const total = validas.reduce((s, f) => s + totalDe(f), 0);
+  const pagado = validas.reduce((s, f) => s + cobradoDe(f), 0);
+  return { totalDia: total, totalPagado: pagado, totalPendiente: Math.max(0, total - pagado), count: validas.length };
 }
 
 // ─── Facturas del Día ─────────────────────────────────────────────────────────
@@ -202,7 +226,15 @@ export function useFacturasDia() {
 // renders and prevent infinite re-render loops caused by object reference
 // instability in useCallback/useEffect dependency arrays.
 
-export function useFacturasRango(limit: number = 50) {
+/**
+ * `limit` que pide TODO el rango al servidor (sin paginar). Es el valor por defecto: la
+ * contabilidad no admite topes silenciosos (antes se cortaba a 50 por página y los totales o
+ * las exportaciones solo veían esa página). Si una pantalla necesita paginar, que lo haga
+ * en el cliente sobre el conjunto completo y con los totales del servidor.
+ */
+export const SIN_LIMITE = 0;
+
+export function useFacturasRango(limit: number = SIN_LIMITE, { conTransferencia = false }: { conTransferencia?: boolean } = {}) {
   const api = useApi();
   const [data, setData] = useState<FacturaVenta[]>([]);
   const [loading, setLoading] = useState(false);
@@ -213,6 +245,13 @@ export function useFacturasRango(limit: number = 50) {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<FacturaStats>({ totalDia: 0, totalPagado: 0, totalPendiente: 0, count: 0 });
+  /** Avance de la carga por tandas de un rango completo (null = no se está cargando por tandas). */
+  const [progreso, setProgreso] = useState<{ cargadas: number; total: number } | null>(null);
+  /** Cuándo devolvió el servidor lo que se ve, y si salió del cooldown (búsqueda repetida, sin petición). */
+  const [actualizadoEn, setActualizadoEn] = useState<number | null>(null);
+  const [desdeCache, setDesdeCache] = useState(false);
+  /** Solo se pinta la respuesta de la búsqueda más reciente (dos seguidas no se pisan). */
+  const idPeticion = useRef(0);
 
   const [estado, setEstado] = useState<string | undefined>(undefined);
   const [clienteNombre, setClienteNombre] = useState<string | undefined>(undefined);
@@ -235,7 +274,7 @@ export function useFacturasRango(limit: number = 50) {
   useEffect(() => { metodoRef.current = metodo; }, [metodo]);
   useEffect(() => { cuentaTransferenciaIdRef.current = cuentaTransferenciaId; }, [cuentaTransferenciaId]);
 
-  const fetchData = useCallback(async (f?: string, t?: string, p?: number, est?: string, cli?: string, met?: string, cuentaId?: number) => {
+  const fetchData = useCallback(async (f?: string, t?: string, p?: number, est?: string, cli?: string, met?: string, cuentaId?: number, { forzar = false }: { forzar?: boolean } = {}) => {
     const finalFrom = f ?? fromRef.current;
     const finalTo = t ?? toRef.current;
     const finalPage = p ?? pageRef.current;
@@ -245,31 +284,65 @@ export function useFacturasRango(limit: number = 50) {
     const finalCuentaId = cuentaId !== undefined ? cuentaId : cuentaTransferenciaIdRef.current;
     if (!finalFrom || !finalTo) return;
 
+    const id = ++idPeticion.current;
     setLoading(true);
     setError(null);
     try {
-      const response = await api.facturas.getAll({
+      const filtros = {
         from: finalFrom,
         to: finalTo,
-        page: finalPage,
-        limit,
         estado: finalEstado || undefined,
         clienteNombre: finalClienteNombre || undefined,
         metodo: finalMetodo || undefined,
         cuentaTransferenciaId: finalCuentaId || undefined,
-      });
+        conTransferencia: conTransferencia || undefined,
+      };
+      // Rango completo: por tandas con cursor (no una respuesta gigante, y sin duplicar ni perder facturas
+      // que entran mientras se descarga), pero la pantalla recibe TODO. Con cooldown: repetir la misma
+      // búsqueda no la vuelve a descargar; cualquier escritura invalida (services/api.ts).
+      const completo = limit === SIN_LIMITE;
+      const r = await consultarConCooldown(
+        claveConsulta(completo ? 'facturas:rango' : 'facturas:pagina', completo ? filtros : { ...filtros, page: finalPage, limit }),
+        () =>
+          completo
+            ? traerPorCursor(
+                ({ cursor, limite, pagina }) => api.facturas.getAll({ ...filtros, cursor, limit: limite, page: pagina }),
+                (fv) => fv.facturaId ?? '',
+                { onProgreso: (cargadas, total) => { if (id === idPeticion.current) setProgreso({ cargadas, total }); } },
+              ).then((x) => ({
+                data: ordenarRecientesPrimero(x.data, (fv) => fv.fechaFactura, (fv) => fv.facturaId ?? 0),
+                total: x.total,
+                totalPages: 1,
+                page: 1,
+              }))
+            : api.facturas.getAll({ ...filtros, page: finalPage, limit }),
+        { forzar },
+      );
+      if (id !== idPeticion.current) return; // llegó una búsqueda más nueva
+      const response = r.valor;
+      setActualizadoEn(r.obtenidoEn);
+      setDesdeCache(r.desdeCache);
       const mapped = response.data.map(mapFactura);
       setData(mapped);
       setTotalPages(response.totalPages);
       setTotalCount(response.total);
       setPage(response.page);
       setStats(calcStats(mapped));
+      setProgreso(null);
       setLoading(false);
     } catch (error: unknown) {
+      if (id !== idPeticion.current) return;
       setError(getErrorMessage(error, 'Error al cargar facturas'));
+      setProgreso(null);
       setLoading(false);
     }
-  }, [api, limit]);
+  }, [api, limit, conTransferencia]);
+
+  /** Repite la última búsqueda saltándose el cooldown (deslizar para recargar). */
+  const recargar = useCallback(
+    () => fetchData(undefined, undefined, undefined, undefined, undefined, undefined, undefined, { forzar: true }),
+    [fetchData],
+  );
 
   const updateEstado = useCallback(async (facturaId: number, nuevoEstado: string) => {
     try {
@@ -334,12 +407,16 @@ export function useFacturasRango(limit: number = 50) {
     clienteNombre,
     setClienteNombre,
     fetchData,
+    recargar,
     search,
     stats,
     updateEstado,
     updateFactura,
     deleteFactura,
     page,
+    progreso,
+    actualizadoEn,
+    desdeCache,
     totalPages,
     total: totalCount,
     goToPage,

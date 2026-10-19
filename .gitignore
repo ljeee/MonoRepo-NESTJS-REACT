@@ -65,3 +65,7 @@ CLAUDE.md
 .codeium/
 .copilot/
 .github/copilot-instructions.md
+
+# Respaldos y salidas de la migracion de produccion (contienen datos reales de clientes)
+/backups/
+*.dump

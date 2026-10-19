@@ -2,8 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, ScrollView, TextInput } from '../../tw';
-import { ActivityIndicator, TouchableOpacity, RefreshControl } from 'react-native';
-
+import { ActivityIndicator, TouchableOpacity } from 'react-native';
 import { api } from '../../services/api';
 import { formatCurrency, formatDate } from '@/src/shared';
 import { getEstadoColor } from '../../constants/estados';
@@ -19,6 +18,7 @@ import {
   Icon,
   ListSkeleton,
   ConfirmModal,
+    PosRefreshControl,
 } from '../../components/ui';
 
 interface ProductoObj {
@@ -113,7 +113,6 @@ export default function OrdenDetalleScreen() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [canceling, setCanceling] = useState(false);
-
 
   const fetchOrden = useCallback(async () => {
     if (!ordenId) return;
@@ -300,12 +299,7 @@ export default function OrdenDetalleScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#F5A524"
-            colors={['#F5A524']}
-          />
+          <PosRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
           {/* ── Status Banner ── */}

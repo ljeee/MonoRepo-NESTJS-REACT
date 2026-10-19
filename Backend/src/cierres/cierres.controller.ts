@@ -1,4 +1,4 @@
-import {Controller, Get, Post, Body, UseGuards, Delete, Param} from '@nestjs/common';
+import {Controller, Get, Post, Body, UseGuards, Delete, Param, Query} from '@nestjs/common';
 import {ApiTags, ApiOperation, ApiBearerAuth} from '@nestjs/swagger';
 import {CierresService} from './cierres.service';
 import {JwtAuthGuard} from '../auth/guards/jwt-auth.guard';
@@ -28,8 +28,8 @@ export class CierresController {
 	@Get()
 	@Roles(Role.Admin)
 	@ApiOperation({summary: 'Obtener historial de cierres'})
-	getHistory() {
-		return this.service.getHistory();
+	getHistory(@Query('limit') limit?: string) {
+		return this.service.getHistory(limit ? Number(limit) : undefined);
 	}
 
 	@Delete(':id')

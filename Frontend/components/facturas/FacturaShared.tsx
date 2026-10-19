@@ -1,49 +1,21 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View as RNView, Text as RNText } from 'react-native';
-import { formatCurrency, formatDate } from '@/src/shared';
-import type { DenominacionesMap } from '@/src/shared';
+import { formatCurrency, formatCOP, formatDate, montoEfectivo, montoTransferencia, transferenciasPorCuenta, useToast } from '@/src/shared';
+import type { DenominacionesMap, DesgloseTransferencia, FacturaOrden, FacturaDomicilio, FacturaStats } from '@/src/shared';
 import { View, Text } from '../../tw';
-import { useBreakpoint } from '../../styles/responsive';
 
 import { printReceipt } from '../../utils/printReceipt';
-import UpdateTotalModal from './UpdateTotalModal';
 import PaymentSelectionModal from '../orders/PaymentSelectionModal';
-import AssignCuentaModal from './AssignCuentaModal';
+import { PromptModal, OptionPickerModal, StatCard } from '../ui';
+import { useCuentasTransferencia } from '../../hooks/use-cuentas-transferencia';
 import Badge from '../ui/Badge';
 import Card from '../ui/Card';
 import Icon from '../ui/Icon';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface FacturaStats {
-  totalDia: number;
-  totalPagado: number;
-  totalPendiente: number;
-  count: number;
-}
-
-export interface FacturaProducto {
-  productoNombre?: string;
-  cantidad?: number;
-  precioUnitario?: number;
-  subtotal?: number;
-}
-
-export interface FacturaOrden {
-  ordenId?: number;
-  tipoPedido?: string;
-  productos?: FacturaProducto[];
-}
-
-export interface FacturaDomicilio {
-  costoDomicilio?: number;
-  direccionEntrega?: string;
-  referencia?: string;
-  domiciliario?: {
-    domiciliarioNombre?: string;
-    telefono?: string;
-  };
-}
+// Tipos de dominio: una sola definición en src/shared (antes había copias aquí).
+export type { FacturaStats, FacturaOrden, FacturaDomicilio } from '@/src/shared';
 
 export interface FacturaItem {
   facturaId?: number;
@@ -60,10 +32,12 @@ export interface FacturaItem {
   pagoTransferencia?: number;
   cuentaTransferenciaId?: number | null;
   cuentaTransferenciaNombre?: string | null;
+  desgloseTransferencia?: DesgloseTransferencia[] | null;
 }
 
 // ─── StatsHeader ──────────────────────────────────────────────────────────────
 
+/** Total, pagado y pendiente del período: tres `StatCard`, igual que el resto de KPIs de la app. */
 export const StatsHeader = React.memo(function StatsHeader({
   stats,
   periodLabel = 'Total del Día',
@@ -71,71 +45,17 @@ export const StatsHeader = React.memo(function StatsHeader({
   stats: FacturaStats;
   periodLabel?: string;
 }) {
-  const { isMobile } = useBreakpoint();
   return (
-    <RNView style={sh.root}>
-      {/* Main stat */}
-      <Card style={sh.mainCard}>
-         <RNView style={sh.mainOverlay} />
-         <RNView style={sh.mainIconBox}>
-           <Icon name="receipt" size={20} color="#F5A524" />
-         </RNView>
-         <RNView style={sh.flex1}>
-           <RNText style={sh.mainLabel}>{periodLabel}</RNText>
-           <RNText style={[sh.mainTotal, { fontSize: isMobile ? 22 : 32 }]}>
-              ${formatCurrency(stats.totalDia)}
-           </RNText>
-           <RNText style={sh.mainCount}>{stats.count} facturas generadas</RNText>
-         </RNView>
-      </Card>
-
-      {/* Pagado / Pendiente */}
-      <RNView style={sh.row}>
-        <Card style={sh.pagadoCard}>
-          <RNView style={sh.pagadoIconBox}>
-            <Icon name="check-circle-outline" size={16} color="#10B981" />
-          </RNView>
-          <RNView>
-            <RNText style={sh.pagadoLabel}>Pagado</RNText>
-            <RNText style={sh.pagadoValue}>
-              ${formatCurrency(stats.totalPagado)}
-            </RNText>
-          </RNView>
-        </Card>
-        <Card style={sh.pendienteCard}>
-          <RNView style={sh.pendienteIconBox}>
-            <Icon name="clock-outline" size={16} color="#F5A524" />
-          </RNView>
-          <RNView>
-            <RNText style={sh.pendienteLabel}>Pendiente</RNText>
-            <RNText style={sh.pendienteValue}>
-              ${formatCurrency(stats.totalPendiente)}
-            </RNText>
-          </RNView>
-        </Card>
-      </RNView>
+    <RNView style={sh.fila}>
+      <StatCard icon="receipt" label={periodLabel} value={`$${formatCurrency(stats.totalDia)}`} sub={`${stats.count} facturas generadas`} color="#F5A524" />
+      <StatCard icon="check-circle-outline" label="Pagado" value={`$${formatCurrency(stats.totalPagado)}`} color="#10B981" />
+      <StatCard icon="clock-outline" label="Pendiente" value={`$${formatCurrency(stats.totalPendiente)}`} color="#FB923C" />
     </RNView>
   );
 });
 
 const sh = StyleSheet.create({
-  root: { gap: 10, marginBottom: 16 },
-  mainCard: { overflow: 'hidden', position: 'relative', borderColor: 'rgba(245,165,36,0.15)', backgroundColor: 'rgba(6,14,26,0.8)', flexDirection: 'row', alignItems: 'center', gap: 14 },
-  mainOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(245,165,36,0.04)' },
-  mainIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(245,165,36,0.12)', borderWidth: 1, borderColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' },
-  flex1: { flex: 1 },
-  mainLabel: { fontFamily: 'Outfit', color: 'rgba(255,255,255,0.5)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 2, marginBottom: 2 },
-  mainTotal: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC' },
-  mainCount: { fontFamily: 'Outfit', color: '#64748B', fontSize: 11, marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 },
-  row: { flexDirection: 'row', gap: 10 },
-  pagadoCard: { flex: 1, backgroundColor: 'rgba(16,185,129,0.07)', borderColor: 'rgba(16,185,129,0.2)', flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pagadoIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(16,185,129,0.12)', alignItems: 'center', justifyContent: 'center' },
-  pagadoLabel: { fontFamily: 'Outfit', color: 'rgba(16,185,129,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 },
-  pagadoValue: { fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: 20 },
-  pendienteCard: { flex: 1, backgroundColor: 'rgba(245,165,36,0.07)', borderColor: 'rgba(245,165,36,0.2)', flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pendienteIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.12)', alignItems: 'center', justifyContent: 'center' },
-  pendienteLabel: { fontFamily: 'Outfit', color: 'rgba(245,165,36,0.7)', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 },
-  pendienteValue: { fontFamily: 'SpaceGrotesk-Bold', color: '#F5A524', fontSize: 20 },
+  fila: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
 });
 
 // ─── EstadoToggle ─────────────────────────────────────────────────────────────
@@ -208,6 +128,7 @@ export const FacturaCard = React.memo(function FacturaCard({
   const [showAbonoModal, setShowAbonoModal] = React.useState(false);
   const [showAssignCuenta, setShowAssignCuenta] = React.useState(false);
   const [updateLoading, setUpdateLoading] = React.useState(false);
+  const { showToast } = useToast();
   const [confirmDelete, setConfirmDelete] = React.useState(false);
   const [deleting, setDeleting] = React.useState(false);
 
@@ -234,6 +155,20 @@ export const FacturaCard = React.memo(function FacturaCard({
   // aperturaHecha === false blocks cash-based methods inside the modal; the button itself stays open
   const cobrarDisabled = isUpdating;
   const metodosBloqueados: string[] = aperturaHecha === false ? ['efectivo', 'efectivo_transferencia'] : [];
+
+  // Mixtas y parciales (abonos) reparten lo cobrado entre efectivo y QR: con el filtro de método
+  // activo se muestra SU parte, no el total de la factura.
+  const repartida = item.metodo === 'efectivo_transferencia' || isParcial;
+  const totalMostrado =
+    repartida && activeFilter === 'efectivo'
+      ? montoEfectivo(item)
+      : repartida && (activeFilter === 'transferencia' || activeFilter === 'qr')
+      ? montoTransferencia(item)
+      : (item.total ?? 0);
+  // Cuentas a las que entró lo cobrado por QR (una factura puede abonarse a cuentas distintas).
+  const cuentasQr = transferenciasPorCuenta(item);
+  const esConTransferencia =
+    item.metodo === 'transferencia' || item.metodo === 'qr' || item.metodo === 'efectivo_transferencia' || cuentasQr.length > 0;
 
   const esDomicilio = item.ordenes?.some(o => o.tipoPedido === 'domicilio');
   const costoDomicilio = item.domicilios?.[0]?.costoDomicilio
@@ -300,13 +235,7 @@ export const FacturaCard = React.memo(function FacturaCard({
           </RNView>
           <RNView style={fc.headerRight}>
             <RNText style={fc.total}>
-              ${formatCurrency(
-                item.metodo === 'efectivo_transferencia' && (activeFilter === 'efectivo')
-                  ? (item.pagoEfectivo ?? 0)
-                  : item.metodo === 'efectivo_transferencia' && (activeFilter === 'transferencia' || activeFilter === 'qr')
-                  ? (item.pagoTransferencia ?? 0)
-                  : (item.total ?? 0)
-              )}
+              ${formatCurrency(totalMostrado)}
             </RNText>
             {item.metodo ? (
               <Badge
@@ -318,22 +247,33 @@ export const FacturaCard = React.memo(function FacturaCard({
               <Badge label="Sin método" variant="neutral" size="sm" />
             )}
             
-            {(item.metodo === 'transferencia' || item.metodo === 'qr' || item.metodo === 'efectivo_transferencia') && (
+            {esConTransferencia && (
               <TouchableOpacity
                 onPress={() => onUpdate && item.facturaId && setShowAssignCuenta(true)}
                 disabled={!onUpdate || !item.facturaId || isUpdating}
+                accessibilityLabel="Asignar cuenta de transferencia"
+                style={{ alignItems: 'flex-end', gap: 3 }}
               >
-                {item.cuentaTransferenciaNombre ? (
-                  <RNView style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)', gap: 4 }}>
+                {cuentasQr.length > 1 ? (
+                  cuentasQr.map((c, i) => (
+                    <RNView key={`${c.cuentaId ?? c.cuenta ?? 'sin'}-${i}`} style={c.cuenta || c.cuentaId != null ? fc.cuentaBadge : fc.cuentaBadgeSin}>
+                      <Icon name={c.cuenta || c.cuentaId != null ? 'qrcode-scan' : 'alert-circle-outline'} size={10} color={c.cuenta || c.cuentaId != null ? '#A78BFA' : '#F43F5E'} />
+                      <RNText style={c.cuenta || c.cuentaId != null ? fc.cuentaBadgeText : fc.cuentaBadgeTextSin}>
+                        {`${c.cuenta ?? 'Sin Asignar'} · $${formatCurrency(c.monto)}`}
+                      </RNText>
+                    </RNView>
+                  ))
+                ) : item.cuentaTransferenciaNombre || cuentasQr[0]?.cuenta ? (
+                  <RNView style={fc.cuentaBadge}>
                     <Icon name="qrcode-scan" size={10} color="#A78BFA" />
-                    <RNText style={{ fontFamily: 'Outfit', color: '#A78BFA', fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>
-                      {item.cuentaTransferenciaNombre}
+                    <RNText style={fc.cuentaBadgeText}>
+                      {cuentasQr[0]?.cuenta ?? item.cuentaTransferenciaNombre}
                     </RNText>
                   </RNView>
                 ) : (
-                  <RNView style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,63,94,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(244,63,94,0.3)', gap: 4 }}>
+                  <RNView style={fc.cuentaBadgeSin}>
                     <Icon name="alert-circle-outline" size={10} color="#F43F5E" />
-                    <RNText style={{ fontFamily: 'Outfit', color: '#F43F5E', fontSize: 9, fontWeight: '800', textTransform: 'uppercase' }}>
+                    <RNText style={fc.cuentaBadgeTextSin}>
                       Sin Asignar
                     </RNText>
                   </RNView>
@@ -459,7 +399,7 @@ export const FacturaCard = React.memo(function FacturaCard({
           {/* Izquierda: print */}
           <RNView style={fc.footerGroup}>
             {showPrint && (
-              <TouchableOpacity onPress={handlePrint} style={fc.printBtn}>
+              <TouchableOpacity onPress={handlePrint} style={fc.printBtn} accessibilityLabel="Imprimir factura">
                 <Icon name="printer-outline" size={15} color="#60A5FA" />
               </TouchableOpacity>
             )}
@@ -474,6 +414,7 @@ export const FacturaCard = React.memo(function FacturaCard({
                   }}
                   disabled={deleting}
                   style={fc.confirmDeleteBtn}
+                  accessibilityLabel="Confirmar eliminar factura"
                 >
                   {deleting
                     ? <ActivityIndicator size="small" color="#F43F5E" />
@@ -484,7 +425,7 @@ export const FacturaCard = React.memo(function FacturaCard({
                   }
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity onPress={() => setConfirmDelete(true)} style={fc.deleteBtn}>
+                <TouchableOpacity onPress={() => setConfirmDelete(true)} style={fc.deleteBtn} accessibilityLabel="Eliminar factura">
                   <Icon name="trash-can-outline" size={15} color="#F43F5E" />
                 </TouchableOpacity>
               )
@@ -494,8 +435,8 @@ export const FacturaCard = React.memo(function FacturaCard({
           {/* Derecha: editar + abonar + cobrar/revertir */}
           <RNView style={fc.footerGroup}>
             {!isCancelado && (
-              <TouchableOpacity onPress={() => setEditing(true)} style={fc.editBtn}>
-                <Icon name="pencil-outline" size={15} color="#64748B" />
+              <TouchableOpacity onPress={() => setEditing(true)} style={fc.editBtn} accessibilityLabel="Editar total">
+                <Icon name="pencil-outline" size={15} color="#94A3B8" />
               </TouchableOpacity>
             )}
             {(isParcial || item.estado === 'pendiente') && onAbono && aperturaHecha !== false && (
@@ -503,6 +444,7 @@ export const FacturaCard = React.memo(function FacturaCard({
                 onPress={() => setShowAbonoModal(true)}
                 disabled={isUpdating}
                 style={[fc.abonarBtn, { opacity: isUpdating ? 0.5 : 1 }]}
+                accessibilityLabel="Registrar abono"
               >
                 <Icon name="cash-plus" size={14} color="#F5A524" />
                 <RNText style={fc.abonarText}>Abonar</RNText>
@@ -513,11 +455,17 @@ export const FacturaCard = React.memo(function FacturaCard({
                 onPress={() => {
                   if (isPagado) {
                     item.facturaId && onToggleEstado(item.facturaId, 'pendiente');
+                  } else if (isParcial && onAbono) {
+                    // Saldar una factura con abonos va por el flujo de abono: cobra solo el
+                    // saldo y el backend acumula el desglose. Cobrarla "completa" registraba
+                    // de nuevo lo ya abonado y sobrescribía pagoEfectivo/pagoTransferencia.
+                    setShowAbonoModal(true);
                   } else {
                     setShowPaymentModal(true);
                   }
                 }}
                 disabled={cobrarDisabled}
+                accessibilityLabel={isPagado ? 'Revertir cobro' : 'Cobrar factura'}
                 style={[
                   fc.cobrarBtn,
                   {
@@ -547,15 +495,20 @@ export const FacturaCard = React.memo(function FacturaCard({
         </RNView>
       </RNView>
 
-      <UpdateTotalModal
+      <PromptModal
         visible={editing}
-        currentTotal={item.total ?? 0}
+        title="Editar Total"
+        label="Nuevo valor de factura"
+        kind="moneda"
+        initialValue={String(Math.round(item.total ?? 0))}
+        hint={`Anterior: ${formatCOP(item.total ?? 0)}`}
+        validate={(v) => (v.trim() === '' ? 'Escribe el nuevo total' : null)}
         loading={updateLoading}
-        onConfirm={handleUpdateTotal}
+        onConfirm={(v) => handleUpdateTotal(Number(v))}
         onCancel={() => setEditing(false)}
       />
 
-      <AssignCuentaModal
+      <SelectorCuenta
         visible={showAssignCuenta}
         loading={updateLoading}
         onCancel={() => setShowAssignCuenta(false)}
@@ -564,11 +517,12 @@ export const FacturaCard = React.memo(function FacturaCard({
                 setUpdateLoading(true);
                 try {
                     await onUpdate(item.facturaId, { cuentaTransferenciaId: id, cuentaTransferenciaNombre: nombre });
-                } catch (err) {
-                    console.error('Error in AssignCuenta:', err);
+                    setShowAssignCuenta(false);
+                } catch (err: any) {
+                    // Antes el error solo iba a consola y el modal se cerraba: el cajero creía que quedó asignada.
+                    showToast(err?.response?.data?.message || 'No se pudo asignar la cuenta', 'error');
                 } finally {
                     setUpdateLoading(false);
-                    setShowAssignCuenta(false);
                 }
             }
         }}
@@ -617,21 +571,13 @@ export const FacturaCard = React.memo(function FacturaCard({
 });
 
 const fc = StyleSheet.create({
-  card: { 
+  // Fondo, borde y radio vienen de las clases de <Card> (misma receta que todas las tarjetas); sin sombra.
+  card: {
     flex: 1,
     height: '100%',
-    overflow: 'hidden', 
-    borderWidth: 1, 
-    borderColor: 'rgba(255,255,255,0.06)', 
-    borderRadius: 16, 
-    padding: 0, 
-    marginBottom: 0, 
-    backgroundColor: '#1E293B',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
+    overflow: 'hidden',
+    padding: 0,
+    marginBottom: 0,
   },
   tintOverlay: { position: 'absolute', inset: 0, opacity: 0.8 },
   body: { flex: 1, justifyContent: 'space-between', padding: 16 },
@@ -647,7 +593,7 @@ const fc = StyleSheet.create({
   mixtoEfectivoPri: { fontFamily: 'SpaceGrotesk-Bold', color: '#10B981', fontSize: 13, fontWeight: '800' },
   mixtoTransferPri: { fontFamily: 'SpaceGrotesk-Bold', color: '#60A5FA', fontSize: 13, fontWeight: '800' },
   mixtoTextSec: { fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, fontWeight: '600' },
-  mixtoTag: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9 },
+  mixtoTag: { fontFamily: 'Outfit', color: '#7C8BA1', fontSize: 10 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
   domicilioTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   domicilioTagText: { fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
@@ -680,7 +626,7 @@ const fc = StyleSheet.create({
   },
   notasText: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 12, fontWeight: '500' },
   productosBox: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, marginBottom: 16 },
-  productosLabel: { fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10, fontWeight: '700' },
+  productosLabel: { fontFamily: 'Outfit', color: '#7C8BA1', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 10, fontWeight: '700' },
   productoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
   productoInfo: { flex: 1, paddingRight: 12 },
   productoNombre: { fontFamily: 'Outfit', color: '#F1F5F9', fontSize: 14, fontWeight: '600', marginBottom: 2 },
@@ -688,8 +634,8 @@ const fc = StyleSheet.create({
   productoSubtotal: { fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14 },
   abonoBox: { marginBottom: 12 },
   abonoHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  abonoLabel: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '900' },
-  abonoSaldo: { fontFamily: 'Outfit', color: '#64748B', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 1 },
+  abonoLabel: { fontFamily: 'Outfit', color: '#F5A524', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '900' },
+  abonoSaldo: { fontFamily: 'Outfit', color: '#7C8BA1', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1 },
   progressTrack: { height: 5, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 3, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#F5A524', borderRadius: 3 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)' },
@@ -699,8 +645,43 @@ const fc = StyleSheet.create({
   confirmDeleteText: { fontFamily: 'Outfit', color: '#F87171', fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   deleteBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(244,63,94,0.08)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(244,63,94,0.2)' },
   editBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  cuentaBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(167,139,250,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)', gap: 4 },
+  cuentaBadgeText: { fontFamily: 'Outfit', color: '#A78BFA', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  cuentaBadgeSin: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(244,63,94,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(244,63,94,0.3)', gap: 4 },
+  cuentaBadgeTextSin: { fontFamily: 'Outfit', color: '#F43F5E', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
   abonarBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: 'rgba(245,158,11,0.08)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
   abonarText: { fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5, color: '#F5A524' },
   cobrarBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, borderWidth: 1 },
   cobrarText: { fontFamily: 'Outfit', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
 });
+
+function SelectorCuenta({
+  visible,
+  loading,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  loading: boolean;
+  onConfirm: (cuentaId: number, cuentaNombre: string) => void;
+  onCancel: () => void;
+}) {
+  const { cuentas, cargando, recargar } = useCuentasTransferencia();
+  React.useEffect(() => {
+    if (visible) void recargar();
+  }, [visible, recargar]);
+  return (
+    <OptionPickerModal
+      visible={visible}
+      title="Asignar Cuenta"
+      subtitle="Selecciona la cuenta destino para esta transferencia."
+      icon="bank-outline"
+      options={cuentas.map((c) => ({ value: c.id, label: c.nombre, icon: 'bank' as const }))}
+      fetching={cargando && cuentas.length === 0}
+      emptyText="No hay cuentas activas."
+      loading={loading}
+      onSelect={(o) => onConfirm(o.value, o.label)}
+      onCancel={onCancel}
+    />
+  );
+}

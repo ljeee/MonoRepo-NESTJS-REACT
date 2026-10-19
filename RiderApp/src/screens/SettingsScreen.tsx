@@ -1,48 +1,39 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { AppState, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Linking, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useAuth, formatPhoneDisplay } from '@/src/shared';
 
 import { ActionButton, Card, Divider, Pill, SectionLabel } from '../components/ui';
-import { readPermissions, type PermState } from '../lib/location';
-import { colors, radius, text } from '../lib/theme';
+import { useGpsEstado, type NivelGps } from '../lib/useGpsEstado';
+import { colors, maxContentWidth, text } from '../lib/theme';
+
+const COLOR_NIVEL: Record<NivelGps, string> = { ok: colors.success, atrasado: colors.warn, inactivo: colors.danger };
+
+/** En Android abre la lista de apps sin restricción de batería (el ahorro de energía retrasa el envío con la pantalla apagada). */
+async function abrirAhorroDeBateria() {
+  try {
+    if (Platform.OS === 'android') {
+      await Linking.sendIntent('android.settings.IGNORE_BATTERY_OPTIMIZATION_SETTINGS');
+      return;
+    }
+  } catch {
+    // sin esa pantalla en este teléfono: caemos a los ajustes generales
+  }
+  Linking.openSettings().catch(() => {});
+}
 
 export function SettingsScreen({ onRetryTracking }: { onRetryTracking: () => Promise<unknown> }) {
   const { user, logout } = useAuth();
-  const [perms, setPerms] = useState<PermState | null>(null);
+  const { estado, refrescar } = useGpsEstado();
   const [checking, setChecking] = useState(false);
-
-  const refresh = useCallback(async () => {
-    const p = await readPermissions();
-    setPerms(p);
-    return p;
-  }, []);
-
-  // Al abrir la pestaña y cada vez que la app vuelve a primer plano: el usuario
-  // pudo haber concedido "Permitir todo el tiempo" en Ajustes del sistema.
-  useEffect(() => {
-    void refresh();
-    const sub = AppState.addEventListener('change', (s) => {
-      if (s === 'active') void refresh();
-    });
-    return () => sub.remove();
-  }, [refresh]);
+  const { perms } = estado;
 
   const handleActivate = async () => {
     setChecking(true);
     try {
       await onRetryTracking();
-      const p = await refresh();
-      if (p.running) {
-        Toast.show({ type: 'success', text1: 'Ubicación activa', text2: 'El despacho ya te ve en el mapa' });
-      } else if (p.background !== 'granted') {
-        Toast.show({
-          type: 'info',
-          text1: 'Falta "Permitir todo el tiempo"',
-          text2: 'Ábrelo en Ajustes del sistema y vuelve',
-        });
-      }
+      const p = await refrescar();
+      if (p.running) Toast.show({ type: 'success', text1: 'Ubicación activa', text2: 'El despacho ya te ve' });
     } finally {
       setChecking(false);
     }
@@ -54,158 +45,90 @@ export function SettingsScreen({ onRetryTracking }: { onRetryTracking: () => Pro
 
   return (
     <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-      <Text style={styles.title}>Ajustes</Text>
+      <View style={styles.column}>
+        <Text style={styles.title}>Ajustes</Text>
 
-      {/* ── Estado del rastreo ── */}
-      <SectionLabel>Ubicación en tiempo real</SectionLabel>
-      <Card style={styles.card}>
-        <View style={styles.statusHead}>
-          <View
-            style={[
-              styles.statusIcon,
-              { backgroundColor: running ? colors.successSoft : colors.dangerSoft },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={running ? 'crosshairs-gps' : 'crosshairs-off'}
-              size={26}
-              color={running ? colors.success : colors.danger}
-            />
+        <SectionLabel>Ubicación</SectionLabel>
+        <Card style={styles.card}>
+          <View style={styles.statusRow}>
+            <View style={[styles.dot, { backgroundColor: COLOR_NIVEL[estado.nivel] }]} />
+            <View style={styles.flex}>
+              <Text style={styles.statusTitle}>{estado.texto}</Text>
+              {estado.ayuda ? <Text style={styles.statusSub}>{estado.ayuda}</Text> : null}
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.statusTitle}>
-              {running ? 'Compartiendo ubicación' : 'Ubicación inactiva'}
-            </Text>
-            <Text style={styles.statusSub}>
-              {running
-                ? 'El despacho ve dónde estás, incluso con la pantalla apagada.'
-                : 'El despacho no puede verte en el mapa ahora mismo.'}
-            </Text>
+
+          <Divider style={styles.divider} />
+
+          <View style={styles.permRow}>
+            <Text style={styles.permLabel}>Mientras uso la app</Text>
+            <Pill label={fgOk ? 'Concedido' : 'Falta'} tone={fgOk ? 'success' : 'danger'} />
           </View>
-        </View>
-
-        <Divider style={{ marginVertical: 14 }} />
-
-        <View style={styles.permRow}>
-          <Text style={styles.permLabel}>Mientras uso la app</Text>
-          <Pill
-            label={fgOk ? 'Concedido' : 'Falta'}
-            tone={fgOk ? 'success' : 'danger'}
-            icon={fgOk ? 'check' : 'close'}
-          />
-        </View>
-        <View style={styles.permRow}>
-          <Text style={styles.permLabel}>Permitir todo el tiempo</Text>
-          <Pill
-            label={bgOk ? 'Concedido' : 'Falta'}
-            tone={bgOk ? 'success' : 'danger'}
-            icon={bgOk ? 'check' : 'close'}
-          />
-        </View>
-
-        {!bgOk && (
-          <View style={styles.hint}>
-            <MaterialCommunityIcons name="information-outline" size={15} color={colors.info} />
-            <Text style={styles.hintText}>
-              Android solo permite activar “Todo el tiempo” desde los ajustes del sistema. Ábrelos,
-              elige Ubicación → Permitir todo el tiempo, y regresa: la app lo detecta sola.
-            </Text>
+          <View style={styles.permRow}>
+            <Text style={styles.permLabel}>Permitir todo el tiempo</Text>
+            <Pill label={bgOk ? 'Concedido' : 'Falta'} tone={bgOk ? 'success' : 'danger'} />
           </View>
-        )}
+          <View style={styles.permRow}>
+            <Text style={styles.permLabel}>GPS del teléfono</Text>
+            <Pill label={perms?.servicesEnabled === false ? 'Apagado' : 'Encendido'} tone={perms?.servicesEnabled === false ? 'danger' : 'success'} />
+          </View>
 
-        <View style={styles.actions}>
-          <ActionButton
-            label={checking ? 'Verificando…' : running ? 'Volver a verificar' : 'Activar ubicación'}
-            icon={running ? 'refresh' : 'crosshairs-gps'}
-            tone={running ? 'neutral' : 'brand'}
-            onPress={handleActivate}
-            disabled={checking}
-          />
-          {!bgOk && (
+          <View style={styles.actions}>
             <ActionButton
-              label="Abrir ajustes del sistema"
-              icon="cog-outline"
-              tone="info"
-              onPress={() => Linking.openSettings().catch(() => {})}
+              label={checking ? 'Verificando…' : running ? 'Volver a verificar' : 'Activar ubicación'}
+              tone={running ? 'neutral' : 'brand'}
+              onPress={handleActivate}
+              disabled={checking}
             />
-          )}
-        </View>
-      </Card>
-
-      {/* ── Cuenta ── */}
-      <SectionLabel>Cuenta</SectionLabel>
-      <Card style={styles.card}>
-        <View style={styles.accountRow}>
-          <View style={styles.avatar}>
-            <MaterialCommunityIcons name="account" size={22} color={colors.brand} />
+            {!bgOk && <ActionButton label="Abrir ajustes del sistema" tone="neutral" onPress={() => Linking.openSettings().catch(() => {})} />}
+            {Platform.OS === 'android' && (
+              <ActionButton label="Quitar ahorro de batería" tone="neutral" onPress={() => void abrirAhorroDeBateria()} />
+            )}
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.accountName} numberOfLines={1}>
-              {user?.name || user?.username || 'Domiciliario'}
-            </Text>
-            {user?.username ? (
-              <Text style={styles.accountSub}>{formatPhoneDisplay(user.username)}</Text>
-            ) : null}
-          </View>
-        </View>
+          <Text style={styles.note}>
+            Para que el despacho te vea con la pantalla apagada: ubicación en “Todo el tiempo” y la app sin ahorro de batería.
+          </Text>
+        </Card>
 
-        <Divider style={{ marginVertical: 14 }} />
+        <SectionLabel>Cuenta</SectionLabel>
+        <Card style={styles.card}>
+          <Text style={styles.accountName} numberOfLines={1}>
+            {user?.name || user?.username || 'Domiciliario'}
+          </Text>
+          {user?.username ? <Text style={styles.accountSub}>{formatPhoneDisplay(user.username)}</Text> : null}
 
-        <ActionButton label="Cerrar sesión" icon="logout-variant" tone="danger" onPress={logout} />
-        <Text style={styles.note}>
-          Al cerrar sesión se detiene el envío de tu ubicación.
-        </Text>
-      </Card>
+          <Divider style={styles.divider} />
 
-      <Text style={styles.version}>Dfiru Riders · v1.0.0</Text>
+          <ActionButton label="Cerrar sesión" tone="danger" onPress={logout} />
+          <Text style={styles.note}>Al cerrar sesión se detiene el envío de tu ubicación.</Text>
+        </Card>
+
+        <Text style={styles.version}>Dfiru Riders · v1.0.0</Text>
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { padding: 20, paddingBottom: 30, gap: 10 },
-  title: { ...text.h1, color: colors.ink, marginBottom: 12 },
-  card: { padding: 16, marginTop: 8, marginBottom: 14 },
+  flex: { flex: 1 },
+  scroll: { padding: 20, paddingBottom: 30, alignItems: 'center' },
+  column: { width: '100%', maxWidth: Math.min(maxContentWidth, 560), gap: 10 },
+  title: { ...text.h1, color: colors.ink, marginBottom: 8 },
+  card: { padding: 16, marginBottom: 12 },
+  divider: { marginVertical: 14 },
 
-  statusHead: { flexDirection: 'row', alignItems: 'center', gap: 13 },
-  statusIcon: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  statusTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
-  statusSub: { color: colors.muted, fontSize: 12.5, lineHeight: 18, marginTop: 3 },
+  statusRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  dot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
+  statusTitle: { color: colors.ink, fontSize: 16, fontWeight: '700' },
+  statusSub: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 3 },
 
-  permRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 7,
-  },
-  permLabel: { color: colors.ink, fontSize: 13.5, fontWeight: '600' },
-
-  hint: {
-    flexDirection: 'row',
-    gap: 9,
-    backgroundColor: colors.infoSoft,
-    borderRadius: radius.md,
-    padding: 12,
-    marginTop: 10,
-  },
-  hintText: { flex: 1, color: colors.muted, fontSize: 12, lineHeight: 18 },
+  permRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 7 },
+  permLabel: { color: colors.ink, fontSize: 14, fontWeight: '500' },
 
   actions: { gap: 9, marginTop: 14 },
+  note: { color: colors.faint, fontSize: 12, lineHeight: 17, marginTop: 12 },
 
-  accountRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: 'rgba(245,165,36,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(245,165,36,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  accountName: { color: colors.ink, fontSize: 15.5, fontWeight: '800' },
-  accountSub: { color: colors.muted, fontSize: 12.5, marginTop: 2 },
-
-  note: { color: colors.faint, fontSize: 11, textAlign: 'center', marginTop: 10, lineHeight: 16 },
+  accountName: { color: colors.ink, fontSize: 16, fontWeight: '700' },
+  accountSub: { color: colors.muted, fontSize: 13, marginTop: 2 },
   version: { color: colors.ghost, fontSize: 11, textAlign: 'center', marginTop: 6 },
 });

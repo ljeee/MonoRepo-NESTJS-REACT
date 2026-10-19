@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshControl, Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { Modal, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { useDomiciliariosList } from '@/src/shared';
 import { api } from '../../services/api';
 import { View, Text, TouchableOpacity } from '../../tw';
@@ -13,9 +13,10 @@ import {
   Icon,
   ConfirmModal,
   ListSkeleton,
-} from '../ui';
+  CardGrid, InlineError, EntityCard } from '../ui';
 import { useToast } from '@/src/shared';
 import { useRouter } from 'expo-router';
+import { PosRefreshControl } from '../ui/PosRefreshControl';
 
 // ─── Edit Modal ───────────────────────────────────────────────────────────────
 
@@ -394,11 +395,9 @@ export default function DomiciliariosList() {
   return (
     <PageContainer
       refreshControl={
-        <RefreshControl
+        <PosRefreshControl
           refreshing={refreshing}
           onRefresh={handleRefresh}
-          tintColor="#F5A524"
-          colors={["#F5A524"]}
         />
       }
     >
@@ -444,12 +443,7 @@ export default function DomiciliariosList() {
       </View>
 
       {/* ── Error / Loading ── */}
-      {error && (
-        <View className="flex-row items-center gap-2 bg-red-500/10 p-4 rounded-xl border border-red-500/20 mb-6">
-          <Icon name="alert-circle-outline" size={18} color="#EF4444" />
-          <Text className="text-red-400 text-sm font-bold">{error}</Text>
-        </View>
-      )}
+      <InlineError message={error} className="mb-6" />
       {loading && <ListSkeleton count={4} />}
 
       {/* ── Domiciliario list ── */}
@@ -461,46 +455,24 @@ export default function DomiciliariosList() {
       )}
 
       <View className="gap-y-4 pb-10">
-        {!loading && filteredData.map((item) => (
-            <Card key={item.telefono} className="overflow-hidden border-white/5 bg-slate-900/40">
-                <View className="flex-row items-center p-4">
-                    <View className="w-14 h-14 rounded-2xl bg-orange-500/10 items-center justify-center mr-4 border border-orange-500/20">
-                        <Icon name="account-tie" size={28} color="#F5A524" />
-                    </View>
-
-                    <View className="flex-1">
-                        <Text className="text-white font-black text-lg uppercase leading-tight" style={{ fontFamily: 'Space Grotesk' }}>
-                            {item.domiciliarioNombre || 'Sin nombre'}
-                        </Text>
-                        <View className="flex-row items-center gap-1.5 mt-1">
-                            <Icon name="phone" size={14} color="#F5A524" />
-                            <Text className="text-(--color-pos-primary) font-black tracking-widest text-sm">{item.telefono}</Text>
-                        </View>
-                        {item.user?.username && (
-                          <View className="flex-row items-center gap-1.5 mt-0.5">
-                            <Icon name="at" size={12} color="#475569" />
-                            <Text style={{ color: '#475569', fontSize: 11, fontFamily: 'Outfit' }}>{item.user.username}</Text>
-                          </View>
-                        )}
-                    </View>
-
-                    <View className="flex-row gap-2">
-                        <TouchableOpacity
-                            onPress={() => setEditTarget(item)}
-                            className="w-10 h-10 rounded-full bg-white/5 items-center justify-center active:bg-white/10"
-                        >
-                            <Icon name="account-cog" size={18} color="#94A3B8" />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setDeleteTarget(item)}
-                            className="w-10 h-10 rounded-full bg-red-500/10 items-center justify-center active:bg-red-500/20"
-                        >
-                            <Icon name="trash-can-outline" size={18} color="#EF4444" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Card>
-        ))}
+        {!loading && (
+          <CardGrid
+            kind="persona"
+            data={filteredData}
+            keyExtractor={(item) => item.telefono}
+            renderItem={(item) => (
+            <EntityCard
+                title={item.domiciliarioNombre || 'Sin nombre'}
+                meta={[
+                    { icon: 'phone', text: item.telefono, color: '#F5A524' },
+                    ...(item.user?.username ? [{ icon: 'at' as const, text: item.user.username }] : []),
+                ]}
+                onEdit={() => setEditTarget(item)}
+                onDelete={() => setDeleteTarget(item)}
+            />
+            )}
+          />
+        )}
       </View>
 
       {/* ── Edit Modal ── */}

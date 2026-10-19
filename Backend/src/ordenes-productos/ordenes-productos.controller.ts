@@ -1,4 +1,6 @@
 import {Controller, Get, Post, Put, Delete, Param, Body, Patch} from '@nestjs/common';
+import {Roles} from '../auth/decorators/roles.decorator';
+import {Role} from '../auth/roles.enum';
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {OrdenesProductosService} from './ordenes-productos.service';
 import {CreateOrdenesProductosDto} from './esquemas/ordenes-productos.dto';
@@ -22,6 +24,7 @@ export class OrdenesProductosController {
 		return this.service.findOne(id);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Post()
 	@ApiOperation({summary: 'Crear un producto de orden'})
 	@ApiResponse({status: 201, description: 'Producto de orden creado.'})
@@ -29,6 +32,7 @@ export class OrdenesProductosController {
 		return this.service.create(dto);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Patch(':id')
 	@ApiOperation({summary: 'Actualizar un producto de orden'})
 	@ApiResponse({status: 200, description: 'Producto de orden actualizado.'})
@@ -36,6 +40,7 @@ export class OrdenesProductosController {
 		return this.service.update(id, dto);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Delete(':id')
 	@ApiOperation({summary: 'Eliminar un producto de orden'})
 	@ApiResponse({status: 200, description: 'Producto de orden eliminado.'})

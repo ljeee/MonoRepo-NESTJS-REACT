@@ -1,9 +1,10 @@
-import {Injectable, NotFoundException} from '@nestjs/common';
+import {BadRequestException, Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {Productos} from './esquemas/productos.entity';
 import {ProductoVariantes} from './esquemas/producto-variantes.entity';
-import {CreateProductosDto, FindProductosDto} from './esquemas/productos.dto';
+import {CreateProductosDto, FindProductosDto, TAMANOS_VARIANTE} from './esquemas/productos.dto';
+import {derivarCategoriaProducto, esCategoriaProducto} from '../common/utils/catalogo.util';
 
 @Injectable()
 export class ProductosService {
@@ -53,13 +54,32 @@ export class ProductosService {
 		return producto;
 	}
 
+	/** Verifica que el grupo exista (el FK lo exigiría igual, pero con un mensaje claro). */
+	private async validarGrupo(saborGrupoId: number | null | undefined): Promise<void> {
+		if (saborGrupoId == null) return;
+		const filas: unknown[] = await this.repo.manager.query('SELECT 1 FROM sabor_grupos WHERE id = $1', [saborGrupoId]);
+		if (!filas.length) throw new BadRequestException(`Grupo de sabores inexistente: ${saborGrupoId}`);
+	}
+
+	private validarTamano(tamano: string | null | undefined): void {
+		if (tamano != null && !(TAMANOS_VARIANTE as readonly string[]).includes(tamano)) {
+			throw new BadRequestException(`Tamaño inválido: ${tamano}`);
+		}
+	}
+
 	async create(data: CreateProductosDto) {
+		await this.validarGrupo(data.saborGrupoId);
 		const producto = this.repo.create({
 			productoNombre: data.productoNombre,
 			descripcion: data.descripcion,
 			activo: data.activo ?? true,
 			emoji: data.emoji,
 			personalizacion: data.personalizacion ?? null,
+			saborGrupoId: data.saborGrupoId ?? null,
+			// Sin categoría explícita se deduce del nombre; el admin puede corregirla luego.
+			categoria: esCategoriaProducto(data.categoria)
+				? data.categoria
+				: derivarCategoriaProducto(data.productoNombre, data.personalizacion),
 		});
 		const savedProducto = await this.repo.save(producto);
 
@@ -70,6 +90,7 @@ export class ProductosService {
 					nombre: v.nombre,
 					precio: v.precio,
 					descripcion: v.descripcion,
+					tamano: v.tamano ?? null,
 					activo: true,
 				}),
 			);
@@ -81,28 +102,38 @@ export class ProductosService {
 	}
 
 	async update(productoId: number, data: Partial<CreateProductosDto>) {
+		// El PATCH llega como Partial<…> (sin validación de clase): se valida aquí.
+		if (data.categoria !== undefined && data.categoria !== null && !esCategoriaProducto(data.categoria)) {
+			throw new BadRequestException(`Categoría inválida: ${String(data.categoria)}`);
+		}
+		await this.validarGrupo(data.saborGrupoId);
 		await this.repo.update(productoId, {
 			productoNombre: data.productoNombre,
 			descripcion: data.descripcion,
 			activo: data.activo,
 			emoji: data.emoji,
 			...(data.personalizacion !== undefined ? {personalizacion: data.personalizacion} : {}),
+			...(data.categoria !== undefined ? {categoria: data.categoria} : {}),
+			...(data.saborGrupoId !== undefined ? {saborGrupoId: data.saborGrupoId} : {}),
 		});
 		return this.findOne(productoId);
 	}
 
 	async remove(productoId: number) {
-		// Borrado real. Antes de eliminar, rompemos la referencia de las variantes en el
-		// historial de órdenes (ordenes_productos.variante_id → NULL); el nombre y el precio
-		// quedan guardados como texto en esa misma fila, así no se pierde el historial.
+		// Borrado real. Antes de eliminar, rompemos las referencias del historial de órdenes
+		// (variante_id y "productoObjProductoId" → NULL); el texto, el nombre del producto
+		// (producto_base) y el precio quedan en la misma fila, así no se pierde el historial.
+		// Sin soltar "productoObjProductoId" el FK (NO ACTION) impediría borrar un producto vendido.
 		return this.repo.manager.transaction(async (m) => {
+			await m.query('UPDATE ordenes_productos SET "productoObjProductoId" = NULL WHERE "productoObjProductoId" = $1', [
+				productoId,
+			]);
 			const variantes = await m.getRepository(ProductoVariantes).find({where: {productoId}});
 			const ids = variantes.map((v) => v.varianteId);
 			if (ids.length) {
 				await m.query('UPDATE ordenes_productos SET variante_id = NULL WHERE variante_id = ANY($1::int[])', [
 					ids,
 				]);
-				await m.query('DELETE FROM variantes_ingredientes WHERE variante_id = ANY($1::int[])', [ids]);
 			}
 			await m.getRepository(ProductoVariantes).delete({productoId});
 			return m.getRepository(Productos).delete(productoId);
@@ -115,12 +146,15 @@ export class ProductosService {
 		precio: number,
 		descripcion?: string,
 		precioLeche?: number | null,
+		tamano?: string | null,
 	) {
+		this.validarTamano(tamano);
 		const variante = this.variantesRepo.create({
 			productoId,
 			nombre,
 			precio,
 			precioLeche: precioLeche ?? null,
+			tamano: tamano ?? null,
 			descripcion,
 			activo: true,
 		});
@@ -141,7 +175,9 @@ export class ProductosService {
 		descripcion?: string,
 		activo?: boolean,
 		precioLeche?: number | null,
+		tamano?: string | null,
 	) {
+		this.validarTamano(tamano);
 		const updateData: any = {};
 		if (nombre !== undefined) updateData.nombre = nombre;
 		if (precio !== undefined) updateData.precio = precio;
@@ -149,6 +185,8 @@ export class ProductosService {
 		if (precioLeche !== undefined) updateData.precioLeche = precioLeche;
 		if (descripcion !== undefined) updateData.descripcion = descripcion;
 		if (activo !== undefined) updateData.activo = activo;
+		// tamano puede ser null explícito (volver a deducirlo del nombre) o un valor
+		if (tamano !== undefined) updateData.tamano = tamano;
 
 		await this.variantesRepo.update(varianteId, updateData);
 		return this.variantesRepo.findOne({where: {varianteId}});
@@ -156,35 +194,10 @@ export class ProductosService {
 
 	async deleteVariante(varianteId: number) {
 		// Hard-delete: rompe FK en historial de órdenes (conserva nombre+precio en texto)
-		// luego limpia vínculos de ingredientes y elimina la variante.
+		// y elimina la variante (sus reglas de inventario caen por FK en cascada).
 		await this.variantesRepo.manager.transaction(async (m) => {
 			await m.query('UPDATE ordenes_productos SET variante_id = NULL WHERE variante_id = $1', [varianteId]);
-			await m.query('DELETE FROM variantes_ingredientes WHERE variante_id = $1', [varianteId]);
 			await m.getRepository(ProductoVariantes).delete(varianteId);
 		});
-	}
-
-	async ajustarStockBebida(varianteId: number, delta: number): Promise<ProductoVariantes> {
-		const variante = await this.variantesRepo.findOne({where: {varianteId}});
-		if (!variante) throw new NotFoundException(`Variante con ID ${varianteId} no encontrada`);
-		variante.stockBebida = Math.max(0, (variante.stockBebida ?? 0) + delta);
-		return this.variantesRepo.save(variante);
-	}
-
-	/**
-	 * Configura los metadatos de inventario de bebida de una variante:
-	 * categoría (para agrupar), umbral de alerta y nivel objetivo del medidor.
-	 * Cada campo es opcional; `null` explícito limpia el valor.
-	 */
-	async configurarBebida(
-		varianteId: number,
-		dto: {categoriaBebida?: string | null; alertaBebida?: number | null; nivelObjetivoBebida?: number | null},
-	): Promise<ProductoVariantes> {
-		const variante = await this.variantesRepo.findOne({where: {varianteId}});
-		if (!variante) throw new NotFoundException(`Variante con ID ${varianteId} no encontrada`);
-		if (dto.categoriaBebida !== undefined) variante.categoriaBebida = dto.categoriaBebida;
-		if (dto.alertaBebida !== undefined) variante.alertaBebida = dto.alertaBebida;
-		if (dto.nivelObjetivoBebida !== undefined) variante.nivelObjetivoBebida = dto.nivelObjetivoBebida;
-		return this.variantesRepo.save(variante);
 	}
 }

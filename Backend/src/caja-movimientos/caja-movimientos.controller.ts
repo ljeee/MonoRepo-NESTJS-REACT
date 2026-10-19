@@ -8,16 +8,19 @@ import {Role} from '../auth/roles.enum';
 export class CajaMovimientosController {
 	constructor(private readonly service: CajaMovimientosService) {}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Get('estado')
 	getEstado(@Query('fecha') fecha?: string, @Query('cajaOrigen') cajaOrigen?: CajaOrigen) {
 		return this.service.getEstadoActual(fecha, cajaOrigen ?? 'principal');
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Get('resumen')
 	getResumen(@Query('fecha') fecha?: string, @Query('cajaOrigen') cajaOrigen?: CajaOrigen) {
 		return this.service.getResumen(fecha, cajaOrigen ?? 'principal');
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Get()
 	getMovimientos(@Query('fecha') fecha?: string, @Query('cajaOrigen') cajaOrigen?: CajaOrigen) {
 		return this.service.getMovimientos(fecha, cajaOrigen ?? 'principal');

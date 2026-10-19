@@ -1,4 +1,6 @@
 import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from '@nestjs/common';
+import {Roles} from '../auth/decorators/roles.decorator';
+import {Role} from '../auth/roles.enum';
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {ProductosService} from './productos.service';
 import {CreateProductosDto, CreateProductoVarianteDto, FindProductosDto} from './esquemas/productos.dto';
@@ -33,6 +35,7 @@ export class ProductosController {
 		return this.service.getVariantes(id);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Post()
 	@ApiOperation({summary: 'Crear un producto con variantes'})
 	@ApiResponse({status: 201, description: 'Producto creado.'})
@@ -40,13 +43,15 @@ export class ProductosController {
 		return this.service.create(dto);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Post(':id/variantes')
 	@ApiOperation({summary: 'Agregar variante a un producto'})
 	@ApiResponse({status: 201, description: 'Variante agregada.'})
 	addVariante(@Param('id') id: number, @Body() body: CreateProductoVarianteDto) {
-		return this.service.createVariante(id, body.nombre, body.precio, body.descripcion, body.precioLeche);
+		return this.service.createVariante(id, body.nombre, body.precio, body.descripcion, body.precioLeche, body.tamano);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Patch(':id')
 	@ApiOperation({summary: 'Actualizar un producto'})
 	@ApiResponse({status: 200, description: 'Producto actualizado.'})
@@ -54,6 +59,7 @@ export class ProductosController {
 		return this.service.update(id, dto);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Delete(':id')
 	@ApiOperation({summary: 'Eliminar un producto'})
 	@ApiResponse({status: 200, description: 'Producto eliminado.'})
@@ -61,31 +67,21 @@ export class ProductosController {
 		return this.service.remove(id);
 	}
 
-	@Patch('variantes/:id/stock-bebida')
-	@ApiOperation({summary: 'Ajustar stock de bebida de una variante (+delta o -delta)'})
-	@ApiResponse({status: 200, description: 'Stock ajustado.'})
-	ajustarStockBebida(@Param('id') id: number, @Body() body: {delta: number}) {
-		return this.service.ajustarStockBebida(id, body.delta);
-	}
-
-	@Patch('variantes/:id/config-bebida')
-	@ApiOperation({summary: 'Configurar categoría, alerta y nivel objetivo de una variante de bebida'})
-	@ApiResponse({status: 200, description: 'Configuración de bebida actualizada.'})
-	configurarBebida(
-		@Param('id') id: number,
-		@Body()
-		body: {categoriaBebida?: string | null; alertaBebida?: number | null; nivelObjetivoBebida?: number | null},
-	) {
-		return this.service.configurarBebida(id, body);
-	}
-
+	@Roles(Role.Admin, Role.Cajero)
 	@Patch('variantes/:id')
 	@ApiOperation({summary: 'Actualizar una variante'})
 	@ApiResponse({status: 200, description: 'Variante actualizada.'})
 	updateVariante(
 		@Param('id') id: number,
 		@Body()
-		body: {nombre?: string; precio?: number; precioLeche?: number | null; descripcion?: string; activo?: boolean},
+		body: {
+			nombre?: string;
+			precio?: number;
+			precioLeche?: number | null;
+			descripcion?: string;
+			activo?: boolean;
+			tamano?: string | null;
+		},
 	) {
 		return this.service.updateVariante(
 			id,
@@ -94,9 +90,11 @@ export class ProductosController {
 			body.descripcion,
 			body.activo,
 			body.precioLeche,
+			body.tamano,
 		);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Delete('variantes/:id')
 	@ApiOperation({summary: 'Eliminar una variante'})
 	@ApiResponse({status: 200, description: 'Variante eliminada.'})

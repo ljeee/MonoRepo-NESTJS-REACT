@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Producto, ProductoVariante, PizzaSabor } from '../types/models';
+import type { Producto, ProductoVariante, PizzaSabor, SaborGrupo, CategoriaProducto, TamanoPizza } from '../types/models';
 import { useProductos, useProductOperations } from './use-productos';
 import { usePizzaSabores, useUpdatePizzaSabor, useCreatePizzaSabor, useDeletePizzaSabor } from './use-pizza-sabores';
+import { useSaborGrupos } from './use-sabor-grupos';
+import { resolverPersonalizacion } from '../utils/personalizacion';
 
 type DeleteTarget = { type: 'product' | 'variant' | 'sabor'; id: number; name: string } | null;
 
@@ -21,11 +23,14 @@ type UiState = {
   prodDesc: string;
   prodEmoji: string;
   prodActive: boolean;
-  prodPersonalizacion: string;
+  prodPersonalizacion: 'ninguna' | 'jugo';
+  prodSaborGrupoId: number | null;
+  prodCategoria: CategoriaProducto | null;
   prodError: string;
   varName: string;
   varPrice: string;
   varDesc: string;
+  varTamano: TamanoPizza | null;
   varError: string;
 };
 
@@ -46,10 +51,13 @@ const initialUiState: UiState = {
   prodEmoji: '',
   prodActive: true,
   prodPersonalizacion: 'ninguna',
+  prodSaborGrupoId: null,
+  prodCategoria: null,
   prodError: '',
   varName: '',
   varPrice: '',
   varDesc: '',
+  varTamano: null,
   varError: '',
 };
 
@@ -66,6 +74,7 @@ export function useGestionProductosScreen() {
   } = useProductOperations();
 
   const { sabores, fetchSabores } = usePizzaSabores();
+  const { grupos } = useSaborGrupos();
   const { updateSabor, loading: updateSaborLoading } = useUpdatePizzaSabor();
   const { createSabor, loading: createSaborLoading } = useCreatePizzaSabor();
   const { deleteSabor, loading: deleteSaborLoading } = useDeletePizzaSabor();
@@ -93,10 +102,13 @@ export function useGestionProductosScreen() {
     prodEmoji,
     prodActive,
     prodPersonalizacion,
+    prodSaborGrupoId,
+    prodCategoria,
     prodError,
     varName,
     varPrice,
     varDesc,
+    varTamano,
     varError,
   } = uiState;
 
@@ -115,6 +127,12 @@ export function useGestionProductosScreen() {
     );
   }, [search, productos]);
 
+  // El selector de tamaño de la variante solo aplica si el grupo de sabores de su producto usa tamaños.
+  const varUsaTamano = useMemo(() => {
+    const producto = productos.find((p) => p.productoId === parentProductId);
+    return grupos.find((g) => g.id === producto?.saborGrupoId)?.usaTamano ?? false;
+  }, [productos, grupos, parentProductId]);
+
   const resetProductForm = () => {
     patchUi({
       prodName: '',
@@ -122,6 +140,8 @@ export function useGestionProductosScreen() {
       prodEmoji: '',
       prodActive: true,
       prodPersonalizacion: 'ninguna',
+      prodSaborGrupoId: null,
+      prodCategoria: null,
       editingProduct: null,
       prodError: '',
     });
@@ -132,6 +152,7 @@ export function useGestionProductosScreen() {
       varName: '',
       varPrice: '',
       varDesc: '',
+      varTamano: null,
       editingVariant: null,
       parentProductId: null,
       varError: '',
@@ -152,7 +173,9 @@ export function useGestionProductosScreen() {
         prodDesc: product.descripcion || '',
         prodEmoji: product.emoji || '',
         prodActive: product.activo,
-        prodPersonalizacion: product.personalizacion ?? 'ninguna',
+        prodPersonalizacion: resolverPersonalizacion(product) === 'jugo' ? 'jugo' : 'ninguna',
+        prodSaborGrupoId: product.saborGrupoId ?? null,
+        prodCategoria: product.categoria ?? null,
       });
     } else {
       resetProductForm();
@@ -168,6 +191,7 @@ export function useGestionProductosScreen() {
         varName: variant.nombre,
         varPrice: variant.precio.toString(),
         varDesc: variant.descripcion || '',
+        varTamano: variant.tamano ?? null,
       });
     } else {
       resetVariantForm();
@@ -182,12 +206,17 @@ export function useGestionProductosScreen() {
       return;
     }
 
+    // La categoría solo viaja si cambió: al crear sin elegirla el backend la deduce del
+    // nombre, y al editar no se pisa la guardada si la respuesta no trajo el campo.
+    const categoriaCambio = prodCategoria !== (editingProduct?.categoria ?? null);
     const payload = {
       productoNombre: prodName,
       descripcion: prodDesc,
       emoji: prodEmoji || undefined,
       activo: prodActive,
-      personalizacion: prodPersonalizacion || 'ninguna',
+      personalizacion: prodPersonalizacion,
+      saborGrupoId: prodSaborGrupoId,
+      ...(categoriaCambio ? { categoria: prodCategoria } : {}),
     };
 
     try {
@@ -214,6 +243,8 @@ export function useGestionProductosScreen() {
       nombre: varName,
       precio: Number(varPrice),
       descripcion: varDesc,
+      // null = volver a deducir el tamaño del nombre
+      tamano: varTamano,
       activo: true,
     };
 
@@ -256,19 +287,17 @@ export function useGestionProductosScreen() {
 
   const handleSaveSabor = async (
     saborId: number | undefined,
-    data: { nombre?: string; tipo?: 'tradicional' | 'especial' | 'configuracion'; recargoPequena: number; recargoMediana: number; recargoGrande: number },
+    data: { nombre: string; grupoId: number; activo: boolean; recargoPequena: number; recargoMediana: number; recargoGrande: number },
   ) => {
-    try {
-      if (saborId !== undefined && saborId > 0) {
-        await updateSabor(saborId, data);
-      } else {
-        await createSabor({ ...data, activo: true });
-      }
-      patchUi({ editingSabor: null });
-      void fetchSabores();
-    } catch {
-      // Error handled in modal
+    // El error se propaga: el modal lo atrapa y lo muestra (antes se tragaba aquí y la
+    // creación fallida parecía no hacer nada).
+    if (saborId !== undefined && saborId > 0) {
+      await updateSabor(saborId, data);
+    } else {
+      await createSabor(data);
     }
+    patchUi({ editingSabor: null });
+    void fetchSabores();
   };
 
   const handleCloseSabor = () => patchUi({ editingSabor: null });
@@ -279,6 +308,7 @@ export function useGestionProductosScreen() {
     opLoading,
     saborLoading,
     sabores,
+    grupos: grupos as SaborGrupo[],
     filteredProductos,
     search,
     refreshing,
@@ -294,10 +324,14 @@ export function useGestionProductosScreen() {
     prodDesc,
     prodEmoji,
     prodPersonalizacion,
+    prodSaborGrupoId,
+    prodCategoria,
     prodError,
     varName,
     varPrice,
     varDesc,
+    varTamano,
+    varUsaTamano,
     varError,
     patchUi,
     openProductModal,

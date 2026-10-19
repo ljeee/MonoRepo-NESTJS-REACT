@@ -1,4 +1,4 @@
-import {IsString, IsNumber, IsOptional, IsNotEmpty, Matches, IsLatitude, IsLongitude} from 'class-validator';
+import {IsString, IsOptional, IsNotEmpty, Matches, IsLatitude, IsLongitude, IsNumber, Min} from 'class-validator';
 import {ApiProperty} from '@nestjs/swagger';
 
 export class CreateDomiciliariosDto {
@@ -22,4 +22,10 @@ export class ActualizarUbicacionDto {
 	@ApiProperty({example: -75.5812})
 	@IsLongitude()
 	longitud: number;
+
+	@ApiProperty({example: 1760000000000, required: false, description: 'Momento (ms epoch) en que el GPS tomó la posición'})
+	@IsOptional()
+	@IsNumber()
+	@Min(0)
+	capturadaEn?: number;
 }

@@ -1,13 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { ActivityIndicator, TouchableOpacity } from 'react-native';
 import { View, Text } from '../../tw';
 import Icon from '../ui/Icon';
+import { EstadoPill } from '../ui/EstadoPill';
 import type { Orden } from '@/src/shared';
+import { formatCOP, getOrdenEstadoMeta, tipoPedidoMeta } from '@/src/shared';
+import { ElapsedTimer, useMinutosDesde } from './ElapsedTimer';
+import type { IconName } from '../ui/Icon';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 const timeFormatter = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
-const copFormatter = new Intl.NumberFormat('es-CO');
 
 type Novedad = {
     adds: number[];
@@ -29,95 +32,12 @@ type Props = {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const getStripeColor = (estado?: string): string => {
-    switch ((estado || '').toLowerCase()) {
-        case 'pendiente':      return '#F5A524'; // amber
-        case 'en preparación':
-        case 'en_preparacion':
-        case 'preparacion':    return '#06B6D4'; // cyan
-        case 'lista':
-        case 'list':           return '#22C55E'; // green
-        case 'completada':
-        case 'entregado':      return '#10B981'; // emerald
-        case 'cancelado':      return '#EF4444'; // red
-        default:               return '#475569'; // slate
-    }
-};
-
-const getStatusLabel = (estado?: string): string => {
-    switch ((estado || '').toLowerCase()) {
-        case 'pendiente':      return 'PENDIENTE';
-        case 'en preparación':
-        case 'en_preparacion':
-        case 'preparacion':    return 'EN PREPARACIÓN';
-        case 'lista':          return 'LISTA';
-        case 'completada':     return 'COMPLETADA';
-        case 'entregado':      return 'ENTREGADO';
-        case 'cancelado':      return 'CANCELADO';
-        default:               return (estado || '').toUpperCase();
-    }
-};
-
-const getStatusBg = (estado?: string): string => {
-    switch ((estado || '').toLowerCase()) {
-        case 'pendiente':      return 'rgba(245,165,36,0.15)';
-        case 'en preparación':
-        case 'en_preparacion':
-        case 'preparacion':    return 'rgba(6,182,212,0.15)';
-        case 'lista':          return 'rgba(34,197,94,0.15)';
-        case 'completada':
-        case 'entregado':      return 'rgba(16,185,129,0.15)';
-        case 'cancelado':      return 'rgba(239,68,68,0.15)';
-        default:               return 'rgba(71,85,105,0.15)';
-    }
-};
-
-const getTipoIcon = (tipo?: string) => {
-    const t = (tipo || '').toLowerCase();
-    if (t.includes('domicilio')) return { icon: 'motorbike' as const, color: '#F5A524' };
-    if (t.includes('llevar'))    return { icon: 'bag-personal-outline' as const, color: '#60A5FA' };
-    return                              { icon: 'table-furniture' as const, color: '#94A3B8' };
-};
 
 const formatHora = (fecha: string | Date): string =>
     timeFormatter.format(new Date(fecha));
 
 const formatTotal = (total?: number | null): string =>
-    total != null ? `$${copFormatter.format(Number(total))}` : '';
-
-// ── Circular mini-timer ────────────────────────────────────────────────────────
-
-function MiniTimer({ fechaOrden, estado }: { fechaOrden: string | Date; estado?: string }) {
-    const [mins, setMins] = useState(() =>
-        Math.max(0, Math.floor((Date.now() - new Date(fechaOrden).getTime()) / 60000))
-    );
-
-    useEffect(() => {
-        const iv = setInterval(() => {
-            setMins(Math.max(0, Math.floor((Date.now() - new Date(fechaOrden).getTime()) / 60000)));
-        }, 30000);
-        return () => clearInterval(iv);
-    }, [fechaOrden]);
-
-    let color = '#3B82F6';
-    if (estado !== 'pendiente') color = '#10B981';
-    else if (mins >= 30) color = '#EF4444';
-    else if (mins >= 20) color = '#EAB308';
-    else if (mins >= 5)  color = '#22C55E';
-
-    const SIZE = 44;
-    const STROKE = 3.5;
-    return (
-        <View style={{ width: SIZE, height: SIZE, borderRadius: SIZE / 2, borderWidth: STROKE, borderColor: color, backgroundColor: `${color}1A`, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ color, fontSize: 13, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 14 }}>
-                {mins > 0 ? mins : '<1'}
-            </Text>
-            <Text style={{ color, fontSize: 6, fontFamily: 'Outfit', opacity: 0.8, letterSpacing: 0.5 }}>
-                MIN
-            </Text>
-        </View>
-    );
-}
+    total != null ? formatCOP(Number(total)) : '';
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
@@ -125,10 +45,11 @@ function OrderCardPOS({
     item, clientName, novedad, patchLoading,
     onPress, onEdit, onPrint, onComplete,
 }: Props) {
-    const stripeColor = getStripeColor(item.estadoOrden);
-    const statusLabel = getStatusLabel(item.estadoOrden);
-    const statusBg    = getStatusBg(item.estadoOrden);
-    const tipoInfo    = getTipoIcon(item.tipoPedido);
+    // Colores y etiqueta de estado: los mismos del dominio compartido (ORDEN_ESTADO_META).
+    const estadoMeta  = getOrdenEstadoMeta(item.estadoOrden);
+    const stripeColor = estadoMeta?.color ?? '#475569';
+    const tipoInfo    = tipoPedidoMeta(item.tipoPedido);
+    const mins        = useMinutosDesde(item.fechaOrden);
     const horaOrden   = formatHora(item.fechaOrden);
     const totalStr    = formatTotal(item.factura?.total);
     const canComplete = item.estadoOrden !== 'completada' && item.estadoOrden !== 'cancelado' && item.estadoOrden !== 'entregado';
@@ -143,8 +64,8 @@ function OrderCardPOS({
             onPress={onPress}
             activeOpacity={0.85}
             style={{
-                borderRadius: 14, overflow: 'hidden',
-                backgroundColor: '#080B14',
+                borderRadius: 16, overflow: 'hidden',
+                backgroundColor: 'rgba(255,255,255,0.04)',
                 borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
                 marginBottom: 0,
             }}
@@ -166,7 +87,7 @@ function OrderCardPOS({
                                 alignItems: 'center', justifyContent: 'center',
                                 borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
                             }}>
-                                <Icon name={tipoInfo.icon} size={14} color={tipoInfo.color} />
+                                <Icon name={tipoInfo.icon as IconName} size={14} color={tipoInfo.color} />
                             </View>
                             <Text numberOfLines={1} style={{ color: '#F8FAFC', fontSize: 15, fontFamily: 'SpaceGrotesk-Bold', flex: 1 }}>
                                 {clientName}
@@ -174,22 +95,12 @@ function OrderCardPOS({
                         </View>
 
                         {/* ID + hora */}
-                        <Text style={{ color: '#64748B', fontSize: 10, fontFamily: 'Outfit', marginBottom: 6 }}>
+                        <Text style={{ color: '#7C8BA1', fontSize: 10, fontFamily: 'Outfit', marginBottom: 6 }}>
                             #{item.ordenId} · {horaOrden}
                         </Text>
 
-                        {/* Status badge */}
-                        <View style={{ flexDirection: 'row', alignSelf: 'flex-start' }}>
-                            <View style={{
-                                paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6,
-                                backgroundColor: statusBg,
-                                borderWidth: 1, borderColor: stripeColor + '40',
-                            }}>
-                                <Text style={{ color: stripeColor, fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', letterSpacing: 0.8 }}>
-                                    {statusLabel}
-                                </Text>
-                            </View>
-                        </View>
+                        {/* Estado */}
+                        <EstadoPill estado={item.estadoOrden} size="xs" />
 
                         {/* Address and driver for domicilio */}
                         {item.tipoPedido === 'domicilio' && (item.domicilios?.[0]?.direccionEntrega || item.domicilios?.[0]?.domiciliario?.domiciliarioNombre) && (
@@ -203,7 +114,7 @@ function OrderCardPOS({
                                 {item.domicilios[0].domiciliario?.domiciliarioNombre && (
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 1, borderColor: 'rgba(249,115,22,0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                                         <Icon name="motorbike" size={10} color="#FB923C" />
-                                        <Text style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 9, fontWeight: 'bold' }}>
+                                        <Text style={{ fontFamily: 'Outfit', color: '#FB923C', fontSize: 10, fontWeight: 'bold' }}>
                                             {item.domicilios[0].domiciliario.domiciliarioNombre}
                                         </Text>
                                     </View>
@@ -213,7 +124,7 @@ function OrderCardPOS({
                     </View>
 
                     {/* Right: timer */}
-                    <MiniTimer fechaOrden={item.fechaOrden} estado={item.estadoOrden} />
+                    <ElapsedTimer mins={mins} estado={item.estadoOrden} />
                 </View>
             </View>
 
@@ -238,12 +149,12 @@ function OrderCardPOS({
                                 </View>
                                 {isNew && (
                                     <View style={{ backgroundColor: 'rgba(34,197,94,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)' }}>
-                                        <Text style={{ color: '#4ADE80', fontSize: 7, fontFamily: 'SpaceGrotesk-Bold' }}>NUEVO</Text>
+                                        <Text style={{ color: '#4ADE80', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold' }}>NUEVO</Text>
                                     </View>
                                 )}
                                 {modType && (
                                     <View style={{ backgroundColor: 'rgba(251,191,36,0.15)', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, borderWidth: 1, borderColor: 'rgba(251,191,36,0.3)' }}>
-                                        <Text style={{ color: '#FBBF24', fontSize: 7, fontFamily: 'SpaceGrotesk-Bold' }}>EDIT</Text>
+                                        <Text style={{ color: '#FBBF24', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold' }}>EDIT</Text>
                                     </View>
                                 )}
                             </View>
@@ -256,7 +167,7 @@ function OrderCardPOS({
                         </View>
                     ))}
                     {item.productos.length > 5 && (
-                        <Text style={{ color: '#475569', fontSize: 10, fontStyle: 'italic', fontFamily: 'Outfit' }}>
+                        <Text style={{ color: '#7C8BA1', fontSize: 10, fontStyle: 'italic', fontFamily: 'Outfit' }}>
                             + {item.productos.length - 5} más...
                         </Text>
                     )}
@@ -295,8 +206,9 @@ function OrderCardPOS({
                     {onEdit && (
                         <TouchableOpacity
                             onPress={onEdit}
+                            accessibilityLabel="Editar orden"
                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                            style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: 'rgba(245,165,36,0.10)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245,165,36,0.2)' }}
+                            style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(245,165,36,0.10)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(245,165,36,0.2)' }}
                         >
                             <Icon name="pencil" size={14} color="#F5A524" />
                         </TouchableOpacity>
@@ -304,8 +216,9 @@ function OrderCardPOS({
                     {onPrint && (
                         <TouchableOpacity
                             onPress={onPrint}
+                            accessibilityLabel="Imprimir orden"
                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                            style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: 'rgba(59,130,246,0.10)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)' }}
+                            style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(59,130,246,0.10)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(59,130,246,0.2)' }}
                         >
                             <Icon name="printer" size={14} color="#3B82F6" />
                         </TouchableOpacity>
@@ -314,8 +227,9 @@ function OrderCardPOS({
                         <TouchableOpacity
                             onPress={onComplete}
                             disabled={patchLoading}
+                            accessibilityLabel="Completar orden"
                             hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                            style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: 'rgba(16,185,129,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', opacity: patchLoading ? 0.5 : 1 }}
+                            style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: 'rgba(16,185,129,0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', opacity: patchLoading ? 0.5 : 1 }}
                         >
                             {patchLoading ? (
                                 <ActivityIndicator size="small" color="#10B981" />

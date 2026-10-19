@@ -145,7 +145,7 @@ describe('ClientesController (e2e)', () => {
 				.expect(201);
 
 			expect(res.body.direccion).toBe('Calle 20');
-			expect(mockService.addDireccion).toHaveBeenCalledWith('3001234567', 'Calle 20');
+			expect(mockService.addDireccion).toHaveBeenCalledWith('3001234567', {direccion: 'Calle 20'});
 		});
 	});
 

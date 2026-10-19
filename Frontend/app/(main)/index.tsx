@@ -1,27 +1,19 @@
-import React, { useCallback, useEffect, useState, memo } from 'react';
-import { ActivityIndicator, Platform, useWindowDimensions, RefreshControl } from 'react-native';
-import { ScrollView, Text, TouchableOpacity, View } from '../../tw';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, useWindowDimensions } from 'react-native';
+import { Text, TouchableOpacity, View } from '../../tw';
 import { useRouter } from 'expo-router';
-import { api } from '../../services/api';
-import type { VentaHora, ResumenPeriodo, Orden } from '@/src/shared';
+import { api, getBaseUrl } from '../../services/api';
+import { Role, bogotaToday, nombreVisibleOrden, timeAgo, useOrdenesSocket } from '@/src/shared';
+import type { HorariosAnalitica, Orden, ResumenAnalitica } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
-import { PageContainer, Card, Icon } from '../../components/ui';
+import { PageContainer, Card, Icon, StatCard, LoadingState, EstadoPill } from '../../components/ui';
+import { ChartCard, ColumnChart, formatearValor } from '../../components/charts';
 import { useAuth } from '../../contexts/AuthContext';
-
-const CHART_H = 140; // px fijos para las barras — evita height:'%' en RN native
+import { PosRefreshControl } from '../../components/ui/PosRefreshControl';
 
 // Formatters hoisteados: crear un Intl.DateTimeFormat por render/tick es costoso
 const CLOCK_FORMATTER = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
 const HEADER_DATE_FORMATTER = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' });
-
-function formatCurrency(n: number) {
-    return '$' + n.toLocaleString('es-CO', { minimumFractionDigits: 0 });
-}
-
-function todayStr(): string {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
 
 function getGreeting(): string {
     const h = new Date().getHours();
@@ -30,145 +22,18 @@ function getGreeting(): string {
     return 'Buenas noches';
 }
 
-function timeAgo(dateStr: string): string {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'Ahora';
-    if (mins < 60) return `${mins}m`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h`;
-    return `${Math.floor(hours / 24)}d`;
-}
-
 function isCompletedEstado(value?: string): boolean {
     const estado = String(value || '').toLowerCase();
     return estado === 'completado' || estado === 'completada' || estado === 'entregado';
 }
 
-function getOrdenDisplayName(o: Orden): string {
-    const nombre = (o.nombreCliente || '').trim();
-    if (nombre) return nombre;
-    const nombreFactura = String((o as any)?.factura?.clienteNombre || '').trim();
-    if (nombreFactura) return nombreFactura;
-    if ((o.tipoPedido || '').toLowerCase() === 'mesa') {
-        const mesa = String((o as any)?.mesa || '').trim();
-        if (mesa) return `Mesa ${mesa}`;
-    }
-    return 'Sin nombre';
-}
-
-function buildResumenFallback(ords: Orden[], facts: any[], resumenApi: ResumenPeriodo | null): ResumenPeriodo {
-    const facturasValidas = facts.filter((f) => f?.estado !== 'cancelado');
-    const totalFacturas = facturasValidas.reduce((sum, f) => sum + (Number(f?.total) || 0), 0);
-    const ticketFacturas = facturasValidas.length > 0 ? totalFacturas / facturasValidas.length : 0;
-    const base: ResumenPeriodo = resumenApi || {
-        totalVentas: 0, totalEgresos: 0, balanceNeto: 0,
-        facturas: facturasValidas.length, ordenes: ords.length,
-        cancelados: 0, ticketPromedio: 0, tasaCancelacion: 0,
-    };
-    const hasActivity = ords.length > 0 || facturasValidas.length > 0;
-    if (!hasActivity) return base;
-    return {
-        ...base,
-        totalVentas: base.totalVentas > 0 ? base.totalVentas : totalFacturas,
-        ticketPromedio: base.ticketPromedio > 0 ? base.ticketPromedio : ticketFacturas,
-        ordenes: base.ordenes > 0 ? base.ordenes : ords.length,
-        facturas: base.facturas > 0 ? base.facturas : facturasValidas.length,
-    };
-}
-
-function normalizeHourlySeries(items: VentaHora[]): VentaHora[] {
-    const byHour = new Map<number, VentaHora>();
-    for (const item of items) {
-        const hour = Number(item.hora);
-        if (Number.isNaN(hour)) continue;
-        byHour.set(hour, { ...item, hora: hour });
-    }
-    const full = Array.from({ length: 24 }, (_, hora) => byHour.get(hora) || { hora, cantidad: 0, total: 0 });
-    const firstActive = full.findIndex(v => v.cantidad > 0);
-    let lastActive = -1;
-    for (let i = full.length - 1; i >= 0; i--) { if (full[i].cantidad > 0) { lastActive = i; break; } }
-    if (firstActive === -1) return full;
-    return full.slice(Math.max(0, firstActive - 1), Math.min(23, lastActive + 1) + 1);
-}
-
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-const StatCard = memo(function StatCard({ count, label, color, urgent, cardWidth }: { count: number; label: string; color: string; urgent?: boolean; cardWidth?: number }) {
-    return (
-        <Card className="flex-row items-center gap-3 p-4 bg-white/5 border-white/10" style={cardWidth ? { width: cardWidth } : { flex: 1, minWidth: 130 }}>
-            <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: color }} />
-            <View>
-                <Text style={{ fontFamily: 'Space Grotesk', color: urgent && count > 0 ? color : '#F8FAFC', fontSize: 22, fontWeight: '900' }}>
-                    {count}
-                </Text>
-                <Text style={{ color: '#475569', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 }}>
-                    {label}
-                </Text>
-            </View>
-        </Card>
-    );
-});
-
-const KpiCard = memo(function KpiCard({ label, value, color, bg, border, cardWidth }: { label: string; value: string; color: string; bg: string; border: string; cardWidth?: number }) {
-    return (
-        <Card style={[
-            { padding: 16, alignItems: 'center', backgroundColor: bg, borderColor: border },
-            cardWidth ? { width: cardWidth } : { flex: 1, minWidth: 130 },
-        ]}>
-            <Text style={{ color: '#64748B', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
-                {label}
-            </Text>
-            <Text style={{ fontFamily: 'Space Grotesk', color, fontSize: 18, fontWeight: '900' }}>
-                {value}
-            </Text>
-        </Card>
-    );
-});
-
-const HourChart = memo(function HourChart({ ventasHoraFull, maxHora }: { ventasHoraFull: VentaHora[]; maxHora: number }) {
-    return (
-        <View style={{ width: '100%', flex: 1 }}>
-            {/* Fila de Barras */}
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end', flex: 1, gap: 1 }}>
-                {ventasHoraFull.map(v => {
-                    const pct = v.cantidad > 0 ? Math.max((v.cantidad / maxHora) * 100, 3) : 0;
-                    return (
-                        <View key={v.hora} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
-                            {pct > 0 && (
-                                <View style={{
-                                    width: '100%', maxWidth: 18,
-                                    height: `${pct}%` as any,
-                                    backgroundColor: '#F5A524',
-                                    borderTopLeftRadius: 4,
-                                    borderTopRightRadius: 4,
-                                }} />
-                            )}
-                        </View>
-                    );
-                })}
-            </View>
-
-            {/* Fila de Etiquetas */}
-            <View style={{ flexDirection: 'row', marginTop: 4, gap: 1 }}>
-                {ventasHoraFull.map((v, i) => {
-                    const showLabel = ventasHoraFull.length <= 14 || i % 2 === 0;
-                    return (
-                        <View key={v.hora} style={{ flex: 1, alignItems: 'center' }}>
-                            <Text style={{ fontSize: 7, color: showLabel ? '#475569' : 'transparent', fontWeight: 'bold' }}>{v.hora}h</Text>
-                        </View>
-                    );
-                })}
-            </View>
-        </View>
-    );
-});
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, token } = useAuth();
     const { isMobile } = useBreakpoint();
     const { width: screenWidth } = useWindowDimensions();
 
@@ -179,20 +44,21 @@ export default function DashboardPage() {
     const col2Width = isMobile ? Math.floor((screenWidth - hPad * 2 - cardGap) / 2) : undefined;
 
     const [clock, setClock] = useState(() => CLOCK_FORMATTER.format(new Date()));
+    const verAnalitica = !!user?.roles?.some((r) => r === Role.Admin || r === Role.Cajero || r === Role.Contador);
     const [dashboard, setDashboard] = useState<{
         loading: boolean;
-        resumen: ResumenPeriodo | null;
-        ventasHora: VentaHora[];
+        resumen: ResumenAnalitica | null;
+        horarios: HorariosAnalitica | null;
         ordenes: Orden[];
         pendientes: number;
         sinPagar: number;
         completadas: number;
         sinAsignar: number;
     }>({
-        loading: true, resumen: null, ventasHora: [],
+        loading: true, resumen: null, horarios: null,
         ordenes: [], pendientes: 0, sinPagar: 0, completadas: 0, sinAsignar: 0,
     });
-    const { loading, resumen, ventasHora, ordenes, pendientes, sinPagar, completadas, sinAsignar } = dashboard;
+    const { loading, resumen, horarios, ordenes, pendientes, sinPagar, completadas, sinAsignar } = dashboard;
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
@@ -205,22 +71,20 @@ export default function DashboardPage() {
     const fetchData = useCallback(async () => {
         setDashboard((prev) => ({ ...prev, loading: true }));
         setHasError(false);
-        const hoy = todayStr();
+        const hoy = bogotaToday();
+        // KPIs de dinero solo para quien ve analítica (el mesero recibiría 403).
+        const consulta = { from: hoy, to: hoy, comparar: true };
+        const sinDatos = Promise.resolve(null);
         try {
-            const [r, vh, ords, facts, domSinAsignar] = await Promise.allSettled([
-                api.estadisticas.resumenPeriodo(hoy, hoy),
-                api.estadisticas.ventasPorHora(hoy),
+            const [r, hr, ords, facts, domSinAsignar] = await Promise.allSettled([
+                verAnalitica ? api.analitica.resumen(consulta) : sinDatos,
+                verAnalitica ? api.analitica.horarios(consulta) : sinDatos,
                 api.ordenes.getDay(),
                 api.facturas.getDay(),
                 api.domicilios.getSinAsignar(),
             ]);
 
-            const allFailed = r.status === 'rejected' && 
-                             vh.status === 'rejected' && 
-                             ords.status === 'rejected' && 
-                             facts.status === 'rejected';
-
-            if (allFailed) {
+            if (ords.status === 'rejected' && facts.status === 'rejected') {
                 setHasError(true);
             }
 
@@ -229,11 +93,10 @@ export default function DashboardPage() {
             const sorted = [...ordData].sort((a, b) =>
                 new Date(b.fechaOrden).getTime() - new Date(a.fechaOrden).getTime()
             );
-            const apiResumen = r.status === 'fulfilled' ? r.value : null;
             setDashboard({
                 loading: false,
-                resumen: buildResumenFallback(ordData, factsData, apiResumen),
-                ventasHora: vh.status === 'fulfilled' ? vh.value : [],
+                resumen: r.status === 'fulfilled' ? r.value : null,
+                horarios: hr.status === 'fulfilled' ? hr.value : null,
                 ordenes: sorted.slice(0, 6),
                 pendientes: ordData.filter(o => o.estadoOrden === 'pendiente').length,
                 completadas: ordData.filter(o => isCompletedEstado(o.estadoOrden)).length,
@@ -245,16 +108,35 @@ export default function DashboardPage() {
             setDashboard((prev) => ({ ...prev, loading: false }));
             setHasError(true);
         }
-    }, []);
+    }, [verAnalitica]);
 
     useEffect(() => { void fetchData(); }, [fetchData]);
-    useEffect(() => {
-        const id = setInterval(fetchData, 60000);
-        return () => clearInterval(id);
-    }, [fetchData]);
 
-    const ventasHoraFull = normalizeHourlySeries(ventasHora);
-    const maxHora = Math.max(...ventasHoraFull.map(v => v.cantidad), 1);
+    // Tiempo real en vez de polling: cada orden/pago emite varios eventos seguidos,
+    // así que se agrupan antes de recargar.
+    const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const recargarPronto = useCallback(() => {
+        if (temporizador.current) clearTimeout(temporizador.current);
+        temporizador.current = setTimeout(() => { void fetchData(); }, 1500);
+    }, [fetchData]);
+    useEffect(() => () => { if (temporizador.current) clearTimeout(temporizador.current); }, []);
+    useOrdenesSocket(getBaseUrl(), user?.roles?.[0] || 'cajero', recargarPronto, token, { onStats: recargarPronto });
+
+    // Solo las horas con movimiento (± 1), para que la gráfica no sea casi toda vacía.
+    const porHora = (() => {
+        const filas = horarios?.porHora ?? [];
+        const activas = filas.filter((h) => h.facturas > 0).map((h) => h.hora);
+        if (!activas.length) return [];
+        const desde = Math.max(0, Math.min(...activas) - 1);
+        const hasta = Math.min(23, Math.max(...activas) + 1);
+        return Array.from({ length: hasta - desde + 1 }, (_, i) => {
+            const hora = desde + i;
+            const fila = filas.find((h) => h.hora === hora);
+            return { key: String(hora), label: `${hora}h`, value: fila?.facturas ?? 0 };
+        });
+    })();
+    const kpi = resumen?.actual;
+    const ayer = resumen?.anterior ?? undefined;
     const userName = user?.name ?? 'Cajero';
 
     const [ready, setReady] = useState(Platform.OS !== 'web');
@@ -268,11 +150,9 @@ export default function DashboardPage() {
 
     return (
         <PageContainer refreshControl={
-            <RefreshControl
+            <PosRefreshControl
                 refreshing={loading}
                 onRefresh={fetchData}
-                colors={['#F5A524']}
-                tintColor="#F5A524"
             />
         }>
             {/* Banner de error de conexión */}
@@ -351,61 +231,55 @@ export default function DashboardPage() {
 
             {/* ── Stat counters ── */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap, marginBottom: 16 }}>
-                <StatCard count={pendientes} label="Pendientes" color={pendientes > 0 ? '#EF4444' : '#10B981'} urgent cardWidth={col2Width} />
-                <StatCard count={sinPagar} label="Por Pagar" color={sinPagar > 0 ? '#F5A524' : '#10B981'} urgent cardWidth={col2Width} />
-                <StatCard count={completadas} label="Entregadas" color="#10B981" cardWidth={col2Width} />
-                <TouchableOpacity style={col2Width ? { width: col2Width } : { flex: 1, minWidth: 130 }} onPress={() => router.push('/asignar-domiciliarios' as any)}>
-                    <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16,
-                        backgroundColor: sinAsignar > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.05)',
-                        borderColor: sinAsignar > 0 ? 'rgba(245,158,11,0.25)' : 'rgba(255,255,255,0.1)' }}>
-                        <View style={{ width: 3, height: 36, borderRadius: 2, backgroundColor: sinAsignar > 0 ? '#F59E0B' : '#10B981' }} />
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontFamily: 'Space Grotesk', color: sinAsignar > 0 ? '#FCD34D' : '#F8FAFC', fontSize: 22, fontWeight: '900' }}>
-                                {sinAsignar}
-                            </Text>
-                            <Text style={{ color: '#475569', fontSize: 9, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                Sin Asignar
-                            </Text>
-                        </View>
-                        {sinAsignar > 0 && <Icon name="chevron-right" size={14} color="#F59E0B" />}
-                    </Card>
-                </TouchableOpacity>
+                <StatCard variant="counter" label="Pendientes" value={String(pendientes)} color={pendientes > 0 ? '#EF4444' : '#10B981'} urgent width={col2Width} />
+                <StatCard variant="counter" label="Por Pagar" value={String(sinPagar)} color={sinPagar > 0 ? '#FB923C' : '#10B981'} urgent width={col2Width} />
+                <StatCard variant="counter" label="Entregadas" value={String(completadas)} color="#10B981" width={col2Width} />
+                <StatCard
+                    variant="counter"
+                    label="Sin Asignar"
+                    value={String(sinAsignar)}
+                    color={sinAsignar > 0 ? '#F59E0B' : '#10B981'}
+                    urgent={sinAsignar > 0}
+                    tinted={sinAsignar > 0}
+                    width={col2Width}
+                    onPress={() => router.push('/asignar-domiciliarios' as any)}
+                />
             </View>
 
-            {loading && !resumen && (
-                <ActivityIndicator size="large" color="#F5A524" style={{ paddingVertical: 40 }} />
+            {loading && verAnalitica && !resumen && (
+                <LoadingState className="py-10" padded={false} />
             )}
 
-            {/* ── KPIs ── */}
-            {resumen && (
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap, marginBottom: 20 }}>
-                    <KpiCard label="Ventas Hoy" value={formatCurrency(resumen.totalVentas)}
-                        color="#34D399" bg="rgba(16,185,129,0.08)" border="rgba(16,185,129,0.2)" cardWidth={col2Width} />
-                    <KpiCard label="Ticket Promedio" value={formatCurrency(resumen.ticketPromedio)}
-                        color="#A78BFA" bg="rgba(139,92,246,0.08)" border="rgba(139,92,246,0.2)" cardWidth={col2Width} />
-                    <KpiCard label="Órdenes" value={String(resumen.ordenes)}
-                        color="#F5A524" bg="rgba(245,165,36,0.08)" border="rgba(245,165,36,0.2)" />
+            {/* ── KPIs (vs ayer a esta misma hora) ── */}
+            {verAnalitica && kpi && (
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap, marginBottom: 16 }}>
+                    <StatCard label="Ventas hoy" icon="cash-multiple" color="#10B981" value={formatearValor(kpi.facturado, 'moneda')}
+                        current={kpi.facturado} previous={ayer?.facturado} sub={`Cobrado ${formatearValor(kpi.cobrado, 'monedaCompacta')}`}
+                        onPress={() => router.push('/estadisticas' as any)} />
+                    <StatCard label="Ticket promedio" icon="receipt" color="#A78BFA" value={formatearValor(kpi.ticket, 'moneda')}
+                        current={kpi.ticket} previous={ayer?.ticket} />
+                    <StatCard label="Órdenes" icon="clipboard-list-outline" color="#F5A524" value={formatearValor(kpi.ordenes)}
+                        current={kpi.ordenes} previous={ayer?.ordenes} sub={`${formatearValor(kpi.pizzas)} pizzas`} />
                 </View>
             )}
 
             {/* ── Chart + Recent ── */}
             <View style={{ flexDirection: isMobile ? 'column' : 'row', gap: 12 }}>
                 {/* Hourly chart */}
-                <Card style={{ flex: isMobile ? undefined : 1, padding: 16, marginBottom: isMobile ? 12 : 0, flexDirection: 'column' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)' }}>
-                        <Icon name="chart-bar" size={14} color="#64748B" />
-                        <Text style={{ fontFamily: 'Space Grotesk', color: '#F8FAFC', fontSize: 11, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 1 }}>
-                            Actividad por Hora
-                        </Text>
-                    </View>
-                    {ventasHora.length > 0 ? (
-                        <HourChart ventasHoraFull={ventasHoraFull} maxHora={maxHora} />
-                    ) : (
-                        <View style={{ flex: 1, minHeight: CHART_H, alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ color: '#475569', fontSize: 13, fontStyle: 'italic' }}>Sin actividad registrada hoy</Text>
-                        </View>
-                    )}
-                </Card>
+                {verAnalitica && (
+                    <ChartCard
+                        className={isMobile ? 'mb-3' : 'flex-1'}
+                        title="Actividad por hora"
+                        subtitle="Pedidos de hoy"
+                        icon="chart-bar"
+                        color="#F5A524"
+                        loading={loading && !horarios}
+                        empty={!porHora.length}
+                        emptyText="Sin actividad registrada hoy"
+                    >
+                        <ColumnChart data={porHora} showValues />
+                    </ChartCard>
+                )}
 
                 {/* Recent orders */}
                 <Card style={{ flex: isMobile ? undefined : 1, padding: 16 }}>
@@ -428,21 +302,13 @@ export default function DashboardPage() {
                             </Text>
                             <View style={{ flex: 1 }}>
                                 <Text style={{ fontFamily: 'Space Grotesk', color: '#F8FAFC', fontSize: 13, fontWeight: '700' }} numberOfLines={1}>
-                                    {getOrdenDisplayName(o)}
+                                    {nombreVisibleOrden(o)}
                                 </Text>
                                 <Text style={{ color: '#475569', fontSize: 10, marginTop: 1 }}>
                                     {timeAgo(o.fechaOrden)}
                                 </Text>
                             </View>
-                            <View style={{
-                                paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20,
-                                backgroundColor: o.estadoOrden === 'pendiente' ? 'rgba(245,165,36,0.12)' : 'rgba(16,185,129,0.12)',
-                            }}>
-                                <Text style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: '700',
-                                    color: o.estadoOrden === 'pendiente' ? '#F5A524' : '#10B981' }}>
-                                    {o.estadoOrden}
-                                </Text>
-                            </View>
+                            <EstadoPill estado={o.estadoOrden} />
                         </TouchableOpacity>
                     ))}
                     {ordenes.length === 0 && (

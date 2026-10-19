@@ -21,6 +21,8 @@ interface ButtonProps {
     fullWidth?: boolean;
     className?: string;
     style?: any;
+    /** Entrada animada al montar. Apagada por defecto: en listas largas animaba decenas de botones a la vez. */
+    animated?: boolean;
 }
 
 export default function Button({
@@ -35,16 +37,18 @@ export default function Button({
     fullWidth = false,
     className = '',
     style,
+    animated = false,
 }: ButtonProps) {
     const scale = useSharedValue(1);
-    const opacity = useSharedValue(0);
-    const translateY = useSharedValue(5);
+    const opacity = useSharedValue(animated ? 0 : 1);
+    const translateY = useSharedValue(animated ? 5 : 0);
     const isDisabled = disabled || loading;
 
     React.useEffect(() => {
+        if (!animated) return;
         opacity.value = withTiming(1, { duration: timings.slow });
         translateY.value = withSpring(0, springs.slow);
-    }, []);
+    }, [animated, opacity, translateY]);
 
     const handlePressIn = () => {
         if (!isDisabled) {

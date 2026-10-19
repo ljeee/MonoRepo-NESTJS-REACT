@@ -2,7 +2,6 @@ import {Controller, Get, Post, Delete, Param, Body, Patch, Query, Ip} from '@nes
 import {ApiTags, ApiOperation, ApiResponse, ApiBody, ApiOkResponse, ApiBearerAuth} from '@nestjs/swagger';
 import {OrdenesService} from './ordenes.service';
 import {CreateOrdenesDto, FindOrdenesDto, UpdateOrdenesDto} from './esquemas/ordenes.dto';
-import {Public} from '../auth/decorators/public.decorator';
 import {GetUser} from '../auth/decorators/get-user.decorator';
 import {User} from '../auth/esquemas/user.entity';
 import {Roles} from '../auth/decorators/roles.decorator';
@@ -14,7 +13,8 @@ import {Role} from '../auth/roles.enum';
 export class OrdenesController {
 	constructor(private readonly service: OrdenesService) {}
 
-	@Public()
+	// Lecturas de órdenes: exigen login (antes eran públicas y exponían nombres,
+	// teléfonos y direcciones de clientes). Solo las usa el POS, siempre autenticado.
 	@Get()
 	@ApiOperation({summary: 'Obtener todas las ordenes con filtros opcionales'})
 	@ApiResponse({status: 200, description: 'Lista de ordenes.'})
@@ -22,7 +22,6 @@ export class OrdenesController {
 		return this.service.findAll(query);
 	}
 
-	@Public()
 	@Get('dia')
 	@ApiOperation({summary: 'Obtener todas las ordenes del día actual con filtro opcional de estado'})
 	@ApiResponse({status: 200, description: 'Lista de todas las ordenes del día.'})
@@ -30,7 +29,6 @@ export class OrdenesController {
 		return this.service.findByDay(estado);
 	}
 
-	@Public()
 	@Get('dia/pendientes')
 	@ApiOperation({summary: 'Obtener ordenes pendientes del día actual'})
 	@ApiResponse({status: 200, description: 'Lista de ordenes pendientes del día.'})
@@ -38,7 +36,6 @@ export class OrdenesController {
 		return this.service.findPendingByDay();
 	}
 
-	@Public()
 	@Get(':id')
 	@ApiOperation({summary: 'Obtener una orden por ID'})
 	@ApiResponse({status: 200, description: 'Orden encontrada.'})
@@ -123,7 +120,12 @@ export class OrdenesController {
 				delete item.precioUnitario;
 			});
 		}
-		return this.service.create(dto);
+		// Canal y autor quedan en la orden para poder filtrarlos en la analítica.
+		const esCliente = user?.roles?.includes(Role.Cliente) ?? false;
+		return this.service.create(dto, {
+			canal: esCliente ? 'web' : 'pos',
+			usuarioCreacionId: user?.id ?? null,
+		});
 	}
 
 	@Patch(':id')

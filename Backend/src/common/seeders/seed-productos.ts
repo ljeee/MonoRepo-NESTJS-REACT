@@ -1,28 +1,47 @@
 import 'reflect-metadata';
+import 'dotenv/config'; // toma DATABASE_* de Backend/.env (no pisa lo que ya venga en el entorno)
 import {AppDataSource} from '../../data-source';
 import {Productos} from '../../productos/esquemas/productos.entity';
 import {ProductoVariantes} from '../../productos/esquemas/producto-variantes.entity';
+import {SaborGrupo} from '../../pizza-sabores/esquemas/sabor-grupo.entity';
+import {PizzaSabor} from '../../pizza-sabores/esquemas/pizza-sabores.entity';
+import {GRUPOS_BASE, GRUPO_CALZONE, GRUPO_PIZZA} from '../../pizza-sabores/grupos-base';
 
 // Este seeder ya no es necesario en producción/Docker:
 // - TypeORM crea las tablas automáticamente (synchronize: true)
 // - Los datos del menú se cargan desde seed-menu.sql al iniciar Docker
-// - pizza_sabores se auto-siembra vía OnModuleInit en PizzaSaboresService
+// - los grupos de sabores y los sabores de pizza se auto-siembran vía OnModuleInit en PizzaSaboresService
 //
 // Solo usar este archivo si se necesita poblar una BD de desarrollo sin Docker.
 
 type ProductoSeed = {
 	productoNombre: string;
 	descripcion: string;
+	/** Grupo de sabores que ofrece el producto (nombre del grupo). Sin él, no lleva sabores. */
+	grupo?: string;
 	variantes: {nombre: string; precio: number; descripcion?: string}[];
 };
+
+// Variantes del calzone que no son un sabor (se pide "dos sabores" o por unidad).
+const VARIANTES_CALZONE_NO_SABOR = /^(unidad|calzone de dos sabores)$/i;
 
 export async function seedProductos() {
 	const dataSource = await AppDataSource.initialize();
 	const productoRepo = dataSource.getRepository(Productos);
 	const varianteRepo = dataSource.getRepository(ProductoVariantes);
+	const grupoRepo = dataSource.getRepository(SaborGrupo);
+	const saborRepo = dataSource.getRepository(PizzaSabor);
 
 	try {
 		console.log('🚀 Seeding productos...');
+
+		// Los grupos los crea normalmente PizzaSaboresService al arrancar el backend; aquí se aseguran
+		// por si el seeder corre antes.
+		const grupos = new Map<string, SaborGrupo>();
+		for (const base of GRUPOS_BASE) {
+			const grupo = (await grupoRepo.findOne({where: {nombre: base.nombre}})) ?? (await grupoRepo.save(grupoRepo.create(base)));
+			grupos.set(grupo.nombre, grupo);
+		}
 
 		const productos: ProductoSeed[] = [
 			{
@@ -51,6 +70,7 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Calzone',
+				grupo: GRUPO_CALZONE.nombre,
 				descripcion: 'Pizza cerrada estilo calzone',
 				variantes: [
 					{nombre: 'Carnes', precio: 25000},
@@ -160,7 +180,8 @@ export async function seedProductos() {
 			},
 			{
 				productoNombre: 'Pizza',
-				descripcion: 'Elige 1-3 sabores. Tradicionales y Especiales disponibles.',
+				grupo: GRUPO_PIZZA.nombre,
+				descripcion: 'Elige 1-3 sabores.',
 				variantes: [
 					{nombre: 'Grande', precio: 45000},
 					{nombre: 'Mediana', precio: 32000},
@@ -210,8 +231,20 @@ export async function seedProductos() {
 				productoRepo.create({
 					productoNombre: prodData.productoNombre,
 					descripcion: prodData.descripcion,
+					saborGrupoId: prodData.grupo ? (grupos.get(prodData.grupo)?.id ?? null) : null,
 				}),
 			);
+			// Las variantes del calzone SON sus sabores: se crean en el grupo si todavía no tiene ninguno.
+			if (prodData.grupo === GRUPO_CALZONE.nombre) {
+				const calzone = grupos.get(GRUPO_CALZONE.nombre);
+				if (calzone && (await saborRepo.count({where: {grupoId: calzone.id}})) === 0) {
+					await saborRepo.save(
+						prodData.variantes
+							.filter((v) => !VARIANTES_CALZONE_NO_SABOR.test(v.nombre))
+							.map((v) => saborRepo.create({nombre: v.nombre, grupoId: calzone.id, activo: true})),
+					);
+				}
+			}
 			for (const v of prodData.variantes) {
 				await varianteRepo.save(
 					varianteRepo.create({
@@ -225,7 +258,7 @@ export async function seedProductos() {
 			console.log(`✅ ${prodData.productoNombre}`);
 		}
 
-		// Nota: pizza_sabores se auto-siembra en PizzaSaboresService.onModuleInit()
+		// Nota: los sabores de pizza se auto-siembran en PizzaSaboresService.onModuleInit()
 		console.log('✅ Seed de productos completado.');
 	} catch (error) {
 		console.error('❌ Error:', error);

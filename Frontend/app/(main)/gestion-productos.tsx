@@ -1,5 +1,5 @@
 import React from 'react';
-import { RefreshControl } from 'react-native';
+
 import { useGestionProductosScreen } from '@/src/shared';
 import {
     PageContainer,
@@ -8,6 +8,7 @@ import {
 } from '../../components/ui';
 import { GestionProductosList } from '../../components/products/GestionProductosList';
 import { GestionProductosModals } from '../../components/products/GestionProductosModals';
+import { PosRefreshControl } from '../../components/ui/PosRefreshControl';
 
 export default function GestionProductosScreen() {
     const {
@@ -16,6 +17,7 @@ export default function GestionProductosScreen() {
         opLoading,
         saborLoading,
         sabores,
+        grupos,
         filteredProductos,
         search,
         refreshing,
@@ -31,10 +33,14 @@ export default function GestionProductosScreen() {
         prodDesc,
         prodEmoji,
         prodPersonalizacion,
+        prodSaborGrupoId,
+        prodCategoria,
         prodError,
         varName,
         varPrice,
         varDesc,
+        varTamano,
+        varUsaTamano,
         varError,
         patchUi,
         openProductModal,
@@ -49,11 +55,9 @@ export default function GestionProductosScreen() {
     return (
         <PageContainer
             refreshControl={
-                <RefreshControl
+                <PosRefreshControl
                     refreshing={refreshing}
                     onRefresh={handleRefresh}
-                    tintColor="#F5A524"
-                    colors={["#F5A524"]}
                 />
             }
         >
@@ -78,6 +82,7 @@ export default function GestionProductosScreen() {
                 error={error}
                 productos={filteredProductos}
                 sabores={sabores}
+                grupos={grupos}
                 onSearchChange={(value) => patchUi({ search: value })}
                 onEditProduct={openProductModal}
                 onAddVariant={(productId) => openVariantModal(productId)}
@@ -98,7 +103,7 @@ export default function GestionProductosScreen() {
                     });
                 }}
                 onEditSabor={(sabor) => patchUi({ editingSabor: sabor })}
-                onAddSabor={() => patchUi({ editingSabor: { nombre: '', tipo: 'tradicional', recargoPequena: 0, recargoMediana: 0, recargoGrande: 0 } })}
+                onAddSabor={(grupoId) => patchUi({ editingSabor: { nombre: '', grupoId, recargoPequena: 0, recargoMediana: 0, recargoGrande: 0, activo: true } })}
                 onDeleteSabor={(saborId, name) => patchUi({ deleteTarget: { type: 'sabor', id: saborId, name: name } })}
             />
 
@@ -108,18 +113,22 @@ export default function GestionProductosScreen() {
                 prodName={prodName}
                 prodDesc={prodDesc}
                 prodEmoji={prodEmoji}
-                prodPersonalizacion={prodPersonalizacion}
+                prodPersonalizacion={{ saborGrupoId: prodSaborGrupoId, personalizacion: prodPersonalizacion }}
+                grupos={grupos}
+                prodCategoria={prodCategoria}
                 prodError={prodError}
                 showVariantModal={showVariantModal}
                 editingVariant={editingVariant}
                 varName={varName}
                 varPrice={varPrice}
                 varDesc={varDesc}
+                varTamano={varTamano}
+                varUsaTamano={varUsaTamano}
                 varError={varError}
                 deleteTarget={deleteTarget}
                 deleteLoading={deleteLoading}
                 deleteError={deleteError}
-                editingSabor={editingSabor as any}
+                editingSabor={editingSabor}
                 opLoading={opLoading}
                 saborLoading={saborLoading}
                 onCloseProductModal={() => patchUi({ showProductModal: false })}
@@ -139,10 +148,12 @@ export default function GestionProductosScreen() {
                 onProdNameChange={(name) => patchUi({ prodName: name })}
                 onProdDescriptionChange={(description) => patchUi({ prodDesc: description })}
                 onProdEmojiChange={(emoji) => patchUi({ prodEmoji: emoji })}
-                onProdPersonalizacionChange={(v) => patchUi({ prodPersonalizacion: v })}
+                onProdPersonalizacionChange={(v) => patchUi({ prodPersonalizacion: v.personalizacion, prodSaborGrupoId: v.saborGrupoId })}
+                onProdCategoriaChange={(v) => patchUi({ prodCategoria: v })}
                 onVarNameChange={(name) => patchUi({ varName: name })}
                 onVarPriceChange={(price) => patchUi({ varPrice: price })}
                 onVarDescriptionChange={(description) => patchUi({ varDesc: description })}
+                onVarTamanoChange={(tamano) => patchUi({ varTamano: tamano })}
                 onConfirmDelete={handleDelete}
                 onCancelDelete={() => patchUi({ deleteTarget: null })}
                 onSaveSabor={handleSaveSabor}

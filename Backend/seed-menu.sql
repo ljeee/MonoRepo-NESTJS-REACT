@@ -5,6 +5,12 @@
 -- Modo dev: borra y recrea todos los productos y variantes
 -- =============================================================================
 
+-- En un volumen nuevo este archivo corre justo después de 01-init.sql (estructura ANTERIOR), que no tiene
+-- productos.personalizacion: sin esta línea fallaba, el contenedor db se caía a mitad de la inicialización
+-- (al reiniciar, postgres ya no la repite) y el primer `docker compose up` terminaba en "db is unhealthy".
+-- Misma definición que la entidad Producto (text, nullable, sin default): synchronize no la toca.
+ALTER TABLE productos ADD COLUMN IF NOT EXISTS personalizacion text;
+
 DELETE FROM variantes_ingredientes;
 DELETE FROM producto_variantes;
 DELETE FROM productos;

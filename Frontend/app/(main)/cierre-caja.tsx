@@ -1,36 +1,38 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshControl } from 'react-native';
-import { View, Text, ScrollView, TextInput } from '../../tw';
-import { PageContainer, PageHeader, Button, Icon, Card, Badge, ConfirmModal, ListSkeleton } from '../../components/ui';
+import { View, Text, TextInput } from '../../tw';
+import { PageContainer, PageHeader, Button, Icon, Card, Badge, ConfirmModal, ListSkeleton, PosRefreshControl } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, formatCurrency, formatDate, Role } from '@/src/shared';
+import { useToast, formatCurrency, formatDate, Role, bogotaToday } from '@/src/shared';
+import type { ResumenGeneral } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBreakpoint } from '../../styles/responsive';
+import { ResumenDiaCompleto } from '../../components/contabilidad/ResumenDiaCompleto';
+import { PaginadorLocal } from '../../components/contabilidad/PaginadorLocal';
+import { usePaginaLocal } from '../../hooks/use-pagina-local';
 
 export default function CierreCajaScreen() {
     const { showToast } = useToast();
     const { isMobile } = useBreakpoint();
     const [history, setHistory] = useState<any[]>([]);
-    const [resumen, setResumen] = useState<any>(null);
+    const [resumen, setResumen] = useState<ResumenGeneral | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [observations, setObservations] = useState('');
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
     const [selectedCierreId, setSelectedCierreId] = useState<string | null>(null);
+    const paginaHistorial = usePaginaLocal(history, 15);
     const { user } = useAuth();
     const isAdmin = user?.roles.includes(Role.Admin);
 
-    const today = (() => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    })();
+    // Día contable de Bogotá (el del dispositivo puede estar desfasado).
+    const today = bogotaToday();
 
     const fetchData = useCallback(async () => {
         try {
             const [hist, res] = await Promise.all([
                 api.cierres.getHistory(),
-                api.estadisticas.resumenPeriodo(today, today)
+                api.analitica.resumenGeneral(today, today)
             ]);
             setHistory(hist);
             setResumen(res);
@@ -50,7 +52,7 @@ export default function CierreCajaScreen() {
     const handleCierre = async () => {
         try {
             setLoading(true);
-            await api.cierres.ejecutar(today, observations);
+            await api.cierres.ejecutar(today, observations, true);
             showToast('Cierre de caja realizado y enviado por correo 📧', 'success');
             setObservations('');
             fetchData();
@@ -82,62 +84,20 @@ export default function CierreCajaScreen() {
     if (loading && !refreshing) return <PageContainer><ListSkeleton count={4} /></PageContainer>;
 
     return (
-        <PageContainer>
+        <PageContainer
+            refreshControl={<PosRefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} />}
+        >
             <PageHeader title="Cierre de Caja" subtitle="Resumen y cierre del día" icon="cash-register" />
 
-            <ScrollView 
-                contentContainerStyle={{ paddingBottom: 40, paddingTop: 16 }}
-                refreshControl={
-                    <RefreshControl 
-                        refreshing={refreshing} 
-                        onRefresh={() => { setRefreshing(true); fetchData(); }} 
-                        tintColor="#F5A524" 
-                    />
-                }
-            >
+            <View style={{ paddingBottom: 40, paddingTop: 16 }}>
                 {/* ── Dashboard Hoy ── */}
                 <View style={{ marginBottom: 32, paddingHorizontal: 8 }}>
                     <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, marginBottom: 16 }}>Estado Actual (Hoy)</Text>
                     
-                    <View style={{ flexDirection: 'row', gap: isMobile ? 10 : 16, marginBottom: 16 }}>
-                        <Card style={{ flex: 1, padding: isMobile ? 14 : 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(16,185,129,0.1)' }}>
-                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Ventas Brutas</Text>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#34D399', fontSize: isMobile ? 18 : 24 }} numberOfLines={1} adjustsFontSizeToFit>
-                                ${formatCurrency(resumen?.totalVentas || 0)}
-                            </Text>
-                        </Card>
-                        <Card style={{ flex: 1, padding: isMobile ? 14 : 20, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(244,63,94,0.1)' }}>
-                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Egresos/Gastos</Text>
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#FB7185', fontSize: isMobile ? 18 : 24 }} numberOfLines={1} adjustsFontSizeToFit>
-                                ${formatCurrency(resumen?.totalEgresos || 0)}
-                            </Text>
-                        </Card>
-                    </View>
+                    {/* Mismas 7 secciones, en el mismo orden, que el correo de cierre (todo viene de /estadisticas/resumen). */}
+                    {resumen && <ResumenDiaCompleto resumen={resumen} />}
 
-                    <Card style={{ padding: 24, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(6,14,26,0.8)', marginBottom: 24 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                            <View>
-                                <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>Balance Neto</Text>
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: isMobile ? 22 : 30 }} numberOfLines={1} adjustsFontSizeToFit>
-                                    ${formatCurrency(resumen?.balanceNeto || 0)}
-                                </Text>
-                            </View>
-                            <Icon name="finance" size={32} color="#F5A524" />
-                        </View>
-
-                        <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginBottom: 24 }} />
-
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24 }}>
-                            <View>
-                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 4 }}>Órdenes</Text>
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 16 }}>{resumen?.ordenes || 0}</Text>
-                            </View>
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', marginBottom: 4 }}>Ticket Promedio</Text>
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#CBD5E1', fontSize: 16 }}>${formatCurrency(resumen?.ticketPromedio || 0)}</Text>
-                            </View>
-                        </View>
-
+                    <Card style={{ padding: 24, borderColor: 'rgba(255,255,255,0.05)', borderWidth: 1, backgroundColor: 'rgba(6,14,26,0.8)', marginBottom: 24, marginTop: 16 }}>
                         <TextInput 
                             placeholder="Observaciones del cierre (opcional)..."
                             placeholderTextColor="#475569"
@@ -159,10 +119,10 @@ export default function CierreCajaScreen() {
 
                 {/* ── Historial ── */}
                 <View style={{ paddingHorizontal: 8 }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, marginBottom: 16 }}>Últimos Cierres</Text>
+                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 20, marginBottom: 16 }}>Cierres anteriores</Text>
                     
                     {history.length > 0 ? (
-                        history.map(h => {
+                        paginaHistorial.items.map(h => {
                             // Fix date formatting: if it ends in 00:00.000Z, it's a date-only field that toLocaleString shifts to 7PM
                             const displayDate = h.fecha.includes('T00:00:00') || h.fecha.length <= 10
                                 ? h.fecha.split('T')[0].split('-').reverse().join('/')
@@ -204,8 +164,9 @@ export default function CierreCajaScreen() {
                             <Text className="text-slate-400 font-bold mt-2">Sin cierres previos</Text>
                         </View>
                     )}
+                    <PaginadorLocal pagina={paginaHistorial} etiqueta="cierres" />
                 </View>
-            </ScrollView>
+            </View>
 
             <ConfirmModal 
                 visible={isConfirmOpen}

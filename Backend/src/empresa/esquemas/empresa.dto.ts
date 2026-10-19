@@ -1,4 +1,4 @@
-import {IsString, IsOptional, IsNumber, Min} from 'class-validator';
+import {IsString, IsOptional, IsNumber, IsBoolean, Min} from 'class-validator';
 
 export class UpdateEmpresaDto {
 	@IsOptional()
@@ -42,4 +42,9 @@ export class UpdateEmpresaDto {
 	@IsNumber()
 	@Min(0)
 	recargoLeche?: number;
+
+	/** Solo el admin puede cambiarlo (PATCH /empresa ya es solo admin). */
+	@IsOptional()
+	@IsBoolean()
+	arqueoCaja?: boolean;
 }

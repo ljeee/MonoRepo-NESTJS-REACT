@@ -127,7 +127,25 @@ describe('ProductosController (e2e)', () => {
 				.expect(201);
 
 			expect(res.body.varianteId).toBe(1);
-			expect(mockService.createVariante).toHaveBeenCalledWith(1, 'Mediana', 22000, undefined);
+			expect(mockService.createVariante).toHaveBeenCalledWith(1, 'Mediana', 22000, undefined, undefined, undefined);
+		});
+
+		it('acepta el tamaño explícito de la variante', async () => {
+			mockService.createVariante.mockResolvedValue(mockVariante);
+
+			await request(app.getHttpServer())
+				.post('/productos/1/variantes')
+				.send({nombre: 'Familiar', precio: 50000, tamano: 'grande'})
+				.expect(201);
+
+			expect(mockService.createVariante).toHaveBeenCalledWith(1, 'Familiar', 50000, undefined, undefined, 'grande');
+		});
+
+		it('rechaza un tamaño inválido', async () => {
+			await request(app.getHttpServer())
+				.post('/productos/1/variantes')
+				.send({nombre: 'X', precio: 1000, tamano: 'gigante'})
+				.expect(400);
 		});
 	});
 
@@ -177,7 +195,7 @@ describe('ProductosController (e2e)', () => {
 				.expect(200);
 
 			expect(res.body.precio).toBe(35000);
-			expect(mockService.updateVariante).toHaveBeenCalledWith(1, undefined, 35000, undefined, undefined);
+			expect(mockService.updateVariante).toHaveBeenCalledWith(1, undefined, 35000, undefined, undefined, undefined, undefined);
 		});
 	});
 

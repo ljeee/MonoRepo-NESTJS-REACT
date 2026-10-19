@@ -1,7 +1,8 @@
 import React from 'react';
 import { Modal } from 'react-native';
-import { View, Text, ScrollView } from '../../tw';
-import { Button, Input, Icon, Card } from '../ui';
+import { View, Text, ScrollView, TouchableOpacity } from '../../tw';
+import type { TamanoPizza } from '@/src/shared';
+import { Button, Input, Icon, Card, InlineError } from '../ui';
 
 interface VariantModalProps {
     visible: boolean;
@@ -9,6 +10,9 @@ interface VariantModalProps {
     name: string;
     price: string;
     description: string;
+    /** Tamaño explícito. null = se deduce del nombre. Solo se pide si el grupo del producto usa tamaños. */
+    tamano: TamanoPizza | null;
+    usaTamano: boolean;
     error: string;
     loading: boolean;
     onClose: () => void;
@@ -16,7 +20,15 @@ interface VariantModalProps {
     onNameChange: (value: string) => void;
     onPriceChange: (value: string) => void;
     onDescriptionChange: (value: string) => void;
+    onTamanoChange: (value: TamanoPizza | null) => void;
 }
+
+const TAMANOS: { value: TamanoPizza | null; label: string }[] = [
+    { value: null, label: 'Según el nombre' },
+    { value: 'pequena', label: 'Pequeña' },
+    { value: 'mediana', label: 'Mediana' },
+    { value: 'grande', label: 'Grande' },
+];
 
 export function VariantModal({
     visible,
@@ -24,6 +36,8 @@ export function VariantModal({
     name,
     price,
     description,
+    tamano,
+    usaTamano,
     error,
     loading,
     onClose,
@@ -31,6 +45,7 @@ export function VariantModal({
     onNameChange,
     onPriceChange,
     onDescriptionChange,
+    onTamanoChange,
 }: VariantModalProps) {
     return (
         <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
@@ -66,6 +81,29 @@ export function VariantModal({
                                 placeholder="0"
                                 leftIcon={<Icon name="currency-usd" size={16} color="#F5A524" />}
                             />
+                            {usaTamano && (
+                                <View>
+                                    <Text className="text-slate-500 text-[10px] font-black uppercase tracking-widest mb-3 ml-1">
+                                        Tamaño (define el recargo del sabor)
+                                    </Text>
+                                    <View className="flex-row flex-wrap gap-2">
+                                        {TAMANOS.map((t) => {
+                                            const activo = tamano === t.value;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={t.label}
+                                                    onPress={() => onTamanoChange(t.value)}
+                                                    className={`px-4 py-3 rounded-2xl border ${activo ? 'bg-blue-500/20 border-blue-500/40' : 'bg-white/5 border-white/10'}`}
+                                                >
+                                                    <Text className={`text-xs font-black uppercase tracking-widest ${activo ? 'text-blue-300' : 'text-slate-400'}`}>
+                                                        {t.label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                </View>
+                            )}
                             <Input
                                 label="Descripción"
                                 value={description}
@@ -75,12 +113,7 @@ export function VariantModal({
                                 numberOfLines={3}
                             />
 
-                            {error ? (
-                                <View className="flex-row items-center gap-2 bg-red-500/10 p-4 rounded-2xl border border-red-500/20">
-                                    <Icon name="alert-circle" size={14} color="#EF4444" />
-                                    <Text className="text-red-400 font-bold text-xs">{error}</Text>
-                                </View>
-                            ) : null}
+                            <InlineError message={error} size="sm" />
 
                             <View className="flex-row gap-4 mt-2">
                                 <Button

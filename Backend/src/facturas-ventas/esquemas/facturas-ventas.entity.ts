@@ -2,6 +2,7 @@ import {Entity, PrimaryGeneratedColumn, Column, OneToMany, Index} from 'typeorm'
 import {ColumnNumericTransformer} from '../../common/utils/numeric.transformer';
 import {Ordenes} from '../../ordenes/esquemas/ordenes.entity';
 import {Domicilios} from '../../domicilios/esquemas/domicilios.entity';
+import type {DesgloseTransferencia} from '../../common/domain/ventas';
 
 @Entity('facturas_ventas')
 @Index(['estado', 'fechaFactura'])
@@ -29,10 +30,10 @@ export class FacturasVentas {
 	metodo: string;
 
 	@Column({name: 'pago_efectivo', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
-	pagoEfectivo: number;
+	pagoEfectivo: number | null;
 
 	@Column({name: 'pago_transferencia', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
-	pagoTransferencia: number;
+	pagoTransferencia: number | null;
 
 	@Column({name: 'total', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	total: number;
@@ -41,7 +42,7 @@ export class FacturasVentas {
 	usuarioCobroId: string;
 
 	@Column({name: 'fecha_cobro', type: 'timestamptz', nullable: true})
-	fechaCobro: Date;
+	fechaCobro: Date | null;
 
 	@Column({name: 'ip_dispositivo', type: 'text', nullable: true})
 	ipDispositivo: string;
@@ -64,6 +65,13 @@ export class FacturasVentas {
 
 	@Column({name: 'cuenta_transferencia_nombre', type: 'text', nullable: true})
 	cuentaTransferenciaNombre: string | null;
+
+	/**
+	 * Cuánto de lo cobrado por transferencia entró a cada cuenta. Solo lo llenan los abonos por
+	 * QR (una factura puede abonarse a cuentas distintas); NULL = todo a `cuenta_transferencia_*`.
+	 */
+	@Column({name: 'desglose_transferencia', type: 'jsonb', nullable: true})
+	desgloseTransferencia: DesgloseTransferencia[] | null;
 
 	@OneToMany(() => Ordenes, (orden) => orden.factura)
 	ordenes: Ordenes[];

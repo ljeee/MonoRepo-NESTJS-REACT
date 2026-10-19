@@ -4,6 +4,7 @@ import {NotFoundException} from '@nestjs/common';
 import {DomiciliosService} from '../../../src/domicilios/domicilios.service';
 import {Domicilios} from '../../../src/domicilios/esquemas/domicilios.entity';
 import {OrdenesGateway} from '../../../src/ordenes/ordenes.gateway';
+import {Ordenes} from '../../../src/ordenes/esquemas/ordenes.entity';
 
 const makeQb = () => {
 	const qb: any = {};
@@ -17,6 +18,7 @@ const makeQb = () => {
 describe('DomiciliosService', () => {
 	let service: DomiciliosService;
 	let mockRepo: any;
+	let mockOrdenesRepo: any;
 	let mockGateway: any;
 	let qb: any;
 
@@ -29,6 +31,10 @@ describe('DomiciliosService', () => {
 			update: jest.fn(),
 			delete: jest.fn(),
 		};
+		mockOrdenesRepo = {
+			update: jest.fn(),
+			findOne: jest.fn(),
+		};
 		mockGateway = {
 			emitirOrdenActualizada: jest.fn(),
 		};
@@ -37,6 +43,7 @@ describe('DomiciliosService', () => {
 			providers: [
 				DomiciliosService,
 				{provide: getRepositoryToken(Domicilios), useValue: mockRepo},
+				{provide: getRepositoryToken(Ordenes), useValue: mockOrdenesRepo},
 				{provide: OrdenesGateway, useValue: mockGateway},
 			],
 		}).compile();
@@ -172,10 +179,12 @@ describe('DomiciliosService', () => {
 	describe('update', () => {
 		it('actualiza el domicilio con los campos dados', async () => {
 			mockRepo.update.mockResolvedValue({affected: 1});
+			mockRepo.findOne.mockResolvedValue({domicilioId: 1, ordenId: 10, orden: {estadoOrden: 'enviado'}});
 
 			await service.update(1, {estadoDomicilio: 'entregado'} as any);
 
 			expect(mockRepo.update).toHaveBeenCalledWith(1, {estadoDomicilio: 'entregado'});
+			expect(mockOrdenesRepo.update).toHaveBeenCalledWith(10, {estadoOrden: 'completada'});
 		});
 
 		// Regresión: esta ruta (asignar domiciliario, marcar entregado) no

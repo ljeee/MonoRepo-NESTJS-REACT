@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Platform, Pressable, TextInput, ActivityIndicator } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from '../../contexts/AuthContext';
+import { useLoginForm } from '../../hooks/use-login-form';
+import { Pressable, TextInput, ActivityIndicator } from 'react-native';
 import { Icon } from '../../components/ui';
 import { View, Text } from '../../tw';
-import { useRouter } from 'expo-router';
 import {
     useSharedValue,
     useAnimatedStyle,
@@ -193,13 +191,6 @@ function LoginInput({ label, icon, error, secureTextEntry, inputRef, ...rest }: 
 
 // ── Componente principal ───────────────────────────────────────────────────
 export default function LoginScreenWeb() {
-    const { login } = useAuth();
-    const router = useRouter();
-    const [usuario, setUsuario] = useState('');
-    const [contrasena, setContrasena] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [recordar, setRecordar] = useState(false);
     const passRef = useRef<TextInput>(null);
 
     // Animaciones
@@ -217,21 +208,6 @@ export default function LoginScreenWeb() {
         rightOpacity.value = withDelay(200, withTiming(1, { duration: 700 }));
     }, []);
 
-    useEffect(() => {
-        const loadCreds = async () => {
-            try {
-                const stored = await AsyncStorage.getItem('@App:credenciales');
-                if (stored) {
-                    const { user, pass } = JSON.parse(stored);
-                    setUsuario(user);
-                    setContrasena(pass);
-                    setRecordar(true);
-                }
-            } catch {}
-        };
-        loadCreds();
-    }, []);
-
     const shake = () => {
         shakeX.value = withSequence(
             withTiming(-12, { duration: 55 }),
@@ -243,29 +219,8 @@ export default function LoginScreenWeb() {
         );
     };
 
-    const handleLogin = async () => {
-        if (!usuario || !contrasena) {
-            setError('Por favor completa todos los campos');
-            shake();
-            return;
-        }
-        try {
-            setLoading(true);
-            setError('');
-            await login(usuario, contrasena);
-            if (recordar) {
-                await AsyncStorage.setItem('@App:credenciales', JSON.stringify({ user: usuario, pass: contrasena }));
-            } else {
-                await AsyncStorage.removeItem('@App:credenciales');
-            }
-            router.replace('/');
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Credenciales incorrectas o error de conexión');
-            shake();
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { usuario, setUsuario, contrasena, setContrasena, loading, error, recordar, setRecordar, handleLogin } =
+        useLoginForm(shake);
 
     const leftStyle = useAnimatedStyle(() => ({
         opacity: leftOpacity.value,

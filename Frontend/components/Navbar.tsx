@@ -9,6 +9,7 @@ import Icon, { IconName } from './ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import { Role } from '@/src/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BUILD_LABEL } from '../constants/build';
 
 // ── Section definitions ──
 type NavItem = { label: string; route: string; icon: IconName };
@@ -47,7 +48,6 @@ const SECTIONS: NavSection[] = [
       { label: 'QR / Transferencias', route: '/qr-transferencias', icon: 'qrcode-scan' },
       { label: 'Contabilidad', route: '/contabilidad', icon: 'book-account-outline' },
       { label: 'Analíticas', route: '/estadisticas', icon: 'chart-areaspline' },
-      { label: 'Analíticas Domiciliarios', route: '/estadisticas-domiciliarios', icon: 'chart-bar' },
     ],
   },
   {
@@ -188,6 +188,7 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
         <Icon name="logout-variant" size={18} color="#64748B" />
         {!compact && <Text className="text-[12px] font-bold uppercase tracking-wider text-slate-500">Cerrar Sesión</Text>}
       </Pressable>
+      {!compact && <Text className="text-[9px] font-bold text-slate-700 px-4 pt-1">{BUILD_LABEL}</Text>}
     </View>
   );
 
@@ -260,9 +261,12 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
     );
   }
 
-  // ── Vista exclusiva para contador (solo lectura de contabilidad) ─────────────
+  // ── Vista exclusiva para contador (solo lectura: contabilidad + analítica) ───
   if (isContador) {
-    const active = pathname === '/contabilidad';
+    const contadorItems = [
+      { label: 'Contabilidad', route: '/contabilidad', icon: 'book-account-outline' as const },
+      { label: 'Analítica', route: '/estadisticas', icon: 'chart-areaspline' as const },
+    ];
     return (
       <>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 16 }}>
@@ -272,21 +276,27 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
               <Text className="text-orange-400 text-[10px] font-black uppercase tracking-widest">Modo Contador · Solo lectura</Text>
             </View>
           )}
-          <Pressable
-            className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
-            onPress={() => {
-              router.replace('/contabilidad' as any);
-              if (onClose) onClose();
-            }}
-          >
-            <View className={`w-1 h-3 rounded-full mr-4 ${active ? 'bg-orange-500' : 'bg-transparent'}`} />
-            <Icon name="book-account-outline" size={18} color={active ? '#F5A524' : '#64748B'} />
-            {!compact && (
-              <Text className={`ml-4 text-[13px] flex-1 ${active ? 'text-white font-black' : 'text-slate-400 font-medium'}`}>
-                Contabilidad
-              </Text>
-            )}
-          </Pressable>
+          {contadorItems.map((item) => {
+            const active = pathname === item.route;
+            return (
+              <Pressable
+                key={item.route}
+                className={`flex-row items-center px-4 py-3 mx-4 my-0.5 rounded-xl active:opacity-80 ${active ? 'bg-orange-500/10' : ''}`}
+                onPress={() => {
+                  router.replace(item.route as any);
+                  if (onClose) onClose();
+                }}
+              >
+                <View className={`w-1 h-3 rounded-full mr-4 ${active ? 'bg-orange-500' : 'bg-transparent'}`} />
+                <Icon name={item.icon} size={18} color={active ? '#F5A524' : '#64748B'} />
+                {!compact && (
+                  <Text className={`ml-4 text-[13px] flex-1 ${active ? 'text-white font-black' : 'text-slate-400 font-medium'}`}>
+                    {item.label}
+                  </Text>
+                )}
+              </Pressable>
+            );
+          })}
         </ScrollView>
         {LogoutButton}
       </>
@@ -294,6 +304,9 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
   }
 
   const isAdmin = user?.roles?.includes(Role.Admin);
+  const isCajero = user?.roles?.includes(Role.Cajero);
+  // Mesero puro (sin admin ni cajero): sin analíticas. useAuthNavigation bloquea además la ruta.
+  const isMesero = !!user?.roles?.includes(Role.Mesero) && !isAdmin && !isCajero;
 
 
   // ── Menú completo para otros roles ───────────────────────────────────────────
@@ -306,6 +319,10 @@ function SidebarContent({ compact, onClose }: { compact?: boolean; onClose?: () 
           // Filtrar Mis Domicilios para Admins
           if (isAdmin) {
             items = items.filter(i => i.label !== 'Mis Domicilios');
+          }
+
+          if (isMesero) {
+            items = items.filter(i => i.route !== '/estadisticas');
           }
 
           const filteredItems = compact ? items.filter(i => i.route !== '/ajustes-negocio') : items;

@@ -68,7 +68,7 @@ services:
     build:
       context: ./Backend
       dockerfile: Dockerfile
-      target: development
+      target: production
     container_name: pizzeria-backend
     restart: unless-stopped
     ports:
@@ -105,10 +105,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./Backend:/app
-      - /app/node_modules
-    command: npm run start:dev
     networks: [pizzeria-network]
     # Healthcheck del backend para que el frontend espere a que esté listo
     healthcheck:

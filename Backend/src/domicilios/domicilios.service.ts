@@ -4,12 +4,15 @@ import {Repository} from 'typeorm';
 import {Domicilios} from './esquemas/domicilios.entity';
 import {CreateDomiciliosDto} from './esquemas/domicilios.dto';
 import {OrdenesGateway} from '../ordenes/ordenes.gateway';
+import {Ordenes} from '../ordenes/esquemas/ordenes.entity';
 
 @Injectable()
 export class DomiciliosService {
 	constructor(
 		@InjectRepository(Domicilios)
 		private readonly repo: Repository<Domicilios>,
+		@InjectRepository(Ordenes)
+		private readonly ordenesRepo: Repository<Ordenes>,
 		private readonly ordenesGateway: OrdenesGateway,
 	) {}
 
@@ -98,6 +101,22 @@ export class DomiciliosService {
 
 	async update(id: number, data: Partial<CreateDomiciliosDto>) {
 		const result = await this.repo.update(id, data);
+
+		const ESTADOS_ENTREGADO = ['entregado', 'completado', 'completada'];
+		if (data.estadoDomicilio && ESTADOS_ENTREGADO.includes(data.estadoDomicilio.toLowerCase())) {
+			const dom = await this.repo.findOne({where: {domicilioId: id}, relations: ['orden']});
+			if (dom?.ordenId && dom.orden?.estadoOrden !== 'cancelado') {
+				// Al completar el domicilio, se completa la orden pero NO el pago de la factura
+				await this.ordenesRepo.update(dom.ordenId, {estadoOrden: 'completada'});
+				this.ordenesGateway.emitirOrdenActualizada({
+					ordenId: dom.ordenId,
+					estadoOrden: 'completada',
+					domicilioId: id,
+					...data,
+				});
+			}
+		}
+
 		// Notifica por socket (asignación de domiciliario, entrega marcada, etc.)
 		// para que el POS y RiderApp se refresquen solos sin depender de
 		// pull-to-refresh manual — antes esta ruta no emitía ningún evento.

@@ -165,7 +165,7 @@ export default function RootLayout() {
               <OfflineQueueProvider
                 storage={asyncStorageAdapter}
                 onSyncPayment={async (p: OfflinePayment) => {
-                  await api.ordenes.completar(p.ordenId, p.metodo, p.idempotencyKey, undefined, p.pagoEfectivo, p.pagoTransferencia);
+                  await api.ordenes.completar(p.ordenId, p.metodo, p.idempotencyKey, undefined, p.pagoEfectivo, p.pagoTransferencia, undefined, p.cuentaTransferenciaId, p.cuentaTransferenciaNombre);
                 }}
               >
                 <OrderProvider storage={asyncStorageAdapter}>

@@ -17,6 +17,10 @@ export function useAuthNavigation() {
         const isDomiciliario = user?.roles?.includes(Role.Domiciliario);
         const isCocina = user?.roles?.includes(Role.Cocina);
         const isContador = user?.roles?.includes(Role.Contador);
+        // Mesero puro (sin admin ni cajero): mismo criterio que el Navbar
+        const isMesero = user?.roles?.includes(Role.Mesero)
+            && !user?.roles?.includes(Role.Admin)
+            && !user?.roles?.includes(Role.Cajero);
 
         if (!token && !onLoginScreen) {
             router.replace('/login' as any);
@@ -44,9 +48,16 @@ export function useAuthNavigation() {
             }
         } else if (token && isContador) {
             const currentPath = '/' + segments.filter((s: string) => !s.startsWith('(')).join('/');
-            const allowedForContador = ['/contabilidad'];
-            if (!allowedForContador.some(p => currentPath.startsWith(p))) {
+            // Comparación exacta: startsWith dejaría pasar cualquier ruta que empiece igual
+            const allowedForContador = ['/contabilidad', '/estadisticas'];
+            if (!allowedForContador.includes(currentPath)) {
                 router.replace('/contabilidad' as any);
+            }
+        } else if (token && isMesero) {
+            const currentPath = '/' + segments.filter((s: string) => !s.startsWith('(')).join('/');
+            const blockedForMesero = ['/estadisticas'];
+            if (blockedForMesero.includes(currentPath)) {
+                router.replace('/' as any);
             }
         }
     }, [token, user, segments, isLoading, router]);

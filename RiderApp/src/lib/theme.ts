@@ -1,18 +1,16 @@
-// Tokens de diseño de RiderApp. Mantienen la identidad del POS Dfiru (ámbar
-// sobre slate oscuro) pero con una escala de superficies y sombras propia, para
-// que la app del domiciliario no se vea como una pantalla de formulario suelta.
+// Tokens de diseño de RiderApp. Identidad del POS Dfiru (ámbar sobre slate oscuro) en versión
+// minimalista: superficies planas con borde tenue, sin sombras ni brillos, y poco texto en versalita.
 
 export const colors = {
   bg: '#0B1220', // fondo general
   bgElevated: '#0F172A', // barras y zonas fijas
-  surface: '#1A2436', // tarjetas
-  surfaceAlt: '#212D42', // filas internas / inputs
-  hairline: 'rgba(226,232,240,0.07)', // borde de tarjeta
-  hairlineTop: 'rgba(226,232,240,0.12)', // canto superior (luz de arriba)
-  line: 'rgba(226,232,240,0.09)', // separadores
+  surface: '#141D2E', // tarjetas
+  surfaceAlt: '#1B2639', // filas internas / inputs
+  hairline: 'rgba(226,232,240,0.08)', // borde de tarjeta
+  line: 'rgba(226,232,240,0.08)', // separadores
 
   brand: '#F5A524', // acento principal
-  brandDeep: '#D98A0F',
+  brandSoft: 'rgba(245,165,36,0.14)',
   onBrand: '#1A1206', // texto sobre ámbar
 
   ink: '#F1F5F9', // texto principal
@@ -28,57 +26,45 @@ export const colors = {
   infoSoft: 'rgba(56,189,248,0.13)',
   warn: '#F59E0B',
   warnSoft: 'rgba(245,158,11,0.13)',
+
+  whatsapp: '#25D366',
+  whatsappSoft: 'rgba(37,211,102,0.14)',
+  waze: '#33CCFF',
+  wazeSoft: 'rgba(51,204,255,0.14)',
+  maps: '#4285F4',
+  mapsSoft: 'rgba(66,133,244,0.14)',
 } as const;
 
 export const radius = {
-  sm: 10,
-  md: 14,
-  lg: 20,
-  xl: 26,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 20,
   pill: 999,
 } as const;
 
 export const spacing = {
   xs: 4,
   sm: 8,
-  md: 14,
-  lg: 20,
-  xl: 28,
+  md: 12,
+  lg: 16,
+  xl: 24,
 } as const;
 
-export const shadow = {
-  card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.32,
-    shadowRadius: 18,
-    elevation: 6,
-  },
-  bar: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 12,
-  },
-  glow: {
-    shadowColor: colors.brand,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-} as const;
+/** Ancho máximo del contenido: en tablets las pantallas no se estiran de borde a borde. */
+export const maxContentWidth = 1100;
+
+/** Desde este ancho las entregas pasan a dos columnas. */
+export const TWO_COLUMNS_FROM = 720;
 
 export const text = {
-  // Escala tipográfica: títulos apretados, etiquetas en versalita espaciada.
-  h1: { fontSize: 26, fontWeight: '800' as const, letterSpacing: -0.4 },
-  h2: { fontSize: 19, fontWeight: '800' as const, letterSpacing: -0.2 },
+  h1: { fontSize: 24, fontWeight: '800' as const, letterSpacing: -0.3 },
+  h2: { fontSize: 18, fontWeight: '700' as const },
   body: { fontSize: 14, fontWeight: '500' as const },
   label: {
-    fontSize: 10,
-    fontWeight: '800' as const,
-    letterSpacing: 1.1,
+    fontSize: 11,
+    fontWeight: '700' as const,
+    letterSpacing: 0.6,
     textTransform: 'uppercase' as const,
   },
 } as const;

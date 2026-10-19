@@ -19,7 +19,13 @@
     "dev:docker": "npm run db:up && npm run backend:docker",
     "dev:local": "npm run backend:local",
     "db:up": "docker compose up -d db",
-    "db:down": "docker compose down --volumes --remove-orphans"
+    "local:up": "docker compose up -d db redis",
+    "seed:local": "npm run seed --prefix Backend",
+    "db:down": "docker compose down --volumes --remove-orphans",
+    "docker:local": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-local.ps1",
+    "docker:local:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-local.ps1 up",
+    "docker:local:seed": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-local.ps1 seed",
+    "docker:local:down": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/docker-local.ps1 down"
   },
   "devDependencies": {
     "@types/react": "~19.2.10",

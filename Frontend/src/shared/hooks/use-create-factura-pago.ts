@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from 'react';
 import axios from 'axios';
 import { useApi } from '../contexts/ApiContext';
 import type { CreateFacturaPagoDto, FacturaPago } from '../types/models';
+import { ordenarRecientesPrimero, traerPorCursor } from '../utils/paginas';
+import { claveConsulta, consultarConCooldown } from '../utils/consultas';
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError(error)) {
@@ -76,7 +78,11 @@ export function useFacturasPagosDia() {
   return { data, loading, error, fetchData };
 }
 
-export function useFacturasPagosRango(limit: number = 50) {
+/**
+ * Egresos de un rango. `limit` 0 (por defecto) = TODOS: los totales y las exportaciones de
+ * contabilidad no pueden depender de una página de 50.
+ */
+export function useFacturasPagosRango(limit: number = 0) {
   const api = useApi();
   const [data, setData] = useState<FacturaPago[]>([]);
   const [loading, setLoading] = useState(false);
@@ -86,6 +92,13 @@ export function useFacturasPagosRango(limit: number = 50) {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  /** Avance de la carga por tandas (null = no se está cargando por tandas). */
+  const [progreso, setProgreso] = useState<{ cargados: number; total: number } | null>(null);
+  /** Cuándo devolvió el servidor lo que se ve, y si salió del cooldown (búsqueda repetida, sin petición). */
+  const [actualizadoEn, setActualizadoEn] = useState<number | null>(null);
+  const [desdeCache, setDesdeCache] = useState(false);
+  /** Solo se pinta la respuesta de la búsqueda más reciente (dos seguidas no se pisan). */
+  const idPeticion = useRef(0);
 
   const fromRef = useRef(from);
   const toRef = useRef(to);
@@ -94,7 +107,7 @@ export function useFacturasPagosRango(limit: number = 50) {
   toRef.current = to;
   pageRef.current = page;
 
-  const fetchData = useCallback(async (f?: string, t?: string, p?: number) => {
+  const fetchData = useCallback(async (f?: string, t?: string, p?: number, { forzar = false }: { forzar?: boolean } = {}) => {
     const finalFrom = f || fromRef.current;
     const finalTo = t || toRef.current;
     const finalPage = p ?? pageRef.current;
@@ -104,20 +117,48 @@ export function useFacturasPagosRango(limit: number = 50) {
       setError('Fechas inválidas');
       return;
     }
+    const id = ++idPeticion.current;
     setLoading(true); setError(null);
     try {
-      const response = await api.pagos.getAll({ from: finalFrom, to: finalTo, page: finalPage, limit });
+      // Rango completo (limit 0): por tandas con cursor (sin duplicar ni perder egresos que se registran
+      // mientras tanto) y con cooldown: repetir la misma búsqueda no la vuelve a descargar.
+      const completo = limit === 0;
+      const filtros = { from: finalFrom, to: finalTo };
+      const r = await consultarConCooldown(
+        claveConsulta(completo ? 'pagos:rango' : 'pagos:pagina', completo ? filtros : { ...filtros, page: finalPage, limit }),
+        () =>
+          completo
+            ? traerPorCursor(
+                ({ cursor, limite, pagina }) => api.pagos.getAll({ ...filtros, cursor, limit: limite, page: pagina }),
+                (g) => g.pagosId ?? '',
+                { onProgreso: (cargados, totalEgresos) => { if (id === idPeticion.current) setProgreso({ cargados, total: totalEgresos }); } },
+              ).then((x) => ({
+                data: ordenarRecientesPrimero(x.data, (g) => g.fechaFactura, (g) => g.pagosId ?? 0),
+                total: x.total,
+                page: 1,
+                totalPages: 1,
+              }))
+            : api.pagos.getAll({ ...filtros, page: finalPage, limit }),
+        { forzar },
+      );
+      if (id !== idPeticion.current) return; // llegó una búsqueda más nueva
+      const response = r.valor;
       setData(response.data);
       setTotal(response.total);
       setPage(response.page);
       setTotalPages(response.totalPages);
+      setActualizadoEn(r.obtenidoEn);
+      setDesdeCache(r.desdeCache);
+      setProgreso(null);
       setLoading(false);
     } catch (error: unknown) {
+      if (id !== idPeticion.current) return;
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setData([]);
       } else {
         setError(getErrorMessage(error, 'Error cargando pagos'));
       }
+      setProgreso(null);
       setLoading(false);
     }
   }, [api, limit]); // limit is a primitive, stable across renders
@@ -128,7 +169,10 @@ export function useFacturasPagosRango(limit: number = 50) {
     fetchData(undefined, undefined, p);
   }, [fetchData]);
 
-  return { data, loading, error, from, to, setFrom, setTo, fetchData, page, totalPages, total, goToPage };
+  /** Repite la última búsqueda saltándose el cooldown (deslizar para recargar). */
+  const recargar = useCallback(() => fetchData(undefined, undefined, undefined, { forzar: true }), [fetchData]);
+
+  return { data, loading, error, from, to, setFrom, setTo, fetchData, recargar, page, totalPages, total, goToPage, progreso, actualizadoEn, desdeCache };
 }
 
 export function useUpdateFacturaPago() {

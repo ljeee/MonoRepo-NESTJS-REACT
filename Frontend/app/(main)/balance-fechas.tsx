@@ -1,635 +1,211 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useCallback } from 'react';
+import { TouchableOpacity } from 'react-native';
 import { View, Text } from '../../tw';
-import {
-    useFacturasRango,
-    useFacturasPagosRango,
-    useApi,
-    mapFactura,
-    validateFlexibleDateRange,
-    formatCurrency,
-} from '@/src/shared';
+import { useFacturasPagosRango, formatCOP, transferenciasPorCuenta, tipoDeGasto, nombreCategoria, TIPO_GASTO_META } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportPdf } from '../../utils/exportData';
-import { useBreakpoint } from '../../styles/responsive';
 import { FacturaCard } from '../../components/facturas/FacturaShared';
+import { ResumenDinero } from '../../components/facturas/ResumenDinero';
+import { useCuentasTransferencia } from '../../hooks/use-cuentas-transferencia';
+import { useFacturasRangoScreen } from '../../hooks/use-facturas-rango-screen';
+import { usePaginaLocal } from '../../hooks/use-pagina-local';
+import { PaginadorLocal } from '../../components/contabilidad/PaginadorLocal';
+import { FacturaToolbar } from '../../components/facturas/FacturaToolbar';
+import { GastoCard } from '../../components/facturas/GastoCard';
 import {
     PageContainer,
     PageHeader,
-    Button,
-    Input,
     Icon,
     ListSkeleton,
     Badge,
     Card,
     DateRangeFilter,
-    MethodFilterChips,
-} from '../../components/ui';
-import type { MethodFilterValue } from '../../components/ui';
-
-
+    PosRefreshControl,
+    InlineError, SectionHeader, CardGrid } from '../../components/ui';
 
 export default function BalanceFechasScreen() {
-    const { isMobile } = useBreakpoint();
-    const api = useApi();
+    const { cuentas } = useCuentasTransferencia();
 
-    // ── State ──────────────────────────────────────────────────────────────────
-    const [from, setFrom] = useState('');
-    const [to, setTo] = useState('');
-    /** Normalized dates used for API calls (validated on last Buscar) */
-    const [searchedFrom, setSearchedFrom] = useState('');
-    const [searchedTo, setSearchedTo] = useState('');
-    const [hasSearched, setHasSearched] = useState(false);
-    const [periodStats, setPeriodStats] = useState<any>(null);
-    const [metodoStats, setMetodoStats] = useState<any[]>([]);
-    const [exporting, setExporting] = useState(false);
-    const [metodoFilter, setMetodoFilter] = useState<MethodFilterValue>('todos');
-    const [nombreFilter, setNombreFilter] = useState('');
-    const [updatingId, setUpdatingId] = useState<number | null>(null);
-    const [refreshing, setRefreshing] = useState(false);
+    // Sin tope: se traen TODOS los gastos del rango (la paginación de abajo es solo visual).
+    const gastosRango = useFacturasPagosRango();
+    const { fetchData: fetchGastos, setFrom: setFromG, setTo: setToG } = gastosRango;
+    const alBuscar = useCallback(
+        (f: string, t: string, opciones?: { forzar?: boolean }) => {
+            setFromG(f);
+            setToG(t);
+            return fetchGastos(f, t, 1, opciones);
+        },
+        [fetchGastos, setFromG, setToG],
+    );
+    const s = useFacturasRangoScreen({ alBuscar });
 
-    // ── Cuentas QR state ──
-    const [cuentas, setCuentas] = useState<any[]>([]);
-    const [selectedCuentaId, setSelectedCuentaId] = useState<number | undefined>(undefined);
+    // `s.facturas` y `gastosRango.data` ya son el rango COMPLETO (sin paginar) con los filtros que se ven:
+    // lo que se exporta es exactamente lo que está en pantalla (antes se volvían a pedir hasta 9999
+    // facturas y se ignoraba la cuenta elegida).
+    const paginaFacturas = usePaginaLocal(s.facturas, 60);
+    const paginaGastos = usePaginaLocal(gastosRango.data, 30);
 
-    useEffect(() => {
-        api.empresa.cuentasTransferencia.getAll()
-            .then(res => setCuentas((res || []).filter((c: any) => c.activa)))
-            .catch(() => {});
-    }, [api]);
-
-    const getApiFilters = useCallback((key: MethodFilterValue) => {
-        let est: string | undefined = undefined;
-        let met: string | undefined = undefined;
-        if (key === 'pendiente') {
-            est = 'pendiente';
-        } else if (key !== 'todos') {
-            // No forzamos estado='pagado': facturas pendientes también pueden tener método
-            // asignado (ej. QR pendiente). El contador ya las incluye; la lista debe coincidir.
-            met = key;
-        }
-        return { est, met };
-    }, []);
-
-    // ── Data hooks ─────────────────────────────────────────────────────────────
-    const {
-        data: facturas, loading: loadingFacturas, error: errorFacturas,
-        setFrom: setFromF, setTo: setToF,
-        search: searchF, updateEstado, updateFactura, deleteFactura,
-        page: pageF, totalPages: totalPagesF, total: totalF, goToPage: goToPageF,
-        fetchData: fetchFacturas,
-    } = useFacturasRango(50);
-
-    const {
-        data: gastos, loading: loadingGastos, error: errorGastos,
-        setFrom: setFromG, setTo: setToG, fetchData: fetchGastos,
-        page: pageG, totalPages: totalPagesG, total: totalG, goToPage: goToPageG,
-    } = useFacturasPagosRango(50);
-
-    // ── Handlers ───────────────────────────────────────────────────────────────
-    const fetchStats = useCallback(async (f: string, t: string) => {
-        try {
-            const [s, mp] = await Promise.all([
-                api.estadisticas.resumenPeriodo(f, t),
-                api.estadisticas.metodosPago(f, t),
-            ]);
-            setPeriodStats(s);
-            setMetodoStats(mp);
-        } catch { /* silent */ }
-    }, [api]);
-
-    const handleRefresh = useCallback(async () => {
-        if (!hasSearched) return;
-        setRefreshing(true);
-        try {
-            const { est, met } = getApiFilters(metodoFilter);
-            await Promise.all([
-                searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met, selectedCuentaId),
-                fetchGastos(searchedFrom, searchedTo, 1),
-                fetchStats(searchedFrom, searchedTo)
-            ]);
-        } catch { /* silent */ }
-        setRefreshing(false);
-    }, [hasSearched, searchedFrom, searchedTo, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, selectedCuentaId, getApiFilters]);
-
-    const handleSearch = useCallback((fromOverride?: string, toOverride?: string) => {
-        const fromInput = fromOverride ?? from;
-        const toInput = toOverride ?? to;
-        const { from: fp, to: tp, error } = validateFlexibleDateRange(fromInput, toInput);
-        if (error) return;
-        setSearchedFrom(fp);
-        setSearchedTo(tp);
-        setFromF(fp); setToF(tp);
-        setFromG(fp); setToG(tp);
-        const { est, met } = getApiFilters(metodoFilter);
-        searchF(fp, tp, est, nombreFilter || undefined, met, selectedCuentaId);
-        void fetchGastos(fp, tp, 1);
-        void fetchStats(fp, tp);
-        setHasSearched(true);
-    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, fetchStats, nombreFilter, metodoFilter, selectedCuentaId, getApiFilters]);
-
-    const handleSelectMetodo = useCallback((key: MethodFilterValue) => {
-        setMetodoFilter(key);
-        if (hasSearched) {
-            const { est, met } = getApiFilters(key);
-            searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met, selectedCuentaId);
-        }
-    }, [searchedFrom, searchedTo, nombreFilter, searchF, hasSearched, selectedCuentaId, getApiFilters]);
-
-    const handleSelectCuenta = useCallback((cuentaId: number | undefined) => {
-        setSelectedCuentaId(cuentaId);
-        if (hasSearched) {
-            const { est, met } = getApiFilters(metodoFilter);
-            searchF(searchedFrom, searchedTo, est, nombreFilter || undefined, met, cuentaId);
-        }
-    }, [hasSearched, searchedFrom, searchedTo, metodoFilter, nombreFilter, searchF, getApiFilters]);
-
-    // Debounce nombre filter
-    const searchFRef = useRef(searchF);
-    useEffect(() => { searchFRef.current = searchF; }, [searchF]);
-    useEffect(() => {
-        if (!hasSearched) return;
-        const t = setTimeout(() => {
-            const { est, met } = getApiFilters(metodoFilter);
-            searchFRef.current(searchedFrom, searchedTo, est, nombreFilter || undefined, met, selectedCuentaId);
-        }, 400);
-        return () => clearTimeout(t);
-    }, [nombreFilter, searchedFrom, searchedTo, metodoFilter, hasSearched, selectedCuentaId, getApiFilters]);
-
-    const handleToggleEstado = useCallback(async (
-        facturaId: number, nuevoEstado: string, metodo?: string,
-        pagoEfectivo?: number, pagoTransferencia?: number,
-        denominaciones?: Record<string, number>,
-        cambioDenominaciones?: Record<string, number>,
-        cuentaTransferenciaId?: number,
-        cuentaTransferenciaNombre?: string
-    ) => {
-        setUpdatingId(facturaId);
-        try {
-            if (nuevoEstado === 'pagado' && metodo)
-                await updateFactura(facturaId, {
-                    estado: 'pagado',
-                    metodo,
-                    pagoEfectivo,
-                    pagoTransferencia,
-                    denominaciones,
-                    cambioDenominaciones,
-                    cuentaTransferenciaId,
-                    cuentaTransferenciaNombre
-                });
-            else
-                await updateEstado(facturaId, nuevoEstado);
-            if (searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
-        } catch { /* silent */ }
-        setUpdatingId(null);
-    }, [updateEstado, updateFactura, searchedFrom, searchedTo, fetchStats]);
-
-    const handleAbono = useCallback(async (
-        facturaId: number,
-        monto: number,
-        metodo: 'efectivo' | 'transferencia',
-        denominaciones?: Record<string, number>,
-        cambioDenominaciones?: Record<string, number>,
-        cuentaTransferenciaId?: number,
-        cuentaTransferenciaNombre?: string
-    ) => {
-        setUpdatingId(facturaId);
-        try {
-            await api.facturas.abono(
-                facturaId,
-                monto,
-                metodo,
-                denominaciones,
-                cambioDenominaciones,
-                cuentaTransferenciaId,
-                cuentaTransferenciaNombre
-            );
-            await fetchFacturas();
-            if (searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
-        } catch { /* silent */ }
-        setUpdatingId(null);
-    }, [api, fetchFacturas, searchedFrom, searchedTo, fetchStats]);
-
-    const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
-        await updateFactura(facturaId, { total: newTotal });
-        if (searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
-    }, [updateFactura, searchedFrom, searchedTo, fetchStats]);
-
-    const handleDeleteFactura = useCallback(async (facturaId: number): Promise<boolean> => {
-        const ok = await deleteFactura(facturaId);
-        if (ok && searchedFrom && searchedTo) fetchStats(searchedFrom, searchedTo);
-        return ok;
-    }, [deleteFactura, searchedFrom, searchedTo, fetchStats]);
-
-    const fetchAllForExport = async () => {
-        setExporting(true);
-        try {
-            const { est, met } = getApiFilters(metodoFilter);
-            const [fr, gr] = await Promise.all([
-                api.facturas.getAll({ from: searchedFrom, to: searchedTo, page: 1, limit: 9999, estado: est, metodo: met, clienteNombre: nombreFilter || undefined }),
-                api.pagos.getAll({ from: searchedFrom, to: searchedTo, page: 1, limit: 9999 }),
-            ]);
-            return { mf: fr.data.map(mapFactura), mg: gr.data || [] };
-        } catch { return { mf: [], mg: [] }; }
-        finally { setExporting(false); }
-    };
-
-    const handleExportPdf = useCallback(async () => {
-        const { mf, mg } = await fetchAllForExport();
+    const exportarPdf = useCallback(() => {
+        const mf = s.facturas;
+        const mg = gastosRango.data;
         if (!mf.length && !mg.length) return;
+        const r = s.resumen;
         exportPdf({
-            title: `Balance ${searchedFrom || 'inicio'} – ${searchedTo || 'fin'}`,
-            subtitle: `${mf.length + mg.length} registros`,
-            headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Total', 'Estado', 'Método'],
+            title: `Balance ${s.searchedFrom} – ${s.searchedTo}`,
+            subtitle: `${mf.length} facturas · ${mg.length} egresos`,
+            headers: ['Tipo', 'ID', 'Nombre', 'Fecha', 'Método', 'Cuenta / Categoría', 'Estado', 'Total'],
             rows: [
-                ...mf.map(f => ['Ingreso', f.facturaId ?? '', f.clienteNombre || '—', f.fechaFactura || '', `$${formatCurrency(Number(f.total) || 0)}`, f.estado || '', f.metodo || '']),
-                ...mg.map(g => ['Gasto', g.pagosId ?? '', g.nombreGasto || '—', g.fechaFactura || '', `$${formatCurrency(Number(g.total) || 0)}`, g.estado || '', g.metodo || '']),
+                ...mf.map((f) => [
+                    'Ingreso',
+                    f.facturaId ?? '',
+                    f.clienteNombre || '—',
+                    f.fechaFactura || '',
+                    f.metodo || '',
+                    transferenciasPorCuenta(f).map((c) => `${c.cuenta ?? 'Sin asignar'} ${formatCOP(c.monto)}`).join(' + '),
+                    f.estado || '',
+                    formatCOP(Number(f.total) || 0),
+                ]),
+                ...mg.map((g) => [
+                    'Egreso',
+                    g.pagosId ?? '',
+                    g.nombreGasto || '—',
+                    g.fechaFactura || '',
+                    g.metodo || '',
+                    `${TIPO_GASTO_META[tipoDeGasto(g)].label} · ${nombreCategoria(g.categoria)}`,
+                    g.estado || '',
+                    formatCOP(Number(g.total) || 0),
+                ]),
             ],
+            // Totales del servidor para TODO el rango (definiciones únicas), no de lo exportado a mano.
+            summaryRows: r
+                ? [
+                      { label: 'Facturado', value: formatCOP(r.ventas.facturado) },
+                      { label: 'Cobrado', value: formatCOP(r.ventas.cobrado) },
+                      { label: 'Egresos pagados', value: `−${formatCOP(r.gastos.pagados)}` },
+                      { label: 'Balance (cobrado − egresos pagados)', value: formatCOP(r.balance.cobrado), bold: true },
+                  ]
+                : undefined,
         });
-    }, [searchedFrom, searchedTo, metodoFilter, nombreFilter, api]);
+    }, [s.facturas, s.resumen, gastosRango.data, s.searchedFrom, s.searchedTo]);
 
-    const handleExportCsv = useCallback(async () => {
-        const { mf, mg } = await fetchAllForExport();
+    const exportarCsv = useCallback(async () => {
+        const mf = s.facturas;
+        const mg = gastosRango.data;
         if (!mf.length && !mg.length) return;
-        const csv = await buildCombinedBalanceCsv(mf, mg);
-        downloadCsv(csv, `contabilidad_${searchedFrom || 'inicio'}_${searchedTo || 'fin'}.csv`);
-    }, [searchedFrom, searchedTo, metodoFilter, nombreFilter, api]);
+        downloadCsv(await buildCombinedBalanceCsv(mf, mg), `contabilidad_${s.searchedFrom}_${s.searchedTo}.csv`);
+    }, [s.facturas, gastosRango.data, s.searchedFrom, s.searchedTo]);
 
-    // ── Derived values ─────────────────────────────────────────────────────────
-    const loading = loadingFacturas || loadingGastos || exporting;
-    const ingresos = periodStats?.totalIngresosPagados ?? 0;
-    const egresos = periodStats?.totalEgresos ?? 0;
-    const neto = ingresos - egresos;
-
-    const qrPorCuentaPeriodo = facturas
-        .filter(f => f.estado === 'pagado' || f.estado === 'pagada')
-        .reduce((acc: Record<string, number>, f) => {
-            const esTrans = f.metodo === 'transferencia' || f.metodo === 'qr';
-            const esMixtoTrans = f.metodo === 'efectivo_transferencia' && (f.pagoTransferencia ?? 0) > 0;
-            if (esTrans || esMixtoTrans) {
-                const nom = f.cuentaTransferenciaNombre || 'Sin asignar';
-                const monto = esMixtoTrans ? (f.pagoTransferencia ?? 0) : (f.total ?? 0);
-                acc[nom] = (acc[nom] || 0) + monto;
-            }
-            return acc;
-        }, {});
-
-    // Conteos por método del período (metodosPago tiene bucket 'mixto' propio).
-    // El filtrado real es server-side e incluye las mixtas en efectivo y QR
-    // ("mixta con efectivo" / "mixta con QR"), así que los chips las suman.
-    // Estos números son del rango completo (no de la página).
-    const metodoCount = (m: string) => metodoStats.find((x) => x.metodo === m)?.cantidad ?? 0;
-    const metodoCounts = {
-        todos:         periodStats?.facturas ?? 0,
-        efectivo:      metodoCount('efectivo') + metodoCount('mixto'),
-        transferencia: metodoCount('transferencia') + metodoCount('mixto'),
-        mixto:         metodoCount('mixto'),
-        pendiente:     periodStats?.countIngresosPendientes ?? 0,
-    };
+    const chipCuenta = (activa: boolean) => ({
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        backgroundColor: activa ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.04)',
+        borderWidth: 1,
+        borderColor: activa ? '#A78BFA' : 'rgba(255,255,255,0.08)',
+    });
 
     return (
-        <PageContainer
-            scrollable
-            maxWidthVariant="full"
-            refreshControl={
-                <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    tintColor="#F5A524"
-                    colors={['#F5A524']}
-                />
-            }
-        >
-            <View className="px-4 pb-20">
-
-                <PageHeader
-                    title="Balance Histórico"
-                    subtitle="Facturación por rango"
-                    icon="scale-balance"
-                />
+        <PageContainer scrollable refreshControl={<PosRefreshControl refreshing={s.refreshing} onRefresh={s.handleRefresh} />}>
+            <View className="pb-8">
+                <PageHeader title="Balance Histórico" subtitle="Facturación por rango" icon="scale-balance" />
 
                 <DateRangeFilter
-                    from={from}
-                    to={to}
-                    onFromChange={setFrom}
-                    onToChange={setTo}
-                    onSearch={(f, t) => { setFrom(f); setTo(t); handleSearch(f, t); }}
-                    loading={loading}
+                    from={s.from}
+                    to={s.to}
+                    onFromChange={s.setFrom}
+                    onToChange={s.setTo}
+                    onSearch={s.handleSearch}
+                    loading={s.loadingFacturas || gastosRango.loading}
                 />
 
-                {/* ── Empty prompt (before first search) ─────────────────── */}
-                {!hasSearched && (
+                {!s.hasSearched ? (
                     <View className="items-center py-24 opacity-30">
                         <Icon name="calendar-search" size={64} color="#64748B" />
-                        <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs px-10">
-                            Selecciona un rango de fechas y presiona Buscar
-                        </Text>
+                        <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs px-10">Selecciona un rango de fechas y presiona Buscar</Text>
                     </View>
-                )}
-
-                {/* ── Results — only mounts after first search ────────────── */}
-                {hasSearched && (
+                ) : (
                     <>
-                        {/* Filter chips + export */}
-                        <View
-                            className="rounded-2xl mb-5 p-3"
-                            style={{ gap: 10, backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}
-                        >
-                            {/* Chips de filtro unificados por método de pago y estado pendiente */}
-                            <MethodFilterChips value={metodoFilter} onChange={handleSelectMetodo} counts={metodoCounts} />
-
-                            {/* Chips de filtro por Cuenta QR */}
-                            {cuentas.length > 0 && (
-                                <View style={{ gap: 6, marginTop: 2, paddingHorizontal: 2 }}>
-                                    <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Filtrar por Cuenta QR:
-                                    </Text>
-                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                                        <TouchableOpacity
-                                            onPress={() => handleSelectCuenta(undefined)}
-                                            style={{
-                                                paddingHorizontal: 10,
-                                                paddingVertical: 5,
-                                                borderRadius: 8,
-                                                backgroundColor: selectedCuentaId === undefined ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.04)',
-                                                borderWidth: 1,
-                                                borderColor: selectedCuentaId === undefined ? '#A78BFA' : 'rgba(255,255,255,0.08)',
-                                            }}
-                                        >
-                                            <Text style={{ fontFamily: 'Outfit', color: selectedCuentaId === undefined ? '#F3E8FF' : '#94A3B8', fontSize: 11, fontWeight: '700' }}>
-                                                Todas las cuentas
-                                            </Text>
-                                        </TouchableOpacity>
-                                        {cuentas.map(c => {
-                                            const isSelected = selectedCuentaId === c.id;
-                                            return (
-                                                <TouchableOpacity
-                                                    key={c.id}
-                                                    onPress={() => handleSelectCuenta(c.id)}
-                                                    style={{
-                                                        paddingHorizontal: 10,
-                                                        paddingVertical: 5,
-                                                        borderRadius: 8,
-                                                        backgroundColor: isSelected ? 'rgba(167,139,250,0.25)' : 'rgba(255,255,255,0.04)',
-                                                        borderWidth: 1,
-                                                        borderColor: isSelected ? '#A78BFA' : 'rgba(255,255,255,0.08)',
-                                                    }}
-                                                >
-                                                    <Text style={{ fontFamily: 'Outfit', color: isSelected ? '#F3E8FF' : '#94A3B8', fontSize: 11, fontWeight: '700' }}>
-                                                        {c.nombre}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
-                            )}
-
-                            <Input
-                                placeholder="Buscar por nombre de cliente..."
-                                value={nombreFilter}
-                                onChangeText={setNombreFilter}
-                                size="sm"
-                                containerStyle={{ marginBottom: 0 }}
-                                leftIcon={<Icon name="account-search-outline" size={15} color="#475569" />}
-                            />
-
-                            <View className="flex-row flex-wrap items-center gap-2">
-                                <Button title="PDF" icon="file-pdf-outline" variant="secondary" size="sm" onPress={handleExportPdf} disabled={!periodStats || exporting} loading={exporting} className="bg-purple-600/20 border-purple-500/30" />
-                                <Button title="CSV" icon="table-large" variant="secondary" size="sm" onPress={handleExportCsv} disabled={!periodStats || exporting} loading={exporting} className="bg-emerald-600/20 border-emerald-500/30" />
-                                {totalF > 0 && (
-                                    <View className="flex-1 items-end">
-                                        <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>{totalF} resultados</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-
-                        {/* Balance summary */}
-                        {!!periodStats && (
-                            <Card className="mb-8 p-5" style={{ overflow: 'hidden' }}>
-                                <View className="flex-row justify-between items-center mb-5">
-                                    <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.6)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                        Resumen del Período
-                                    </Text>
-                                    <View style={{ paddingHorizontal: 12, paddingVertical: 4, borderRadius: 9999, borderWidth: 1, backgroundColor: neto >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', borderColor: neto >= 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)' }}>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 10, textTransform: 'uppercase', color: neto >= 0 ? '#34D399' : '#F87171' }}>
-                                            {neto >= 0 ? 'Superávit' : 'Déficit'}
-                                        </Text>
-                                    </View>
-                                </View>
-
-                                <View style={{ gap: 16 }}>
-                                    <View className="flex-row justify-between items-center">
-                                        <View className="flex-row items-center gap-3">
-                                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(16,185,129,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Icon name="arrow-down" size={16} color="#34D399" />
-                                            </View>
-                                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Ingresos Totales</Text>
+                        <FacturaToolbar
+                            metodo={{ value: s.metodoFilter, onChange: s.handleSelectMetodo, counts: s.metodoCounts }}
+                            extra={
+                                cuentas.length > 0 ? (
+                                    <View style={{ gap: 6, marginTop: 2, paddingHorizontal: 2 }}>
+                                        <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>Filtrar por cuenta QR:</Text>
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                            {[{ id: undefined as number | undefined, nombre: 'Todas las cuentas' }, ...cuentas].map((c) => {
+                                                const activa = s.cuentaId === c.id;
+                                                return (
+                                                    <TouchableOpacity key={c.id ?? 'todas'} onPress={() => s.handleSelectCuenta(c.id)} style={chipCuenta(activa)}>
+                                                        <Text style={{ fontFamily: 'Outfit', color: activa ? '#F3E8FF' : '#94A3B8', fontSize: 11, fontWeight: '700' }}>{c.nombre}</Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
                                         </View>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 18 }}>${formatCurrency(ingresos)}</Text>
                                     </View>
+                                ) : undefined
+                            }
+                            busqueda={{ value: s.nombreFilter, onChange: s.setNombreFilter }}
+                            exportar={{ onPdf: exportarPdf, onCsv: exportarCsv, disabled: !s.resumen }}
+                            resultados={s.total > 0 ? `${s.total} resultados${s.notaCooldown ? ` · ${s.notaCooldown}` : ''}` : undefined}
+                        />
 
-                                    <View className="flex-row justify-between items-center">
-                                        <View className="flex-row items-center gap-3">
-                                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(239,68,68,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Icon name="arrow-up" size={16} color="#F87171" />
-                                            </View>
-                                            <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 13, fontWeight: 'bold' }}>Gastos Totales</Text>
-                                        </View>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F87171', fontSize: 18 }}>−${formatCurrency(egresos)}</Text>
-                                    </View>
+                        {/* Totales del rango completo (servidor), no de la página visible */}
+                        {!!s.resumen && <ResumenDinero resumen={s.resumen} />}
 
-                                    <View className="h-[1px] bg-white/5" />
+                        <SeccionTitulo titulo="Facturas emitidas" color="#F5A524" cantidad={s.total} />
+                        {!!s.errorFacturas && <AvisoError mensaje={s.errorFacturas} />}
 
-                                    <View className="flex-row justify-between items-center">
-                                        <View className="flex-row items-center gap-3">
-                                            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(245,165,36,0.2)', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Icon name="scale-balance" size={20} color="#F5A524" />
-                                            </View>
-                                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 15, textTransform: 'uppercase' }}>BALANCE NETO</Text>
-                                        </View>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 28, color: neto >= 0 ? '#F5A524' : '#EF4444' }}>
-                                            ${formatCurrency(Math.abs(neto))}
-                                        </Text>
-                                    </View>
-
-                                    {/* Breakdown por cuenta QR en el período */}
-                                    {Object.keys(qrPorCuentaPeriodo).length > 0 && (
-                                        <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', gap: 6 }}>
-                                            <Text style={{ fontFamily: 'Outfit', color: '#A78BFA', fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                                Recaudación por Cuenta QR (Período)
-                                            </Text>
-                                            <View style={{ gap: 4 }}>
-                                                {Object.entries(qrPorCuentaPeriodo).map(([cuenta, total]) => (
-                                                    <View key={cuenta} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <Text style={{ fontFamily: 'Outfit', color: '#CBD5E1', fontSize: 12 }}>
-                                                            • {cuenta}
-                                                        </Text>
-                                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#A78BFA', fontSize: 13 }}>
-                                                            ${formatCurrency(total)}
-                                                        </Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    )}
-                                </View>
-                            </Card>
-                        )}
-
-                        {/* ── Facturas emitidas ────────────────────────────── */}
-                        <View className="flex-row items-center gap-3 mb-4">
-                            <View style={{ width: 6, height: 24, backgroundColor: '#F5A524', borderRadius: 999 }} />
-                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                Facturas emitidas
-                            </Text>
-                            <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>{totalF}</Text>
-                            </View>
-                        </View>
-
-                        {!!errorFacturas && (
-                            <View className="flex-row items-center gap-3 bg-red-500/10 p-4 rounded-xl mb-4">
-                                <Icon name="alert-circle-outline" size={18} color="#EF4444" />
-                                <Text className="text-red-400 text-xs font-bold">{errorFacturas}</Text>
-                            </View>
-                        )}
-
-                        {loadingFacturas ? (
+                        {s.loadingFacturas ? (
                             <ListSkeleton count={4} />
-                        ) : facturas.length === 0 ? (
+                        ) : s.facturas.length === 0 ? (
                             <View className="items-center py-16 opacity-30">
                                 <Icon name="email-off-outline" size={48} color="#64748B" />
-                                <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs px-10">
-                                    Sin facturas en este rango
-                                </Text>
+                                <Text className="text-slate-400 font-bold mt-4 uppercase text-center text-xs px-10">Sin facturas en este rango</Text>
                             </View>
                         ) : (
-                            <View style={{ flexDirection: isMobile ? 'column' : 'row', flexWrap: isMobile ? 'nowrap' : 'wrap', gap: 12, marginBottom: 4 }}>
-                                {facturas.map((item: any, idx: number) => (
-                                    <View
-                                        key={item.facturaId?.toString() || String(idx)}
-                                        style={isMobile ? { width: '100%' } : { width: '48%' }}
-                                    >
-                                        <FacturaCard
-                                            item={item}
-                                            isUpdating={updatingId === item.facturaId}
-                                            activeFilter={metodoFilter}
-                                            onToggleEstado={handleToggleEstado}
-                                            onUpdateTotal={handleUpdateTotal}
-                                            onDelete={handleDeleteFactura}
-                                            onAbono={handleAbono}
-                                        />
-                                    </View>
-                                ))}
+                            <View style={{ marginBottom: 4 }}>
+                                <CardGrid
+                                    kind="factura"
+                                    data={paginaFacturas.items}
+                                    keyExtractor={(item, i) => item.facturaId?.toString() ?? String(i)}
+                                    renderItem={(item) => (
+                                        <FacturaCard item={item} isUpdating={s.updatingId === item.facturaId} activeFilter={s.metodoFilter} {...s.accionesFactura} />
+                                    )}
+                                />
                             </View>
                         )}
+                        <PaginadorLocal pagina={paginaFacturas} etiqueta="facturas" />
 
-                        {/* Pagination — Facturas */}
-                        {totalPagesF > 1 && (
-                            <View className="flex-row justify-center items-center gap-3 py-5">
-                                <TouchableOpacity
-                                    onPress={() => goToPageF(Math.max(1, pageF - 1))}
-                                    disabled={pageF <= 1 || loadingFacturas}
-                                    style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, backgroundColor: pageF <= 1 ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)', borderColor: pageF <= 1 ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)', opacity: pageF <= 1 ? 0.4 : 1 }}
-                                >
-                                    <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>← Anterior</Text>
-                                </TouchableOpacity>
-                                <View style={{ alignItems: 'center' }}>
-                                    <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 14 }}>Pág {pageF} de {totalPagesF}</Text>
-                                    <Text style={{ color: '#64748B', fontFamily: 'Outfit', fontSize: 11, marginTop: 2 }}>{totalF} facturas</Text>
-                                </View>
-                                <TouchableOpacity
-                                    onPress={() => goToPageF(Math.min(totalPagesF, pageF + 1))}
-                                    disabled={pageF >= totalPagesF || loadingFacturas}
-                                    style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, backgroundColor: pageF >= totalPagesF ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)', borderColor: pageF >= totalPagesF ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)', opacity: pageF >= totalPagesF ? 0.4 : 1 }}
-                                >
-                                    <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>Siguiente →</Text>
-                                </TouchableOpacity>
-                            </View>
-                        )}
-
-                        {/* ── Gastos operativos ────────────────────────────── */}
-                        {(gastos.length > 0 || loadingGastos) && (
+                        {(gastosRango.data.length > 0 || gastosRango.loading) && (
                             <View className="mt-8 mb-4">
-                                <View className="flex-row items-center gap-3 mb-5">
-                                    <View style={{ width: 6, height: 24, backgroundColor: '#EF4444', borderRadius: 999 }} />
-                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, textTransform: 'uppercase', letterSpacing: 1 }}>
-                                        Gastos Operativos
-                                    </Text>
-                                    <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#94A3B8', fontSize: 12 }}>{totalG}</Text>
-                                    </View>
-                                </View>
-
-                                {!!errorGastos && (
-                                    <View className="flex-row items-center gap-3 bg-red-500/10 p-4 rounded-xl mb-4">
-                                        <Icon name="alert-circle-outline" size={18} color="#EF4444" />
-                                        <Text className="text-red-400 text-xs font-bold">{errorGastos}</Text>
-                                    </View>
-                                )}
-
-                                {loadingGastos ? (
+                                <SeccionTitulo titulo="Gastos operativos" color="#EF4444" cantidad={gastosRango.total} />
+                                {!!gastosRango.error && <AvisoError mensaje={gastosRango.error} />}
+                                {gastosRango.loading ? (
                                     <ListSkeleton count={3} />
                                 ) : (
-                                    <View style={{ gap: 10 }}>
-                                        {gastos.map((item: any, idx: number) => (
-                                            <Card
-                                                key={item.pagosId?.toString() || String(idx)}
-                                                className="flex-row items-center gap-4 p-4 border border-white/5 bg-white/5"
-                                            >
-                                                <View className="w-10 h-10 rounded-xl bg-white/5 items-center justify-center">
-                                                    <Icon name={item.metodo === 'efectivo' ? 'cash' : 'qrcode'} size={20} color="#F5A524" />
-                                                </View>
-                                                <View className="flex-1">
-                                                    <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 14, textTransform: 'uppercase' }}>
-                                                        {item.nombreGasto || 'Gasto General'}
-                                                    </Text>
-                                                    <View className="flex-row items-center gap-2 mt-1">
-                                                        <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold' }}>
-                                                            {item.fechaFactura}
-                                                        </Text>
-                                                        <Badge label={item.metodo || '—'} variant="warning" size="sm" />
-                                                    </View>
-                                                </View>
-                                                <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F87171', fontSize: 15 }}>
-                                                    −${formatCurrency(item.total ?? 0)}
-                                                </Text>
-                                            </Card>
-                                        ))}
-                                    </View>
+                                    <CardGrid
+                                        kind="panel"
+                                        data={paginaGastos.items}
+                                        keyExtractor={(g, i) => g.pagosId?.toString() ?? String(i)}
+                                        renderItem={(g) => (
+                                            <GastoCard gasto={g} nombreCuenta={g.cuentaOrigenId != null ? cuentas.find((c) => c.id === g.cuentaOrigenId)?.nombre : undefined} />
+                                        )}
+                                    />
                                 )}
-
-                                {/* Pagination — Gastos */}
-                                {totalPagesG > 1 && (
-                                    <View className="flex-row justify-center items-center gap-3 py-5">
-                                        <TouchableOpacity
-                                            onPress={() => goToPageG(Math.max(1, pageG - 1))}
-                                            disabled={pageG <= 1 || loadingGastos}
-                                            style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, backgroundColor: pageG <= 1 ? 'rgba(255,255,255,0.05)' : 'rgba(239,68,68,0.15)', borderColor: pageG <= 1 ? 'rgba(255,255,255,0.08)' : 'rgba(239,68,68,0.3)', opacity: pageG <= 1 ? 0.4 : 1 }}
-                                        >
-                                            <Text style={{ color: '#EF4444', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>← Anterior</Text>
-                                        </TouchableOpacity>
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 14 }}>Pág {pageG} de {totalPagesG}</Text>
-                                            <Text style={{ color: '#64748B', fontFamily: 'Outfit', fontSize: 11, marginTop: 2 }}>{totalG} gastos</Text>
-                                        </View>
-                                        <TouchableOpacity
-                                            onPress={() => goToPageG(Math.min(totalPagesG, pageG + 1))}
-                                            disabled={pageG >= totalPagesG || loadingGastos}
-                                            style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12, borderWidth: 1, backgroundColor: pageG >= totalPagesG ? 'rgba(255,255,255,0.05)' : 'rgba(239,68,68,0.15)', borderColor: pageG >= totalPagesG ? 'rgba(255,255,255,0.08)' : 'rgba(239,68,68,0.3)', opacity: pageG >= totalPagesG ? 0.4 : 1 }}
-                                        >
-                                            <Text style={{ color: '#EF4444', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>Siguiente →</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
+                                <PaginadorLocal pagina={paginaGastos} etiqueta="gastos" />
                             </View>
                         )}
                     </>
                 )}
-
             </View>
         </PageContainer>
     );
+}
+
+function SeccionTitulo({ titulo, color, cantidad }: { titulo: string; color: string; cantidad: number }) {
+    return <SectionHeader title={titulo} color={color} count={cantidad} />;
+}
+
+function AvisoError({ mensaje }: { mensaje: string }) {
+    return <InlineError message={mensaje} className="mb-4" />;
 }

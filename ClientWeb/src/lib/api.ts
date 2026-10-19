@@ -5,6 +5,7 @@ import type {
   CreateOrdenPayload,
   EmpresaConfig,
   PizzaSabor,
+  SaborGrupo,
   Producto,
 } from './types';
 
@@ -172,6 +173,10 @@ export const api = {
 
   pizzaSabores: {
     getAll: () => http.get<PizzaSabor[]>('/pizza-sabores').then((r) => arr<PizzaSabor>(r.data)),
+  },
+
+  saborGrupos: {
+    getAll: () => http.get<SaborGrupo[]>('/sabor-grupos').then((r) => arr<SaborGrupo>(r.data)),
   },
 
   empresa: {

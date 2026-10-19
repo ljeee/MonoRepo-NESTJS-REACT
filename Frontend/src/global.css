@@ -27,7 +27,7 @@
     /* Texto */
     --color-pos-text: #F1F5F9;
     --color-pos-text-secondary: #94A3B8;
-    --color-pos-text-muted: #64748B;
+    --color-pos-text-muted: #7C8BA1; /* antes #64748B (~4:1); #7C8BA1 llega a ~5.5:1 sobre el fondo */
 
     /* Fonts */
     --font-display: "Space Grotesk", sans-serif;

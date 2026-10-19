@@ -1,9 +1,11 @@
 import React from 'react';
-import type { Producto, ProductoVariante, PizzaSabor } from '@/src/shared';
+import type { Producto, ProductoVariante, PizzaSabor, SaborGrupo, CategoriaProducto, TamanoPizza } from '@/src/shared';
 import ConfirmModal from '../ui/ConfirmModal';
 import { ProductModal } from './ProductModal';
 import { VariantModal } from './VariantModal';
 import { SaborModal } from './SaborModal';
+import type { SaborModalSaveData } from './SaborModal';
+import type { PersonalizacionProducto } from './PersonalizacionSelector';
 
 interface DeleteTarget {
     type: 'product' | 'variant' | 'sabor';
@@ -17,18 +19,22 @@ interface GestionProductosModalsProps {
     prodName: string;
     prodDesc: string;
     prodEmoji: string;
-    prodPersonalizacion: string;
+    prodPersonalizacion: PersonalizacionProducto;
+    grupos: SaborGrupo[];
+    prodCategoria: CategoriaProducto | null;
     prodError: string;
     showVariantModal: boolean;
     editingVariant: ProductoVariante | null;
     varName: string;
     varPrice: string;
     varDesc: string;
+    varTamano: TamanoPizza | null;
+    varUsaTamano: boolean;
     varError: string;
     deleteTarget: DeleteTarget | null;
     deleteLoading: boolean;
     deleteError?: string;
-    editingSabor: PizzaSabor | null;
+    editingSabor: Partial<PizzaSabor> | null;
     opLoading: boolean;
     saborLoading: boolean;
     onCloseProductModal: () => void;
@@ -39,13 +45,15 @@ interface GestionProductosModalsProps {
     onProdNameChange: (name: string) => void;
     onProdDescriptionChange: (description: string) => void;
     onProdEmojiChange: (emoji: string) => void;
-    onProdPersonalizacionChange: (personalizacion: string) => void;
+    onProdPersonalizacionChange: (personalizacion: PersonalizacionProducto) => void;
+    onProdCategoriaChange: (categoria: CategoriaProducto | null) => void;
     onVarNameChange: (name: string) => void;
     onVarPriceChange: (price: string) => void;
     onVarDescriptionChange: (description: string) => void;
+    onVarTamanoChange: (tamano: TamanoPizza | null) => void;
     onConfirmDelete: () => void;
     onCancelDelete: () => void;
-    onSaveSabor: (saborId: number, data: { recargoPequena: number; recargoMediana: number; recargoGrande: number }) => void;
+    onSaveSabor: (saborId: number | undefined, data: SaborModalSaveData) => void | Promise<void>;
     onCloseSabor: () => void;
 }
 
@@ -56,12 +64,16 @@ export function GestionProductosModals({
     prodDesc,
     prodEmoji,
     prodPersonalizacion,
+    grupos,
+    prodCategoria,
     prodError,
     showVariantModal,
     editingVariant,
     varName,
     varPrice,
     varDesc,
+    varTamano,
+    varUsaTamano,
     varError,
     deleteTarget,
     deleteLoading,
@@ -78,9 +90,11 @@ export function GestionProductosModals({
     onProdDescriptionChange,
     onProdEmojiChange,
     onProdPersonalizacionChange,
+    onProdCategoriaChange,
     onVarNameChange,
     onVarPriceChange,
     onVarDescriptionChange,
+    onVarTamanoChange,
     onConfirmDelete,
     onCancelDelete,
     onSaveSabor,
@@ -103,7 +117,10 @@ export function GestionProductosModals({
                 onDescriptionChange={onProdDescriptionChange}
                 onEmojiChange={onProdEmojiChange}
                 personalizacion={prodPersonalizacion}
+                grupos={grupos}
                 onPersonalizacionChange={onProdPersonalizacionChange}
+                categoria={prodCategoria}
+                onCategoriaChange={onProdCategoriaChange}
             />
 
             <VariantModal
@@ -112,6 +129,8 @@ export function GestionProductosModals({
                 name={varName}
                 price={varPrice}
                 description={varDesc}
+                tamano={varTamano}
+                usaTamano={varUsaTamano}
                 error={varError}
                 loading={opLoading}
                 onClose={onCloseVariantModal}
@@ -119,6 +138,7 @@ export function GestionProductosModals({
                 onNameChange={onVarNameChange}
                 onPriceChange={onVarPriceChange}
                 onDescriptionChange={onVarDescriptionChange}
+                onTamanoChange={onVarTamanoChange}
             />
 
             <ConfirmModal
@@ -140,6 +160,7 @@ export function GestionProductosModals({
             <SaborModal
                 visible={!!editingSabor}
                 sabor={editingSabor}
+                grupos={grupos}
                 loading={saborLoading}
                 onSave={onSaveSabor}
                 onClose={onCloseSabor}

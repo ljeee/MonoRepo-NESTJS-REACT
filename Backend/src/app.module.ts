@@ -13,7 +13,8 @@ import {FacturasPagosModule} from './facturas-pagos/facturas-pagos.module';
 import {AuthModule} from './auth/auth.module';
 import {PizzaSaboresModule} from './pizza-sabores/pizza-sabores.module';
 import {EstadisticasModule} from './estadisticas/estadisticas.module';
-import {ThrottlerModule, ThrottlerGuard} from '@nestjs/throttler';
+import {ThrottlerModule} from '@nestjs/throttler';
+import {ThrottlerClienteGuard} from './common/guards/throttler-cliente.guard';
 import {BullModule} from '@nestjs/bullmq';
 import {RedisModule} from './common/redis/redis.module';
 import {CierresModule} from './cierres/cierres.module';
@@ -21,9 +22,9 @@ import {EmpresaModule} from './empresa/empresa.module';
 import {ContabilidadModule} from './contabilidad/contabilidad.module';
 import {SocketGateway} from './common/gateways/socket.gateway';
 import {ScheduleModule} from '@nestjs/schedule';
-import {InventarioCajasModule} from './inventario-cajas/inventario-cajas.module';
 import {CajaMovimientosModule} from './caja-movimientos/caja-movimientos.module';
-import {InventarioBebidasModule} from './inventario-bebidas/inventario-bebidas.module';
+import {InventarioModule} from './inventario/inventario.module';
+import {MigracionesDatosModule} from './common/migraciones-datos/migraciones-datos.module';
 
 import * as Joi from 'joi';
 
@@ -57,7 +58,11 @@ import * as Joi from 'joi';
 					password: configService.get<string>('DATABASE_PASSWORD', 'postgres'),
 					database: configService.get<string>('DATABASE_NAME', 'postgres'),
 					autoLoadEntities: true,
+					// OJO: synchronize también corre en producción. Solo cambios ADITIVOS en
+					// entidades: quitar/renombrar una propiedad o cambiar su tipo BORRA la columna.
 					synchronize: true,
+					// 'schema' deja en el log el DDL que aplica synchronize en cada arranque.
+					logging: ['error', 'warn', 'schema'] as ('error' | 'warn' | 'schema')[],
 					timezone: 'America/Bogota', // Zona horaria explícita para fechas
 				};
 				return config;
@@ -95,16 +100,17 @@ import * as Joi from 'joi';
 		CierresModule,
 		EmpresaModule,
 		ContabilidadModule,
-		InventarioCajasModule,
 		CajaMovimientosModule,
-		InventarioBebidasModule,
+		InventarioModule,
+		MigracionesDatosModule,
 	],
 	controllers: [],
 	providers: [
 		SocketGateway,
 		{
+			// 100/min por CLIENTE real (CF-Connecting-IP detrás del túnel), no por la IP del proxy.
 			provide: APP_GUARD,
-			useClass: ThrottlerGuard,
+			useClass: ThrottlerClienteGuard,
 		},
 	],
 })

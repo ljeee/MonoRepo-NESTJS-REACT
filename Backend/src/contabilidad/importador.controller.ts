@@ -1,4 +1,6 @@
 import {Controller, Post, UseInterceptors, UploadedFile, BadRequestException} from '@nestjs/common';
+import {Role} from '../auth/roles.enum';
+import {Roles} from '../auth/decorators/roles.decorator';
 import {FileInterceptor} from '@nestjs/platform-express';
 import {ApiTags, ApiOperation, ApiConsumes, ApiBody} from '@nestjs/swagger';
 import {FacturasVentasService} from '../facturas-ventas/facturas-ventas.service';
@@ -15,6 +17,8 @@ export class ImportadorController {
 		private readonly facturaRepo: Repository<FacturasVentas>,
 	) {}
 
+	// Importar facturas desde CSV crea ventas en bloque: solo el admin.
+	@Roles(Role.Admin)
 	@Post('importar-csv')
 	@ApiOperation({summary: 'Importar facturas históricas desde CSV'})
 	@ApiConsumes('multipart/form-data')

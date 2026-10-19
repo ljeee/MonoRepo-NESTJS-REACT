@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { obtenerCuentasTransferencia } from '../../hooks/use-cuentas-transferencia';
+import { useArqueoActivo } from '../../hooks/use-arqueo';
 import { Modal, Platform, StyleSheet, useWindowDimensions } from 'react-native';
 import { Pressable, View, Text, TouchableOpacity, TextInput, ScrollView } from '../../tw';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import type { IconName } from '../ui/Icon';
-import { BillCounter, COLOMBIAN_BILLS } from '../ui/BillCounter';
+import { BILLETES_COP } from '@/src/shared';
+import { DenominacionCounter } from '../ui/DenominacionCounter';
 import { useBreakpoint } from '../../styles/responsive';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { formatCurrency, useApi } from '@/src/shared';
+import { formatCurrency, useApi, sumDenominaciones } from '@/src/shared';
 import type { DenominacionesMap, CuentaTransferencia } from '@/src/shared';
 
 interface PaymentSelectionModalProps {
@@ -41,6 +44,9 @@ const METHODS: { id: string; label: string; shortLabel: string; icon: IconName; 
 export default function PaymentSelectionModal({ visible, total, onClose, onSelect, loading, mode = 'full', totalPendiente, disabledMethods = [] }: PaymentSelectionModalProps) {
     const isPartial = mode === 'partial';
     const api = useApi();
+    // Arqueo opcional (lo decide el admin). Apagado: se ve cuánto entró y cuánto devolver, pero no se
+    // desglosa el cambio por billetes ni se limita por lo que hay en caja.
+    const { arqueoActivo: controlCaja, recargar: recargarArqueo } = useArqueoActivo();
     const { height: screenHeight } = useWindowDimensions();
     const { isDesktop } = useBreakpoint();
     const insets = useSafeAreaInsets();
@@ -84,12 +90,14 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const fetchCuentas = useCallback(async () => {
         setFetchingCuentas(true);
         try {
-            const res = await api.empresa.cuentasTransferencia.getAll();
+            const res = await obtenerCuentasTransferencia(api);
             const activas = (res || []).filter(c => c.activa);
             setCuentas(activas);
-            if (activas.length > 0) {
+            // Solo se marca sola si hay UNA cuenta activa: con varias, elegir la primera por el cajero dejaba el
+            // dinero en la cuenta equivocada sin que nadie lo notara.
+            if (activas.length === 1) {
                 setSelectedCuentaId(prev => prev ?? activas[0].id);
-            } else {
+            } else if (activas.length === 0) {
                 setSelectedCuentaId(null);
             }
         } catch {
@@ -118,6 +126,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
         setSelectedCuentaId(null);
         fetchCaja();
         fetchCuentas();
+        void recargarArqueo(true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [visible]);
 
@@ -143,13 +152,9 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     };
 
     // ── Totales físicos ───────────────────────────────────────────────────────
-    const totalEfectivoFisico = COLOMBIAN_BILLS.reduce(
-        (sum, b) => sum + (billCountsEfectivo[String(b)] || 0) * b, 0,
-    ) + (Number(monedasEfectivo) || 0);
+    const totalEfectivoFisico = sumDenominaciones(billCountsEfectivo, monedasEfectivo);
 
-    const totalMixtoFisico = COLOMBIAN_BILLS.reduce(
-        (sum, b) => sum + (billCountsMixto[String(b)] || 0) * b, 0,
-    ) + (Number(monedaMixto) || 0);
+    const totalMixtoFisico = sumDenominaciones(billCountsMixto, monedaMixto);
 
     const cashTarget   = isPartial ? (totalPendiente ?? total) : (selected === 'efectivo' ? total : montoEfectivoMixto);
     const cashReceived = selected === 'efectivo' ? totalEfectivoFisico : totalMixtoFisico;
@@ -159,17 +164,15 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const hasEnteredMixto    = totalMixtoFisico > 0;
 
     // ── Cambio ────────────────────────────────────────────────────────────────
-    const changeBills = [...COLOMBIAN_BILLS].filter(
+    const changeBills = [...BILLETES_COP].filter(
         d => cambio > 0 && (d <= cambio || (billCountsCambio[String(d)] || 0) > 0),
     );
-    const totalCambioBilletes = COLOMBIAN_BILLS.reduce(
-        (sum, d) => sum + (billCountsCambio[String(d)] || 0) * d, 0,
-    );
+    const totalCambioBilletes = sumDenominaciones(billCountsCambio);
     const totalCambioSeleccionado = totalCambioBilletes + (Number(monedasCambio) || 0);
     const cambioMatch  = cambio === 0 || totalCambioSeleccionado === cambio;
     const cambioExcede = totalCambioSeleccionado > cambio;
 
-    const showCambioSection = cambio > 0 && (
+    const showCambioSection = controlCaja && cambio > 0 && (
         (selected === 'efectivo'               && hasEnteredEfectivo) ||
         (selected === 'efectivo_transferencia' && hasEnteredMixto)
     );
@@ -185,7 +188,10 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     }
 
     const handleConfirm = () => {
-        const cambioDens = buildDenominaciones(billCountsCambio, monedasCambio);
+        // Sin arqueo no hay desglose de cambio; el efectivo que queda en caja se registra en pesos
+        // (neto), no como los billetes recibidos, para que el libro de caja no incluya el cambio devuelto.
+        const cambioDens = controlCaja ? buildDenominaciones(billCountsCambio, monedasCambio) : undefined;
+        const enPesos = (monto: number): DenominacionesMap | undefined => (monto > 0 ? { coins: monto } : undefined);
         const selCuenta = cuentas.find(c => c.id === selectedCuentaId);
         const cuentaId = selCuenta?.id;
         const cuentaNom = selCuenta?.nombre;
@@ -196,17 +202,18 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                 return;
             }
             // Monto abonado = recibido − cambio entregado (el bruto inflaba montoPagado)
-            const montoNeto = totalEfectivoFisico - totalCambioSeleccionado;
-            onSelect('efectivo', montoNeto, 0, buildDenominaciones(billCountsEfectivo, monedasEfectivo), cambioDens);
+            const cambioEntregado = controlCaja ? totalCambioSeleccionado : Math.max(0, cambio);
+            const montoNeto = totalEfectivoFisico - cambioEntregado;
+            onSelect('efectivo', montoNeto, 0, controlCaja ? buildDenominaciones(billCountsEfectivo, monedasEfectivo) : enPesos(montoNeto), cambioDens);
             return;
         }
         if (selected === 'efectivo') {
-            onSelect('efectivo', total, 0, buildDenominaciones(billCountsEfectivo, monedasEfectivo), cambioDens);
+            onSelect('efectivo', total, 0, controlCaja ? buildDenominaciones(billCountsEfectivo, monedasEfectivo) : enPesos(total), cambioDens);
         } else if (selected === 'transferencia') {
             onSelect('transferencia', 0, total, undefined, undefined, cuentaId, cuentaNom);
         } else if (selected === 'efectivo_transferencia') {
             const transVal = Number(montoTransferencia) || 0;
-            onSelect('efectivo_transferencia', montoEfectivoMixto, transVal, buildDenominaciones(billCountsMixto, monedaMixto), cambioDens, cuentaId, cuentaNom);
+            onSelect('efectivo_transferencia', montoEfectivoMixto, transVal, controlCaja ? buildDenominaciones(billCountsMixto, monedaMixto) : enPesos(montoEfectivoMixto), cambioDens, cuentaId, cuentaNom);
         }
     };
 
@@ -249,7 +256,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
     const compact = screenHeight < 680;
     // Si la caja no tiene denominaciones registradas (sin arqueo/apertura), no se puede
     // limitar el cambio por stock — permitir asignarlo libre para no bloquear el cobro.
-    const hasCajaData = Object.keys(cajaEstado).length > 0;
+    const hasCajaData = controlCaja && Object.keys(cajaEstado).length > 0;
 
     // ── Sección de cambio a entregar (reutilizada en efectivo y mixto) ────────
     const CambioSection = showCambioSection ? (
@@ -269,17 +276,14 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
 
             {/* Billetes del cambio — muestra stock disponible en caja */}
             <View style={styles.billsRow}>
-                {changeBills.map(denom => (
-                    <BillCounter
-                        key={`cambio-${denom}`}
-                        bill={denom}
-                        count={billCountsCambio[String(denom)] || 0}
-                        onChange={n => setBillCountsCambio(prev => ({ ...prev, [String(denom)]: n }))}
-                        enCaja={hasCajaData ? (cajaEstado[String(denom)] ?? 0) : undefined}
-                        limitByStock={hasCajaData}
-                        variant="change"
-                    />
-                ))}
+                <DenominacionCounter
+                    value={billCountsCambio}
+                    onChange={setBillCountsCambio}
+                    denominaciones={changeBills}
+                    disponible={hasCajaData ? cajaEstado : undefined}
+                    limitarPorDisponible
+                    variant="change"
+                />
             </View>
 
             {/* Monedas del cambio — monto total */}
@@ -441,15 +445,11 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                     <Text className="text-slate-400 text-[10px] font-black uppercase tracking-wider mb-2">Billetes Recibidos</Text>
 
                                     <View style={styles.billsGap}>
-                                        {[...COLOMBIAN_BILLS].map(bill => (
-                                            <BillCounter
-                                                key={bill}
-                                                bill={bill}
-                                                count={billCountsEfectivo[String(bill)] || 0}
-                                                onChange={n => setBillCountsEfectivo(prev => ({ ...prev, [String(bill)]: n }))}
-                                                enCaja={cajaEstado[String(bill)]}
-                                            />
-                                        ))}
+                                        <DenominacionCounter
+                                            value={billCountsEfectivo}
+                                            onChange={setBillCountsEfectivo}
+                                            disponible={controlCaja ? cajaEstado : undefined}
+                                        />
                                     </View>
 
                                     {/* Monedas */}
@@ -476,7 +476,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                                 <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(totalEfectivoFisico)}</Text>
                                             </View>
                                             <View style={{ alignItems: 'flex-end' }}>
-                                                <Text className="text-slate-400 text-[9px] font-bold">Cambio</Text>
+                                                <Text className="text-slate-400 text-[9px] font-bold">{cambio > 0 ? 'Cambio a devolver' : 'Cambio'}</Text>
                                                 <Text className={`font-black text-base ${cambio >= 0 ? 'text-emerald-400' : 'text-red-400'}`} style={{ fontFamily: 'Space Grotesk' }}>
                                                     {cambio >= 0 ? `$${formatCurrency(cambio)}` : `-$${formatCurrency(Math.abs(cambio))}`}
                                                 </Text>
@@ -641,15 +641,11 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                             <Text className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Billetes Recibidos (Efectivo)</Text>
 
                                             <View style={styles.mixBillsGap}>
-                                                {[...COLOMBIAN_BILLS].map(bill => (
-                                                    <BillCounter
-                                                        key={`mixto-${bill}`}
-                                                        bill={bill}
-                                                        count={billCountsMixto[String(bill)] || 0}
-                                                        onChange={n => setBillCountsMixto(prev => ({ ...prev, [String(bill)]: n }))}
-                                                        enCaja={cajaEstado[String(bill)]}
-                                                    />
-                                                ))}
+                                                <DenominacionCounter
+                                                    value={billCountsMixto}
+                                                    onChange={setBillCountsMixto}
+                                                    disponible={controlCaja ? cajaEstado : undefined}
+                                                />
                                             </View>
 
                                             {/* Monedas mixto */}
@@ -676,7 +672,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                                         <Text className="text-white font-black text-sm" style={{ fontFamily: 'Space Grotesk' }}>${formatCurrency(totalMixtoFisico)}</Text>
                                                     </View>
                                                     <View style={{ alignItems: 'flex-end' }}>
-                                                        <Text className="text-slate-400 text-[9px] font-bold">Cambio efectivo</Text>
+                                                        <Text className="text-slate-400 text-[9px] font-bold">{cambio > 0 ? 'Cambio a devolver' : 'Cambio efectivo'}</Text>
                                                         <Text className={`font-black text-base ${cambio >= 0 ? 'text-emerald-400' : 'text-red-400'}`} style={{ fontFamily: 'Space Grotesk' }}>
                                                             {cambio >= 0 ? `$${formatCurrency(cambio)}` : `-$${formatCurrency(Math.abs(cambio))}`}
                                                         </Text>
@@ -711,7 +707,7 @@ export default function PaymentSelectionModal({ visible, total, onClose, onSelec
                                 )}
                             </View>
                             <View style={styles.flex2}>
-                                {!isPartial && step === 'entrada' && cambio > 0 ? (
+                                {!isPartial && controlCaja && step === 'entrada' && cambio > 0 ? (
                                     <Button
                                         title="Siguiente →"
                                         variant="primary"

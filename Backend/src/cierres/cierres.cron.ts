@@ -1,6 +1,7 @@
 import {Injectable, Logger, OnApplicationBootstrap} from '@nestjs/common';
 import {Cron} from '@nestjs/schedule';
 import {CierresService} from './cierres.service';
+import {getBogotaDateString} from '../common/utils/date.utils';
 
 @Injectable()
 export class CierresCronService implements OnApplicationBootstrap {
@@ -15,7 +16,7 @@ export class CierresCronService implements OnApplicationBootstrap {
 	}
 
 	// Ejecuta todos los días a las 00:05 (Justo pasada la medianoche)
-	@Cron('5 0 * * *')
+	@Cron('5 0 * * *', {timeZone: 'America/Bogota'})
 	async handleDailyClose() {
 		this.logger.log('Cron: Ejecutando verificación de cierre de turno...');
 		await this.checkAndGenerateClosure();
@@ -23,14 +24,8 @@ export class CierresCronService implements OnApplicationBootstrap {
 
 	private async checkAndGenerateClosure() {
 		try {
-			// El objetivo es el día de ayer, asumiendo que el cron corre justo tras la madrugada
-			const targetDate = new Date();
-			targetDate.setDate(targetDate.getDate() - 1);
-
-			const yyyy = targetDate.getFullYear();
-			const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
-			const dd = String(targetDate.getDate()).padStart(2, '0');
-			const fechaStr = `${yyyy}-${mm}-${dd}`;
+			// El objetivo es AYER en hora de Bogotá (no la del servidor, que en Docker suele ser UTC).
+			const fechaStr = getBogotaDateString(new Date(Date.now() - 24 * 60 * 60 * 1000));
 
 			// Se asume un ID del sistema genérico,
 			// no es un usuario real, es para identificar que lo hizo el robot.
@@ -42,6 +37,11 @@ export class CierresCronService implements OnApplicationBootstrap {
 				fechaStr,
 				systemId,
 				'Generado automáticamente vía Node Cron al finalizar el día.',
+				false,
+				// Único envío de correo del cierre automático (antes lo mandaba un segundo cron a las 23:59,
+				// con el día aún abierto, y este — el real — nunca enviaba). Si el día ya estaba cerrado
+				// (cierre manual o reinicio del servidor) lanza "Ya existe" y no se repite el correo.
+				true,
 			);
 
 			this.logger.log(`✅ Cierre del día ${fechaStr} autogenerado y reportado exitosamente.`);

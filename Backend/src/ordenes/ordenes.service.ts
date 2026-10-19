@@ -1,20 +1,25 @@
 import {BadRequestException, Injectable, NotFoundException, ConflictException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {Repository, Between, EntityManager} from 'typeorm';
+import {Repository, EntityManager} from 'typeorm';
 import {Ordenes} from './esquemas/ordenes.entity';
 import {Domicilios} from '../domicilios/esquemas/domicilios.entity';
-import {CreateOrdenesDto, CreateOrdenItemDto, FindOrdenesDto} from './esquemas/ordenes.dto';
+import {CreateOrdenesDto, FindOrdenesDto} from './esquemas/ordenes.dto';
 import {FacturaCreationService} from './services/factura-creation.service';
 import {DomicilioCreationService} from './services/domicilio-creation.service';
 import {ProductProcessingService} from './services/product-processing.service';
 import {OrdenesGateway} from './ordenes.gateway';
 import {CierresService} from '../cierres/cierres.service';
-import {InventarioCajasService} from '../inventario-cajas/inventario-cajas.service';
 import {CajaMovimientosService} from '../caja-movimientos/caja-movimientos.service';
-import {InventarioBebidasService} from '../inventario-bebidas/inventario-bebidas.service';
+import {ConsumoOrdenService} from '../inventario/consumo-orden.service';
 import {getBogotaDateString} from '../common/utils/date.utils';
 import {CajaMovimiento} from '../caja-movimientos/esquemas/caja-movimiento.entity';
 import {EstadisticasGateway} from '../estadisticas/estadisticas.gateway';
+
+/** Quién y por dónde entró la orden. Lo arma el controller a partir del token. */
+export interface OrigenOrden {
+	canal?: 'pos' | 'web' | null;
+	usuarioCreacionId?: string | null;
+}
 
 @Injectable()
 export class OrdenesService {
@@ -25,9 +30,8 @@ export class OrdenesService {
 		private readonly domicilioCreationService: DomicilioCreationService,
 		private readonly productProcessingService: ProductProcessingService,
 		private readonly cierresService: CierresService,
-		private readonly inventarioCajasService: InventarioCajasService,
 		private readonly cajaMovimientosService: CajaMovimientosService,
-		private readonly inventarioBebidasService: InventarioBebidasService,
+		private readonly consumoOrden: ConsumoOrdenService,
 		private readonly estadisticasGateway: EstadisticasGateway,
 	) {}
 
@@ -38,6 +42,7 @@ export class OrdenesService {
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.leftJoinAndSelect('op.saboresDetalle', 'saboresDetalle')
 			.leftJoinAndSelect('o.domicilios', 'domicilios')
 			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.orderBy('o.fechaOrden', 'DESC')
@@ -72,6 +77,7 @@ export class OrdenesService {
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.leftJoinAndSelect('op.saboresDetalle', 'saboresDetalle')
 			.leftJoinAndSelect('o.domicilios', 'domicilios')
 			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('o.fechaOrden BETWEEN :start AND :end', {start, end});
@@ -93,6 +99,7 @@ export class OrdenesService {
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
 			.leftJoinAndSelect('op.productoObj', 'productoObj')
+			.leftJoinAndSelect('op.saboresDetalle', 'saboresDetalle')
 			.leftJoinAndSelect('o.domicilios', 'domicilios')
 			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('o.fechaOrden BETWEEN :start AND :end', {start, end})
@@ -109,6 +116,7 @@ export class OrdenesService {
 			.createQueryBuilder('o')
 			.leftJoinAndSelect('o.factura', 'factura')
 			.leftJoinAndSelect('o.productos', 'op')
+			.leftJoinAndSelect('op.saboresDetalle', 'saboresDetalle')
 			.leftJoinAndSelect('o.domicilios', 'domicilios')
 			.leftJoinAndSelect('domicilios.domiciliario', 'domiciliario')
 			.where('(o.estadoOrden = :pendiente OR o.estadoOrden IS NULL)')
@@ -125,6 +133,7 @@ export class OrdenesService {
 				'productos',
 				'productos.productoObj',
 				'productos.variante',
+				'productos.saboresDetalle',
 				'domicilios',
 				'domicilios.domiciliario',
 			],
@@ -141,31 +150,51 @@ export class OrdenesService {
 		return (tipoPedido || 'mesa') === 'domicilio';
 	}
 
-	/** Domicilio y para llevar empacan en caja; mesa no. 'llevar' es el único valor
-	 * real que usa el resto del sistema (DTO, frontend, seeders) — antes se comprobaba
-	 * contra variantes inventadas ('para llevar', 'para_llevar', 'paraLlevar') que
-	 * nunca coincidían, así que el descuento de cajas nunca se activaba para llevar. */
-	private necesitaCaja(tipoPedido?: string): boolean {
-		return ['domicilio', 'llevar'].includes((tipoPedido || '').toLowerCase());
-	}
-
 	private async crearOrden(
 		facturaId: number,
 		tipoPedido?: string,
 		estadoOrden?: string,
 		observaciones?: string,
 		manager?: EntityManager,
+		origen: OrigenOrden = {},
 	): Promise<Ordenes> {
 		const repo = manager ? manager.getRepository(Ordenes) : this.repo;
-		const orden = repo.create({facturaId, tipoPedido, estadoOrden, observaciones});
+		const orden = repo.create({
+			facturaId,
+			tipoPedido,
+			estadoOrden,
+			observaciones,
+			canal: origen.canal ?? null,
+			usuarioCreacionId: origen.usuarioCreacionId ?? null,
+		});
 		return repo.save(orden);
+	}
+
+	/**
+	 * Efectos que deben ocurrir DESPUÉS del commit: notificar por socket (si se emite
+	 * antes, el cliente refresca y aún no ve la orden), recalcular el cierre (lee con
+	 * su propia conexión). Un fallo aquí se registra
+	 * pero no revierte ni hace fallar una orden ya guardada.
+	 */
+	private async trasCommit(efectos: Array<() => unknown>): Promise<void> {
+		for (const efecto of efectos) {
+			try {
+				await efecto();
+			} catch (err) {
+				console.warn('[Ordenes] Efecto posterior al commit falló:', (err as Error)?.message);
+			}
+		}
+	}
+
+	private async actualizarCierreDe(fechaOrden: Date): Promise<void> {
+		await this.cierresService.updateCierreIfExists(getBogotaDateString(new Date(fechaOrden)));
 	}
 
 	// ==================== MÉTODO PRINCIPAL ====================
 
-	async create(data: CreateOrdenesDto) {
-		return this.repo.manager.transaction(async (manager) => {
-			const productos = Array.isArray(data.productos) ? data.productos : [];
+	async create(data: CreateOrdenesDto, origen: OrigenOrden = {}) {
+		const productos = Array.isArray(data.productos) ? data.productos : [];
+		const fullOrden = await this.repo.manager.transaction(async (manager) => {
 			const descripcion =
 				productos.length > 0
 					? this.facturaCreationService.generarDescripcionFactura(
@@ -190,6 +219,7 @@ export class OrdenesService {
 				data.estadoOrden,
 				data.observaciones,
 				manager,
+				origen,
 			);
 
 			// 3. Procesar productos y calcular total
@@ -211,52 +241,28 @@ export class OrdenesService {
 			}
 
 			// 4. Procesar domicilio si aplica
-			const necesitaCaja = this.necesitaCaja(data.tipoPedido);
 			if (this.domicilioCreationService.esDomicilio(data.tipoPedido)) {
 				await this.domicilioCreationService.procesarDomicilio(data, factura.facturaId, orden.ordenId, manager);
 			}
 
-			const fullOrden = await this.findOne(orden.ordenId, manager);
-			this.ordenesGateway.emitirNuevaOrden(fullOrden);
+			// 5. Inventario: descuenta cajas y bebidas según las reglas de consumo.
+			await this.consumoOrden.reconciliar(orden.ordenId, manager);
 
-			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = getBogotaDateString(new Date(fullOrden.fechaOrden));
-			await this.cierresService.updateCierreIfExists(fechaStr);
-
-			// 5. Descontar cajas (domicilio o para llevar) — fuera de TX para no bloquear
-			if (necesitaCaja && productos.length > 0) {
-				const itemsToCajas =
-					fullOrden.productos?.map((p) => ({
-						varianteNombre: (p as any).variante?.nombre || '',
-						tipoProducto: (p as any).productoObj?.productoNombre || p.producto || '',
-						cantidad: Number(p.cantidad) || 1,
-					})) ?? [];
-				// fire-and-forget: no queremos que un error de inventario revierta la orden
-				this.inventarioCajasService
-					.descontarCajasParaOrden(itemsToCajas, orden.ordenId)
-					.catch((err) => console.warn('[InventarioCajas] Error al descontar cajas:', err?.message));
-			}
-
-			// 6. Descontar stock de bebidas (gaseosas/jugos) — aplica a TODO tipo de orden
-			//    (incl. mesa), fire-and-forget. Registra -1 en historial aunque no haya stock.
-			if (productos.length > 0) {
-				const drinkItems =
-					fullOrden.productos?.map((p) => ({
-						varianteId: (p as any).varianteId ?? (p as any).variante?.varianteId ?? null,
-						productoNombre: (p as any).productoObj?.productoNombre || p.producto || '',
-						cantidad: Number(p.cantidad) || 1,
-					})) ?? [];
-				this.inventarioBebidasService
-					.descontarBebidasParaOrden(drinkItems, orden.ordenId)
-					.catch((err) => console.warn('[InventarioBebidas] Error al descontar stock:', err?.message));
-			}
-
-			return fullOrden;
+			return this.findOne(orden.ordenId, manager);
 		});
+
+		await this.trasCommit([
+			() => this.ordenesGateway.emitirNuevaOrden(fullOrden),
+			() => this.estadisticasGateway.emitirActualizacionStats({source: 'orden_create', id: fullOrden.ordenId}),
+			// Actualizar cierre si existe para la fecha de la orden
+			() => this.actualizarCierreDe(fullOrden.fechaOrden),
+		]);
+
+		return fullOrden;
 	}
 
 	async update(id: number, data: Partial<CreateOrdenesDto>) {
-		return this.repo.manager.transaction(async (manager) => {
+		const updated = await this.repo.manager.transaction(async (manager) => {
 			const {productos, ...basicData} = data;
 			const oRepo = manager.getRepository(Ordenes);
 
@@ -283,8 +289,20 @@ export class OrdenesService {
 				}
 			}
 
+			const eraDomicilio = this.domicilioCreationService.esDomicilio(orden.tipoPedido);
 			if (Object.keys(updateData).length > 0) {
 				await oRepo.update(id, updateData);
+				// `orden` se leyó ANTES de actualizar: sin releerla, "¿es domicilio?" se decidía con el tipo viejo
+				// (al pasar de mesa a domicilio no se creaba/actualizaba el domicilio ni se sumaba el envío, y al pasar
+				// de domicilio a mesa el envío seguía en el total).
+				orden = await this.findOne(id, manager);
+			}
+			const ahoraDomicilio = this.domicilioCreationService.esDomicilio(orden.tipoPedido);
+
+			// Dejó de ser domicilio: el domicilio asociado ya no aplica y el total pierde el envío.
+			if (eraDomicilio && !ahoraDomicilio) {
+				await manager.getRepository(Domicilios).delete({ordenId: id});
+				orden = await this.findOne(id, manager);
 			}
 
 			// 1.5 Update Domicilio Delivery Data (if is domicilio)
@@ -296,7 +314,8 @@ export class OrdenesService {
 
 			// 2. Recalculate total and update Invoice
 			let newTotal = 0;
-			let isTotalChanged = false;
+			// Cambiar entre domicilio y no-domicilio cambia el total (entra o sale el envío) aunque no cambien los productos.
+			let isTotalChanged = eraDomicilio !== ahoraDomicilio;
 
 			if (productos && Array.isArray(productos)) {
 				// a. Delete old relations
@@ -341,27 +360,36 @@ export class OrdenesService {
 				await this.facturaCreationService.updateFactura(orden.facturaId, updateFields, manager);
 			}
 
-			const updated = await this.findOne(id, manager);
-			this.ordenesGateway.emitirOrdenActualizada(updated);
+			// Inventario: líneas, tipo de pedido o estado (incl. 'cancelado') pueden haber cambiado.
+			await this.consumoOrden.reconciliar(id, manager);
 
-			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = getBogotaDateString(new Date(updated.fechaOrden));
-			await this.cierresService.updateCierreIfExists(fechaStr);
-
-			return updated;
+			return this.findOne(id, manager);
 		});
+
+		await this.trasCommit([
+			() => this.ordenesGateway.emitirOrdenActualizada(updated),
+			() => this.estadisticasGateway.emitirActualizacionStats({source: 'orden_update', id}),
+			// Actualizar cierre si existe para la fecha de la orden
+			() => this.actualizarCierreDe(updated.fechaOrden),
+		]);
+
+		return updated;
 	}
 
 	async remove(id: number) {
-		const orden = await this.findOne(id);
-		if (orden.factura?.estado === 'pagada' || orden.factura?.estado === 'pagado') {
-			throw new BadRequestException('No se puede eliminar una orden que ya ha sido pagada');
-		}
-		return this.repo.delete(id);
+		return this.repo.manager.transaction(async (manager) => {
+			const orden = await this.findOne(id, manager);
+			if (orden.factura?.estado === 'pagada' || orden.factura?.estado === 'pagado') {
+				throw new BadRequestException('No se puede eliminar una orden que ya ha sido pagada');
+			}
+			// Devolver lo consumido ANTES de borrar (después ya no hay orden que leer).
+			await this.consumoOrden.reconciliar(id, manager, {eliminada: true});
+			return manager.getRepository(Ordenes).delete(id);
+		});
 	}
 
 	async cancel(id: number, reason: string, userId: string) {
-		return this.repo.manager.transaction(async (manager) => {
+		const fullUpdated = await this.repo.manager.transaction(async (manager) => {
 			const oRepo = manager.getRepository(Ordenes);
 			const orden = await oRepo.findOne({
 				where: {ordenId: id},
@@ -398,20 +426,20 @@ export class OrdenesService {
 				await this.facturaCreationService.cancelarFactura(orden.facturaId, manager);
 			}
 
-			const fullUpdated = await this.findOne(id, manager);
-			this.ordenesGateway.emitirOrdenActualizada(fullUpdated);
+			// 3. Devolver al inventario lo que la orden había consumido.
+			await this.consumoOrden.reconciliar(id, manager);
 
-			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = getBogotaDateString(new Date(fullUpdated.fechaOrden));
-			await this.cierresService.updateCierreIfExists(fechaStr);
-
-			// Restaurar stock de bebidas descontado al crear (idempotente, fire-and-forget)
-			this.inventarioBebidasService
-				.restaurarBebidasParaOrden(id)
-				.catch((err) => console.warn('[InventarioBebidas] Error al restaurar stock:', err?.message));
-
-			return fullUpdated;
+			return this.findOne(id, manager);
 		});
+
+		await this.trasCommit([
+			() => this.ordenesGateway.emitirOrdenActualizada(fullUpdated),
+			() => this.estadisticasGateway.emitirActualizacionStats({source: 'orden_cancel', id}),
+			// Actualizar cierre si existe para la fecha de la orden
+			() => this.actualizarCierreDe(fullUpdated.fechaOrden),
+		]);
+
+		return fullUpdated;
 	}
 
 	async completar(
@@ -427,7 +455,12 @@ export class OrdenesService {
 		cuentaTransferenciaId?: number,
 		cuentaTransferenciaNombre?: string,
 	) {
-		return this.repo.manager.transaction(async (manager) => {
+		// Notificaciones a disparar tras el commit (solo si el pago se completó de verdad;
+		// el camino idempotente no notifica, igual que antes).
+		const efectos: Array<() => unknown> = [];
+		let completada = false;
+
+		const resultado = await this.repo.manager.transaction(async (manager) => {
 			const oRepo = manager.getRepository(Ordenes);
 			const orden = await oRepo.findOne({
 				where: {ordenId: id},
@@ -471,6 +504,45 @@ export class OrdenesService {
 							? (pagoTransferencia ?? 0)
 							: 0;
 
+				// Idempotencia natural: la llave del cliente puede cambiar en cada reintento (respuesta perdida, doble
+				// toque, cola offline) y repetir el cobro duplicaba la entrada de efectivo en la caja. Si la factura ya
+				// está pagada EXACTAMENTE así, no se cobra de nuevo. Si está pagada de otra forma es una corrección:
+				// el efectivo del cobro anterior sale de la caja antes de registrar el nuevo.
+				const f = orden.factura;
+				const yaPagada = f?.estado === 'pagado' || f?.estado === 'pagada';
+				const mismoCobro =
+					yaPagada &&
+					f?.metodo === metodo &&
+					Math.abs(Number(f?.pagoEfectivo ?? 0) - finalPagoEfectivo) < 0.5 &&
+					Math.abs(Number(f?.pagoTransferencia ?? 0) - finalPagoTransferencia) < 0.5;
+
+				if (mismoCobro) {
+					orden.estadoOrden = 'completada';
+					await oRepo.save(orden);
+					completada = true;
+					return this.findOne(id, manager);
+				}
+				if (yaPagada) await this.cajaMovimientosService.compensarFactura(orden.facturaId, 'cobro corregido', manager);
+
+				// Todo cobro con transferencia dice A QUÉ cuenta entró; el nombre sale de la tabla, no del cliente.
+				let cuenta: {id: number | null; nombre: string | null} = {id: null, nombre: null};
+				if (finalPagoTransferencia > 0) {
+					const filas: {id: number; nombre: string; activa?: boolean}[] = cuentaTransferenciaId
+						? await manager.query('SELECT id, nombre, activa FROM cuentas_transferencia WHERE id = $1', [cuentaTransferenciaId])
+						: cuentaTransferenciaNombre?.trim()
+							? await manager.query('SELECT id, nombre, activa FROM cuentas_transferencia WHERE lower(nombre) = lower($1) ORDER BY id LIMIT 1', [cuentaTransferenciaNombre.trim()])
+							: [];
+					if (!filas.length) {
+						throw new BadRequestException(
+							cuentaTransferenciaId || cuentaTransferenciaNombre?.trim()
+								? 'La cuenta de transferencia elegida no existe'
+								: 'Elige la cuenta a la que entró la transferencia',
+						);
+					}
+					if (filas[0].activa === false) throw new BadRequestException(`La cuenta "${filas[0].nombre}" está desactivada`);
+					cuenta = {id: Number(filas[0].id), nombre: filas[0].nombre};
+				}
+
 				await this.facturaCreationService.updateFactura(
 					orden.facturaId,
 					{
@@ -483,8 +555,11 @@ export class OrdenesService {
 						pagoEfectivo: finalPagoEfectivo,
 						pagoTransferencia: finalPagoTransferencia,
 						montoPagado: totalFactura,
-						cuentaTransferenciaId,
-						cuentaTransferenciaNombre,
+						// Un cobro nuevo reemplaza al anterior: sin transferencia no queda cuenta vieja, y sin
+						// desglose por abonos (cada abono QR guardaba su cuenta).
+						cuentaTransferenciaId: cuenta.id,
+						cuentaTransferenciaNombre: cuenta.nombre,
+						desgloseTransferencia: null,
 					},
 					manager,
 				);
@@ -511,49 +586,30 @@ export class OrdenesService {
 						pagoTransferencia: finalPagoTransferencia || null,
 					});
 
-					this.estadisticasGateway.emitirActualizacionStats({source: 'caja_entrada', fecha});
+					efectos.push(() => this.estadisticasGateway.emitirActualizacionStats({source: 'caja_entrada', fecha}));
 				}
 
-				this.estadisticasGateway.emitirActualizacionStats({source: 'factura_pagada', id: orden.facturaId});
+				const facturaId = orden.facturaId;
+				efectos.push(() => this.estadisticasGateway.emitirActualizacionStats({source: 'factura_pagada', id: facturaId}));
 			}
 
 			// 4. Marcar Orden como Completada
 			orden.estadoOrden = 'completada';
 			await oRepo.save(orden);
 
-			// 5. Descontar stock de bebidas (best-effort, no bloquea el pago)
-			try {
-				const opRepo = manager.getRepository('ordenes_productos');
-				const raw = await opRepo
-					.createQueryBuilder('op')
-					.select(['op.variante_id AS "varianteId"', 'op.cantidad AS cantidad'])
-					.where('op.orden_id = :id', {id})
-					.getRawMany();
-				// getRawMany returns DB column values as strings — normalize here
-				const items: Array<{varianteId: number | null; cantidad: number}> = raw.map(
-					(r: Record<string, unknown>) => ({
-						varianteId:
-							r['varianteId'] != null
-								? Number(r['varianteId'])
-								: r['variante_id'] != null
-									? Number(r['variante_id'])
-									: null,
-						cantidad: Number(r['cantidad']) || 0,
-					}),
-				);
-				await this.inventarioBebidasService.deductForOrden(items, manager);
-			} catch {
-				// Non-critical — never break the payment flow
-			}
-
-			const updated = await this.findOne(id, manager);
-			this.ordenesGateway.emitirOrdenActualizada(updated);
-
-			// Actualizar cierre si existe para la fecha de la orden
-			const fechaStr = getBogotaDateString(new Date(updated.fechaOrden));
-			await this.cierresService.updateCierreIfExists(fechaStr);
-
-			return updated;
+			completada = true;
+			return this.findOne(id, manager);
 		});
+
+		if (completada) {
+			await this.trasCommit([
+				...efectos,
+				() => this.ordenesGateway.emitirOrdenActualizada(resultado),
+				// Actualizar cierre si existe para la fecha de la orden
+				() => this.actualizarCierreDe(resultado.fechaOrden),
+			]);
+		}
+
+		return resultado;
 	}
 }

@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
 import { Text, TextInput, TouchableOpacity, View } from '../../tw';
-import { useProductos, usePizzaSabores, formatCurrency, getProductEmoji, resolverPersonalizacion } from '@/src/shared';
-import type { Producto, ProductoVariante } from '@/src/shared';
+import { useProductos, usePizzaSabores, useSaborGrupos, formatCurrency, getProductEmoji, resolverPersonalizacion } from '@/src/shared';
+import type { Producto, ProductoVariante, SaborGrupo } from '@/src/shared';
 import { useBreakpoint } from '../../styles/responsive';
 import PizzaPersonalizadaModal from './PizzaPersonalizadaModal';
 import JugoBaseModal from './JugoBaseModal';
 import Icon from '../ui/Icon';
-import { Button } from '../ui';
+import { Button, SearchInput, LoadingState } from '../ui';
 
 interface MenuPickerProps {
   onAdd: (producto: Producto, variante: ProductoVariante, sabores?: string[], base?: 'leche' | 'agua') => void;
@@ -20,18 +19,20 @@ const normalize = (s: string) =>
   (s || '').toLowerCase().replace(/,/g, '.').normalize('NFD').replace(/[̀-ͯ]/g, '');
 
 const SIZE_ORDER: Record<string, number> = { 'Pequeña': 0, 'Mediana': 1, 'Grande': 2 };
+const TAMANO_ORDER: Record<string, number> = { pequena: 0, mediana: 1, grande: 2 };
+const ordenVariante = (v: ProductoVariante) => (v.tamano ? TAMANO_ORDER[v.tamano] : undefined) ?? SIZE_ORDER[v.nombre] ?? 50;
 
 function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
   const { productos, loading, error, fetchProductos } = useProductos();
   const { sabores: saboresCatalogo, loading: loadingSabores } = usePizzaSabores();
+  const { porId: gruposPorId } = useSaborGrupos();
   const { isMobile, isTablet } = useBreakpoint();
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(null);
   const [selectedVariante, setSelectedVariante] = useState<ProductoVariante | null>(null);
-  // Config del modal de sabores: pizza (catálogo, 3) vs calzone (sabores propios, 2)
-  const [modalCustomSabores, setModalCustomSabores] = useState<string[] | undefined>(undefined);
-  const [modalMaxSabores, setModalMaxSabores] = useState(3);
+  // Grupo de sabores del producto elegido: define tope, tamaños y recargos del modal
+  const [modalGrupo, setModalGrupo] = useState<SaborGrupo | null>(null);
   const [jugoModalVisible, setJugoModalVisible] = useState(false);
   const [selectedJugoProducto, setSelectedJugoProducto] = useState<Producto | null>(null);
   const [selectedJugoVariante, setSelectedJugoVariante] = useState<ProductoVariante | null>(null);
@@ -94,7 +95,7 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
   const expandedVariantes = useMemo(() => {
     if (!expandedProducto) return [];
     return [...expandedProducto.variantes]
-      .sort((a, b) => (SIZE_ORDER[a.nombre] ?? 50) - (SIZE_ORDER[b.nombre] ?? 50))
+      .sort((a, b) => ordenVariante(a) - ordenVariante(b))
       .filter(v => v.activo);
   }, [expandedProducto]);
 
@@ -141,10 +142,7 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
 
   if (loading) {
     return (
-      <View className="py-20 items-center justify-center">
-        <ActivityIndicator color="#F5A524" size="large" />
-        <Text className="text-(--color-pos-text-secondary) mt-4 font-medium italic">Cargando el menú...</Text>
-      </View>
+      <LoadingState message="Cargando el menú..." className="py-20" padded={false} />
     );
   }
 
@@ -166,23 +164,13 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
   return (
     <View className="pb-4">
       {/* Search bar */}
-      <View className="mb-6 flex-row items-center bg-white/5 rounded-2xl border border-white/10">
-          <View className="pl-4 pr-2">
-              <Icon name="magnify" size={20} color="#64748B" />
-          </View>
-          <TextInput
-              className="flex-1 pr-3 py-4 text-white font-medium"
-              placeholder="¿Qué deseas pedir hoy? (ej. Pizza, Grande, Doble carne...)"
-              placeholderTextColor="#64748B"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')} className="pr-4 py-2" hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Icon name="close" size={18} color="#94A3B8" />
-            </TouchableOpacity>
-          )}
-      </View>
+      <SearchInput
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        placeholder="¿Qué deseas pedir hoy? (ej. Pizza, Grande, Doble carne...)"
+        size="lg"
+        className="mb-6"
+      />
 
       <View className="p-4 pb-6">
         <View className="flex-row flex-wrap -mx-2">
@@ -301,18 +289,15 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
                     key={variante.varianteId}
                     className={`bg-[#1E293B] border border-white/10 p-4 rounded-2xl flex-col items-start active:bg-(--color-pos-primary)/20 active:border-(--color-pos-primary)/40 mb-1 ${isMobile ? 'w-[48%]' : 'w-[31%]'}`}
                     onPress={() => {
-                      // Personalización data-driven (con fallback por nombre)
-                      const pers = resolverPersonalizacion(producto);
-                      const isCalzone = pers === 'calzone';
+                      // Sabores: los decide el grupo del producto. Base de jugo: personalización.
+                      const grupo = producto.saborGrupoId != null ? gruposPorId.get(producto.saborGrupoId) : undefined;
 
-                      if (pers === 'pizza' || pers === 'calzone') {
+                      if (grupo?.activo) {
                         setSelectedProducto(producto);
                         setSelectedVariante(variante);
-                        // Calzone: sabores del catálogo con tipo === 'calzone' (precio plano), tope 2.
-                        setModalCustomSabores(isCalzone ? (saboresCatalogo ?? []).filter(s => s.tipo === 'calzone' && s.activo).map(s => s.nombre) : undefined);
-                        setModalMaxSabores(isCalzone ? 2 : 3);
+                        setModalGrupo(grupo);
                         setModalVisible(true);
-                      } else if (pers === 'jugo') {
+                      } else if (resolverPersonalizacion(producto) === 'jugo') {
                         setSelectedJugoProducto(producto);
                         setSelectedJugoVariante(variante);
                         setJugoModalVisible(true);
@@ -363,23 +348,24 @@ function MenuPicker({ onAdd, recargoLeche }: MenuPickerProps) {
         />
       )}
 
-      {selectedProducto && selectedVariante && (
+      {selectedProducto && selectedVariante && modalGrupo && (
         <PizzaPersonalizadaModal
           visible={modalVisible}
           producto={selectedProducto}
           variante={selectedVariante}
+          grupo={modalGrupo}
           saboresCatalogo={saboresCatalogo}
           loadingSabores={loadingSabores}
-          maxSabores={modalMaxSabores}
-          customSabores={modalCustomSabores}
           onAdd={(producto, variante, sabores) => {
             onAdd(producto, variante, sabores);
             setModalVisible(false);
+            setModalGrupo(null);
             setSelectedProducto(null);
             setSelectedVariante(null);
           }}
           onClose={() => {
             setModalVisible(false);
+            setModalGrupo(null);
             setSelectedProducto(null);
             setSelectedVariante(null);
           }}

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useReducer, useState } from 'react';
-import { RefreshControl } from 'react-native';
 import { ScrollView, TouchableOpacity, View, Text } from '../../tw';
 import { useRouter } from 'expo-router';
 import { api } from '../../services/api';
@@ -11,11 +10,13 @@ import {
   PageHeader,
   Button,
   Card,
-  Badge,
   Icon,
-  Input,
   ListSkeleton,
-} from '../../components/ui';
+  Paginator,
+    PosRefreshControl,
+    IconButton,
+    InlineError,
+    DateRangeFilter, EstadoPill } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 import { EmptyState } from '../../components/states/EmptyState';
 
@@ -68,7 +69,6 @@ const OrdenCard = React.memo(function OrdenCard({
   orden: Orden;
   onOpen: (ordenId: number) => void;
 }) {
-  const ec = getEstadoColor(orden.estadoOrden);
   const total = getOrdenTotal(orden);
 
   return (
@@ -77,20 +77,7 @@ const OrdenCard = React.memo(function OrdenCard({
       <View className="flex-row justify-between items-center mb-2">
         <View className="flex-row items-center gap-2">
           <Text className="text-white font-black text-base" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>#{orden.ordenId}</Text>
-          <Badge
-            label={orden.estadoOrden || 'N/A'}
-            variant={
-              orden.estadoOrden === 'pendiente'
-                ? 'warning'
-                : orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado'
-                  ? 'success'
-                  : orden.estadoOrden === 'cancelado'
-                    ? 'danger'
-                    : 'info'
-            }
-            icon={ec.icon}
-            size="sm"
-          />
+          <EstadoPill estado={orden.estadoOrden} icon />
         </View>
         <Text className="text-(--color-pos-primary) font-black text-lg" style={{ fontFamily: 'SpaceGrotesk-Bold' }}>
            ${formatCurrency(total)}
@@ -145,15 +132,13 @@ const FsOrdenCard = React.memo(function FsOrdenCard({
   nowMinute: number;
   onOpen: (ordenId: number) => void;
 }) {
-  const ec = getEstadoColor(orden.estadoOrden);
   const total = getOrdenTotal(orden);
   const diffMins = Math.max(0, nowMinute - Math.floor(new Date(orden.fechaOrden).getTime() / 60000));
   const isUrgente = diffMins >= 20 && orden.estadoOrden === 'pendiente';
   const isPendiente = orden.estadoOrden === 'pendiente';
   const isCompletada = orden.estadoOrden === 'completada' || orden.estadoOrden === 'entregado';
   const isCancelado = orden.estadoOrden === 'cancelado';
-  const accentColor = isPendiente ? '#F5A524' : isCompletada ? '#10B981' : isCancelado ? '#EF4444' : '#475569';
-  const badgeVariant = isPendiente ? 'warning' : isCompletada ? 'success' : isCancelado ? 'danger' : 'info';
+  const accentColor = isPendiente ? '#FB923C' : isCompletada ? '#10B981' : isCancelado ? '#EF4444' : '#475569';
   const clientName = (orden as any).nombreCliente?.trim() || (orden.factura as any)?.clienteNombre || (orden.tipoPedido?.toLowerCase() === 'mesa' ? `Mesa ${(orden as any).mesa || ''}` : 'Sin nombre');
 
   return (
@@ -169,7 +154,7 @@ const FsOrdenCard = React.memo(function FsOrdenCard({
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 16, paddingRight: 12, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
           <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>#{orden.ordenId}</Text>
-          <Badge label={orden.estadoOrden || 'N/A'} variant={badgeVariant} icon={ec.icon} size="sm" />
+          <EstadoPill estado={orden.estadoOrden} icon />
         </View>
         <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 15 }}>${formatCurrency(total)}</Text>
       </View>
@@ -242,6 +227,8 @@ export default function OrdenesTodasScreen() {
   );
 
   const { page, estado, from, to, result, loading, error } = state;
+  const [draftFrom, setDraftFrom] = useState('');
+  const [draftTo, setDraftTo] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [timeStr, setTimeStr] = useState('');
@@ -309,12 +296,7 @@ export default function OrdenesTodasScreen() {
   return (
     <PageContainer
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor="#F5A524"
-          colors={['#F5A524']}
-        />
+        <PosRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
       }
     >
       <PageHeader
@@ -382,27 +364,15 @@ export default function OrdenesTodasScreen() {
           })}
         </ScrollView>
 
-        {/* Date filters */}
-        <View className={`${isMobile ? 'flex-col' : 'flex-row'} gap-4`}>
-          <Input
-            label="Desde"
-            value={from}
-            onChangeText={(value) => patchState({ from: value })}
-            placeholder="YYYY-MM-DD"
-            size="sm"
-            className="flex-1"
-            leftIcon={<Icon name="calendar" size={16} color="#475569" />}
-          />
-          <Input
-            label="Hasta"
-            value={to}
-            onChangeText={(value) => patchState({ to: value })}
-            placeholder="YYYY-MM-DD"
-            size="sm"
-            className="flex-1"
-            leftIcon={<Icon name="calendar" size={16} color="#475569" />}
-          />
-        </View>
+        {/* Rango de fechas: el mismo filtro de todas las pantallas. Solo consulta al buscar (antes pedía datos en cada tecla). */}
+        <DateRangeFilter
+          from={draftFrom}
+          to={draftTo}
+          onFromChange={setDraftFrom}
+          onToChange={setDraftTo}
+          onSearch={(f, t) => patchState({ from: f, to: t })}
+          loading={loading}
+        />
       </Card>
 
       {/* Pagination info */}
@@ -412,13 +382,7 @@ export default function OrdenesTodasScreen() {
             {result.total} órdenes encontradas
           </Text>
           <View className="flex-row items-center gap-2">
-            <TouchableOpacity
-              className={`w-10 h-10 rounded-xl items-center justify-center bg-white/5 border border-white/5 ${page <= 1 ? 'opacity-30' : 'active:bg-white/10'}`}
-              onPress={() => page > 1 && fetchData(page - 1)}
-              disabled={page <= 1}
-            >
-              <Icon name="chevron-left" size={20} color={page <= 1 ? '#475569' : '#FFF'} />
-            </TouchableOpacity>
+            <IconButton icon="chevron-left" accessibilityLabel="Página anterior" disabled={page <= 1} onPress={() => page > 1 && fetchData(page - 1)} />
             
             <View className="bg-white/5 px-4 h-10 items-center justify-center rounded-xl border border-white/5">
               <Text className="text-white font-black text-xs">
@@ -426,27 +390,19 @@ export default function OrdenesTodasScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity
-              className={`w-10 h-10 rounded-xl items-center justify-center bg-white/5 border border-white/5 ${page >= (result?.totalPages ?? 1) ? 'opacity-30' : 'active:bg-white/10'}`}
-              onPress={() =>
-                page < (result?.totalPages ?? 1) && fetchData(page + 1)
-              }
+            <IconButton
+              icon="chevron-right"
+              accessibilityLabel="Página siguiente"
               disabled={page >= (result?.totalPages ?? 1)}
-            >
-              <Icon name="chevron-right" size={20} color={page >= (result?.totalPages ?? 1) ? '#475569' : '#FFF'} />
-            </TouchableOpacity>
+              onPress={() => page < (result?.totalPages ?? 1) && fetchData(page + 1)}
+            />
           </View>
         </View>
       )}
 
       {/* Loading / Error / Empty */}
       {loading && <ListSkeleton count={5} />}
-      {error ? (
-        <View className="flex-row items-center gap-3 bg-red-500/10 p-5 rounded-2xl border border-red-500/20 mb-6">
-          <Icon name="alert-circle-outline" size={20} color="#EF4444" />
-          <Text className="text-red-400 font-bold text-sm flex-1">{error}</Text>
-        </View>
-      ) : null}
+      <InlineError message={error} className="mb-6" />
       {!loading && !error && ordenes.length === 0 && (
         <EmptyState icon="format-list-bulleted" message="Sin órdenes" subMessage="No hay órdenes en el período" />
       )}
@@ -459,26 +415,8 @@ export default function OrdenesTodasScreen() {
 
       {/* Bottom pagination */}
       {result && result.totalPages > 1 && (
-        <View className="flex-row justify-center items-center py-10 gap-4">
-          <Button
-            title="Anterior"
-            icon="chevron-left"
-            variant="ghost"
-            size="sm"
-            onPress={() => page > 1 && fetchData(page - 1)}
-            disabled={page <= 1}
-          />
-          <View className="bg-white/5 px-6 py-2 rounded-full border border-white/5">
-             <Text className="text-white font-black text-xs">Pág {page} de {result.totalPages}</Text>
-          </View>
-          <Button
-            title="Siguiente"
-            iconRight="chevron-right"
-            variant="ghost"
-            size="sm"
-            onPress={() => page < result.totalPages && fetchData(page + 1)}
-            disabled={page >= result.totalPages}
-          />
+        <View className="py-10">
+          <Paginator page={page} totalPages={result.totalPages} onChange={fetchData} caption={`${result.total} órdenes`} />
         </View>
       )}
 
@@ -560,26 +498,8 @@ export default function OrdenesTodasScreen() {
 
           {/* Footer pagination */}
           {result && result.totalPages > 1 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, paddingVertical: 12, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#000000' }}>
-              <TouchableOpacity
-                onPress={() => page > 1 && fetchData(page - 1)}
-                disabled={page <= 1}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', opacity: page <= 1 ? 0.35 : 1 }}
-              >
-                <Icon name="chevron-left" size={15} color="#94A3B8" />
-                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '800', textTransform: 'uppercase' }}>Anterior</Text>
-              </TouchableOpacity>
-              <View style={{ backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>
-                <Text style={{ color: '#FFFFFF', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12 }}>Página {page} / {result.totalPages}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => page < result.totalPages && fetchData(page + 1)}
-                disabled={page >= result.totalPages}
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10, borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)', opacity: page >= result.totalPages ? 0.35 : 1 }}
-              >
-                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '800', textTransform: 'uppercase' }}>Siguiente</Text>
-                <Icon name="chevron-right" size={15} color="#94A3B8" />
-              </TouchableOpacity>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12, borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.06)', backgroundColor: '#000000' }}>
+              <Paginator page={page} totalPages={result.totalPages} onChange={fetchData} />
             </View>
           )}
         </View>

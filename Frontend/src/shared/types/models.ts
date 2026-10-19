@@ -8,17 +8,36 @@ export interface ProductoVariante {
   precioLeche?: number | null;
   descripcion?: string;
   activo: boolean;
-  /** Stock físico de unidades de bebida (gaseosas/jugos) */
+  /** Tamaño explícito (productos cuyo grupo de sabores usa tamaños). null = se deduce del nombre. */
+  tamano?: TamanoPizza | null;
+  /** @deprecated Inventario anterior; el stock vive en `InventarioItem`. Se quita en la limpieza final. */
   stockBebida?: number;
-  /** Categoría para agrupar en el inventario de bebidas ('gaseosa'|'jugo'|'cerveza'|'agua'|'otra'). */
+  /** @deprecated Ver stockBebida. */
   categoriaBebida?: string | null;
-  /** Umbral de alerta de stock bajo de esta bebida. */
+  /** @deprecated Ver stockBebida. */
   alertaBebida?: number | null;
-  /** Nivel objetivo (barra llena) del medidor de esta bebida. */
+  /** @deprecated Ver stockBebida. */
   nivelObjetivoBebida?: number | null;
 }
 
 export type Personalizacion = 'pizza' | 'calzone' | 'jugo' | 'ninguna';
+
+/** Categorías de catálogo (analítica e inventario). Espejo de `common/utils/catalogo.util` del backend. */
+export const CATEGORIAS_PRODUCTO = ['pizza', 'calzone', 'bebida', 'jugo', 'adicion', 'comida', 'otro'] as const;
+export type CategoriaProducto = (typeof CATEGORIAS_PRODUCTO)[number];
+
+export const CATEGORIA_PRODUCTO_LABEL: Record<CategoriaProducto, string> = {
+  pizza: 'Pizza',
+  calzone: 'Calzone',
+  bebida: 'Bebida',
+  jugo: 'Jugo',
+  adicion: 'Adición',
+  comida: 'Comida',
+  otro: 'Otro',
+};
+
+/** Tamaño normalizado de una pizza vendida (`personal` cuenta como `pequena`). */
+export type TamanoPizza = 'pequena' | 'mediana' | 'grande';
 
 export interface Producto {
   productoId: number;
@@ -26,8 +45,12 @@ export interface Producto {
   descripcion?: string;
   activo: boolean;
   emoji?: string;
-  /** Tipo de modal al agregar a una orden. null/undefined = fallback por nombre. */
+  /** 'jugo' abre el modal de base; 'ninguna' agrega directo. Los sabores ya no van aquí: ver `saborGrupoId`. */
   personalizacion?: string | null;
+  /** Grupo de sabores que ofrece el producto (Pizza, Calzone…). null = el producto no lleva sabores. */
+  saborGrupoId?: number | null;
+  /** Categoría para analítica. null = sin configurar (el backend la deduce del nombre). */
+  categoria?: CategoriaProducto | null;
   variantes: ProductoVariante[];
 }
 
@@ -71,6 +94,18 @@ export interface Domiciliario {
 
 // ─── Ordenes ──────────────────────────────────────────────────────────────────
 
+/** Un sabor de una línea de pizza/calzone (una fila por sabor). */
+export interface OrdenProductoSaborDetalle {
+  id: string;                  // bigint: llega como string
+  /** null = sabor no reconocido en el catálogo ("sin clasificar") o ya borrado */
+  saborId: number | null;
+  /** Snapshot del nombre al vender (sobrevive a renombrar o borrar el sabor) */
+  saborNombre: string;
+  posicion: number;
+  /** 1/n de la pizza (mitad y mitad = 0.5) */
+  fraccion: number;
+}
+
 export interface OrdenProducto {
   id?: number;
   producto: string;            // text field: "Pizza - Mediana (De Casa + Napolitana)"
@@ -83,6 +118,20 @@ export interface OrdenProducto {
   sabor2?: string;
   sabor3?: string;
   sabores?: string[];          // Added for frontend mapping and diff tracking
+  // ── Detalle estructurado (analítica). Las líneas del histórico pueden no traerlo:
+  //    el texto `producto` sigue siendo la fuente para mostrar la línea.
+  productoId?: number | null;
+  /** Nombre del producto al vender (no se llama `productoNombre`: ese lo leen pantallas que esperan el texto completo) */
+  productoBase?: string | null;
+  varianteNombre?: string | null;
+  /** Solo pizzas */
+  tamano?: TamanoPizza | null;
+  categoria?: string | null;
+  /** Precio calculado (variante + recargos) antes de cualquier precio manual */
+  precioLista?: number | null;
+  /** true si el cajero fijó el precio a mano. null = desconocido (histórico) */
+  precioManual?: boolean | null;
+  saboresDetalle?: OrdenProductoSaborDetalle[];
 }
 
 export interface Orden {
@@ -107,6 +156,8 @@ export interface PaginatedResponse<T> {
   page: number;
   limit: number;
   totalPages: number;
+  /** Paginación por cursor: id para pedir la tanda siguiente (null = no hay más; ausente = el servidor no la usa). */
+  siguiente?: string | null;
 }
 
 // ─── Domicilios ───────────────────────────────────────────────────────────────
@@ -140,7 +191,11 @@ export interface FacturaOrdenProducto {
   cantidad?: number;
   precioUnitario?: number;
   subtotal?: number;
-  productoNombre?: string;    // resolved from text field 'producto' 
+  productoNombre?: string;    // resolved from text field 'producto'
+  /** El cajero fijó el precio a mano (precio desactualizado, adición fuera del menú…). */
+  precioManual?: boolean;
+  /** Precio del menú calculado al vender (variante + recargos); null = línea antigua sin dato. */
+  precioLista?: number | null;
 }
 
 export interface FacturaOrden {
@@ -152,6 +207,7 @@ export interface FacturaOrden {
 export interface FacturaDomicilio {
   costoDomicilio?: number;
   direccionEntrega?: string;
+  referencia?: string;
   telefono?: string;
   domiciliario?: {
     domiciliarioNombre?: string;
@@ -165,6 +221,8 @@ export interface FacturaVenta {
   telefonoCliente?: string | null;
   descripcion?: string;
   fechaFactura?: string;
+  /** Momento en que la factura quedó saldada (completar o último abono). */
+  fechaCobro?: string | null;
   estado?: string;
   metodo?: string;
   pagoEfectivo?: number;
@@ -178,8 +236,20 @@ export interface FacturaVenta {
   montoPagado?: number;
   cuentaTransferenciaId?: number | null;
   cuentaTransferenciaNombre?: string | null;
+  /**
+   * Cuánto de lo cobrado por QR entró a cada cuenta. Solo lo llenan los abonos por QR (una factura
+   * puede abonarse a cuentas distintas); null = todo a `cuentaTransferencia*`.
+   */
+  desgloseTransferencia?: DesgloseTransferencia[] | null;
   ordenes?: FacturaOrden[];
   domicilios?: FacturaDomicilio[];
+}
+
+/** Parte de una transferencia que entró a una cuenta (cuentaId/cuenta null = sin asignar). */
+export interface DesgloseTransferencia {
+  cuentaId: number | null;
+  cuenta: string | null;
+  monto: number;
 }
 
 export interface CuentaTransferencia {
@@ -244,9 +314,16 @@ export interface FacturaPago {
   estado?: string;
   fechaFactura?: string;
   metodo?: string;
+  /** Categoría contable (nomina, servicios, insumos…); 'general' = sin categoría (histórico). */
   categoria?: string;
+  /** 'costo' | 'gasto'. Sin valor = sin clasificar (egresos anteriores a la clasificación). */
+  tipoGasto?: TipoGasto | null;
+  /** Cuenta de transferencia de la que salió un egreso pagado por QR. null = sin asignar. */
+  cuentaOrigenId?: number | null;
   denominaciones?: DenominacionesMap | null;
 }
+
+export type TipoGasto = 'costo' | 'gasto';
 
 // ─── Cart ─────────────────────────────────────────────────────────────────────
 
@@ -316,7 +393,25 @@ export interface CreateFacturaPagoDto {
   fechaFactura?: string;
   metodo?: string;
   categoria?: string;
+  tipoGasto?: TipoGasto;
+  /** Obligatoria cuando `metodo` es 'qr'. */
+  cuentaOrigenId?: number | null;
   denominaciones?: DenominacionesMap;
+}
+
+/** Filtros de GET /facturas-pagos. Sin `limit` (o limit=0) devuelve TODO el rango. */
+export interface FindFacturasPagosParams {
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+  /** 'costo' | 'gasto' | 'sin_clasificar' */
+  tipo?: string;
+  categoria?: string;
+  /** 'pagado' | 'pendiente' */
+  estado?: string;
+  /** Paginación por clave: 'inicio' y luego el `siguiente` de cada respuesta. */
+  cursor?: string;
 }
 
 export interface CreateClienteDto {
@@ -376,101 +471,108 @@ export type AuthResponse = AuthTokens & AuthUser;
 
 // ─── Pizza Sabores ────────────────────────────────────────────────────────────
 
+/**
+ * Grupo de sabores: el conjunto de sabores de un producto y las reglas de cómo se piden y cobran.
+ * Un producto nuevo con sabores se configura asignándole un grupo, sin tocar código.
+ */
+export interface SaborGrupo {
+  id: number;
+  nombre: string;
+  /** Tope de sabores por unidad (pizza 3, calzone 2). */
+  maxSabores: number;
+  /** Las variantes del producto SON los sabores (calzone). */
+  varianteEsSabor: boolean;
+  /** El producto tiene tamaños: se cobra el recargo del sabor según el tamaño. */
+  usaTamano: boolean;
+  /** Desde cuántos sabores se cobra el recargo extra. null = nunca. */
+  recargoExtraDesde: number | null;
+  recargoExtraPequena: number;
+  recargoExtraMediana: number;
+  recargoExtraGrande: number;
+  activo: boolean;
+  orden: number;
+}
+
+export type GuardarSaborGrupoDto = Partial<Omit<SaborGrupo, 'id'>> & { nombre: string };
+
 export interface PizzaSabor {
   saborId: number;
   nombre: string;
-  tipo: 'tradicional' | 'especial' | 'configuracion' | 'calzone';
+  /** Grupo al que pertenece. null = sabor sin clasificar (no se ofrece al pedir). */
+  grupoId: number | null;
+  /** Recargo por tamaño; 0 = no cobra. Un grupo sin tamaños usa solo `recargoGrande`. */
   recargoPequena: number | string;
-  recargoMediana: number;
-  recargoGrande: number;
+  recargoMediana: number | string;
+  recargoGrande: number | string;
   activo: boolean;
+  /** @deprecated Clasificación anterior (tradicional/especial). Ya no se usa. */
+  tipo?: string;
 }
 
 // ─── Estadísticas ─────────────────────────────────────────────────────────────
 
-export interface ProductoTop {
-  producto: string;
-  totalVendido: number;
-  ingresos: number;
+export interface ClienteHistorialProducto {
+  id?: number;
+  nombre: string;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
+  tamano?: string | null;
+  categoria?: string | null;
 }
 
-export interface SaborTop {
-  sabor: string;
-  cantidad: number;
-}
-
-export interface VentaHora {
-  hora: number;
-  cantidad: number;
+export interface ClienteHistorialOrden {
+  /** Null en facturas importadas que no tienen orden. */
+  ordenId: number | null;
+  fechaOrden: string;
+  estadoOrden: string | null;
+  tipoPedido: string | null;
+  canal?: string | null;
   total: number;
+  /** Lo cobrado de la factura (abonos incluidos) y lo que falta. */
+  cobrado?: number;
+  porCobrar?: number;
+  facturaId: number;
+  metodo?: string | null;
+  estadoFactura?: string | null;
+  observaciones?: string | null;
+  productos: ClienteHistorialProducto[];
 }
 
-export interface VentaDia {
-  fecha: string;
+export interface ClienteSaborFavorito {
+  nombre: string;
+  pizzas: number;
+}
+
+export interface ClienteProductoFavorito {
+  nombre: string;
   cantidad: number;
-  total: number;
-  ticketPromedio: number;
-}
-
-export interface MetodoPago {
-  metodo: string;
-  cantidad: number;
-  total: number;
-  porcentaje: number;
-}
-
-export interface ResumenPeriodo {
-  totalVentas: number;
-  totalEgresos: number;
-  balanceNeto: number;
-  facturas: number;
-  ordenes: number;
-  cancelados: number;
-  ticketPromedio: number;
-  tasaCancelacion: number;
-
-  totalIngresosPagados?: number;
-  totalIngresosPendientes?: number;
-  countIngresosPagados?: number;
-  countIngresosPendientes?: number;
-
-  totalEgresosPagados?: number;
-  totalEgresosPendientes?: number;
-  countEgresosPagados?: number;
-  countEgresosPendientes?: number;
-}
-
-export interface ClienteFrecuente {
-  clienteNombre: string;
-  totalOrdenes: number;
   gastoTotal: number;
-  /** Valor del pedido individual más alto del cliente */
-  pedidoMaximo: number;
-  ultimaVisita: string;
-}
-
-export interface VarianteTop {
-  variante: string;
-  producto: string;
-  totalVendido: number;
-  ingresos: number;
 }
 
 export interface ClienteHistorial {
   totalOrdenes: number;
   completadas: number;
   canceladas: number;
+  /** Facturado en ventas válidas (mismas definiciones que la lista de clientes y la analítica). */
   gastoTotal: number;
+  cobrado?: number;
+  /** Lo que el cliente debe (saldo de facturas pendientes y abonadas). */
+  porCobrar?: number;
   ticketPromedio: number;
-  productosTop: { nombre: string; cantidad: number }[];
+  pedidoMaximo?: number;
+  primeraVisita?: string | null;
+  productosTop: ClienteProductoFavorito[];
+  saboresTop?: ClienteSaborFavorito[];
   ultimaVisita: string | null;
-  ordenes: {
-    ordenId: number;
-    fechaOrden: string;
-    estadoOrden: string;
-    tipoPedido: string;
-    total: number;
-  }[];
+  /** Cada cuántos días pide, en promedio. */
+  diasEntrePedidos?: number | null;
+  tipoPedidoFavorito?: string | null;
+  canalFavorito?: string | null;
+  tamanoHabitual?: string | null;
+  /** Hay más órdenes que las listadas (las cifras sí las incluyen todas). */
+  hayMasOrdenes?: boolean;
+  ordenes: ClienteHistorialOrden[];
 }
 
 // ─── Empresa Config ───────────────────────────────────────────────────────────
@@ -487,6 +589,10 @@ export interface EmpresaConfig {
   departamento?: string;
   tarifaIva: number;
   recargoLeche?: number;
+  /** Control de caja por arqueo (solo el admin lo cambia). Apagado: cobros sin desglose de cambio. */
+  arqueoCaja?: boolean;
+  /** Último momento en que el admin encendió el arqueo: un conteo anterior ya no vale. */
+  arqueoDesde?: string | null;
   updatedAt: string;
 }
 
@@ -501,98 +607,433 @@ export interface UpdateEmpresaDto {
   departamento?: string;
   tarifaIva?: number;
   recargoLeche?: number;
+  arqueoCaja?: boolean;
 }
 
-// ─── Inventario Cajas ─────────────────────────────────────────────────────────
+// ─── Inventario unificado (/inventario/*) ────────────────────────────────────
+// Espejo de Backend/src/inventario. Cajas y bebidas embotelladas comparten modelo.
 
-export interface InventarioCaja {
+export type TipoItemInventario = 'caja' | 'bebida';
+export type CategoriaCaja = 'pequena' | 'mediana' | 'grande' | 'calzone' | 'otra';
+export type CategoriaBebida = 'gaseosa' | 'agua' | 'cerveza' | 'otra';
+export type EstadoStock = 'ok' | 'bajo' | 'critico';
+export type TipoMovimientoManual = 'entrada' | 'salida' | 'ajuste' | 'conteo';
+export type TipoMovimientoInventario = TipoMovimientoManual | 'venta' | 'devolucion' | 'migracion';
+
+export interface InventarioItem {
   id: number;
+  tipo: TipoItemInventario;
   nombre: string;
+  /** CategoriaCaja | CategoriaBebida ('jugo' solo en inactivos migrados). */
+  categoria: string | null;
   cantidad: number;
   alertaMinimo: number | null;
-  /** Nivel objetivo (barra llena) del medidor. Null = sin objetivo. */
   nivelObjetivo: number | null;
-  enAlerta: boolean;
+  activo: boolean;
+  /** Lo calcula el servidor (misma regla para píldora, número y medidor). */
+  estado: EstadoStock;
+  reglas: number;
+  /** Reglas creadas por la migración, pendientes de revisar. */
+  reglasAuto: number;
+  actualizadoEn: string;
 }
 
-export interface InventarioCajasMovimiento {
+export interface InventarioMovimiento {
   id: number;
-  cajaId: number;
-  cajaNombre: string;
+  itemId: number;
+  itemNombre: string;
+  itemTipo: TipoItemInventario;
+  tipo: TipoMovimientoInventario;
+  /** Lo pedido (negativo en salidas). */
   delta: number;
+  /** Lo que de verdad se movió; si difiere de delta, se vendió sin stock. */
+  aplicado: number;
   cantidadResultante: number;
-  tipo: 'entrada' | 'salida' | 'ajuste';
+  ordenId: number | null;
   nota: string | null;
   creadoEn: string;
+  usuarioNombre: string | null;
 }
 
-export interface CrearCajaDto {
-  nombre: string;
-  cantidad?: number;
-  alertaMinimo?: number;
-  nivelObjetivo?: number;
+export interface MovimientosInventarioPagina {
+  total: number;
+  limit: number;
+  offset: number;
+  filas: InventarioMovimiento[];
 }
 
-export interface AjustarCajasDto {
-  delta: number;
-  tipo?: 'entrada' | 'salida' | 'ajuste';
-  nota?: string;
-}
-
-// ─── Inventario Bebidas ────────────────────────────────────────────────────────
-
-export type CategoriaBebida = 'pulpa' | 'jugo_directo' | 'gaseosa' | 'agua' | 'otro';
-
-export interface Ingrediente {
+export interface InventarioRegla {
   id: number;
-  nombre: string;
-  categoria: CategoriaBebida;
-  unidad: string;
-  stockActual: number;
-  rendimientoPorUnidad: number;
-  porcionesDisponibles: number;
-  alertaMinimo: number | null;
-  enAlerta: boolean;
-  costo: number | null;
-  activo: boolean;
-  variantes?: VarianteIngrediente[];
-}
-
-export interface VarianteIngrediente {
-  id: number;
-  varianteId: number;
-  ingredienteId: number;
-  cantidadPorVenta: number;
-}
-
-/** Movimiento del ledger de stock por variante (gaseosas/jugos) */
-export interface BebidaMovimiento {
-  id: number;
+  itemId: number;
+  itemNombre: string;
+  itemTipo: TipoItemInventario;
   varianteId: number;
   varianteNombre: string;
   productoNombre: string;
-  /** Lo solicitado (negativo en salida) */
-  delta: number;
-  /** Lo realmente movido tras clamp (si delta ≠ aplicado, se vendió sin stock) */
-  aplicado: number;
-  cantidadResultante: number;
-  tipo: string; // 'salida' | 'entrada' | 'ajuste'
-  nota: string | null;
-  creadoEn: string;
+  cantidad: number;
+  soloParaLlevar: boolean;
+  origen: 'auto' | 'manual';
 }
 
-export interface CreateIngredienteDto {
-  nombre: string;
-  categoria?: CategoriaBebida;
-  unidad?: string;
-  stockActual?: number;
-  rendimientoPorUnidad?: number;
-  alertaMinimo?: number;
-  costo?: number;
-}
-
-export interface VincularVarianteDto {
+export interface SugerenciaReglaCaja {
   varianteId: number;
-  ingredienteId: number;
-  cantidadPorVenta: number;
+  varianteNombre: string;
+  productoNombre: string;
+  categoriaCaja: Exclude<CategoriaCaja, 'otra'>;
+  cajaSugerida: { id: number; nombre: string } | null;
+}
+
+export interface EstadoInventario {
+  listo: boolean;
+  fechaCorte: string | null;
+}
+
+export interface CrearItemInventarioDto {
+  tipo: TipoItemInventario;
+  nombre: string;
+  categoria?: string;
+  cantidad?: number;
+  alertaMinimo?: number;
+  nivelObjetivo?: number;
+  /** Bebida: la variante que la descuenta 1:1. */
+  varianteId?: number;
+}
+
+export interface ActualizarItemInventarioDto {
+  nombre?: string;
+  categoria?: string;
+  alertaMinimo?: number | null;
+  nivelObjetivo?: number | null;
+  activo?: boolean;
+}
+
+export interface GuardarReglaInventarioDto {
+  itemId: number;
+  varianteId: number;
+  cantidad?: number;
+  soloParaLlevar?: boolean;
+}
+
+// ─── Analítica (/estadisticas/analitica/*) ───────────────────────────────────
+// Espejo de Backend/src/estadisticas/analitica (dto + service). Mantener alineados.
+
+export type TipoPedido = 'mesa' | 'llevar' | 'domicilio';
+export type MetodoPagoFiltro = 'efectivo' | 'transferencia' | 'mixto' | 'sin_metodo' | 'otro';
+export type EstadoPagoFiltro = 'cobrada' | 'parcial' | 'pendiente';
+export type CanalOrden = 'pos' | 'web';
+
+/** Filtros comunes a todos los endpoints de analítica. Fechas 'YYYY-MM-DD' (Bogotá). */
+export interface FiltrosAnalitica {
+  from: string;
+  to: string;
+  comparar?: boolean;
+  tipoPedido?: TipoPedido[];
+  metodoPago?: MetodoPagoFiltro[];
+  estadoPago?: EstadoPagoFiltro[];
+  canal?: CanalOrden[];
+  usuario?: string;
+  categoria?: CategoriaProducto[];
+  productoId?: number[];
+  varianteId?: number[];
+  tamano?: TamanoPizza[];
+  saborId?: number[];
+  /** Grupo de sabores del producto vendido (ids de `SaborGrupo`). */
+  saborGrupoId?: number[];
+  /** 1 = lunes … 7 = domingo */
+  diaSemana?: number[];
+  horaDesde?: number;
+  horaHasta?: number;
+  domiciliario?: string;
+  cliente?: string;
+  precioManual?: boolean;
+}
+
+export interface PeriodoAnalitica {
+  from: string;
+  to: string;
+  dias: number;
+  inicio: string;
+  fin: string;
+  anterior: { inicio: string; fin: string } | null;
+}
+
+export interface KpisAnalitica {
+  facturado: number;
+  cobrado: number;
+  porCobrar: number;
+  facturas: number;
+  ticket: number;
+  ordenes: number;
+  domicilios: number;
+  canceladas: number;
+  tasaCancelacion: number;
+  unidades: number;
+  pizzas: number;
+  ingresosLineas: number;
+  descuentos: number;
+}
+
+export interface ResumenAnalitica {
+  periodo: PeriodoAnalitica;
+  /** Hay filtros de producto/tamaño/sabor: el dinero es de "facturas que incluyen…". */
+  filtrosDeLinea: boolean;
+  actual: KpisAnalitica;
+  anterior: KpisAnalitica | null;
+  destacados: {
+    pizzaMasVendida: { tamano: TamanoPizza | null; sabores: string[]; unidades: number } | null;
+    saborMasPedido: { saborId: number | null; nombre: string; apariciones: number } | null;
+    combinacionMasPedida: { sabores: string[]; pizzas: number } | null;
+  };
+}
+
+export type AgrupacionProductos = 'producto' | 'variante' | 'tamano' | 'categoria';
+export type OrdenProductos = 'unidades' | 'ingresos' | 'veces';
+
+export interface FilaProductoAnalitica {
+  clave: string;
+  nombre: string;
+  productoId: number | null;
+  varianteId: number | null;
+  unidades: number;
+  ingresos: number;
+  veces: number;
+  precioPromedio: number;
+  pctUnidades: number;
+  pctIngresos: number;
+  anterior?: { unidades: number; ingresos: number } | null;
+}
+
+export interface ProductosAnalitica {
+  periodo: PeriodoAnalitica;
+  agrupar: AgrupacionProductos;
+  total: number;
+  totales: { unidades: number; ingresos: number };
+  filas: FilaProductoAnalitica[];
+}
+
+export type MetricaSabor = 'apariciones' | 'porciones';
+
+export interface FilaSaborAnalitica {
+  clave: string;
+  saborId: number | null;
+  nombre: string;
+  /** Nombre del grupo de sabores; null = sabor sin clasificar. */
+  grupo: string | null;
+  apariciones: number;
+  porciones: number;
+  ingresos: number;
+  ordenes: number;
+  pct: number;
+  sinClasificar: boolean;
+}
+
+export interface SaboresAnalitica {
+  periodo: PeriodoAnalitica;
+  metrica: MetricaSabor;
+  total: number;
+  sinClasificar: { apariciones: number; porciones: number };
+  filas: FilaSaborAnalitica[];
+}
+
+export interface CeldaMetricaSabor {
+  apariciones: number;
+  porciones: number;
+}
+
+export interface MatrizSaboresAnalitica {
+  periodo: PeriodoAnalitica;
+  metrica: MetricaSabor;
+  tamanos: TamanoPizza[];
+  filas: {
+    clave: string;
+    saborId: number | null;
+    nombre: string;
+    total: CeldaMetricaSabor;
+    porTamano: Partial<Record<TamanoPizza, CeldaMetricaSabor>>;
+  }[];
+}
+
+export interface CombinacionesAnalitica {
+  periodo: PeriodoAnalitica;
+  filas: { sabores: string[]; pizzas: number; lineas: number }[];
+}
+
+export type GranularidadSerie = 'dia' | 'semana' | 'mes';
+
+export interface PuntoSerieAnalitica {
+  periodo: string;
+  facturas: number;
+  facturado: number;
+  cobrado: number;
+  ticket: number;
+  unidades: number;
+}
+
+export interface SerieAnalitica {
+  periodo: PeriodoAnalitica;
+  granularidad: GranularidadSerie;
+  puntos: PuntoSerieAnalitica[];
+  anterior: PuntoSerieAnalitica[] | null;
+}
+
+export interface HorariosAnalitica {
+  periodo: PeriodoAnalitica;
+  celdas: { diaSemana: number; hora: number; facturas: number; facturado: number }[];
+  porHora: { hora: number; facturas: number; facturado: number }[];
+  porDia: { diaSemana: number; facturas: number; facturado: number }[];
+}
+
+export interface MixAnalitica {
+  periodo: PeriodoAnalitica;
+  metodoPago: { clave: string; facturas: number; facturado: number }[];
+  cobradoPorMetodo: { efectivo: number; transferencia: number };
+  porCuenta: CobradoPorCuenta[];
+  estadoPago: { clave: string; facturas: number; facturado: number; cobrado: number; porCobrar: number }[];
+  tipoPedido: { clave: string; ordenes: number; facturado: number }[];
+  canal: { clave: string; ordenes: number; facturado: number }[];
+  categoria: { clave: string; unidades: number; ingresos: number }[];
+}
+
+export type OrdenClientesAnalitica = 'gasto' | 'facturas' | 'ticket' | 'ultimaVisita';
+
+export interface ClientesAnalitica {
+  periodo: PeriodoAnalitica;
+  /** Clientes del período (todos, no solo los de esta página). Ausente en servidores viejos. */
+  total?: number;
+  /** Totales de TODOS los clientes del período. Ausente en servidores viejos. */
+  resumen?: { clientes: number; recurrentes: number; gasto: number };
+  filas: {
+    clave: string;
+    telefono: string | null;
+    nombre: string;
+    facturas: number;
+    gasto: number;
+    ticket: number;
+    /** Pedido individual más alto del cliente en el rango. */
+    pedidoMaximo: number;
+    ultimaVisita: string;
+  }[];
+}
+
+export interface DomiciliariosAnalitica {
+  periodo: PeriodoAnalitica;
+  filas: { telefono: string; nombre: string; asignados: number; entregas: number; ganancia: number; ticketPromedio: number }[];
+}
+
+export interface OpcionesAnalitica {
+  productos: { productoId: number; nombre: string; categoria: CategoriaProducto; activo: boolean }[];
+  sabores: { saborId: number; nombre: string; grupoId: number | null; activo: boolean }[];
+  grupos: { id: number; nombre: string }[];
+  domiciliarios: { telefono: string; nombre: string }[];
+  usuarios: { id: string; nombre: string }[];
+  tamanos: TamanoPizza[];
+}
+
+export interface CalidadDatosAnalitica {
+  lineas: { total: number; procesadas: number; errores: number; pendientes: number; porcentajeProcesado: number };
+  sabores: { total: number; sinClasificar: number };
+  migracion: { estado: string; resultado: Record<string, unknown> | null; actualizadaEn: string } | null;
+}
+
+/** GET /estadisticas/resumen — la "foto" de dinero con las definiciones únicas. */
+export interface ResumenGeneral {
+  periodo: { from: string; to: string };
+  ventas: {
+    facturado: number;
+    cobrado: number;
+    porCobrar: number;
+    facturas: number;
+    ticket: number;
+    ordenes: number;
+    canceladas: number;
+    costoDomicilios: number;
+    cobradoPorMetodo: { efectivo: number; transferencia: number };
+    porMetodo: { clave: string; facturas: number; facturado: number }[];
+    /** Cobrado por transferencia por cuenta (id; nombre vigente). sinAsignar = sin cuenta elegida. */
+    porCuenta: CobradoPorCuenta[];
+    /** cobrada | parcial | pendiente */
+    porEstado: { clave: string; facturas: number; facturado: number; cobrado: number; porCobrar: number }[];
+  };
+  gastos: {
+    total: number;
+    pagados: number;
+    pendientes: number;
+    cantidad: number;
+    porMetodo: { metodo: string; total: number; pagados: number }[];
+    /** Egresos por QR según la cuenta de la que salieron (incluye 'Sin asignar'). */
+    porCuenta: { cuentaId: number | null; cuenta: string; sinAsignar: boolean; cantidad: number; total: number; pagados: number }[];
+    /** costo | gasto | sin_clasificar (siempre las tres). */
+    porTipo: GastosPorTipo[];
+    /** Una fila por (categoría, tipo). */
+    porCategoria: GastosPorCategoria[];
+  };
+  /**
+   * Balance de caja = cobrado − gastos pagados (UNA sola definición en todas las pantallas).
+   * `devengado` = facturado − todos los gastos (solo informativo).
+   */
+  balance: { devengado: number; cobrado: number };
+  /** Por cuenta de transferencia: entradas (cobrado QR) − salidas (egresos QR pagados) = saldo del rango. */
+  cuentas: { cuentaId: number | null; cuenta: string; sinAsignar: boolean; entradas: number; salidas: number; saldo: number }[];
+  /** Todo lo vendido en el rango por producto + variante, completo (sin tope). */
+  productos: ProductoVendidoResumen[];
+  /** Ajuste manual de precio: aumentos (+), bajas (−) y líneas afectadas. */
+  ajustesPrecio: AjustesPrecioResumen;
+  /** Estado de resultados con lo cobrado y pagado: ingresos − costos − gastos. */
+  resultado: ResultadoPeriodo;
+}
+
+export interface ProductoVendidoResumen {
+  clave: string;
+  nombre: string;
+  /** pizza, calzone, bebida… (para contar cuántas pizzas salieron). Ausente en servidores viejos. */
+  categoria?: string | null;
+  unidades: number;
+  valor: number;
+  /** Líneas con precio_manual. */
+  lineasManuales: number;
+  /** Manuales sin precio de lista (histórico): su ajuste no es calculable. */
+  sinPrecioLista: number;
+  aumentos: number;
+  bajas: number;
+  ajuste: number;
+}
+
+export interface AjustesPrecioResumen {
+  aumentos: number;
+  bajas: number;
+  neto: number;
+  lineasManuales: number;
+  sinPrecioLista: number;
+}
+
+export interface CobradoPorCuenta {
+  cuentaId: number | null;
+  cuenta: string;
+  sinAsignar: boolean;
+  facturas: number;
+  monto: number;
+}
+
+export interface GastosPorTipo {
+  tipo: 'costo' | 'gasto' | 'sin_clasificar';
+  cantidad: number;
+  total: number;
+  pagados: number;
+}
+
+export interface GastosPorCategoria {
+  categoria: string;
+  tipo: 'costo' | 'gasto' | 'sin_clasificar';
+  cantidad: number;
+  total: number;
+  pagados: number;
+}
+
+export interface ResultadoPeriodo {
+  ingresos: number;
+  costos: number;
+  utilidadBruta: number;
+  gastosOperativos: number;
+  sinClasificar: number;
+  utilidadOperativa: number;
 }

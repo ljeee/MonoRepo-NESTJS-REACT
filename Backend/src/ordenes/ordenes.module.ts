@@ -12,12 +12,12 @@ import {Domiciliarios} from '../domiciliarios/esquemas/domiciliarios.entity';
 import {Productos} from '../productos/esquemas/productos.entity';
 import {ProductoVariantes} from '../productos/esquemas/producto-variantes.entity';
 import {OrdenesProductos} from '../ordenes-productos/esquemas/ordenes-productos.entity';
+import {OrdenProductoSabor} from '../ordenes-productos/esquemas/orden-producto-sabor.entity';
 import {PizzaSabor} from '../pizza-sabores/esquemas/pizza-sabores.entity';
 import {PizzaSaboresModule} from '../pizza-sabores/pizza-sabores.module';
 import {CierresModule} from '../cierres/cierres.module';
-import {InventarioCajasModule} from '../inventario-cajas/inventario-cajas.module';
 import {CajaMovimientosModule} from '../caja-movimientos/caja-movimientos.module';
-import {InventarioBebidasModule} from '../inventario-bebidas/inventario-bebidas.module';
+import {InventarioModule} from '../inventario/inventario.module';
 import {AuthModule} from '../auth/auth.module';
 import {EstadisticasModule} from '../estadisticas/estadisticas.module';
 import {FacturaCreationService} from './services/factura-creation.service';
@@ -38,14 +38,14 @@ import {EmpresaConfig} from '../empresa/esquemas/empresa.entity';
 			Productos,
 			ProductoVariantes,
 			OrdenesProductos,
+			OrdenProductoSabor,
 			PizzaSabor,
 			EmpresaConfig,
 		]),
 		PizzaSaboresModule,
 		CierresModule,
-		InventarioCajasModule,
 		CajaMovimientosModule,
-		InventarioBebidasModule,
+		InventarioModule,
 		AuthModule,
 		EstadisticasModule,
 	],

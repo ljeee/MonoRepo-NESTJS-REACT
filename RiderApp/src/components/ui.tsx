@@ -1,30 +1,28 @@
 import React from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, radius, shadow, text } from '../lib/theme';
+import { colors, radius, text } from '../lib/theme';
 
 type IconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 
-/** Tarjeta base: borde tenue + canto superior más claro (simula luz de arriba). */
-export function Card({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
-  return (
-    <View style={[styles.card, style]}>
-      <View style={styles.cardTopEdge} pointerEvents="none" />
-      {children}
-    </View>
-  );
+/** Tarjeta base: superficie plana con borde tenue. */
+export function Card({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.card, style]}>{children}</View>;
 }
 
-export type Tone = 'brand' | 'success' | 'danger' | 'info' | 'warn' | 'neutral';
+export type Tone = 'brand' | 'success' | 'danger' | 'info' | 'warn' | 'neutral' | 'whatsapp' | 'waze' | 'maps';
 
 const TONES: Record<Tone, { fg: string; bg: string }> = {
-  brand: { fg: colors.brand, bg: 'rgba(245,165,36,0.13)' },
+  brand: { fg: colors.brand, bg: colors.brandSoft },
   success: { fg: colors.success, bg: colors.successSoft },
   danger: { fg: colors.danger, bg: colors.dangerSoft },
   info: { fg: colors.info, bg: colors.infoSoft },
   warn: { fg: colors.warn, bg: colors.warnSoft },
   neutral: { fg: colors.muted, bg: 'rgba(148,163,184,0.12)' },
+  whatsapp: { fg: colors.whatsapp, bg: colors.whatsappSoft },
+  waze: { fg: colors.waze, bg: colors.wazeSoft },
+  maps: { fg: colors.maps, bg: colors.mapsSoft },
 };
 
 /** Píldora de estado. El color codifica la severidad, no solo decora. */
@@ -32,7 +30,7 @@ export function Pill({ label, tone = 'neutral', icon }: { label: string; tone?: 
   const t = TONES[tone];
   return (
     <View style={[styles.pill, { backgroundColor: t.bg }]}>
-      {icon ? <MaterialCommunityIcons name={icon} size={11} color={t.fg} /> : null}
+      {icon ? <MaterialCommunityIcons name={icon} size={12} color={t.fg} /> : null}
       <Text style={[styles.pillText, { color: t.fg }]} numberOfLines={1}>
         {label}
       </Text>
@@ -40,8 +38,8 @@ export function Pill({ label, tone = 'neutral', icon }: { label: string; tone?: 
   );
 }
 
-/** Botón compacto con ícono + texto, usado para copiar/llamar. */
-export function ChipButton({
+/** Botón de icono (con etiqueta corta debajo): acciones rápidas de una tarjeta. Todos del mismo ancho. */
+export function QuickAction({
   label,
   icon,
   tone = 'neutral',
@@ -56,11 +54,16 @@ export function ChipButton({
   return (
     <Pressable
       onPress={onPress}
-      hitSlop={6}
-      style={({ pressed }) => [styles.chip, { backgroundColor: t.bg }, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [styles.quick, pressed && styles.pressed]}
     >
-      <MaterialCommunityIcons name={icon} size={13} color={t.fg} />
-      <Text style={[styles.chipText, { color: t.fg }]}>{label}</Text>
+      <View style={[styles.quickIcon, { backgroundColor: t.bg }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={t.fg} />
+      </View>
+      <Text style={styles.quickLabel} numberOfLines={1}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -79,7 +82,7 @@ export function ActionButton({
   tone?: Tone;
   onPress: () => void;
   disabled?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }) {
   const solid = tone === 'brand' || tone === 'success';
   const t = TONES[tone];
@@ -90,6 +93,8 @@ export function ActionButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         styles.action,
         { backgroundColor: bg },
@@ -104,39 +109,13 @@ export function ActionButton({
   );
 }
 
-/** Etiqueta de sección en versalita. */
+/** Etiqueta de sección. */
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return <Text style={styles.sectionLabel}>{children}</Text>;
 }
 
-export function Divider({ style }: { style?: ViewStyle }) {
+export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.divider, style]} />;
-}
-
-/** Fila etiqueta → valor, con acciones opcionales a la derecha. */
-export function InfoRow({
-  icon,
-  label,
-  value,
-  children,
-}: {
-  icon: IconName;
-  label: string;
-  value: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <View style={styles.infoRow}>
-      <View style={styles.infoIcon}>
-        <MaterialCommunityIcons name={icon} size={15} color={colors.muted} />
-      </View>
-      <View style={styles.infoBody}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-        {children ? <View style={styles.infoActions}>{children}</View> : null}
-      </View>
-    </View>
-  );
 }
 
 const styles = StyleSheet.create({
@@ -146,15 +125,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.hairline,
     overflow: 'hidden',
-    ...shadow.card,
-  },
-  cardTopEdge: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: colors.hairlineTop,
   },
   pill: {
     flexDirection: 'row',
@@ -164,32 +134,21 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: radius.pill,
   },
-  pillText: { fontSize: 9.5, fontWeight: '800', letterSpacing: 0.7, textTransform: 'uppercase' },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.sm,
-  },
-  chipText: { fontSize: 11.5, fontWeight: '700' },
+  pillText: { fontSize: 11, fontWeight: '700' },
+  quick: { flex: 1, alignItems: 'center', gap: 5, minHeight: 56 },
+  quickIcon: { width: 44, height: 44, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  quickLabel: { color: colors.muted, fontSize: 11, fontWeight: '600' },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 15,
+    minHeight: 50,
+    paddingVertical: 13,
     borderRadius: radius.md,
   },
-  actionText: { fontSize: 14, fontWeight: '800', letterSpacing: 0.6 },
-  pressed: { opacity: 0.65, transform: [{ scale: 0.985 }] },
+  actionText: { fontSize: 14, fontWeight: '700' },
+  pressed: { opacity: 0.65 },
   sectionLabel: { ...text.label, color: colors.faint },
   divider: { height: 1, backgroundColor: colors.line },
-  infoRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
-  infoIcon: { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  infoBody: { flex: 1, minWidth: 0 },
-  infoLabel: { ...text.label, color: colors.faint, fontSize: 9 },
-  infoValue: { color: colors.ink, fontSize: 14, fontWeight: '600', marginTop: 2, lineHeight: 19 },
-  infoActions: { flexDirection: 'row', gap: 6, marginTop: 8 },
 });

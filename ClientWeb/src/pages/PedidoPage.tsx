@@ -10,11 +10,12 @@ import type {
   PizzaSabor,
   Producto,
   ProductoVariante,
+  SaborGrupo,
 } from '../lib/types';
+import { recargoDeSabor, recargoTotal } from '../lib/sabores';
 
 const COSTO_DOMICILIO = 5000;
 const DEFAULT_POSITION = { lat: 6.2442, lng: -75.5812 };
-const MAX_SABORES = 3;
 
 const currencyFormatter = new Intl.NumberFormat('es-CO');
 const formatCOP = (n: number) => `$${currencyFormatter.format(n)}`;
@@ -25,44 +26,34 @@ const inputClass =
 const sectionClass =
   'bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700';
 
-// Misma lógica que Frontend/src/shared/utils/personalizacion.ts (y el backend)
-type Personalizacion = 'pizza' | 'calzone' | 'jugo' | 'ninguna';
-
-function resolverPersonalizacion(producto: Producto): Personalizacion {
+// Qué más pide el producto además de los sabores (que decide su grupo): solo la base del jugo.
+// Misma lógica que Frontend/src/shared/utils/personalizacion.ts
+function esJugo(producto: Producto): boolean {
   const p = producto.personalizacion;
-  if (p === 'pizza' || p === 'calzone' || p === 'jugo' || p === 'ninguna') return p;
-  const n = (producto.productoNombre || '').toLowerCase();
-  if (n.includes('pizza') && !n.includes('burguer')) return 'pizza';
-  if (n.includes('calzone')) return 'calzone';
-  if (n.includes('jugo')) return 'jugo';
-  return 'ninguna';
-}
-
-function saboresParaProducto(personalizacion: Personalizacion, sabores: PizzaSabor[]): PizzaSabor[] {
-  if (personalizacion === 'pizza') {
-    return sabores.filter((s) => s.activo && (s.tipo === 'tradicional' || s.tipo === 'especial'));
-  }
-  if (personalizacion === 'calzone') {
-    return sabores.filter((s) => s.activo && s.tipo === 'calzone');
-  }
-  return [];
+  if (p === 'jugo') return true;
+  if (p === 'ninguna' || p === 'pizza' || p === 'calzone') return false;
+  return (producto.productoNombre || '').toLowerCase().includes('jugo');
 }
 
 // ─── Card de producto del catálogo ────────────────────────────────────────────
 
 interface ProductoCardProps {
   producto: Producto;
+  /** Grupo de sabores del producto (undefined = no lleva sabores). */
+  grupo?: SaborGrupo;
+  /** Sabores de todos los grupos. */
   sabores: PizzaSabor[];
   onAdd: (item: CartItem) => void;
 }
 
 // memo: teclear en "Tus Datos" re-renderiza PedidoPage; sin memo el catálogo
 // completo se reconciliaba por cada pulsación (onAdd es estable)
-const ProductoCard = memo(function ProductoCard({ producto, sabores, onAdd }: ProductoCardProps) {
+const ProductoCard = memo(function ProductoCard({ producto, grupo, sabores, onAdd }: ProductoCardProps) {
   const variantes = (producto.variantes ?? []).filter((v) => v.activo);
-  const personalizacion = resolverPersonalizacion(producto);
-  const saboresDisponibles = saboresParaProducto(personalizacion, sabores);
+  const jugo = esJugo(producto);
+  const saboresDisponibles = grupo?.activo ? sabores.filter((s) => s.grupoId === grupo.id && s.activo) : [];
   const necesitaSabores = saboresDisponibles.length > 0;
+  const maxSabores = grupo?.maxSabores ?? 1;
 
   const [varianteId, setVarianteId] = useState<number | undefined>(variantes[0]?.varianteId);
   const [selectedSabores, setSelectedSabores] = useState<string[]>([]);
@@ -74,16 +65,16 @@ const ProductoCard = memo(function ProductoCard({ producto, sabores, onAdd }: Pr
   const variante: ProductoVariante =
     variantes.find((v) => v.varianteId === varianteId) ?? variantes[0];
 
-  const precio =
-    personalizacion === 'jugo' && base === 'leche' && variante.precioLeche != null
-      ? variante.precioLeche
-      : variante.precio;
+  const precioBase = jugo && base === 'leche' && variante.precioLeche != null ? variante.precioLeche : variante.precio;
+  // Con sabores elegidos se suma el recargo (el servidor recalcula igual al crear la orden).
+  const recargo = grupo && necesitaSabores ? recargoTotal(grupo, sabores, selectedSabores, variante) : 0;
+  const precio = precioBase + recargo;
 
   const toggleSabor = (nombre: string) => {
     setAviso('');
     setSelectedSabores((prev) => {
       if (prev.includes(nombre)) return prev.filter((s) => s !== nombre);
-      if (prev.length >= MAX_SABORES) return prev;
+      if (prev.length >= maxSabores) return prev;
       return [...prev, nombre];
     });
   };
@@ -94,7 +85,7 @@ const ProductoCard = memo(function ProductoCard({ producto, sabores, onAdd }: Pr
       return;
     }
     onAdd({
-      id: `${producto.productoId}-${variante.varianteId}-${selectedSabores.join('|')}-${personalizacion === 'jugo' ? base : ''}`,
+      id: `${producto.productoId}-${variante.varianteId}-${selectedSabores.join('|')}-${jugo ? base : ''}`,
       productoId: producto.productoId,
       productoNombre: producto.productoNombre,
       varianteId: variante.varianteId,
@@ -141,7 +132,7 @@ const ProductoCard = memo(function ProductoCard({ producto, sabores, onAdd }: Pr
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{variante.nombre}</p>
       )}
 
-      {personalizacion === 'jugo' ? (
+      {jugo ? (
         <div className="mt-3 flex gap-2">
           {(['agua', 'leche'] as const).map((b) => (
             <button
@@ -164,11 +155,12 @@ const ProductoCard = memo(function ProductoCard({ producto, sabores, onAdd }: Pr
       {necesitaSabores ? (
         <div className="mt-3">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">
-            Sabores (hasta {MAX_SABORES})
+            Sabores (hasta {maxSabores})
           </p>
           <div className="flex flex-wrap gap-2">
             {saboresDisponibles.map((s) => {
               const selected = selectedSabores.includes(s.nombre);
+              const conRecargo = grupo ? recargoDeSabor(s, grupo, variante) > 0 : false;
               return (
                 <button
                   key={s.saborId}
@@ -182,7 +174,7 @@ const ProductoCard = memo(function ProductoCard({ producto, sabores, onAdd }: Pr
                   }`}
                 >
                   {s.nombre}
-                  {s.tipo === 'especial' ? ' ★' : ''}
+                  {conRecargo ? ' ★' : ''}
                 </button>
               );
             })}
@@ -209,6 +201,7 @@ export default function PedidoPage() {
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [sabores, setSabores] = useState<PizzaSabor[]>([]);
+  const [grupos, setGrupos] = useState<SaborGrupo[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState('');
 
@@ -227,11 +220,12 @@ export default function PedidoPage() {
   const loadCatalog = useCallback((isActive: () => boolean = () => true) => {
     setCatalogLoading(true);
     setCatalogError('');
-    Promise.all([api.productos.getAll(), api.pizzaSabores.getAll()])
-      .then(([prods, sabs]) => {
+    Promise.all([api.productos.getAll(), api.pizzaSabores.getAll(), api.saborGrupos.getAll()])
+      .then(([prods, sabs, grps]) => {
         if (!isActive()) return;
         setProductos(prods.filter((p) => p.activo && (p.variantes ?? []).some((v) => v.activo)));
         setSabores(sabs);
+        setGrupos(grps);
       })
       .catch((err) => {
         if (!isActive()) return;
@@ -360,7 +354,7 @@ export default function PedidoPage() {
             Elige tus productos
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-            Menú de Dfiru Pizzería. Los sabores especiales (★) pueden tener recargo.
+            Menú de Dfiru Pizzería. Los sabores con ★ tienen recargo.
           </p>
 
           {catalogLoading ? (
@@ -381,7 +375,13 @@ export default function PedidoPage() {
           ) : (
             <div className="space-y-4">
               {productos.map((p) => (
-                <ProductoCard key={p.productoId} producto={p} sabores={sabores} onAdd={addToCart} />
+                <ProductoCard
+                  key={p.productoId}
+                  producto={p}
+                  grupo={grupos.find((g) => g.id === p.saborGrupoId)}
+                  sabores={sabores}
+                  onAdd={addToCart}
+                />
               ))}
             </div>
           )}

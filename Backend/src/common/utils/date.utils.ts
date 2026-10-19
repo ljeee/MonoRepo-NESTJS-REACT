@@ -26,3 +26,14 @@ export function getBogotaDayBoundaries(dateStr?: string): {start: Date; end: Dat
 	const end = new Date(`${baseDate}T23:59:59.999-05:00`);
 	return {start, end};
 }
+
+/**
+ * Rango inclusivo de días en hora de Bogotá: desde las 00:00:00.000 de `from` hasta las
+ * 23:59:59.999 de `to`. Acepta también ISO completos (con 'T'), que se respetan tal cual.
+ * Colombia no tiene horario de verano, por eso el offset fijo -05:00 es correcto.
+ */
+export function getBogotaRange(from: string, to: string): {start: Date; end: Date} {
+	const start = from.includes('T') ? new Date(from) : new Date(`${from}T00:00:00.000-05:00`);
+	const end = to.includes('T') ? new Date(to) : new Date(`${to}T23:59:59.999-05:00`);
+	return {start, end};
+}

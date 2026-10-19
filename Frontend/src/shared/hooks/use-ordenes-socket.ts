@@ -4,11 +4,24 @@ import { useToast } from '../contexts/ToastContext';
 
 const TOAST_COOLDOWN_MS = 6000; // min ms between toasts for the same orden
 
-export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero', onRefresh?: () => void, token?: string | null) {
+export interface UseOrdenesSocketOptions {
+  /** Cada `stats:update` del namespace /ordenes (cobros, abonos, gastos, cambios de factura). */
+  onStats?: (data?: unknown) => void;
+}
+
+export function useOrdenesSocket(
+  baseUrl: string,
+  dispositivo: string = 'cajero',
+  onRefresh?: () => void,
+  token?: string | null,
+  options?: UseOrdenesSocketOptions,
+) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const { showToast } = useToast();
   const onRefreshRef = useRef(onRefresh);
+  // En ref, como onRefresh: un callback inline nuevo en cada render no debe reconectar
+  const onStatsRef = useRef(options?.onStats);
   const showToastRef = useRef(showToast);
   // Tracks last toast timestamp per orden ID to prevent duplicate notifications
   const recentToastsRef = useRef<Map<number | string, number>>(new Map());
@@ -22,6 +35,11 @@ export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero'
   useEffect(() => {
     onRefreshRef.current = onRefresh;
   }, [onRefresh]);
+
+  const onStats = options?.onStats;
+  useEffect(() => {
+    onStatsRef.current = onStats;
+  }, [onStats]);
 
   useEffect(() => {
     showToastRef.current = showToast;
@@ -67,9 +85,16 @@ export function useOrdenesSocket(baseUrl: string, dispositivo: string = 'cajero'
       onRefreshRef.current?.();
     });
 
+    // Siempre suscrito: sin onStats es un no-op, y así pasar o quitar el callback
+    // después no obliga a reconectar
+    socketInstance.on('stats:update', (data: unknown) => {
+      onStatsRef.current?.(data);
+    });
+
     setSocket(socketInstance);
 
     return () => {
+      // removeAllListeners también suelta 'stats:update'
       socketInstance.removeAllListeners();
       socketInstance.disconnect();
     };

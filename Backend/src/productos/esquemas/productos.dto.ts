@@ -1,6 +1,9 @@
-import {IsString, IsNumber, IsOptional, IsBoolean, ValidateNested} from 'class-validator';
+import {IsString, IsNumber, IsOptional, IsBoolean, IsIn, IsInt, ValidateNested} from 'class-validator';
 import {ApiProperty} from '@nestjs/swagger';
 import {Type} from 'class-transformer';
+import {CATEGORIAS_PRODUCTO, CategoriaProducto} from '../../common/utils/catalogo.util';
+
+export const TAMANOS_VARIANTE = ['pequena', 'mediana', 'grande'] as const;
 
 export class CreateProductoVarianteDto {
 	@ApiProperty({example: 'Pequeña', description: 'Nombre de la variante (tamaño, sabor, etc)'})
@@ -24,6 +27,16 @@ export class CreateProductoVarianteDto {
 	@IsOptional()
 	@IsString()
 	descripcion?: string;
+
+	@ApiProperty({
+		example: 'pequena',
+		required: false,
+		enum: TAMANOS_VARIANTE,
+		description: 'Tamaño de la variante (productos con tamaños). Si se omite se deduce del nombre.',
+	})
+	@IsOptional()
+	@IsIn(TAMANOS_VARIANTE as unknown as string[])
+	tamano?: (typeof TAMANOS_VARIANTE)[number] | null;
 
 	@ApiProperty({example: true, required: false})
 	@IsOptional()
@@ -66,6 +79,25 @@ export class CreateProductosDto {
 	@IsOptional()
 	@IsString()
 	personalizacion?: string | null;
+
+	@ApiProperty({
+		example: 1,
+		required: false,
+		description: 'Grupo de sabores que ofrece el producto (null = sin sabores). Ver /sabor-grupos.',
+	})
+	@IsOptional()
+	@IsInt()
+	saborGrupoId?: number | null;
+
+	@ApiProperty({
+		example: 'pizza',
+		required: false,
+		enum: CATEGORIAS_PRODUCTO,
+		description: 'Categoría para analítica e inventario. Si se omite al crear, se deduce del nombre.',
+	})
+	@IsOptional()
+	@IsIn(CATEGORIAS_PRODUCTO as unknown as string[])
+	categoria?: CategoriaProducto | null;
 
 	@ApiProperty({
 		type: [CreateProductoVarianteDto],

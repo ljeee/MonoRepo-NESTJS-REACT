@@ -31,7 +31,7 @@ export default function PageContainer({
 
     const maxWidthClasses = {
         narrow: 'max-w-2xl',
-        default: 'max-w-6xl',
+        default: 'max-w-7xl',
         wide: 'max-w-7xl',
         full: 'max-w-none',
     };

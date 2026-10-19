@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useCreateFacturaPago, useDeleteFacturaPago, useFacturasPagosDia, useFacturasPagosRango, useUpdateFacturaPago } from './use-create-factura-pago';
-import type { CreateFacturaPagoDto, DenominacionesMap, FacturaPago } from '../types/models';
+import type { CreateFacturaPagoDto, DenominacionesMap, FacturaPago, TipoGasto } from '../types/models';
+import { CATEGORIA_GENERAL, tipoPorCategoria } from '../constants/gastos';
 import { useApi } from '../contexts/ApiContext';
 
 import { validateFlexibleDateRange, getLocalDateString } from '../utils/dateRange';
@@ -42,6 +43,11 @@ export function useFacturasPagosScreen() {
   const [estado, setEstado] = useState('pagado');
   const [fechaFactura, setFechaFactura] = useState(todayISO());
   const [metodo, setMetodo] = useState('qr');
+  /** Cuenta de transferencia de la que sale un egreso por QR (obligatoria con método QR). */
+  const [cuentaOrigenId, setCuentaOrigenId] = useState<number | null>(null);
+  /** Categoría contable y tipo (costo | gasto). El tipo sigue a la categoría hasta que se elige a mano. */
+  const [categoria, setCategoriaState] = useState<string>(CATEGORIA_GENERAL);
+  const [tipoGasto, setTipoGastoState] = useState<TipoGasto | null>(null);
   const [monedas, setMonedas] = useState('');
   const [denominaciones, setDenominaciones] = useState<DenominacionesMap>({});
   const [disponibleDenominaciones, setDisponibleDenominaciones] = useState<DenominacionesMap | null>(null);
@@ -66,11 +72,21 @@ export function useFacturasPagosScreen() {
     setEstado('pagado');
     setFechaFactura(todayISO());
     setMetodo('qr');
+    setCuentaOrigenId(null);
+    setCategoriaState(CATEGORIA_GENERAL);
+    setTipoGastoState(null);
     setDenominaciones({});
     setMonedas('');
     setEditingId(null);
     setFormError('');
   };
+
+  /** Elegir categoría fija el tipo por defecto de esa categoría (se puede cambiar después). */
+  const setCategoria = (id: string) => {
+    setCategoriaState(id);
+    setTipoGastoState(tipoPorCategoria(id));
+  };
+  const setTipoGasto = (tipo: TipoGasto) => setTipoGastoState(tipo);
 
   useEffect(() => {
     if (metodo === 'efectivo') fetchDisponible();
@@ -97,6 +113,15 @@ export function useFacturasPagosScreen() {
       setFormError('Formato de fecha inválido. Use YYYY-MM-DD');
       return;
     }
+    if (categoria === CATEGORIA_GENERAL || !tipoGasto) {
+      setFormError('Elige la categoría del gasto (costo o gasto operativo) para la contabilidad');
+      return;
+    }
+
+    if (metodo === 'qr' && cuentaOrigenId == null) {
+      setFormError('Elige la cuenta de la que sale el pago por QR');
+      return;
+    }
 
     // Para gastos en efectivo, exigir al menos un billete o monedas
     if (metodo === 'efectivo' && !editingId) {
@@ -110,8 +135,10 @@ export function useFacturasPagosScreen() {
 
     setFormError('');
     const monedasNum = Number(monedas) || 0;
+    // Las monedas viajan bajo la llave 'coins' (valor total, no conteo): es la que
+    // entiende caja-movimientos al validar y sumar. Con otra llave la salida de caja falla.
     const denFinal: DenominacionesMap | undefined = metodo === 'efectivo' && !editingId
-      ? { ...denominaciones, ...(monedasNum > 0 ? { monedas: monedasNum } : {}) }
+      ? { ...denominaciones, ...(monedasNum > 0 ? { coins: monedasNum } : {}) }
       : undefined;
 
     const payload: CreateFacturaPagoDto = {
@@ -121,6 +148,9 @@ export function useFacturasPagosScreen() {
       estado: estado?.trim() || undefined,
       fechaFactura: fechaFactura || undefined,
       metodo: metodo?.trim() || undefined,
+      cuentaOrigenId: metodo === 'qr' ? cuentaOrigenId : null,
+      categoria,
+      tipoGasto,
       denominaciones: denFinal && Object.keys(denFinal).length > 0 ? denFinal : undefined,
     };
 
@@ -141,6 +171,9 @@ export function useFacturasPagosScreen() {
     setEstado(item.estado || 'pendiente');
     setFechaFactura(item.fechaFactura || todayISO());
     setMetodo(item.metodo || 'efectivo');
+    setCuentaOrigenId(item.cuentaOrigenId ?? null);
+    setCategoriaState(item.categoria || CATEGORIA_GENERAL);
+    setTipoGastoState(item.tipoGasto ?? null);
     setDenominaciones({});
     setMonedas('');
     setEditingId(item.pagosId);
@@ -203,6 +236,12 @@ export function useFacturasPagosScreen() {
     setFechaFactura,
     metodo,
     setMetodo,
+    cuentaOrigenId,
+    setCuentaOrigenId,
+    categoria,
+    setCategoria,
+    tipoGasto,
+    setTipoGasto,
     denominaciones,
     setDenominaciones,
     monedas,

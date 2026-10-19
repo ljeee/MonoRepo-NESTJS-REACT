@@ -1,8 +1,10 @@
-import React, { useCallback, useState } from 'react';
-import { RefreshControl } from 'react-native';
-import { Text, View, TextInput, TouchableOpacity } from '../../tw';
-import { useFacturasDia, calcStats, useApi, useOrdenesSocket } from '@/src/shared';
-import type { DenominacionesMap } from '@/src/shared';
+import React, { useEffect, useState } from 'react';
+import { useFacturaActions } from '../../hooks/use-factura-actions';
+
+import { Text, View, TouchableOpacity } from '../../tw';
+import { useFacturasDia, calcStats, useOrdenesSocket, bogotaToday } from '@/src/shared';
+import { useResumenGeneral } from '../../hooks/use-resumen-general';
+import { ResumenDiaCompleto } from '../../components/contabilidad/ResumenDiaCompleto';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
@@ -11,87 +13,34 @@ import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
 import { ListSkeleton } from '../../components/ui/SkeletonLoader';
 import Icon from '../../components/ui/Icon';
-import { MethodFilterChips, MethodFilterValue, matchesMetodoFilter } from '../../components/ui';
+import { MethodFilterValue, matchesMetodoFilter, InlineError, CardGrid } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 import { useAuth } from '../../contexts/AuthContext';
 import { getBaseUrl } from '../../services/api';
+import { PosRefreshControl } from '../../components/ui/PosRefreshControl';
+import { FacturaToolbar } from '../../components/facturas/FacturaToolbar';
 
 export default function FacturasDiaScreen() {
-  const { isMobile, width } = useBreakpoint();
-  const api = useApi();
+  const { isMobile } = useBreakpoint();
   const { data, loading, error, refetch, updateEstado, updateFactura } = useFacturasDia();
-  const [updating, setUpdating] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMethod, setFilterMethod] = useState<MethodFilterValue>('todos');
 
   // Sin esto la pantalla solo se actualizaba con refresh manual: un abono o
   // cobro hecho desde otra pantalla/dispositivo no se reflejaba aquí.
+  // Consolidado del día: lo mismo que balance del día y cierre de caja (servidor, definiciones únicas).
+  const hoy = bogotaToday();
+  const [versionResumen, setVersionResumen] = useState(0);
+  const { data: resumen } = useResumenGeneral(hoy, hoy, versionResumen);
+  const [verConsolidado, setVerConsolidado] = useState(false);
+  useEffect(() => {
+    setVersionResumen((v) => v + 1);
+  }, [data]);
+
   const { user, token } = useAuth();
   useOrdenesSocket(getBaseUrl(), user?.roles?.[0] || 'cajero', refetch, token);
 
-  const handleChangeEstado = useCallback(async (
-    facturaId: number,
-    nuevoEstado: string,
-    metodo?: string,
-    pagoEfectivo?: number,
-    pagoTransferencia?: number,
-    denominaciones?: Record<string, number>,
-    cambioDenominaciones?: Record<string, number>,
-    cuentaTransferenciaId?: number,
-    cuentaTransferenciaNombre?: string,
-  ) => {
-    setUpdating(facturaId);
-    try {
-      if (nuevoEstado === 'pagado' && metodo) {
-         await updateFactura(facturaId, {
-             estado: 'pagado',
-             metodo,
-             pagoEfectivo,
-             pagoTransferencia,
-             denominaciones,
-             cambioDenominaciones,
-             cuentaTransferenciaId,
-             cuentaTransferenciaNombre
-         });
-      } else {
-         await updateEstado(facturaId, nuevoEstado);
-      }
-      setUpdating(null);
-      return;
-    } catch {
-      setUpdating(null);
-    }
-  }, [updateFactura, updateEstado]);
-
-  const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
-    await updateFactura(facturaId, { total: newTotal });
-  }, [updateFactura]);
-
-  const handleAbono = useCallback(async (
-    facturaId: number,
-    monto: number,
-    metodo: 'efectivo' | 'transferencia',
-    denominaciones?: DenominacionesMap,
-    cambioDenominaciones?: DenominacionesMap,
-    cuentaTransferenciaId?: number,
-    cuentaTransferenciaNombre?: string,
-  ) => {
-    setUpdating(facturaId);
-    try {
-      await api.facturas.abono(
-        facturaId,
-        monto,
-        metodo,
-        denominaciones,
-        cambioDenominaciones,
-        cuentaTransferenciaId,
-        cuentaTransferenciaNombre
-      );
-      await refetch();
-    } finally {
-      setUpdating(null);
-    }
-  }, [api, refetch]);
+  const { updatingId: updating, accionesFactura, onUpdate } = useFacturaActions({ updateEstado, updateFactura, recargar: refetch });
 
   const handleExportPdf = () => {
     if (!data || data.length === 0) return;
@@ -123,7 +72,6 @@ export default function FacturasDiaScreen() {
 
   const [sortAsc, setSortAsc] = useState(false);
 
-  const numCols = isMobile ? 1 : width >= 1500 ? 4 : width >= 1100 ? 3 : 2;
 
   const filteredData = searchFiltered.filter((f: FacturaItem) => {
     if (filterMethod === 'todos') return true;
@@ -138,22 +86,12 @@ export default function FacturasDiaScreen() {
 
   const computedStats = React.useMemo(() => calcStats(filteredData as any, filterMethod === 'todos' ? undefined : filterMethod), [filteredData, filterMethod]);
 
-  const cardRows = React.useMemo(() => {
-    const rows: FacturaItem[][] = [];
-    for (let i = 0; i < sortedData.length; i += numCols) {
-      rows.push(sortedData.slice(i, i + numCols));
-    }
-    return rows;
-  }, [sortedData, numCols]);
-
   return (
     <PageContainer
       refreshControl={
-        <RefreshControl
+        <PosRefreshControl
           refreshing={loading}
           onRefresh={refetch}
-          tintColor="#F5A524"
-          colors={["#F5A524"]}
         />
       }
     >
@@ -173,72 +111,39 @@ export default function FacturasDiaScreen() {
       />
 
 
+      {/* Consolidado del día (por método, por cuenta QR, productos, gastos) */}
+      {!!resumen && (
+        <View className="mb-6">
+          <TouchableOpacity
+            onPress={() => setVerConsolidado((v) => !v)}
+            className="flex-row items-center justify-between px-4 py-3 rounded-2xl bg-white/5 border border-white/10"
+          >
+            <View className="flex-row items-center gap-2">
+              <Icon name="chart-box-outline" size={18} color="#F5A524" />
+              <Text className="text-white font-black uppercase text-xs tracking-widest">Consolidado del día</Text>
+            </View>
+            <Icon name={verConsolidado ? 'chevron-up' : 'chevron-down'} size={18} color="#94A3B8" />
+          </TouchableOpacity>
+          {verConsolidado && (
+            <View className="mt-3">
+              <ResumenDiaCompleto resumen={resumen} />
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Stats */}
       {data && data.length > 0 && <StatsHeader stats={computedStats} periodLabel="Total del Día (Filtrado)" />}
 
-        {/* Buscador y Filtro */}
-        <View className={`mb-6 flex-col gap-3 ${isMobile ? 'w-full' : ''}`}>
-          <View className={`flex-row items-center gap-3 ${isMobile ? 'flex-col' : ''}`}>
-            <View className={`flex-row items-center bg-white/5 rounded-2xl px-5 py-3 min-h-[50px] border border-white/10 ${isMobile ? 'w-full' : 'flex-1'}`}>
-                <Icon name="magnify" size={22} color="#94A3B8" />
-                <TextInput
-                    className="text-white ml-3 flex-1 h-full font-bold"
-                    placeholder="Buscar factura por cliente..."
-                    placeholderTextColor="#64748B"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                />
-                {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearchQuery('')} className="bg-white/10 rounded-full p-1 border border-white/20">
-                        <Icon name="close" size={14} color="#CBD5E1" />
-                    </TouchableOpacity>
-                )}
-            </View>
-          </View>
-          
-          <View className="flex-row items-center justify-between gap-3 flex-wrap">
-            <View className="flex-1 min-w-[280px]">
-              <MethodFilterChips value={filterMethod} onChange={setFilterMethod} counts={methodCounts} />
-            </View>
-            <View className="flex-row items-center gap-2 flex-wrap">
-              <Button
-                title="Exportar PDF"
-                icon="file-pdf-outline"
-                variant="secondary"
-                size="sm"
-                onPress={handleExportPdf}
-                disabled={!data || data.length === 0}
-                className="bg-purple-600/20 border-purple-500/30"
-              />
-              <Button
-                title="CSV Contable"
-                icon="table-large"
-                variant="secondary"
-                size="sm"
-                onPress={handleExportContabilidad}
-                disabled={!data || data.length === 0}
-                className="bg-emerald-600/20 border-emerald-500/30"
-              />
-              <TouchableOpacity
-                onPress={() => setSortAsc(prev => !prev)}
-                className="flex-row items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 active:bg-white/10"
-              >
-                <Icon name={sortAsc ? "sort-clock-ascending" : "sort-clock-descending"} size={16} color="#F5A524" />
-                <Text className="text-xs font-bold text-slate-300">
-                  {sortAsc ? "Más antiguas" : "Más recientes"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+        <FacturaToolbar
+          metodo={{ value: filterMethod, onChange: setFilterMethod, counts: methodCounts }}
+          busqueda={{ value: searchQuery, onChange: setSearchQuery, placeholder: 'Buscar factura por cliente...' }}
+          orden={{ asc: sortAsc, onToggle: () => setSortAsc((prev) => !prev) }}
+          exportar={{ onPdf: handleExportPdf, onCsv: handleExportContabilidad, disabled: !data || data.length === 0, pdfLabel: 'Exportar PDF', csvLabel: 'CSV Contable' }}
+        />
 
       {/* Error */}
-      {error && (
-        <View className="flex-row items-center gap-3 bg-(--color-pos-danger)/10 p-5 rounded-2xl mb-8 border border-(--color-pos-danger)/20">
-          <Icon name="alert-circle-outline" size={18} color="#F43F5E" />
-          <Text className="text-(--color-pos-danger) font-medium flex-1">{error}</Text>
-        </View>
-      )}
+      <InlineError message={error} className="mb-8" />
 
       {/* Content */}
       {loading && (!data || data.length === 0) ? (
@@ -254,28 +159,22 @@ export default function FacturasDiaScreen() {
           </Text>
         </View>
       ) : (
-        <View className="gap-4 pb-8">
-          {cardRows.map((row, rIdx) => (
-            <View key={rIdx} className="flex-row gap-4">
-              {row.map((item: FacturaItem, idx: number) => (
-                <View key={item.facturaId?.toString() || idx.toString()} className="flex-1">
-                  <FacturaCard
-                    item={item}
-                    isUpdating={updating === item.facturaId}
-                    activeFilter={filterMethod}
-                    onToggleEstado={handleChangeEstado}
-                    onUpdateTotal={handleUpdateTotal}
-                    onUpdate={updateFactura}
-                    onAbono={handleAbono}
-                    showPrint
-                  />
-                </View>
-              ))}
-              {row.length < numCols && Array.from({ length: numCols - row.length }).map((_, i) => (
-                <View key={`empty-${i}`} className="flex-1" />
-              ))}
-            </View>
-          ))}
+        <View className="pb-8">
+          <CardGrid
+            kind="factura"
+            data={sortedData}
+            keyExtractor={(item, i) => item.facturaId?.toString() ?? String(i)}
+            renderItem={(item) => (
+              <FacturaCard
+                item={item}
+                isUpdating={updating === item.facturaId}
+                activeFilter={filterMethod}
+                {...accionesFactura}
+                onUpdate={onUpdate}
+                showPrint
+              />
+            )}
+          />
         </View>
       )}
     </PageContainer>

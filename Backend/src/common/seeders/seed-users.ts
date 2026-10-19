@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import 'dotenv/config'; // toma DATABASE_* de Backend/.env (no pisa lo que ya venga en el entorno)
 import {DataSource} from 'typeorm';
 import {AppDataSource} from '../../data-source';
 import {User} from '../../auth/esquemas/user.entity';
@@ -51,6 +52,13 @@ export async function seedUsers() {
 				password: '1234567891-_',
 				name: 'FELIPE',
 				roles: [Role.Domiciliario],
+			},
+			// ── Caja ────────────────────────────────────────────────────────
+			{
+				username: 'cajero01',
+				password: 'cajero1234',
+				name: 'Cajero',
+				roles: [Role.Cajero],
 			},
 			// ── Cocina ──────────────────────────────────────────────────────
 			{

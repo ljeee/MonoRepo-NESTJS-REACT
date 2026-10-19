@@ -20,13 +20,25 @@ export class ProductoVariantes {
 	@Column({name: 'descripcion', type: 'text', nullable: true})
 	descripcion: string;
 
+	/**
+	 * Tamaño explícito (pequena | mediana | grande) para productos con tamaños. Null = se deduce del nombre
+	 * ("Pequeña", "Personal", "Mediana", "Grande"); sin tamaño reconocible cuenta como grande.
+	 */
+	@Column({name: 'tamano', type: 'varchar', length: 20, nullable: true})
+	tamano: string | null;
+
 	@Column({name: 'precio_leche', type: 'numeric', nullable: true, transformer: new ColumnNumericTransformer()})
 	precioLeche: number | null;
 
+	/**
+	 * @deprecated Inventario unificado (`inventario_items`). Se mantiene mapeada para que
+	 * synchronize no borre la columna (respaldo de la migración `inventario-unificado-v1`);
+	 * se quita en la limpieza final (Fase 7) junto con las otras `*_bebida`.
+	 */
 	@Column({name: 'stock_bebida', type: 'integer', default: 0})
 	stockBebida: number;
 
-	// ── Configuración del inventario de bebidas ──────────────────────────────
+	// ── @deprecated: configuración del inventario de bebidas anterior (ver stock_bebida) ──
 	// Categoría para agrupar en la pantalla de inventario ('gaseosa' | 'jugo' |
 	// 'cerveza' | 'agua' | 'otra'). Cuando es null, la variante NO se rastrea
 	// como bebida salvo que el nombre del producto contenga "gaseosa"/"jugo"

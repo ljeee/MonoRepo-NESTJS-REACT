@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { TouchableOpacity, RefreshControl } from 'react-native';
+import { useFacturaActions } from '../../hooks/use-factura-actions';
+import { usePaginaLocal } from '../../hooks/use-pagina-local';
+import { PaginadorLocal } from '../../components/contabilidad/PaginadorLocal';
 import { View, Text, ScrollView } from '../../tw';
-import { useFacturasRango, calcStats, useApi, getLocalDateString } from '@/src/shared';
-import type { DenominacionesMap } from '@/src/shared';
+import { useFacturasRango, calcStats, getLocalDateString, SIN_LIMITE } from '@/src/shared';
 import { buildCombinedBalanceCsv, downloadCsv } from '../../utils/csvExport';
 import { exportFacturasPdf } from '../../utils/exportData';
 import { FacturaCard, StatsHeader, FacturaItem } from '../../components/facturas/FacturaShared';
@@ -12,28 +13,23 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import Icon from '../../components/ui/Icon';
 import { ListSkeleton } from '../../components/ui/SkeletonLoader';
-import { MethodFilterChips, MethodFilterValue, DateRangeFilter, matchesMetodoFilter } from '../../components/ui';
-import { useBreakpoint } from '../../styles/responsive';
+import { MethodFilterValue, DateRangeFilter, matchesMetodoFilter, PosRefreshControl, InlineError, CardGrid } from '../../components/ui';
+import { FacturaToolbar } from '../../components/facturas/FacturaToolbar';
 
 // ─── Tipos de filtro local ──────────────────────────────────────────────────
-
 
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function FacturasRangoScreen() {
-  const { isMobile, width } = useBreakpoint();
-  const api = useApi();
   const [sortAsc, setSortAsc] = useState(false);
-  const numCols = isMobile ? 1 : width >= 1500 ? 4 : width >= 1100 ? 3 : 2;
   const {
     data, loading, error,
     from, to, setFrom, setTo,
     fetchData, search,
     updateEstado, updateFactura, deleteFactura,
-  } = useFacturasRango(5000);
+  } = useFacturasRango(SIN_LIMITE);
 
-  const [localPage, setLocalPage] = useState(1);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
@@ -42,9 +38,6 @@ export default function FacturasRangoScreen() {
     setRefreshing(false);
   }, [fetchData]);
 
-  const itemsPerPage = 50;
-
-  const [updating, setUpdating] = useState<number | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
   // ── Filtros locales ──
@@ -59,71 +52,12 @@ export default function FacturasRangoScreen() {
   }, []);
 
 
-  const handleChangeEstado = useCallback(async (
-    facturaId: number,
-    nuevoEstado: string,
-    metodo?: string,
-    pagoEfectivo?: number,
-    pagoTransferencia?: number,
-    denominaciones?: DenominacionesMap,
-    cambioDenominaciones?: DenominacionesMap,
-    cuentaTransferenciaId?: number,
-    cuentaTransferenciaNombre?: string,
-  ) => {
-    setUpdating(facturaId);
-    try {
-      if (nuevoEstado === 'pagado' && metodo) {
-        await updateFactura(facturaId, {
-          estado: 'pagado',
-          metodo,
-          pagoEfectivo,
-          pagoTransferencia,
-          denominaciones,
-          cambioDenominaciones,
-          cuentaTransferenciaId,
-          cuentaTransferenciaNombre
-        });
-      } else {
-        await updateEstado(facturaId, nuevoEstado);
-      }
-    } catch { /* silent */ }
-    setUpdating(null);
-  }, [updateEstado, updateFactura]);
-
-  const handleUpdateTotal = useCallback(async (facturaId: number, newTotal: number) => {
-    await updateFactura(facturaId, { total: newTotal });
-  }, [updateFactura]);
-
-  const handleDeleteFactura = useCallback(async (facturaId: number): Promise<boolean> => {
-    return deleteFactura(facturaId);
-  }, [deleteFactura]);
-
-  const handleAbono = useCallback(async (
-    facturaId: number,
-    monto: number,
-    metodo: 'efectivo' | 'transferencia',
-    denominaciones?: DenominacionesMap,
-    cambioDenominaciones?: DenominacionesMap,
-    cuentaTransferenciaId?: number,
-    cuentaTransferenciaNombre?: string,
-  ) => {
-    setUpdating(facturaId);
-    try {
-      await api.facturas.abono(
-        facturaId,
-        monto,
-        metodo,
-        denominaciones,
-        cambioDenominaciones,
-        cuentaTransferenciaId,
-        cuentaTransferenciaNombre
-      );
-      // Refresh current search results
-      search(from, to);
-    } finally {
-      setUpdating(null);
-    }
-  }, [api, from, to, search]);
+  const { updatingId: updating, accionesFactura, onUpdate } = useFacturaActions({
+    updateEstado,
+    updateFactura,
+    deleteFactura,
+    recargar: () => search(from, to),
+  });
 
   const isPagado = (f: FacturaItem) => f.estado === 'pagado' || f.estado === 'pagada';
 
@@ -152,25 +86,9 @@ export default function FacturasRangoScreen() {
 
   const computedStats = useMemo(() => calcStats(filteredData as any, metodoFilter === 'todos' ? undefined : metodoFilter), [filteredData, metodoFilter]);
 
-  const totalLocalPages = Math.ceil(filteredData.length / itemsPerPage) || 1;
-
-  const paginatedData = useMemo(() => {
-    const start = (localPage - 1) * itemsPerPage;
-    return filteredData.slice(start, start + itemsPerPage);
-  }, [filteredData, localPage]);
-
-  const sortedData = useMemo(() => {
-    if (!sortAsc) return paginatedData;
-    return [...paginatedData].reverse();
-  }, [paginatedData, sortAsc]);
-
-  const cardRows = useMemo(() => {
-    const rows: FacturaItem[][] = [];
-    for (let i = 0; i < sortedData.length; i += numCols) {
-      rows.push(sortedData.slice(i, i + numCols));
-    }
-    return rows;
-  }, [sortedData, numCols]);
+  // Todo el rango viene del servidor (sin tope). Se ordena TODO y la paginación (solo visual) reparte lo ordenado.
+  const sortedData = useMemo(() => (sortAsc ? [...filteredData].reverse() : filteredData), [filteredData, sortAsc]);
+  const pagina = usePaginaLocal(sortedData, 60);
 
   const handleExportPdf = useCallback(() => {
     if (filteredData.length === 0) return;
@@ -182,50 +100,6 @@ export default function FacturasRangoScreen() {
     const csv = await buildCombinedBalanceCsv(filteredData, []);
     downloadCsv(csv, `contabilidad_${from || 'inicio'}_${to || 'fin'}.csv`);
   }, [filteredData, from, to]);
-
-  // ── Pagination bar ──────────────────────────────────────────────────────────
-  const PaginationBar = totalLocalPages > 1 ? (
-    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, paddingVertical: 20 }}>
-      <TouchableOpacity
-        onPress={() => setLocalPage(p => Math.max(1, p - 1))}
-        disabled={localPage <= 1 || loading}
-        style={{
-          paddingHorizontal: 16, paddingVertical: 8,
-          borderRadius: 12,
-          backgroundColor: localPage <= 1 ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)',
-          borderWidth: 1,
-          borderColor: localPage <= 1 ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)',
-          opacity: localPage <= 1 ? 0.4 : 1,
-        }}
-      >
-        <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>← Anterior</Text>
-      </TouchableOpacity>
-
-      <View style={{ alignItems: 'center' }}>
-        <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 14 }}>
-          Página {localPage} de {totalLocalPages}
-        </Text>
-        <Text style={{ color: '#64748B', fontFamily: 'Outfit', fontSize: 11, marginTop: 2 }}>
-          {filteredData.length} facturas filtradas
-        </Text>
-      </View>
-
-      <TouchableOpacity
-        onPress={() => setLocalPage(p => Math.min(totalLocalPages, p + 1))}
-        disabled={localPage >= totalLocalPages || loading}
-        style={{
-          paddingHorizontal: 16, paddingVertical: 8,
-          borderRadius: 12,
-          backgroundColor: localPage >= totalLocalPages ? 'rgba(255,255,255,0.05)' : 'rgba(245,165,36,0.15)',
-          borderWidth: 1,
-          borderColor: localPage >= totalLocalPages ? 'rgba(255,255,255,0.08)' : 'rgba(245,165,36,0.3)',
-          opacity: localPage >= totalLocalPages ? 0.4 : 1,
-        }}
-      >
-        <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>Siguiente →</Text>
-      </TouchableOpacity>
-    </View>
-  ) : null;
 
   return (
     /*
@@ -240,12 +114,7 @@ export default function FacturasRangoScreen() {
         className="flex-1"
         contentContainerClassName="pb-4"
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor="#F5A524"
-            colors={['#F5A524']}
-          />
+          <PosRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       >
 
@@ -278,76 +147,19 @@ export default function FacturasRangoScreen() {
             setHasSearched(true);
             setMetodoFilter('todos');
             setNombreFilter('');
-            setLocalPage(1);
           }}
           loading={loading}
         />
 
         {/* ── Filtros locales + Exportar (solo post-búsqueda) ─────── */}
         {hasSearched && !loading && (
-          <View
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.03)',
-              borderWidth: 1,
-              borderColor: 'rgba(255,255,255,0.07)',
-              borderRadius: 16,
-              padding: 12,
-              marginBottom: 16,
-              gap: 10,
-            }}
-          >
-            {/* Chips de filtro unificados por método de pago y estado pendiente */}
-            <MethodFilterChips value={metodoFilter} onChange={(val) => { setMetodoFilter(val); setLocalPage(1); }} counts={metodoCounts} />
-
-            {/* Fila 2: buscador por nombre */}
-            <Input
-              placeholder="Buscar por nombre de cliente..."
-              value={nombreFilter}
-              onChangeText={(t) => { setNombreFilter(t); setLocalPage(1); }}
-              size="sm"
-              containerStyle={{ marginBottom: 0 }}
-              leftIcon={<Icon name="account-search-outline" size={15} color="#475569" />}
-            />
-
-            {/* Fila 3: botones exportar + ordenar */}
-            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              <Button
-                title="Exportar PDF"
-                icon="file-pdf-outline"
-                variant="secondary"
-                size="sm"
-                onPress={handleExportPdf}
-                disabled={filteredData.length === 0}
-                className="bg-purple-600/20 border-purple-500/30"
-              />
-              <Button
-                title="CSV Contable"
-                icon="table-large"
-                variant="secondary"
-                size="sm"
-                onPress={handleExportContabilidad}
-                disabled={filteredData.length === 0}
-                className="bg-emerald-600/20 border-emerald-500/30"
-              />
-              <TouchableOpacity
-                onPress={() => setSortAsc(prev => !prev)}
-                className="flex-row items-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 border border-white/10 active:bg-white/10"
-              >
-                <Icon name={sortAsc ? "sort-clock-ascending" : "sort-clock-descending"} size={15} color="#F5A524" />
-                <Text style={{ color: '#CBD5E1', fontSize: 12, fontWeight: '700' }}>
-                  {sortAsc ? "Más antiguas" : "Más recientes"}
-                </Text>
-              </TouchableOpacity>
-              {/* Contador de resultados filtrados */}
-              {filteredData.length !== data.length && (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'flex-end' }}>
-                  <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>
-                    {filteredData.length} de {data.length} resultados
-                  </Text>
-                </View>
-              )}
-            </View>
-          </View>
+          <FacturaToolbar
+            metodo={{ value: metodoFilter, onChange: setMetodoFilter, counts: metodoCounts }}
+            busqueda={{ value: nombreFilter, onChange: setNombreFilter }}
+            orden={{ asc: sortAsc, onToggle: () => setSortAsc((prev) => !prev) }}
+            exportar={{ onPdf: handleExportPdf, onCsv: handleExportContabilidad, disabled: filteredData.length === 0, pdfLabel: 'Exportar PDF', csvLabel: 'CSV Contable' }}
+            resultados={filteredData.length !== data.length ? `${filteredData.length} de ${data.length} resultados` : undefined}
+          />
         )}
 
         {/* Stats */}
@@ -359,18 +171,13 @@ export default function FacturasRangoScreen() {
         )}
 
         {/* Error */}
-        {error && (
-          <View className="flex-row items-center gap-2 bg-(--color-pos-danger)/10 p-4 rounded-xl mb-8 border border-(--color-pos-danger)/20">
-            <Icon name="alert-circle-outline" size={18} color="#F43F5E" />
-            <Text className="text-(--color-pos-danger) flex-1">{error}</Text>
-          </View>
-        )}
+        <InlineError message={error} className="mb-4" />
 
         {/* Loading skeleton */}
         {loading && <ListSkeleton count={4} />}
 
         {/* Empty state */}
-        {!loading && !error && paginatedData.length === 0 && (
+        {!loading && !error && filteredData.length === 0 && (
           <View className="items-center justify-center py-20 gap-4">
             <Icon
               name={from && to ? 'email-off-outline' : 'calendar-search'}
@@ -395,34 +202,27 @@ export default function FacturasRangoScreen() {
         )}
 
         {/* ── Items grid — Equal-height card rows ────────── */}
-        {!loading && cardRows.length > 0 && (
-          <View className="gap-4 pb-4">
-            {cardRows.map((row, rIdx) => (
-              <View key={rIdx} className="flex-row gap-4">
-                {row.map((item: FacturaItem, idx: number) => (
-                  <View key={item.facturaId?.toString() || idx.toString()} className="flex-1">
-                    <FacturaCard
-                      item={item}
-                      isUpdating={updating === item.facturaId}
-                      activeFilter={metodoFilter}
-                      onToggleEstado={handleChangeEstado}
-                      onUpdateTotal={handleUpdateTotal}
-                      onUpdate={updateFactura}
-                      onDelete={handleDeleteFactura}
-                      onAbono={handleAbono}
-                    />
-                  </View>
-                ))}
-                {row.length < numCols && Array.from({ length: numCols - row.length }).map((_, i) => (
-                  <View key={`empty-${i}`} className="flex-1" />
-                ))}
-              </View>
-            ))}
+        {!loading && pagina.items.length > 0 && (
+          <View className="pb-4">
+            <CardGrid
+              kind="factura"
+              data={pagina.items}
+              keyExtractor={(item, i) => item.facturaId?.toString() ?? String(i)}
+              renderItem={(item) => (
+                <FacturaCard
+                  item={item}
+                  isUpdating={updating === item.facturaId}
+                  activeFilter={metodoFilter}
+                  {...accionesFactura}
+                  onUpdate={onUpdate}
+                />
+              )}
+            />
           </View>
         )}
 
-        {/* Pagination */}
-        {PaginationBar}
+        {/* Paginación visual sobre el conjunto completo */}
+        {!loading && <PaginadorLocal pagina={pagina} etiqueta="facturas" />}
 
       </ScrollView>
     </PageContainer>

@@ -1,12 +1,32 @@
-import React, { useCallback, useState, useEffect, memo } from 'react';
-import { ActivityIndicator, Platform, TouchableOpacity, RefreshControl } from 'react-native';
-import { View, Text, ScrollView } from '../../tw';
-import { useFacturasRango, validateFlexibleDateRange, formatCurrency, useApi } from '@/src/shared';
-import { useFacturasPagosRango } from '@/src/shared';
-import type { FacturaVenta, FacturaPago, ResumenPeriodo } from '@/src/shared';
+import React, { useCallback, useMemo, useState, memo } from 'react';
+import { useResumenGeneral } from '../../hooks/use-resumen-general';
+import { useCuentasTransferencia } from '../../hooks/use-cuentas-transferencia';
+import { ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
+import { View, Text } from '../../tw';
+import {
+    useFacturasRango,
+    validateFlexibleDateRange,
+    formatCurrency,
+    useApi,
+    useFacturasPagosRango,
+    transferenciasPorCuenta,
+    tipoDeGasto,
+    tipoPorCategoria,
+    nombreCategoria,
+    CATEGORIAS_GASTO,
+    TIPO_GASTO_META,
+    isGastoPagado,
+    Role,
+} from '@/src/shared';
+import type { FacturaVenta, FacturaPago, TipoGastoFiltro } from '@/src/shared';
+import { useAuth } from '../../contexts/AuthContext';
+import { usePaginaLocal } from '../../hooks/use-pagina-local';
+import { PaginadorLocal } from '../../components/contabilidad/PaginadorLocal';
 import {
     buildCombinedBalanceCsv,
+    buildEgresosCsv,
     buildFacturasBackupCsv,
+    buildTransferenciasCsv,
     downloadCsv,
 } from '../../utils/csvExport';
 import {
@@ -15,17 +35,20 @@ import {
     exportBalanceDePrueba,
     exportBalancePorTercero,
     exportInformeImpuesto,
+    exportEgresosPdf,
+    exportTransferenciasPdf,
 } from '../../utils/exportData';
 import {
     PageContainer,
     PageHeader,
-    Button,
     Icon,
     Card,
     Badge,
     ListSkeleton,
     DateRangeFilter,
-} from '../../components/ui';
+    PosRefreshControl,
+    ChipGroup,
+    OptionPickerModal, InlineError, StatCard } from '../../components/ui';
 import { useBreakpoint } from '../../styles/responsive';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -64,23 +87,6 @@ function estadoBadge(estado?: string): 'success' | 'warning' | 'danger' | 'info'
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-const KpiCard = memo(function KpiCard({ icon, label, value, sub, color, accent }: {
-    icon: any; label: string; value: string; sub?: string; color: string; accent: string;
-}) {
-    return (
-        <View style={{ flex: 1, minWidth: 140, backgroundColor: '#0C1828', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <View style={{ width: 30, height: 30, borderRadius: 9, backgroundColor: accent, alignItems: 'center', justifyContent: 'center' }}>
-                    <Icon name={icon} size={15} color={color} />
-                </View>
-                <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, flex: 1 }}>{label}</Text>
-            </View>
-            <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 20, letterSpacing: -0.5 }}>{value}</Text>
-            {sub ? <Text style={{ color: '#475569', fontSize: 11, marginTop: 3 }}>{sub}</Text> : null}
-        </View>
-    );
-});
-
 // ─── Balance Banner ───────────────────────────────────────────────────────────
 
 const BalanceBanner = memo(function BalanceBanner({ ingresos, gastos }: { ingresos: number; gastos: number }) {
@@ -92,7 +98,7 @@ const BalanceBanner = memo(function BalanceBanner({ ingresos, gastos }: { ingres
         <View style={{ borderRadius: 20, marginBottom: 16, borderWidth: 1, borderColor: isPos ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', backgroundColor: '#0A1520', overflow: 'hidden' }}>
             <View style={{ padding: 20, gap: 14 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={{ color: '#475569', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 }}>Balance del Período</Text>
+                    <Text style={{ color: '#475569', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1 }}>Balance del Período (cobrado − egresos pagados)</Text>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, backgroundColor: isPos ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', borderColor: isPos ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)' }}>
                         <Icon name={isPos ? 'trending-up' : 'trending-down'} size={12} color={isPos ? '#10B981' : '#EF4444'} />
                         <Text style={{ color: isPos ? '#10B981' : '#EF4444', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' }}>{isPos ? 'Superávit' : 'Déficit'}</Text>
@@ -101,8 +107,8 @@ const BalanceBanner = memo(function BalanceBanner({ ingresos, gastos }: { ingres
 
                 <View style={{ flexDirection: 'row', gap: 14 }}>
                     {[
-                        { label: 'Ingresos', value: `$${formatCurrency(ingresos)}`, color: '#10B981' },
-                        { label: 'Egresos', value: `−$${formatCurrency(gastos)}`, color: '#EF4444' },
+                        { label: 'Cobrado', value: `$${formatCurrency(ingresos)}`, color: '#10B981' },
+                        { label: 'Egresos pagados', value: `−$${formatCurrency(gastos)}`, color: '#EF4444' },
                         { label: 'Margen', value: `${margen}%`, color: isPos ? '#F5A524' : '#EF4444' },
                     ].map(({ label, value, color }) => (
                         <View key={label} style={{ flex: 1 }}>
@@ -119,7 +125,7 @@ const BalanceBanner = memo(function BalanceBanner({ ingresos, gastos }: { ingres
                         <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: isPos ? 'rgba(245,165,36,0.15)' : 'rgba(239,68,68,0.15)', alignItems: 'center', justifyContent: 'center' }}>
                             <Icon name="scale-balance" size={18} color={isPos ? '#F5A524' : '#EF4444'} />
                         </View>
-                        <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, textTransform: 'uppercase' }}>Balance Neto</Text>
+                        <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, textTransform: 'uppercase' }}>Balance de caja</Text>
                     </View>
                     <Text style={{ color: isPos ? '#F5A524' : '#EF4444', fontFamily: 'SpaceGrotesk-Bold', fontSize: 24, letterSpacing: -1 }}>
                         {isPos ? '' : '−'}${formatCurrency(Math.abs(neto))}
@@ -140,7 +146,7 @@ const MetodosBreakdown = memo(function MetodosBreakdown({ metodos }: { metodos: 
         <Card className="mb-4">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <Icon name="credit-card-multiple-outline" size={15} color="#F5A524" />
-                <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Métodos de Pago</Text>
+                <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Cobrado por método</Text>
             </View>
             {metodos.map((item) => {
                 const pct = total > 0 ? (item.total / total) * 100 : 0;
@@ -178,28 +184,52 @@ const TableHeader = memo(function TableHeader({ cols }: { cols: string[] }) {
 });
 
 const VentaRow = memo(function VentaRow({ f, isMobile }: { f: FacturaVenta; isMobile: boolean }) {
+    const cuentas = transferenciasPorCuenta(f);
     return (
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', gap: 8 }}>
             <Text style={{ color: '#64748B', fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', width: 44 }}>#{f.facturaId}</Text>
             <Text style={{ color: '#CBD5E1', fontSize: 12, fontWeight: '600', flex: 1 }} numberOfLines={1}>{f.clienteNombre || '—'}</Text>
             {!isMobile && <Text style={{ color: '#475569', fontSize: 11, width: 72 }}>{fmtDate(f.fechaFactura)}</Text>}
             {!isMobile && <Text style={{ color: '#64748B', fontSize: 11, width: 72 }}>{metodoLabel(f.metodo)}</Text>}
+            {!isMobile && (
+                <Text style={{ color: cuentas.length ? '#A78BFA' : '#334155', fontSize: 10, width: 110 }} numberOfLines={2}>
+                    {cuentas.length ? cuentas.map((c) => c.cuenta ?? 'Sin asignar').join(' + ') : '—'}
+                </Text>
+            )}
             <Badge label={f.estado || 'N/A'} variant={estadoBadge(f.estado)} size="sm" />
             <Text style={{ color: '#F5A524', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, textAlign: 'right', minWidth: 80 }}>${formatCurrency(f.total ?? 0)}</Text>
         </View>
     );
 });
 
-const GastoRow = memo(function GastoRow({ g, isMobile }: { g: FacturaPago; isMobile: boolean }) {
+const GastoRow = memo(function GastoRow({ g, isMobile, onClasificar, nombreCuenta, onAsignarCuenta }: { g: FacturaPago; isMobile: boolean; onClasificar?: (g: FacturaPago) => void; nombreCuenta?: string; onAsignarCuenta?: (g: FacturaPago) => void }) {
+    const tipo = tipoDeGasto(g);
+    const esQr = g.metodo === 'qr';
     return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', gap: 8 }}>
+        <TouchableOpacity
+            disabled={!onClasificar}
+            onPress={() => onClasificar?.(g)}
+            style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', gap: 8 }}
+        >
             <Text style={{ color: '#64748B', fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', width: 44 }}>#{g.pagosId}</Text>
-            <Text style={{ color: '#CBD5E1', fontSize: 12, fontWeight: '600', flex: 1 }} numberOfLines={1}>{g.nombreGasto || '—'}</Text>
+            <View style={{ flex: 1 }}>
+                <Text style={{ color: '#CBD5E1', fontSize: 12, fontWeight: '600' }} numberOfLines={1}>{g.nombreGasto || '—'}</Text>
+                <Text style={{ color: TIPO_GASTO_META[tipo].color, fontSize: 10 }} numberOfLines={1}>
+                    {TIPO_GASTO_META[tipo].label} · {nombreCategoria(g.categoria)}{onClasificar ? '  ✎' : ''}
+                </Text>
+                {esQr && (
+                    <TouchableOpacity disabled={!onAsignarCuenta || g.cuentaOrigenId != null} onPress={() => onAsignarCuenta?.(g)}>
+                        <Text style={{ color: g.cuentaOrigenId != null ? '#A78BFA' : '#F87171', fontSize: 10 }} numberOfLines={1}>
+                            {g.cuentaOrigenId != null ? `Sale de: ${nombreCuenta ?? `cuenta #${g.cuentaOrigenId}`}` : `Sin cuenta de origen${onAsignarCuenta ? ' — toca para asignar' : ''}`}
+                        </Text>
+                    </TouchableOpacity>
+                )}
+            </View>
             {!isMobile && <Text style={{ color: '#475569', fontSize: 11, width: 72 }}>{fmtDate(g.fechaFactura)}</Text>}
             {!isMobile && <Text style={{ color: '#64748B', fontSize: 11, width: 72 }}>{metodoLabel(g.metodo)}</Text>}
             <Badge label={g.estado || 'N/A'} variant={estadoBadge(g.estado)} size="sm" />
             <Text style={{ color: '#EF4444', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13, textAlign: 'right', minWidth: 80 }}>−${formatCurrency(g.total ?? 0)}</Text>
-        </View>
+        </TouchableOpacity>
     );
 });
 
@@ -246,7 +276,15 @@ export default function ContabilidadScreen() {
     const [searched, setSearched] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    const [cuentasTransfer, setCuentasTransfer] = useState<any[]>([]);
+    const { cuentas: cuentasTransfer } = useCuentasTransferencia({ incluirInactivas: true });
+    const { user } = useAuth();
+    // El contador es de solo lectura (el backend lo bloquea); el resto del staff puede clasificar egresos.
+    const puedeClasificar = !!user && (!user.roles.includes(Role.Contador) || user.roles.includes(Role.Admin));
+    const [clasificando, setClasificando] = useState<FacturaPago | null>(null);
+    const [asignandoCuenta, setAsignandoCuenta] = useState<FacturaPago | null>(null);
+    const [filtroTipo, setFiltroTipo] = useState<TipoGastoFiltro | 'todos'>('todos');
+    const [filtroCategoria, setFiltroCategoria] = useState<string | 'todas'>('todas');
+    const [filtroCuenta, setFiltroCuenta] = useState<number | 'todas' | 'sin'>('todas');
     const [exportOptions, setExportOptions] = useState<{
         incluirDomicilio: boolean;
         incluirProductos: boolean;
@@ -259,59 +297,39 @@ export default function ContabilidadScreen() {
         filtroDiario: 'completo',
     });
 
-    useEffect(() => {
-        api.empresa.cuentasTransferencia.getAll()
-            .then(res => setCuentasTransfer((res || []).filter((c: any) => c.activa)))
-            .catch(() => {});
-    }, [api]);
-
     const {
         data: facturas, loading: loadingF, error: errorF,
-        setFrom: setFromF, setTo: setToF, search: searchF, stats,
-        page: pageF, totalPages: totalPagesF, goToPage: goToPageF,
+        setFrom: setFromF, setTo: setToF, search: searchF, recargar: recargarF,
         total: totalFacturasCount,
-    } = useFacturasRango(50);
+    } = useFacturasRango(); // sin tope: TODO el rango (la paginación de abajo es solo visual)
 
     const {
         data: gastos, loading: loadingG, error: errorG,
         setFrom: setFromG, setTo: setToG, fetchData: fetchGastos,
-        page: pageG, totalPages: totalPagesG, total: totalGastosCount, goToPage: goToPageG,
-    } = useFacturasPagosRango(50);
+        total: totalGastosCount,
+    } = useFacturasPagosRango(); // sin tope: TODOS los egresos del rango
 
-    // Server-side calculated period statistics and payment methods
-    const [periodStats, setPeriodStats] = useState<ResumenPeriodo | null>(null);
-    const [metodosData, setMetodosData] = useState<any[]>([]);
-    const [loadingStats, setLoadingStats] = useState(false);
+    // Totales del período: SIEMPRE del servidor (definiciones únicas). Antes la pestaña
+    // Ventas mostraba la suma de la página visible de 50 facturas como si fuera del período.
+    const [versionResumen, setVersionResumen] = useState(0);
+    const { data: resumen, loading: loadingStats } = useResumenGeneral(validRange.from, validRange.to, versionResumen);
 
     const handleRefresh = useCallback(async () => {
         if (!searched || !validRange.from || !validRange.to) return;
         setRefreshing(true);
         try {
+            // Recarga forzada: se salta el cooldown de la búsqueda repetida (con un mínimo de 5 s).
             await Promise.all([
-                searchF(validRange.from, validRange.to),
-                fetchGastos(validRange.from, validRange.to, 1),
-                api.estadisticas.resumenPeriodo(validRange.from, validRange.to)
-                    .then((statsRes) => setPeriodStats(statsRes)),
-                api.estadisticas.metodosPago(validRange.from, validRange.to)
-                    .then((metodosRes) => setMetodosData(metodosRes))
+                recargarF(),
+                fetchGastos(validRange.from, validRange.to, 1, { forzar: true }),
+                Promise.resolve(setVersionResumen((v) => v + 1)),
             ]);
         } catch (err) {
             console.error('Error refreshing contabilidad:', err);
         } finally {
             setRefreshing(false);
         }
-    }, [searched, validRange, searchF, fetchGastos, api]);
-
-    const fetchAllPeriod = useCallback(async (f?: string, t?: string) => {
-        const queryFrom = f ?? validRange.from;
-        const queryTo = t ?? validRange.to;
-        if (!queryFrom || !queryTo) return { allF: [] as any[], allG: [] as FacturaPago[] };
-        const [fRes, gRes] = await Promise.all([
-            api.facturas.getAll({ from: queryFrom, to: queryTo, page: 1, limit: 9999 }),
-            api.pagos.getAll({ from: queryFrom, to: queryTo, page: 1, limit: 9999 }),
-        ]);
-        return { allF: fRes.data, allG: gRes.data };
-    }, [api, validRange]);
+    }, [searched, validRange, recargarF, fetchGastos]);
 
     const handleSearch = useCallback((fromOverride?: string, toOverride?: string) => {
         const fromInput = fromOverride ?? from;
@@ -325,27 +343,22 @@ export default function ContabilidadScreen() {
         fetchGastos(f, t, 1);
         setSearched(true);
 
-        setLoadingStats(true);
-        Promise.all([
-            api.estadisticas.resumenPeriodo(f, t),
-            api.estadisticas.metodosPago(f, t)
-        ])
-            .then(([statsRes, metodosRes]) => {
-                setPeriodStats(statsRes);
-                setMetodosData(metodosRes);
-            })
-            .catch((err) => {
-                console.error('Error fetching period statistics/methods:', err);
-            })
-            .finally(() => setLoadingStats(false));
-    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos, api]);
+    }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos]);
 
-    const totalIngresos = periodStats?.totalIngresosPagados ?? 0;
-    const totalGastos = periodStats?.totalEgresosPagados ?? 0;
-    const pendientesF = periodStats?.totalIngresosPendientes ?? 0;
-    const ticketProm = periodStats?.countIngresosPagados && periodStats.countIngresosPagados > 0
-        ? totalIngresos / periodStats.countIngresosPagados
-        : 0;
+    // Para el libro diario: el resumen debe ser del MISMO rango que se exporta (mientras recarga sigue el anterior).
+    const resumenDelRango =
+        resumen && !loadingStats && resumen.periodo.from === validRange.from && resumen.periodo.to === validRange.to ? resumen : null;
+    const totalIngresos = resumen?.ventas.cobrado ?? 0;
+    const totalGastos = resumen?.gastos.pagados ?? 0; // egresos PAGADOS (balance de caja)
+    const pendientesF = resumen?.ventas.porCobrar ?? 0;
+    const ticketProm = resumen?.ventas.ticket ?? 0;
+    const facturasEstado = (clave: string) => resumen?.ventas.porEstado.find((e) => e.clave === clave)?.facturas ?? 0;
+    const metodosResumen = resumen
+        ? [
+              { metodo: 'efectivo', total: resumen.ventas.cobradoPorMetodo.efectivo },
+              { metodo: 'transferencia', total: resumen.ventas.cobradoPorMetodo.transferencia },
+          ].filter((m) => m.total > 0)
+        : [];
 
     const isWeb = Platform.OS === 'web';
     const loading = loadingF || loadingG;
@@ -353,13 +366,69 @@ export default function ContabilidadScreen() {
     const totalRegistros = totalFacturasCount + totalGastosCount;
     const hasData = totalFacturasCount > 0 || totalGastosCount > 0;
 
-    const runExport = useCallback(async (key: string, fn: (allF: any[], allG: FacturaPago[]) => void | Promise<void>) => {
+    // `facturas` y `gastos` ya son el rango COMPLETO (sin paginar): las exportaciones usan exactamente eso.
+    const runExport = useCallback(async (key: string, fn: (allF: FacturaVenta[], allG: FacturaPago[]) => void | Promise<void>) => {
         setExportLoading(key);
         try {
-            const { allF, allG } = await fetchAllPeriod();
-            await fn(allF, allG);
+            await fn(facturas, gastos);
         } finally { setExportLoading(''); }
-    }, [fetchAllPeriod]);
+    }, [facturas, gastos]);
+
+    // ── Ventas: filtro por cuenta de transferencia (sobre el conjunto completo) ──
+    const facturasFiltradas = useMemo(() => {
+        if (filtroCuenta === 'todas') return facturas;
+        return facturas.filter((f) =>
+            transferenciasPorCuenta(f).some((c) => (filtroCuenta === 'sin' ? c.cuentaId == null && !c.cuenta : c.cuentaId === filtroCuenta)),
+        );
+    }, [facturas, filtroCuenta]);
+    const paginaVentas = usePaginaLocal(facturasFiltradas, 100);
+
+    // ── Egresos: filtro por tipo y categoría (sobre el conjunto completo) ──
+    const gastosFiltrados = useMemo(
+        () =>
+            gastos.filter(
+                (g) =>
+                    (filtroTipo === 'todos' || tipoDeGasto(g) === filtroTipo) &&
+                    (filtroCategoria === 'todas' || (g.categoria || 'general') === filtroCategoria),
+            ),
+        [gastos, filtroTipo, filtroCategoria],
+    );
+    const paginaGastos = usePaginaLocal(gastosFiltrados, 100);
+    const totalFiltradoGastos = gastosFiltrados.reduce((t, g) => t + (Number(g.total) || 0), 0);
+    const pagadoFiltradoGastos = gastosFiltrados.filter(isGastoPagado).reduce((t, g) => t + (Number(g.total) || 0), 0);
+
+    const clasificar = useCallback(
+        async (categoria: string) => {
+            if (!clasificando?.pagosId) return;
+            try {
+                await api.pagos.update(clasificando.pagosId, { categoria, tipoGasto: tipoPorCategoria(categoria) ?? undefined });
+                setClasificando(null);
+                await fetchGastos(validRange.from, validRange.to, 1);
+                setVersionResumen((v) => v + 1);
+            } catch (err) {
+                console.error('Error clasificando egreso:', err);
+            }
+        },
+        [api, clasificando, fetchGastos, validRange],
+    );
+
+    const nombresCuenta = useMemo(() => new Map(cuentasTransfer.map((c) => [c.id, c.nombre])), [cuentasTransfer]);
+
+    // Egresos QR anteriores al campo "cuenta de origen": se asignan tocándolos (como la clasificación).
+    const asignarCuenta = useCallback(
+        async (cuentaId: number) => {
+            if (!asignandoCuenta?.pagosId) return;
+            try {
+                await api.pagos.update(asignandoCuenta.pagosId, { cuentaOrigenId: cuentaId });
+                setAsignandoCuenta(null);
+                await fetchGastos(validRange.from, validRange.to, 1);
+                setVersionResumen((v) => v + 1);
+            } catch (err) {
+                console.error('Error asignando cuenta al egreso:', err);
+            }
+        },
+        [api, asignandoCuenta, fetchGastos, validRange],
+    );
 
     const DateBar = (
         <DateRangeFilter
@@ -395,12 +464,7 @@ export default function ContabilidadScreen() {
         return (
             <PageContainer
                 refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={handleRefresh}
-                        tintColor="#F5A524"
-                        colors={['#F5A524']}
-                    />
+                    <PosRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
                 }
             >
                 <PageHeader title="Contabilidad" subtitle="Libro contable" icon="book-account-outline" />
@@ -419,12 +483,7 @@ export default function ContabilidadScreen() {
     return (
         <PageContainer
             refreshControl={
-                <RefreshControl
-                    refreshing={refreshing}
-                    onRefresh={handleRefresh}
-                    tintColor="#F5A524"
-                    colors={['#F5A524']}
-                />
+                <PosRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
         >
             <PageHeader
@@ -443,96 +502,176 @@ export default function ContabilidadScreen() {
 
             {/* ── RESUMEN ─────────────────────────────────────────────────────── */}
             {activeTab === 'resumen' && (
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <View>
                     {(loadingF || loadingStats) ? <ListSkeleton count={4} /> : (
                         <>
                             <BalanceBanner ingresos={totalIngresos} gastos={totalGastos} />
 
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
-                                <KpiCard icon="arrow-down-circle-outline" label="Ingresos cobrados" value={`$${formatCurrency(totalIngresos)}`} sub={`${periodStats?.countIngresosPagados ?? 0} facturas`} color="#10B981" accent="rgba(16,185,129,0.15)" />
-                                <KpiCard icon="arrow-up-circle-outline" label="Egresos pagados" value={`$${formatCurrency(totalGastos)}`} sub={`${periodStats?.countEgresosPagados ?? 0} gastos`} color="#EF4444" accent="rgba(239,68,68,0.15)" />
-                                <KpiCard icon="clock-alert-outline" label="Por cobrar" value={`$${formatCurrency(pendientesF)}`} sub={`${periodStats?.countIngresosPendientes ?? 0} facturas`} color="#F59E0B" accent="rgba(245,158,11,0.15)" />
-                                <KpiCard icon="ticket-percent-outline" label="Ticket promedio" value={`$${formatCurrency(ticketProm)}`} sub={`${periodStats?.facturas ?? 0} facturas totales`} color="#60A5FA" accent="rgba(96,165,250,0.15)" />
+                                <StatCard icon="arrow-down-circle-outline" label="Ingresos cobrados" value={`$${formatCurrency(totalIngresos)}`} sub={`${facturasEstado('cobrada')} cobradas · ${facturasEstado('parcial')} con abono`} color="#10B981" />
+                                <StatCard icon="arrow-up-circle-outline" label="Egresos pagados" value={`$${formatCurrency(totalGastos)}`} sub={`${resumen?.gastos.cantidad ?? 0} gastos`} color="#EF4444" />
+                                <StatCard icon="clock-alert-outline" label="Por cobrar" value={`$${formatCurrency(pendientesF)}`} sub={`${facturasEstado('pendiente') + facturasEstado('parcial')} facturas`} color="#F59E0B" />
+                                <StatCard icon="ticket-percent-outline" label="Ticket promedio" value={`$${formatCurrency(ticketProm)}`} sub={`${resumen?.ventas.facturas ?? 0} facturas válidas`} color="#60A5FA" />
                             </View>
 
-                            <MetodosBreakdown metodos={metodosData} />
+                            <MetodosBreakdown metodos={metodosResumen} />
 
-                            {(errorF || errorG) && (
-                                <View style={{ flexDirection: 'row', gap: 10, backgroundColor: 'rgba(239,68,68,0.08)', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(239,68,68,0.2)' }}>
-                                    <Icon name="alert-circle-outline" size={18} color="#EF4444" />
-                                    <Text style={{ color: '#F87171', fontSize: 13, flex: 1 }}>{errorF ?? errorG}</Text>
-                                </View>
+                            {/* Cobrado por cuenta de transferencia (id; incluye "sin asignar") */}
+                            {!!resumen && resumen.ventas.porCuenta.length > 0 && (
+                                <Card className="mb-4">
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                                        <Icon name="qrcode-scan" size={15} color="#A78BFA" />
+                                        <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Transferencias por cuenta</Text>
+                                    </View>
+                                    {resumen.ventas.porCuenta.map((c) => (
+                                        <View key={`${c.cuentaId ?? c.cuenta}`} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Text style={{ color: c.sinAsignar ? '#F87171' : '#CBD5E1', fontSize: 12, fontWeight: '700' }}>
+                                                {c.cuenta} <Text style={{ color: '#64748B', fontWeight: '400' }}>({c.facturas})</Text>
+                                            </Text>
+                                            <Text style={{ color: c.sinAsignar ? '#F87171' : '#A78BFA', fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>${formatCurrency(c.monto)}</Text>
+                                        </View>
+                                    ))}
+                                </Card>
                             )}
+
+                            {/* Estado de resultados: costos vs gastos operativos */}
+                            {!!resumen && (
+                                <Card className="mb-4">
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                                        <Icon name="scale-balance" size={15} color="#F5A524" />
+                                        <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Estado de resultados (cobrado y pagado)</Text>
+                                    </View>
+                                    {[
+                                        { l: 'Ingresos cobrados', v: resumen.resultado.ingresos, c: '#10B981' },
+                                        { l: '− Costos (insumos, mercancía, empaques)', v: -resumen.resultado.costos, c: '#F59E0B' },
+                                        { l: '= Utilidad bruta', v: resumen.resultado.utilidadBruta, c: '#F8FAFC', b: true },
+                                        { l: '− Gastos operativos (nómina, servicios…)', v: -resumen.resultado.gastosOperativos, c: '#EF4444' },
+                                        ...(resumen.resultado.sinClasificar > 0 ? [{ l: '− Egresos sin clasificar', v: -resumen.resultado.sinClasificar, c: '#94A3B8' }] : []),
+                                        { l: '= Utilidad operativa (balance de caja)', v: resumen.resultado.utilidadOperativa, c: '#F5A524', b: true },
+                                    ].map((r) => (
+                                        <View key={r.l} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <Text style={{ color: r.b ? '#F8FAFC' : '#94A3B8', fontSize: 12, fontWeight: r.b ? '800' : '600', flex: 1 }}>{r.l}</Text>
+                                            <Text style={{ color: r.c, fontFamily: 'SpaceGrotesk-Bold', fontSize: r.b ? 14 : 13 }}>{r.v < 0 ? '−' : ''}${formatCurrency(Math.abs(r.v))}</Text>
+                                        </View>
+                                    ))}
+                                </Card>
+                            )}
+
+                            {/* Egresos por tipo y categoría */}
+                            {!!resumen && resumen.gastos.cantidad > 0 && (
+                                <Card className="mb-4">
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                                        <Icon name="shape-outline" size={15} color="#EF4444" />
+                                        <Text style={{ color: '#F8FAFC', fontFamily: 'SpaceGrotesk-Bold', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Egresos por tipo y categoría</Text>
+                                    </View>
+                                    {resumen.gastos.porTipo.filter((t) => t.cantidad > 0).map((t) => (
+                                        <View key={t.tipo} style={{ marginBottom: 12 }}>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                <Text style={{ color: TIPO_GASTO_META[t.tipo].color, fontSize: 12, fontWeight: '800', textTransform: 'uppercase' }}>{TIPO_GASTO_META[t.tipo].label} ({t.cantidad})</Text>
+                                                <Text style={{ color: TIPO_GASTO_META[t.tipo].color, fontFamily: 'SpaceGrotesk-Bold', fontSize: 13 }}>${formatCurrency(t.total)}</Text>
+                                            </View>
+                                            {resumen.gastos.porCategoria.filter((c) => c.tipo === t.tipo).map((c) => (
+                                                <View key={`${t.tipo}-${c.categoria}`} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingLeft: 12, marginBottom: 2 }}>
+                                                    <Text style={{ color: '#94A3B8', fontSize: 11 }}>{nombreCategoria(c.categoria)} ({c.cantidad})</Text>
+                                                    <Text style={{ color: '#CBD5E1', fontSize: 12 }}>${formatCurrency(c.total)}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    ))}
+                                    {resumen.gastos.porTipo.some((t) => t.tipo === 'sin_clasificar' && t.cantidad > 0) && (
+                                        <Text style={{ color: '#94A3B8', fontSize: 11 }}>Los egresos sin clasificar se clasifican desde la pestaña Egresos (toca el egreso).</Text>
+                                    )}
+                                </Card>
+                            )}
+
+                            <InlineError message={errorF ?? errorG} />
                         </>
                     )}
-                </ScrollView>
+                </View>
             )}
 
             {/* ── VENTAS ──────────────────────────────────────────────────────── */}
             {activeTab === 'ventas' && (
                 <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <View style={{ marginBottom: 10, gap: 8 }}>
                         <Text style={{ color: '#64748B', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>
-                            {stats.count} ventas · <Text style={{ color: '#10B981' }}>${formatCurrency(stats.totalPagado)}</Text>
+                            {resumen?.ventas.facturas ?? 0} ventas en el período · cobrado <Text style={{ color: '#10B981' }}>${formatCurrency(resumen?.ventas.cobrado ?? 0)}</Text>
                         </Text>
-                        {totalPagesF > 1 && <Badge label={`Pág ${pageF}/${totalPagesF}`} variant="neutral" size="sm" />}
+                        {(resumen?.ventas.porCuenta.length ?? 0) > 0 && (
+                            <ChipGroup
+                                options={[
+                                    { value: 'todas' as string | number, label: 'Todas' },
+                                    ...(resumen?.ventas.porCuenta ?? []).map((c) => ({ value: (c.sinAsignar ? 'sin' : c.cuentaId ?? c.cuenta) as string | number, label: c.cuenta, count: c.facturas })),
+                                ]}
+                                value={filtroCuenta}
+                                onChange={(v) => v != null && setFiltroCuenta(v as number | 'todas' | 'sin')}
+                                color="#A78BFA"
+                            />
+                        )}
                     </View>
                     {loadingF ? <ListSkeleton count={6} /> : (
                         <Card className="p-0 overflow-hidden mb-4">
-                            <TableHeader cols={isMobile ? ['#', 'Cliente', 'Est.', 'Total'] : ['#', 'Cliente', 'Fecha', 'Método', 'Estado', 'Total']} />
-                            {facturas.length === 0 ? (
+                            <TableHeader cols={isMobile ? ['#', 'Cliente', 'Est.', 'Total'] : ['#', 'Cliente', 'Fecha', 'Método', 'Cuenta', 'Estado', 'Total']} />
+                            {facturasFiltradas.length === 0 ? (
                                 <View style={{ padding: 32, alignItems: 'center' }}><Text style={{ color: '#334155', fontSize: 13 }}>Sin ventas en el período</Text></View>
                             ) : (
-                                facturas.map(f => <VentaRow key={String(f.facturaId)} f={f} isMobile={isMobile} />)
+                                paginaVentas.items.map(f => <VentaRow key={String(f.facturaId)} f={f} isMobile={isMobile} />)
                             )}
                         </Card>
                     )}
-                    {totalPagesF > 1 && (
-                        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, paddingBottom: 16 }}>
-                            <Button title="Ant." icon="chevron-left" variant="ghost" size="sm" onPress={() => goToPageF(pageF - 1)} disabled={pageF <= 1} />
-                            <View style={{ paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', justifyContent: 'center' }}>
-                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '800' }}>{pageF} / {totalPagesF}</Text>
-                            </View>
-                            <Button title="Sig." iconRight="chevron-right" variant="ghost" size="sm" onPress={() => goToPageF(pageF + 1)} disabled={pageF >= totalPagesF} />
-                        </View>
-                    )}
+                    {!loadingF && <PaginadorLocal pagina={paginaVentas} etiqueta="ventas" />}
                 </View>
             )}
 
             {/* ── EGRESOS ─────────────────────────────────────────────────────── */}
             {activeTab === 'egresos' && (
                 <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <View style={{ marginBottom: 10, gap: 8 }}>
                         <Text style={{ color: '#64748B', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>
-                            {totalGastosCount} gastos · <Text style={{ color: '#EF4444' }}>−${formatCurrency(totalGastos)}</Text>
+                            {gastosFiltrados.length} egresos · <Text style={{ color: '#EF4444' }}>−${formatCurrency(totalFiltradoGastos)}</Text> (pagados −${formatCurrency(pagadoFiltradoGastos)})
                         </Text>
-                        {totalPagesG > 1 && <Badge label={`Pág ${pageG}/${totalPagesG}`} variant="neutral" size="sm" />}
+                        <ChipGroup
+                            options={[
+                                { value: 'todos', label: 'Todos', count: gastos.length },
+                                ...(['costo', 'gasto', 'sin_clasificar'] as TipoGastoFiltro[]).map((t) => ({
+                                    value: t as string,
+                                    label: TIPO_GASTO_META[t].label,
+                                    count: gastos.filter((g) => tipoDeGasto(g) === t).length,
+                                })),
+                            ]}
+                            value={filtroTipo as string}
+                            onChange={(v) => { if (v != null) { setFiltroTipo(v as TipoGastoFiltro | 'todos'); setFiltroCategoria('todas'); } }}
+                            color="#EF4444"
+                        />
+                        <ChipGroup
+                            options={[
+                                { value: 'todas', label: 'Todas las categorías' },
+                                ...['general', ...CATEGORIAS_GASTO.map((c) => c.id)]
+                                    .map((id) => ({ value: id, label: nombreCategoria(id), count: gastos.filter((g) => (g.categoria || 'general') === id && (filtroTipo === 'todos' || tipoDeGasto(g) === filtroTipo)).length }))
+                                    .filter((o) => o.count > 0),
+                            ]}
+                            value={filtroCategoria}
+                            onChange={(v) => v != null && setFiltroCategoria(v as string)}
+                            color="#F5A524"
+                        />
                     </View>
                     {loadingG ? <ListSkeleton count={6} /> : (
                         <Card className="p-0 overflow-hidden mb-4">
                             <TableHeader cols={isMobile ? ['#', 'Concepto', 'Est.', 'Total'] : ['#', 'Concepto', 'Fecha', 'Método', 'Estado', 'Total']} />
-                            {gastos.length === 0 ? (
+                            {gastosFiltrados.length === 0 ? (
                                 <View style={{ padding: 32, alignItems: 'center' }}><Text style={{ color: '#334155', fontSize: 13 }}>Sin egresos en el período</Text></View>
                             ) : (
-                                gastos.map(g => <GastoRow key={String(g.pagosId)} g={g} isMobile={isMobile} />)
+                                paginaGastos.items.map(g => <GastoRow key={String(g.pagosId)} g={g} isMobile={isMobile} onClasificar={puedeClasificar ? setClasificando : undefined} nombreCuenta={g.cuentaOrigenId != null ? nombresCuenta.get(g.cuentaOrigenId) : undefined} onAsignarCuenta={puedeClasificar ? setAsignandoCuenta : undefined} />)
                             )}
                         </Card>
                     )}
-                    {totalPagesG > 1 && (
-                        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, paddingBottom: 16 }}>
-                            <Button title="Ant." icon="chevron-left" variant="ghost" size="sm" onPress={() => goToPageG(pageG - 1)} disabled={pageG <= 1} />
-                            <View style={{ paddingHorizontal: 14, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', justifyContent: 'center' }}>
-                                <Text style={{ color: '#94A3B8', fontSize: 12, fontWeight: '800' }}>{pageG} / {totalPagesG}</Text>
-                            </View>
-                            <Button title="Sig." iconRight="chevron-right" variant="ghost" size="sm" onPress={() => goToPageG(pageG + 1)} disabled={pageG >= totalPagesG} />
-                        </View>
-                    )}
+                    {!loadingG && <PaginadorLocal pagina={paginaGastos} etiqueta="egresos" />}
                 </View>
             )}
 
             {/* ── REPORTES ────────────────────────────────────────────────────── */}
             {activeTab === 'reportes' && (
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <View>
                     {!isWeb && (
                         <View style={{ flexDirection: 'row', gap: 10, backgroundColor: 'rgba(96,165,250,0.08)', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(96,165,250,0.2)', marginBottom: 16 }}>
                             <Icon name="information-outline" size={18} color="#60A5FA" />
@@ -678,13 +817,14 @@ export default function ContabilidadScreen() {
                         icon="book-open-page-variant-outline"
                         title="Libro Diario"
                         tag="PDF"
-                        description="Todos los asientos del período ordenados por fecha con filtros y opciones configuradas"
+                        description="Todos los asientos del período por fecha y, en el libro completo, los productos vendidos (unidades y valor de cada uno, cuántas pizzas) y los precios cambiados a mano"
                         onPress={() => runExport('diario', (allF, allG) => exportLibroDiario(allF, allG, validRange.from, validRange.to, {
                             filtro: exportOptions.filtroDiario,
                             cuentaId: exportOptions.cuentaId,
                             cuentaNombre: exportOptions.cuentaNombre,
                             incluirProductos: exportOptions.incluirProductos,
                             incluirDomicilio: exportOptions.incluirDomicilio,
+                            resumen: resumenDelRango,
                         }))}
                         loading={exportLoading === 'diario'}
                         disabled={!isWeb || !hasData}
@@ -697,6 +837,46 @@ export default function ContabilidadScreen() {
                         onPress={() => runExport('ventas-pdf', (allF) => exportFacturasPdf(allF, periodLabel))}
                         loading={exportLoading === 'ventas-pdf'}
                         disabled={!isWeb || totalFacturasCount === 0}
+                    />
+
+                    {/* Transferencias y egresos */}
+                    <Text style={{ color: '#475569', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 1, marginTop: 20, marginBottom: 10 }}>Transferencias y Egresos</Text>
+
+                    <ReportCard
+                        icon="qrcode-scan"
+                        title="Listado de Transferencias / QR"
+                        tag="PDF"
+                        description="TODAS las transferencias del período por cuenta de destino, con el total de cada cuenta"
+                        onPress={() => runExport('transf-pdf', (allF) => exportTransferenciasPdf(allF, periodLabel))}
+                        loading={exportLoading === 'transf-pdf'}
+                        disabled={!isWeb || totalFacturasCount === 0}
+                    />
+                    <ReportCard
+                        icon="file-table-outline"
+                        title="Transferencias por cuenta"
+                        tag="CSV"
+                        description="Una fila por factura y cuenta (abonos a cuentas distintas separados) más el total por cuenta"
+                        onPress={() => runExport('transf-csv', (allF) => downloadCsv(buildTransferenciasCsv(allF), `transferencias_${validRange.from}_${validRange.to}.csv`))}
+                        loading={exportLoading === 'transf-csv'}
+                        disabled={!isWeb || totalFacturasCount === 0}
+                    />
+                    <ReportCard
+                        icon="cash-minus"
+                        title="Egresos: costos y gastos"
+                        tag="PDF"
+                        description="Todos los egresos del período con su tipo (costo / gasto) y categoría (nómina, servicios, insumos…)"
+                        onPress={() => runExport('egresos-pdf', (_f, allG) => exportEgresosPdf(allG, periodLabel))}
+                        loading={exportLoading === 'egresos-pdf'}
+                        disabled={!isWeb || totalGastosCount === 0}
+                    />
+                    <ReportCard
+                        icon="file-table-outline"
+                        title="Egresos por tipo y categoría"
+                        tag="CSV"
+                        description="Detalle de todos los egresos con tipo y categoría, más el total por categoría"
+                        onPress={() => runExport('egresos-csv', (_f, allG) => downloadCsv(buildEgresosCsv(allG), `egresos_${validRange.from}_${validRange.to}.csv`))}
+                        loading={exportLoading === 'egresos-csv'}
+                        disabled={!isWeb || totalGastosCount === 0}
                     />
 
                     {/* Impuestos */}
@@ -739,8 +919,28 @@ export default function ContabilidadScreen() {
                         loading={exportLoading === 'backup'}
                         disabled={!isWeb || totalFacturasCount === 0}
                     />
-                </ScrollView>
+                </View>
             )}
+            <OptionPickerModal
+                visible={!!clasificando}
+                title="Clasificar egreso"
+                subtitle={clasificando ? `${clasificando.nombreGasto || 'Egreso'} — elige la categoría (define costo o gasto operativo)` : undefined}
+                icon="shape-outline"
+                color="#F5A524"
+                options={CATEGORIAS_GASTO.map((c) => ({ value: c.id, label: `${c.nombre} · ${TIPO_GASTO_META[c.tipo].label}`, icon: c.icon as any }))}
+                onSelect={(o) => void clasificar(o.value)}
+                onCancel={() => setClasificando(null)}
+            />
+            <OptionPickerModal
+                visible={!!asignandoCuenta}
+                title="¿De qué cuenta salió?"
+                subtitle={asignandoCuenta ? `${asignandoCuenta.nombreGasto || 'Egreso'} — pago por QR de $${formatCurrency(asignandoCuenta.total ?? 0)}` : undefined}
+                icon="bank-outline"
+                color="#A78BFA"
+                options={cuentasTransfer.filter((c) => c.activa).map((c) => ({ value: c.id, label: c.nombre, icon: 'bank-outline' as any }))}
+                onSelect={(o) => void asignarCuenta(o.value)}
+                onCancel={() => setAsignandoCuenta(null)}
+            />
         </PageContainer>
     );
 }

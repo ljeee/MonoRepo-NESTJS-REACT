@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Producto, PizzaSabor } from '@/src/shared';
+import type { Producto, PizzaSabor, SaborGrupo } from '@/src/shared';
 import { formatCurrency } from '@/src/shared';
 import { View, Text, TouchableOpacity } from '../../tw';
 import Card from '../ui/Card';
@@ -16,6 +16,8 @@ interface ProductCardProps {
     onEditVariant: (variantId: number) => void;
     onDeleteVariant: (variantId: number, variantName: string) => void;
     onAddVariant: () => void;
+    /** Grupo de sabores del producto (null/undefined = el producto no lleva sabores). */
+    grupo?: SaborGrupo;
     sabores?: PizzaSabor[];
     onEditSabor?: (sabor: PizzaSabor) => void;
     onAddSabor?: () => void;
@@ -30,12 +32,13 @@ function ProductCardImpl({
     onEditVariant,
     onDeleteVariant,
     onAddVariant,
+    grupo,
     sabores,
     onEditSabor,
     onAddSabor,
     onDeleteSabor,
 }: ProductCardProps) {
-    const isPizza = product.productoNombre.toLowerCase().includes('pizza');
+    const conSabores = !!grupo;
     const totalVariants = product.variantes?.length ?? 0;
     const hasOverflow = totalVariants > VARIANTS_INITIAL;
     const [showAllVariants, setShowAllVariants] = useState(false);
@@ -47,12 +50,9 @@ function ProductCardImpl({
     return (
         <Card
             padding="none"
-            className="overflow-hidden rounded-[40px]"
-            style={{
-                borderWidth: 1,
-                borderColor: isStarred ? 'rgba(245,165,36,0.25)' : 'rgba(255,255,255,0.05)',
-                backgroundColor: isStarred ? 'rgba(245,165,36,0.03)' : 'rgba(255,255,255,0.03)',
-            }}
+            className="overflow-hidden"
+            // Radio, fondo y borde salen de <Card> (misma receta que el resto); solo el destacado se tiñe de ámbar.
+            style={isStarred ? { borderColor: 'rgba(245,165,36,0.25)', backgroundColor: 'rgba(245,165,36,0.03)' } : undefined}
         >
             {/* ── Product header ──────────────────────────────────────────── */}
             <View
@@ -81,12 +81,12 @@ function ProductCardImpl({
                             borderColor: 'rgba(245,165,36,0.2)',
                         }}
                     >
-                        <Text style={{ fontSize: 24 }}>{product.emoji || (isPizza ? '🍕' : '🍔')}</Text>
+                        <Text style={{ fontSize: 24 }}>{product.emoji || (conSabores ? '🍕' : '🍔')}</Text>
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text
                             className="text-white font-black text-base uppercase tracking-widest"
-                            style={{ fontFamily: 'Space Grotesk' }}
+                            style={{ fontFamily: 'SpaceGrotesk-Bold' }}
                             numberOfLines={1}
                         >
                             {product.productoNombre}
@@ -111,7 +111,7 @@ function ProductCardImpl({
                                     borderColor: 'rgba(255,255,255,0.08)',
                                 }}
                             >
-                                <Text style={{ color: '#64748B', fontSize: 8, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                <Text style={{ color: '#7C8BA1', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                                     {totalVariants} variante{totalVariants !== 1 ? 's' : ''}
                                 </Text>
                             </View>
@@ -126,7 +126,7 @@ function ProductCardImpl({
                                         borderColor: 'rgba(239,68,68,0.2)',
                                     }}
                                 >
-                                    <Text style={{ color: '#EF4444', fontSize: 8, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                                    <Text style={{ color: '#EF4444', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
                                         Inactivo
                                     </Text>
                                 </View>
@@ -156,7 +156,7 @@ function ProductCardImpl({
                             <Icon
                                 name={isStarred ? 'star' : 'star-outline'}
                                 size={20}
-                                color={isStarred ? '#F5A524' : '#475569'}
+                                color={isStarred ? '#F5A524' : '#7C8BA1'}
                             />
                         </TouchableOpacity>
                     )}
@@ -208,7 +208,7 @@ function ProductCardImpl({
                             borderColor: 'rgba(255,255,255,0.08)',
                         }}
                     >
-                        <Text style={{ color: '#F8FAFC', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <Text style={{ color: '#F8FAFC', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                             + Agregar
                         </Text>
                     </TouchableOpacity>
@@ -227,8 +227,8 @@ function ProductCardImpl({
                             marginBottom: 8,
                         }}
                     >
-                        <Icon name="plus-circle-outline" size={24} color="#1E293B" />
-                        <Text style={{ color: '#475569', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', marginTop: 6, textTransform: 'uppercase' }}>
+                        <Icon name="plus-circle-outline" size={24} color="#64748B" />
+                        <Text style={{ color: '#7C8BA1', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', marginTop: 6, textTransform: 'uppercase' }}>
                             Sin variantes
                         </Text>
                     </View>
@@ -268,7 +268,7 @@ function ProductCardImpl({
                                     />
                                     <Text
                                         className="text-orange-400 font-black text-xs"
-                                        style={{ fontFamily: 'Space Grotesk' }}
+                                        style={{ fontFamily: 'SpaceGrotesk-Bold' }}
                                     >
                                         ${formatCurrency(v.precio)}
                                     </Text>
@@ -282,7 +282,7 @@ function ProductCardImpl({
                                                 borderColor: 'rgba(239,68,68,0.2)',
                                             }}
                                         >
-                                            <Text style={{ color: '#EF4444', fontSize: 7, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                                            <Text style={{ color: '#EF4444', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
                                                 off
                                             </Text>
                                         </View>
@@ -290,7 +290,7 @@ function ProductCardImpl({
                                 </View>
                                 {v.descripcion ? (
                                     <Text
-                                        className="text-slate-600 text-[9px] font-bold mt-0.5"
+                                        className="text-slate-400 text-[10px] font-bold mt-0.5"
                                         numberOfLines={1}
                                     >
                                         {v.descripcion}
@@ -303,8 +303,8 @@ function ProductCardImpl({
                                     onPress={() => onEditVariant(v.varianteId)}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                     style={{
-                                        width: 34,
-                                        height: 34,
+                                        width: 36,
+                                        height: 36,
                                         borderRadius: 10,
                                         backgroundColor: 'rgba(255,255,255,0.04)',
                                         alignItems: 'center',
@@ -319,8 +319,8 @@ function ProductCardImpl({
                                     onPress={() => onDeleteVariant(v.varianteId, v.nombre)}
                                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                     style={{
-                                        width: 34,
-                                        height: 34,
+                                        width: 36,
+                                        height: 36,
                                         borderRadius: 10,
                                         backgroundColor: 'rgba(239,68,68,0.08)',
                                         alignItems: 'center',
@@ -358,7 +358,7 @@ function ProductCardImpl({
                             size={14}
                             color="#64748B"
                         />
-                        <Text style={{ color: '#64748B', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <Text style={{ color: '#7C8BA1', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                             {showAllVariants
                                 ? 'Ocultar variantes'
                                 : `Ver todas (${totalVariants - VARIANTS_INITIAL} más)`}
@@ -367,8 +367,8 @@ function ProductCardImpl({
                 )}
             </View>
 
-            {/* ── Pizza Flavors Section ────────────────────────────────────── */}
-            {isPizza && sabores && (
+            {/* ── Sabores del grupo ────────────────────────────────────── */}
+            {grupo && sabores && (
                 <View
                     style={{
                         borderTopWidth: 1,
@@ -377,7 +377,8 @@ function ProductCardImpl({
                         backgroundColor: 'rgba(245,165,36,0.03)',
                     }}
                 >
-                    <PizzaFlavorsSection
+                    <SaboresSection
+                        grupo={grupo}
                         sabores={sabores}
                         onEditSabor={onEditSabor}
                         onAddSabor={onAddSabor}
@@ -395,32 +396,41 @@ export const ProductCard = React.memo(ProductCardImpl);
 
 const SABORES_INITIAL = 8;
 
-function PizzaFlavorsSection({
+/** Texto corto de la regla de recargo por cantidad: "Desde 3 sabores +$3.000" (o el rango si hay tamaños). */
+function reglaExtra(grupo: SaborGrupo): string | null {
+    if (grupo.recargoExtraDesde == null) return null;
+    const montos = grupo.usaTamano
+        ? [grupo.recargoExtraPequena, grupo.recargoExtraMediana, grupo.recargoExtraGrande].map(Number)
+        : [Number(grupo.recargoExtraGrande)];
+    const min = Math.min(...montos);
+    const max = Math.max(...montos);
+    const texto = min === max ? `+$${formatCurrency(max)}` : `+$${formatCurrency(min)} a $${formatCurrency(max)}`;
+    return `Desde ${grupo.recargoExtraDesde} sabores ${texto}`;
+}
+
+function SaboresSection({
+    grupo,
     sabores,
     onEditSabor,
     onAddSabor,
     onDeleteSabor,
 }: {
+    grupo: SaborGrupo;
     sabores: PizzaSabor[];
     onEditSabor?: (sabor: PizzaSabor) => void;
     onAddSabor?: () => void;
     onDeleteSabor?: (saborId: number, name: string) => void;
 }) {
-    const tradicionales = sabores.filter((s) => s.tipo === 'tradicional' && s.activo);
-    const especiales = sabores.filter((s) => s.tipo === 'especial' && s.activo);
-    const [showAllTrad, setShowAllTrad] = useState(false);
-    const [showAllEsp, setShowAllEsp] = useState(false);
+    const activos = sabores.filter((s) => s.activo);
+    const [showAll, setShowAll] = useState(false);
+    const visibles = showAll ? activos : activos.slice(0, SABORES_INITIAL);
+    const extra = reglaExtra(grupo);
 
-    const visibleTrad = showAllTrad ? tradicionales : tradicionales.slice(0, SABORES_INITIAL);
-    const visibleEsp = showAllEsp ? especiales : especiales.slice(0, SABORES_INITIAL);
-
-    const config3Sabores = sabores.find(
-        (s) => s.tipo === 'configuracion' && s.nombre === 'RECARGO_3_SABORES',
-    );
-    const extra3SaboresAmount = config3Sabores ? Number(config3Sabores.recargoGrande) : 3000;
+    const cobraRecargo = (s: PizzaSabor) =>
+        [s.recargoPequena, s.recargoMediana, s.recargoGrande].some((r) => Number(r) > 0);
 
     const renderChip = (sabor: PizzaSabor) => {
-        const isEspecial = sabor.tipo === 'especial';
+        const conRecargo = cobraRecargo(sabor);
         return (
             <TouchableOpacity
                 key={sabor.saborId}
@@ -439,18 +449,18 @@ function PizzaFlavorsSection({
                     marginBottom: 6,
                     marginRight: 6,
                     borderWidth: 1,
-                    backgroundColor: isEspecial ? 'rgba(245,165,36,0.08)' : 'rgba(255,255,255,0.04)',
-                    borderColor: isEspecial ? 'rgba(245,165,36,0.25)' : 'rgba(255,255,255,0.08)',
+                    backgroundColor: conRecargo ? 'rgba(245,165,36,0.08)' : 'rgba(255,255,255,0.04)',
+                    borderColor: conRecargo ? 'rgba(245,165,36,0.25)' : 'rgba(255,255,255,0.08)',
                 }}
             >
-                {isEspecial && <Icon name="star" size={8} color="#FB923C" />}
+                {conRecargo && <Icon name="star" size={10} color="#FB923C" />}
                 <Text
                     style={{
-                        fontSize: 9,
+                        fontSize: 10,
                         fontFamily: 'SpaceGrotesk-Bold',
                         textTransform: 'uppercase',
                         letterSpacing: 0.5,
-                        color: isEspecial ? '#FB923C' : '#94A3B8',
+                        color: conRecargo ? '#FB923C' : '#94A3B8',
                     }}
                     numberOfLines={1}
                 >
@@ -473,7 +483,7 @@ function PizzaFlavorsSection({
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Icon name="pizza-slice" size={13} color="#F5A524" />
                     <Text className="text-orange-400/80 font-black text-[10px] uppercase tracking-widest">
-                        Sabores
+                        Sabores · {grupo.nombre} ({activos.length})
                     </Text>
                 </View>
                 {onAddSabor && (
@@ -488,65 +498,36 @@ function PizzaFlavorsSection({
                             borderColor: 'rgba(245,165,36,0.25)',
                         }}
                     >
-                        <Text style={{ color: '#FB923C', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                        <Text style={{ color: '#FB923C', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
                             + Sabor
                         </Text>
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* Tradicionales */}
             <View style={{ marginBottom: 10 }}>
-                <Text className="text-slate-600 text-[8px] font-black uppercase tracking-widest mb-2 ml-1">
-                    Tradicionales ({tradicionales.length})
-                </Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                    {visibleTrad.map((s) => renderChip(s))}
+                    {visibles.map((s) => renderChip(s))}
                 </View>
-                {tradicionales.length > SABORES_INITIAL && (
+                {activos.length > SABORES_INITIAL && (
                     <TouchableOpacity
-                        onPress={() => setShowAllTrad((v) => !v)}
+                        onPress={() => setShowAll((v) => !v)}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
                     >
-                        <Icon name={showAllTrad ? 'chevron-up' : 'chevron-down'} size={11} color="#475569" />
-                        <Text style={{ color: '#475569', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
-                            {showAllTrad ? 'Ocultar' : `+${tradicionales.length - SABORES_INITIAL} más`}
+                        <Icon name={showAll ? 'chevron-up' : 'chevron-down'} size={11} color="#7C8BA1" />
+                        <Text style={{ color: '#7C8BA1', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
+                            {showAll ? 'Ocultar' : `+${activos.length - SABORES_INITIAL} más`}
                         </Text>
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* Especiales */}
-            <View style={{ marginBottom: 10 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 }}>
-                    <Icon name="star" size={8} color="rgba(249,115,22,0.4)" />
-                    <Text className="text-orange-500/40 text-[8px] font-black uppercase tracking-widest">
-                        Especialidades ({especiales.length})
-                    </Text>
-                </View>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                    {visibleEsp.map((s) => renderChip(s))}
-                </View>
-                {especiales.length > SABORES_INITIAL && (
-                    <TouchableOpacity
-                        onPress={() => setShowAllEsp((v) => !v)}
-                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}
-                    >
-                        <Icon name={showAllEsp ? 'chevron-up' : 'chevron-down'} size={11} color="#475569" />
-                        <Text style={{ color: '#475569', fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase' }}>
-                            {showAllEsp ? 'Ocultar' : `+${especiales.length - SABORES_INITIAL} más`}
-                        </Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {config3Sabores && (
-                <TouchableOpacity
-                    onPress={() => onEditSabor?.(config3Sabores)}
+            {extra && (
+                <View
                     style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
+                        gap: 10,
                         backgroundColor: 'rgba(0,0,0,0.3)',
                         padding: 14,
                         borderRadius: 16,
@@ -554,34 +535,11 @@ function PizzaFlavorsSection({
                         borderColor: 'rgba(255,255,255,0.05)',
                     }}
                 >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                        <View
-                            style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 10,
-                                backgroundColor: 'rgba(96,165,250,0.1)',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                borderWidth: 1,
-                                borderColor: 'rgba(96,165,250,0.2)',
-                            }}
-                        >
-                            <Icon name="information-outline" size={14} color="#60A5FA" />
-                        </View>
-                        <View>
-                            <Text style={{ color: '#60A5FA', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                Combinación 3 Sabores
-                            </Text>
-                            <Text style={{ color: '#475569', fontSize: 8, fontFamily: 'SpaceGrotesk-Bold' }}>
-                                Recargo por unidad
-                            </Text>
-                        </View>
-                    </View>
-                    <Text style={{ fontFamily: 'Space Grotesk', color: '#F8FAFC', fontSize: 14, fontWeight: 'bold' }}>
-                        +${formatCurrency(extra3SaboresAmount)}
+                    <Icon name="information-outline" size={14} color="#60A5FA" />
+                    <Text style={{ color: '#60A5FA', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {extra}
                     </Text>
-                </TouchableOpacity>
+                </View>
             )}
         </View>
     );

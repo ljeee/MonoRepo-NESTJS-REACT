@@ -15,16 +15,19 @@ interface BadgeProps {
     className?: string;
     style?: any;
     delay?: number;
+    /** Entrada animada al montar (apagada por defecto). */
+    animated?: boolean;
 }
 
-export default function Badge({ label, variant = 'neutral', icon, size = 'sm', className = '', style, delay = 0 }: BadgeProps) {
-    const opacity = useSharedValue(0);
-    const scale = useSharedValue(0.8);
+export default function Badge({ label, variant = 'neutral', icon, size = 'sm', className = '', style, delay = 0, animated = false }: BadgeProps) {
+    const opacity = useSharedValue(animated ? 0 : 1);
+    const scale = useSharedValue(animated ? 0.8 : 1);
 
     React.useEffect(() => {
+        if (!animated) return;
         opacity.value = withDelay(delay, withTiming(1, { duration: timings.medium }));
         scale.value = withDelay(delay, withSpring(1, springs.medium));
-    }, [delay]);
+    }, [animated, delay, opacity, scale]);
 
     const animatedStyle = useAnimatedStyle(() => ({
         opacity: opacity.value,

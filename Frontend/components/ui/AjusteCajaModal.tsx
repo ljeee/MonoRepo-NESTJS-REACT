@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, ScrollView, Modal, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Text } from '../../tw';
-import { DenominacionSelector } from './DenominacionSelector';
+import { DenominacionCounter } from './DenominacionCounter';
 import Button from './Button';
 import Icon from './Icon';
-import { DenominacionesMap, useApi } from '@/src/shared';
+import { DenominacionesMap, useApi, sumDenominaciones } from '@/src/shared';
 
 interface Props {
   visible: boolean;
@@ -30,14 +30,8 @@ export function AjusteCajaModal({ visible, onClose, onSuccess, estadoActual, caj
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Helpers to calculate totals
-  const calcTotal = (denoms: DenominacionesMap, monedasStr: string) => {
-    const billetes = Object.entries(denoms).reduce((sum, [den, qty]) => sum + Number(den) * qty, 0);
-    return billetes + (Number(monedasStr) || 0);
-  };
-
-  const totalIngreso = calcTotal(ingresoDenom, ingresoMonedas);
-  const totalRetiro = calcTotal(retiroDenom, retiroMonedas);
+  const totalIngreso = sumDenominaciones(ingresoDenom, ingresoMonedas);
+  const totalRetiro = sumDenominaciones(retiroDenom, retiroMonedas);
 
   const handleSubmit = async () => {
     try {
@@ -148,7 +142,7 @@ export function AjusteCajaModal({ visible, onClose, onSuccess, estadoActual, caj
             ) : null}
 
             {tab === 'ingreso' && (
-              <DenominacionSelector
+              <DenominacionCounter
                 titulo="Efectivo que ingresa"
                 value={ingresoDenom}
                 onChange={setIngresoDenom}
@@ -158,11 +152,12 @@ export function AjusteCajaModal({ visible, onClose, onSuccess, estadoActual, caj
             )}
 
             {tab === 'retiro' && (
-              <DenominacionSelector
+              <DenominacionCounter
                 titulo="Efectivo que sale"
                 value={retiroDenom}
                 onChange={setRetiroDenom}
                 disponible={estadoActual}
+                limitarPorDisponible
                 monedas={retiroMonedas}
                 onMonedasChange={setRetiroMonedas}
               />
@@ -171,11 +166,12 @@ export function AjusteCajaModal({ visible, onClose, onSuccess, estadoActual, caj
             {tab === 'cambio' && (
               <View className="gap-6">
                 <View className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                  <DenominacionSelector
+                  <DenominacionCounter
                     titulo="Entregas de Caja (Sale)"
                     value={retiroDenom}
                     onChange={setRetiroDenom}
                     disponible={estadoActual}
+                limitarPorDisponible
                     monedas={retiroMonedas}
                     onMonedasChange={setRetiroMonedas}
                   />
@@ -186,7 +182,7 @@ export function AjusteCajaModal({ visible, onClose, onSuccess, estadoActual, caj
                     </View>
                 </View>
                 <View className="p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
-                  <DenominacionSelector
+                  <DenominacionCounter
                     titulo="Recibes y guardas (Entra)"
                     value={ingresoDenom}
                     onChange={setIngresoDenom}

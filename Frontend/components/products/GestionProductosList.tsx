@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Producto, PizzaSabor } from '@/src/shared';
+import type { Producto, PizzaSabor, SaborGrupo } from '@/src/shared';
 import { View, Text } from '../../tw';
 import Input from '../ui/Input';
 import Icon from '../ui/Icon';
@@ -17,13 +16,14 @@ interface GestionProductosListProps {
     error: string | null;
     productos: Producto[];
     sabores: PizzaSabor[];
+    grupos: SaborGrupo[];
     onSearchChange: (value: string) => void;
     onEditProduct: (product: Producto) => void;
     onAddVariant: (productId: number) => void;
     onEditVariant: (productId: number, variantId: number) => void;
     onDeleteVariant: (variantId: number, variantName: string) => void;
     onEditSabor: (sabor: PizzaSabor) => void;
-    onAddSabor: () => void;
+    onAddSabor: (grupoId: number) => void;
     onDeleteSabor: (saborId: number, saborName: string) => void;
 }
 
@@ -33,6 +33,7 @@ export function GestionProductosList({
     error,
     productos,
     sabores,
+    grupos,
     onSearchChange,
     onEditProduct,
     onAddVariant,
@@ -43,7 +44,6 @@ export function GestionProductosList({
     onDeleteSabor,
 }: GestionProductosListProps) {
     const { isMobile } = useBreakpoint();
-    const isWeb = Platform.OS === 'web';
 
     // ── Picstar state ──────────────────────────────────────────────────────────
     const [starredIds, setStarredIds] = useState<Set<number>>(new Set());
@@ -87,6 +87,27 @@ export function GestionProductosList({
         () => productos.filter((p) => starredIds.has(p.productoId)).length,
         [productos, starredIds],
     );
+
+    const renderCard = (p: Producto) => {
+        const grupo = p.saborGrupoId != null ? grupos.find((g) => g.id === p.saborGrupoId) : undefined;
+        return (
+            <ProductCard
+                key={p.productoId}
+                product={p}
+                isStarred={starredIds.has(p.productoId)}
+                onToggleStar={() => toggleStar(p.productoId)}
+                onEdit={() => onEditProduct(p)}
+                onEditVariant={(variantId) => onEditVariant(p.productoId, variantId)}
+                onDeleteVariant={onDeleteVariant}
+                onAddVariant={() => onAddVariant(p.productoId)}
+                grupo={grupo}
+                sabores={grupo ? sabores.filter((s) => s.grupoId === grupo.id) : undefined}
+                onEditSabor={grupo ? onEditSabor : undefined}
+                onAddSabor={grupo ? () => onAddSabor(grupo.id) : undefined}
+                onDeleteSabor={grupo ? onDeleteSabor : undefined}
+            />
+        );
+    };
 
     return (
         <View className="flex-1">
@@ -140,63 +161,18 @@ export function GestionProductosList({
             )}
 
             {!loading && (
-                isWeb && !isMobile ? (
+                !isMobile ? (
                     <View className="flex-row gap-4 pb-10 items-start">
                         <View className="flex-1 flex-col gap-4">
-                            {sortedProductos.filter((_, idx) => idx % 2 === 0).map((p) => (
-                                <ProductCard
-                                    key={p.productoId}
-                                    product={p}
-                                    isStarred={starredIds.has(p.productoId)}
-                                    onToggleStar={() => toggleStar(p.productoId)}
-                                    onEdit={() => onEditProduct(p)}
-                                    onEditVariant={(variantId) => onEditVariant(p.productoId, variantId)}
-                                    onDeleteVariant={onDeleteVariant}
-                                    onAddVariant={() => onAddVariant(p.productoId)}
-                                    sabores={p.productoNombre?.toLowerCase().includes('pizza') ? sabores : undefined}
-                                    onEditSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onEditSabor : undefined}
-                                    onAddSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onAddSabor : undefined}
-                                    onDeleteSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onDeleteSabor : undefined}
-                                />
-                            ))}
+                            {sortedProductos.filter((_, idx) => idx % 2 === 0).map(renderCard)}
                         </View>
                         <View className="flex-1 flex-col gap-4">
-                            {sortedProductos.filter((_, idx) => idx % 2 !== 0).map((p) => (
-                                <ProductCard
-                                    key={p.productoId}
-                                    product={p}
-                                    isStarred={starredIds.has(p.productoId)}
-                                    onToggleStar={() => toggleStar(p.productoId)}
-                                    onEdit={() => onEditProduct(p)}
-                                    onEditVariant={(variantId) => onEditVariant(p.productoId, variantId)}
-                                    onDeleteVariant={onDeleteVariant}
-                                    onAddVariant={() => onAddVariant(p.productoId)}
-                                    sabores={p.productoNombre?.toLowerCase().includes('pizza') ? sabores : undefined}
-                                    onEditSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onEditSabor : undefined}
-                                    onAddSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onAddSabor : undefined}
-                                    onDeleteSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onDeleteSabor : undefined}
-                                />
-                            ))}
+                            {sortedProductos.filter((_, idx) => idx % 2 !== 0).map(renderCard)}
                         </View>
                     </View>
                 ) : (
                     <View className="flex-col gap-4 pb-10">
-                        {sortedProductos.map((p) => (
-                            <ProductCard
-                                key={p.productoId}
-                                product={p}
-                                isStarred={starredIds.has(p.productoId)}
-                                onToggleStar={() => toggleStar(p.productoId)}
-                                onEdit={() => onEditProduct(p)}
-                                onEditVariant={(variantId) => onEditVariant(p.productoId, variantId)}
-                                onDeleteVariant={onDeleteVariant}
-                                onAddVariant={() => onAddVariant(p.productoId)}
-                                sabores={p.productoNombre?.toLowerCase().includes('pizza') ? sabores : undefined}
-                                onEditSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onEditSabor : undefined}
-                                onAddSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onAddSabor : undefined}
-                                onDeleteSabor={p.productoNombre?.toLowerCase().includes('pizza') ? onDeleteSabor : undefined}
-                            />
-                        ))}
+                        {sortedProductos.map(renderCard)}
                     </View>
                 )
             )}

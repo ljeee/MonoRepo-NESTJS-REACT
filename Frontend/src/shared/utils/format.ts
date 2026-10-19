@@ -6,18 +6,49 @@ const dateShortFormatter = new Intl.DateTimeFormat('es-CO', { day: 'numeric', mo
  * Ej: 16000 → "16.000", 1234567 → "1.234.567"
  */
 export function formatCurrency(num: number | undefined | null): string {
-  if (num === undefined || num === null) return '0';
-  
-  // Convertir a string
-  const str = Math.round(num).toString();
+  if (num === undefined || num === null || !Number.isFinite(Number(num))) return '0';
+
+  const redondeado = Math.round(Number(num));
+  // El signo va aparte: antes -500 salía "-.500" (el "-" contaba como dígito del grupo).
+  const str = Math.abs(redondeado).toString();
   const parts = [];
-  
+
   // Añadir puntos cada 3 dígitos desde la derecha
   for (let i = str.length; i > 0; i -= 3) {
     parts.unshift(str.substring(Math.max(0, i - 3), i));
   }
-  
-  return parts.join('.');
+
+  return (redondeado < 0 ? '-' : '') + parts.join('.');
+}
+
+/** Moneda con símbolo: 16000 → "$16.000", -1500 → "-$1.500". */
+export function formatCOP(num: number | undefined | null): string {
+  const n = Number(num) || 0;
+  return (n < 0 ? '-$' : '$') + formatCurrency(Math.abs(n));
+}
+
+/**
+ * Tiempo transcurrido desde una fecha. Corto: "Ahora", "5m", "3h", "2d".
+ * Largo: "Ahora", "Hace 5 min", "Hace 3h", "Hace 2d", "Hace 1 mes".
+ */
+export function timeAgo(date: string | Date | null | undefined, estilo: 'corto' | 'largo' = 'corto'): string {
+  if (!date) return '—';
+  const ms = Date.now() - new Date(date).getTime();
+  if (!Number.isFinite(ms)) return '—';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return 'Ahora';
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (estilo === 'corto') {
+    if (mins < 60) return `${mins}m`;
+    if (hours < 24) return `${hours}h`;
+    return `${days}d`;
+  }
+  if (mins < 60) return `Hace ${mins} min`;
+  if (hours < 24) return `Hace ${hours}h`;
+  if (days < 30) return `Hace ${days}d`;
+  const meses = Math.floor(days / 30);
+  return `Hace ${meses} mes${meses > 1 ? 'es' : ''}`;
 }
 
 /**

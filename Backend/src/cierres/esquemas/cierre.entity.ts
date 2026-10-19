@@ -34,6 +34,10 @@ export class CierreCaja {
 	@Column({type: 'jsonb', nullable: true})
 	productosTop: any;
 
+	/** Foto completa de dinero del día (la misma de GET /estadisticas/resumen); la lee el correo de cierre. */
+	@Column({type: 'jsonb', nullable: true})
+	resumen: any;
+
 	@Column({type: 'text', nullable: true})
 	observaciones: string;
 

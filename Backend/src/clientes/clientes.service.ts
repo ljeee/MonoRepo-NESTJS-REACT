@@ -1,6 +1,6 @@
 import {Injectable, NotFoundException} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {Repository} from 'typeorm';
+import {Repository, ILike} from 'typeorm';
 import {Clientes} from './esquemas/clientes.entity';
 import {ClienteDirecciones} from './esquemas/cliente-direcciones.entity';
 import {CreateClientesDto} from './esquemas/clientes.dto';
@@ -15,13 +15,47 @@ export class ClientesService {
 		private readonly direccionesRepo: Repository<ClienteDirecciones>,
 	) {}
 
-	findAll(page = 1, limit = 500) {
-		return this.repo.find({
+	async findAll(page?: number, limit?: number, search?: string) {
+		const relations = ['direcciones', 'domicilios'];
+		const order: any = {telefono: 'ASC'};
+
+		const where = search && search.trim()
+			? [
+					{clienteNombre: ILike(`%${search.trim()}%`)},
+					{telefono: ILike(`%${search.trim()}%`)},
+					{documento: ILike(`%${search.trim()}%`)},
+			  ]
+			: undefined;
+
+		// 1. Si no hay límite (o limit === 0), devuelve todos sin cap de 500
+		if (!limit) {
+			const findOptions: any = {relations, order};
+			if (where) findOptions.where = where;
+			return this.repo.find(findOptions);
+		}
+
+		// 2. Si se pide límite (paginación progresiva):
+		const p = page && page > 0 ? page : 1;
+		const findOptions: any = {
+			relations,
+			order,
 			take: limit,
-			skip: (page - 1) * limit,
-			relations: ['direcciones', 'domicilios'],
-			order: {telefono: 'ASC'},
-		});
+			skip: (p - 1) * limit,
+		};
+		if (where) findOptions.where = where;
+
+		const data = await this.repo.find(findOptions);
+		const total = typeof this.repo.count === 'function'
+			? await this.repo.count(where ? {where} : undefined)
+			: data.length;
+
+		return {
+			data,
+			total,
+			page: p,
+			limit,
+			totalPages: limit > 0 ? Math.ceil(total / limit) : 1,
+		};
 	}
 
 	async findOne(telefono: string) {

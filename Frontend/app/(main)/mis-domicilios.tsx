@@ -1,15 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshControl, ActivityIndicator, Platform } from 'react-native';
+import { ActivityIndicator, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ScrollView, View, Text, TouchableOpacity, Pressable } from '../../tw';
-import { Button, Icon, ListSkeleton, Badge, PageContainer } from '../../components/ui';
+import { Button, Icon, ListSkeleton, Badge, PageContainer, AnimatedOrb, PosRefreshControl } from '../../components/ui';
 import { api } from '../../services/api';
 import { useToast, Role } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
-import {
-    useSharedValue, useAnimatedStyle, withTiming, withSpring,
-    withRepeat, withSequence, Easing
-} from 'react-native-reanimated';
 import { Animated } from '../../tw/animated';
 import { FadeInUp } from 'react-native-reanimated';
 
@@ -74,40 +70,6 @@ function isCompleted(estado?: string): boolean {
 }
 
 // ─── Animaciones Base ────────────────────────────────────────────────────────
-
-function AnimatedOrb({ delay = 0, size = 200, color = '#F5A524', style }: any) {
-    const opacity = useSharedValue(0.12);
-    const scale   = useSharedValue(1);
-
-    useEffect(() => {
-        opacity.value = withRepeat(
-            withSequence(
-                withTiming(0.22, { duration: 3200 + delay * 500 }),
-                withTiming(0.09, { duration: 3200 + delay * 500 }),
-            ), -1, true,
-        );
-        scale.value = withRepeat(
-            withSequence(
-                withTiming(1.09, { duration: 4200 + delay * 600, easing: Easing.inOut(Easing.sin) }),
-                withTiming(0.94, { duration: 4200 + delay * 600, easing: Easing.inOut(Easing.sin) }),
-            ), -1, true,
-        );
-    }, [delay, opacity, scale]);
-
-    const animStyle = useAnimatedStyle(() => ({
-        opacity: opacity.value,
-        transform: [{ scale: scale.value }],
-    }));
-
-    return (
-        <Animated.View
-            style={[animStyle, {
-                position: 'absolute', width: size, height: size,
-                borderRadius: size / 2, backgroundColor: color,
-            }, style]}
-        />
-    );
-}
 
 // ─── Tab Selector ─────────────────────────────────────────────────────────────
 
@@ -386,10 +348,9 @@ export default function MisDomiciliosScreen() {
     const handleComplete = async (id: number) => {
         try {
             setCompletingId(id);
-            await api.domicilios.update(id, { 
-                estadoDomicilio: 'entregado',
-                fechaEntrega: new Date().toISOString()
-            });
+            // Solo `estadoDomicilio`: la entidad no tiene `fechaEntrega` y el PATCH (body
+            // `Partial<…>`, sin whitelist efectiva) lo pasaba a TypeORM, que rechazaba la petición.
+            await api.domicilios.update(id, { estadoDomicilio: 'entregado' });
             showToast('¡Domicilio marcado como entregado! 🎉', 'success');
             setConfirmingId(null);
             fetchHoy();
@@ -412,14 +373,14 @@ export default function MisDomiciliosScreen() {
                     </View>
                     <Text className="text-white font-black text-2xl text-center mb-3 uppercase tracking-tighter" style={{ fontFamily: 'Space Grotesk' }}>Vista de Gestión</Text>
                     <Text className="text-slate-500 text-center font-bold uppercase tracking-widest text-[9px] mb-10 leading-relaxed">
-                        Como administrador, debe utilizar el panel de 'Analíticas Domiciliarios' para supervisar las entregas globales.
+                        Como administrador, debe utilizar Analítica → Domicilios para supervisar las entregas globales.
                     </Text>
                     <Button 
                         title="Ir a Analíticas" 
                         variant="primary"
                         icon="chart-bar"
                         className="w-full max-w-[240px]" 
-                        onPress={() => router.push('/estadisticas-domiciliarios')} 
+                        onPress={() => router.push('/estadisticas?tab=domiciliarios' as any)} 
                     />
                 </View>
             </PageContainer>
@@ -429,9 +390,9 @@ export default function MisDomiciliosScreen() {
     return (
         <View style={{ flex: 1, backgroundColor: '#060E1A', position: 'relative', overflow: 'hidden' }}>
             {/* Orbs de fondo */}
-            <AnimatedOrb size={280} color="#F5A524" delay={0} style={{ top: -80, left: -60 }} />
-            <AnimatedOrb size={220} color="#8B5CF6" delay={1} style={{ bottom: -60, right: -50 }} />
-            <AnimatedOrb size={150} color="#10B981" delay={2} style={{ top: '40%', right: -40 }} />
+            <AnimatedOrb intensidad="suave" size={280} color="#F5A524" delay={0} style={{ top: -80, left: -60 }} />
+            <AnimatedOrb intensidad="suave" size={220} color="#8B5CF6" delay={1} style={{ bottom: -60, right: -50 }} />
+            <AnimatedOrb intensidad="suave" size={150} color="#10B981" delay={2} style={{ top: '40%', right: -40 }} />
 
             {/* Patrón de puntos */}
             {isWeb && (
@@ -486,7 +447,7 @@ export default function MisDomiciliosScreen() {
                         <ScrollView
                             contentContainerStyle={{ paddingBottom: 40 }}
                             showsVerticalScrollIndicator={false}
-                            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F5A524" />}
+                            refreshControl={<PosRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                         >
                             <StatsRow domicilios={domiciliosHoy} />
 
@@ -540,7 +501,7 @@ export default function MisDomiciliosScreen() {
                         <ScrollView
                             contentContainerStyle={{ paddingBottom: 40 }}
                             showsVerticalScrollIndicator={false}
-                            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F5A524" />}
+                            refreshControl={<PosRefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
                         >
                             <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
                                 <View style={{ flex: 1, padding: 16, alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' }}>

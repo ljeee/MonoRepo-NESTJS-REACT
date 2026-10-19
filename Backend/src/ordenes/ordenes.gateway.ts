@@ -47,6 +47,14 @@ export class OrdenesGateway implements OnGatewayConnection, OnGatewayDisconnect 
 			return;
 		}
 
+		// Un token de cliente final (auto-registrado en ClientWeb) no puede escuchar las
+		// órdenes de todo el local ni colarse a la sala 'cocina'. Solo staff.
+		const roles = payload.roles ?? [];
+		if (!roles.some((rol) => rol !== Role.Cliente)) {
+			client.disconnect(true);
+			return;
+		}
+
 		const dispositivo = client.handshake.auth?.dispositivo || payload.roles?.[0] || 'desconocido';
 		client.data.user = payload;
 		client.join(`auth:${dispositivo}`);
@@ -73,7 +81,5 @@ export class OrdenesGateway implements OnGatewayConnection, OnGatewayDisconnect 
 		this.server.emit('whatsapp:handoff', data);
 	}
 
-	emitirActualizacionStats(data?: any) {
-		this.server.emit('stats:update', data || {timestamp: Date.now()});
-	}
+	// `stats:update` lo emite EstadisticasGateway (mismo namespace); aquí había una copia sin usar.
 }

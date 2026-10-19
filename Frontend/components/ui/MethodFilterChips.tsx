@@ -1,31 +1,13 @@
 import React from 'react';
 import { TouchableOpacity } from 'react-native';
 import { View, Text } from '../../tw';
+import type { MethodFilterValue } from '@/src/shared';
 
 // ── Filtro por método de pago, reutilizable en las 4 vistas de facturas/balance ──
-// Mixto = facturas con metodo === 'efectivo_transferencia' (su propio bucket).
-// Efectivo y QR/Trans incluyen además las mixtas cuya parte correspondiente sea > 0
-// ("mixta con efectivo" / "mixta con QR") — misma semántica que el backend.
-
-export type MethodFilterValue = 'todos' | 'efectivo' | 'transferencia' | 'mixto' | 'pendiente';
-
-export interface FacturaMetodoLike {
-  metodo?: string | null;
-  pagoEfectivo?: number | null;
-  pagoTransferencia?: number | null;
-}
-
-/** ¿La factura entra en el bucket de método del filtro? (sin evaluar estado) */
-export function matchesMetodoFilter(
-  f: FacturaMetodoLike,
-  key: 'efectivo' | 'transferencia' | 'mixto',
-): boolean {
-  const esMixta = f.metodo === 'efectivo_transferencia';
-  if (key === 'mixto') return esMixta;
-  if (key === 'efectivo') return f.metodo === 'efectivo' || (esMixta && (f.pagoEfectivo ?? 0) > 0);
-  // 'transferencia' incluye facturas con metodo='qr' (alias legacy del mismo método)
-  return f.metodo === 'transferencia' || f.metodo === 'qr' || (esMixta && (f.pagoTransferencia ?? 0) > 0);
-}
+// La regla (matchesMetodoFilter) vive en el dominio compartido src/shared/domain/factura;
+// se re-exporta aquí para que los imports desde components/ui sigan funcionando.
+export { matchesMetodoFilter } from '@/src/shared';
+export type { MethodFilterValue, FacturaMetodoLike } from '@/src/shared';
 
 export interface MethodFilterChipsProps {
   value: string;

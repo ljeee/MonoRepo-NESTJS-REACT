@@ -12,6 +12,8 @@ export interface ProductoVariante {
   descripcion?: string | null;
   precioLeche?: number | null;
   stockBebida?: number;
+  /** Tamaño explícito (productos cuyo grupo de sabores usa tamaños). null = se deduce del nombre. */
+  tamano?: 'pequena' | 'mediana' | 'grande' | null;
   activo: boolean;
 }
 
@@ -21,14 +23,33 @@ export interface Producto {
   descripcion?: string | null;
   activo: boolean;
   emoji?: string | null;
+  /** 'jugo' pide la base; los sabores los decide `saborGrupoId` ('pizza'/'calzone' son valores heredados). */
   personalizacion?: 'pizza' | 'calzone' | 'jugo' | 'ninguna' | null;
+  /** Grupo de sabores que ofrece el producto. null = no lleva sabores. */
+  saborGrupoId?: number | null;
   variantes?: ProductoVariante[];
+}
+
+/** Reglas de los sabores de un producto (espejo de `SaborGrupo` del backend: mantener congruente). */
+export interface SaborGrupo {
+  id: number;
+  nombre: string;
+  maxSabores: number;
+  varianteEsSabor: boolean;
+  usaTamano: boolean;
+  recargoExtraDesde: number | null;
+  recargoExtraPequena: number;
+  recargoExtraMediana: number;
+  recargoExtraGrande: number;
+  activo: boolean;
+  orden: number;
 }
 
 export interface PizzaSabor {
   saborId: number;
   nombre: string;
-  tipo: 'tradicional' | 'especial' | 'configuracion' | 'calzone';
+  grupoId: number | null;
+  /** Recargo por tamaño; 0 = no cobra. Un grupo sin tamaños usa solo `recargoGrande`. */
   recargoPequena: number;
   recargoMediana: number;
   recargoGrande: number;

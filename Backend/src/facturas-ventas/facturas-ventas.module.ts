@@ -5,9 +5,10 @@ import {FacturasVentasService} from './facturas-ventas.service';
 import {FacturasVentasController} from './facturas-ventas.controller';
 import {CajaMovimientosModule} from '../caja-movimientos/caja-movimientos.module';
 import {EstadisticasModule} from '../estadisticas/estadisticas.module';
+import {InventarioModule} from '../inventario/inventario.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([FacturasVentas]), CajaMovimientosModule, EstadisticasModule],
+	imports: [TypeOrmModule.forFeature([FacturasVentas]), CajaMovimientosModule, EstadisticasModule, InventarioModule],
 	providers: [FacturasVentasService],
 	controllers: [FacturasVentasController],
 	exports: [FacturasVentasService],

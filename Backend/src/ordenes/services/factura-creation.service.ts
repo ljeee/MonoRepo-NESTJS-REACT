@@ -51,8 +51,10 @@ export class FacturaCreationService {
 			pagoEfectivo?: number;
 			pagoTransferencia?: number;
 			montoPagado?: number;
-			cuentaTransferenciaId?: number;
-			cuentaTransferenciaNombre?: string;
+			cuentaTransferenciaId?: number | null;
+			cuentaTransferenciaNombre?: string | null;
+			/** null = todo lo cobrado por transferencia va a la cuenta de la factura (ver FacturasVentas). */
+			desgloseTransferencia?: null;
 		},
 		manager?: EntityManager,
 	) {

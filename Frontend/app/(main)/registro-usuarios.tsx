@@ -1,26 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
-import { ScrollView, TextInput, TouchableOpacity, View, Text } from '../../tw';
-import { PageContainer, PageHeader, Button, Icon, Card, Picker, PickerItem } from '../../components/ui';
+import { View, Text } from '../../tw';
+import { PageContainer, PageHeader, Button, Icon, Card, Input, Picker, PickerItem } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, Role, RegisterDto } from '@/src/shared';
+import { useToast, Role, RegisterDto, normalizePhone } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 
+// El rol Admin no se puede asignar desde este formulario (la versión web lo permitía).
 const ROLES = [
     { label: 'Cajero', value: Role.Cajero },
     { label: 'Cocinero', value: Role.Cocina },
     { label: 'Domiciliario', value: Role.Domiciliario },
     { label: 'Mesero', value: Role.Mesero },
     { label: 'Contador (solo lectura)', value: Role.Contador },
-    // El rol Admin está prohibido en este formulario
 ];
+
+const FORM_VACIO: RegisterDto & { telefono?: string } = {
+    username: '',
+    password: '',
+    name: '',
+    roles: [Role.Cajero],
+    telefono: '',
+};
 
 export default function RegistroUsuariosScreen() {
     const router = useRouter();
     const { user } = useAuth();
     const { showToast } = useToast();
-    // showToast is a new reference on every render — capture it in a ref
-    // so the guard effect only re-runs when `user` actually changes.
+    // showToast cambia en cada render: en ref, para que el guard solo dependa de `user`.
     const showToastRef = useRef(showToast);
     useEffect(() => { showToastRef.current = showToast; });
 
@@ -33,14 +40,7 @@ export default function RegistroUsuariosScreen() {
 
     const [loading, setLoading] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
-
-    const [form, setForm] = useState<RegisterDto & { telefono?: string }>({
-        username: '',
-        password: '',
-        name: '',
-        roles: [Role.Cajero],
-        telefono: '',
-    });
+    const [form, setForm] = useState(FORM_VACIO);
 
     const handleRegister = async () => {
         setApiError(null);
@@ -48,12 +48,10 @@ export default function RegistroUsuariosScreen() {
             showToast('Todos los campos son obligatorios', 'error');
             return;
         }
-
         if (form.password.length < 8) {
             showToast('La contraseña debe tener al menos 8 caracteres', 'error');
             return;
         }
-
         if (form.roles?.[0] === Role.Domiciliario && !form.telefono) {
             showToast('El teléfono es obligatorio para los domiciliarios', 'error');
             return;
@@ -63,12 +61,7 @@ export default function RegistroUsuariosScreen() {
         try {
             await api.auth.register(form);
             showToast('Usuario registrado exitosamente', 'success');
-            setForm({
-                username: '',
-                password: '',
-                name: '',
-                roles: [Role.Cajero],
-            });
+            setForm(FORM_VACIO);
         } catch (error: any) {
             const rawMsg = error.response?.data?.message || error.message || 'Error al registrar usuario';
             const msg = Array.isArray(rawMsg) ? rawMsg.join(' • ') : rawMsg;
@@ -83,94 +76,91 @@ export default function RegistroUsuariosScreen() {
         <PageContainer>
             <PageHeader title="Registro de Usuarios" subtitle="Crear acceso al sistema" icon="account-plus-outline" />
 
-            <ScrollView contentContainerClassName="pb-10 pt-4">
-                <Card className="p-8 border border-white/5 bg-(--color-pos-surface)">
-                    <Text className="text-white font-black text-xl mb-2" style={{ fontFamily: 'Space Grotesk' }}>Nuevo Colaborador</Text>
-                    <Text className="text-slate-400 text-sm mb-8">Cree una cuenta para el personal de la pizzería.</Text>
+            <View style={{ paddingBottom: 40, paddingTop: 16 }}>
+                <Card className="p-8 border border-white/5 bg-(--color-pos-surface) max-w-2xl mx-auto w-full">
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(245,165,36,0.15)', alignItems: 'center', justifyContent: 'center' }}>
+                            <Icon name="account-plus" size={18} color="#F5A524" />
+                        </View>
+                        <View>
+                            <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#F8FAFC', fontSize: 17, letterSpacing: -0.3 }}>Nuevo Colaborador</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#64748B', fontSize: 11 }}>Cree una cuenta para el personal de la pizzería.</Text>
+                        </View>
+                    </View>
 
                     <View className="gap-6">
-                        <View>
-                            <Text className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Nombre Completo</Text>
-                            <TextInput
-                                className="bg-black/20 rounded-2xl border-2 border-white/5 px-5 py-4 text-white text-lg"
-                                value={form.name}
-                                onChangeText={(val) => setForm(prev => ({ ...prev, name: val }))}
-                                placeholder="Ej: Juan Pérez"
-                                placeholderTextColor="#475569"
-                            />
-                        </View>
+                        <Input
+                            label="Nombre Completo"
+                            value={form.name}
+                            onChangeText={(val) => setForm(prev => ({ ...prev, name: val }))}
+                            placeholder="Ej: Juan Pérez"
+                            leftIcon={<Icon name="account-outline" size={16} color="#64748B" />}
+                        />
+
+                        <Input
+                            label="Nombre de Usuario (Login)"
+                            value={form.username}
+                            onChangeText={(val) => setForm(prev => ({ ...prev, username: val.toLowerCase().replace(/\s/g, '') }))}
+                            placeholder="ej: juanp"
+                            autoCapitalize="none"
+                            leftIcon={<Icon name="at" size={16} color="#64748B" />}
+                        />
+
+                        <Input
+                            label="Contraseña"
+                            value={form.password}
+                            onChangeText={(val) => setForm(prev => ({ ...prev, password: val }))}
+                            placeholder="Mínimo 8 caracteres"
+                            secureTextEntry
+                            leftIcon={<Icon name="lock-outline" size={16} color="#64748B" />}
+                        />
 
                         <View>
-                            <Text className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Nombre de Usuario (Login)</Text>
-                            <TextInput
-                                className="bg-black/20 rounded-2xl border-2 border-white/5 px-5 py-4 text-white text-lg"
-                                value={form.username}
-                                onChangeText={(val) => setForm(prev => ({ ...prev, username: val.toLowerCase().replace(/\s/g, '') }))}
-                                placeholder="ej: juanp"
-                                placeholderTextColor="#475569"
-                                autoCapitalize="none"
-                            />
-                        </View>
-
-                        <View>
-                            <Text className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Contraseña</Text>
-                            <TextInput
-                                className="bg-black/20 rounded-2xl border-2 border-white/5 px-5 py-4 text-white text-lg"
-                                value={form.password}
-                                onChangeText={(val) => setForm(prev => ({ ...prev, password: val }))}
-                                placeholder="Mínimo 8 caracteres"
-                                placeholderTextColor="#475569"
-                                secureTextEntry
-                            />
-                        </View>
-
-                        <View>
-                            <Text className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Rol / Permisos</Text>
+                            <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 9, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 2 }}>Rol / Permisos</Text>
                             <View className="bg-black/20 rounded-2xl border-2 border-white/5 overflow-hidden">
                                 <Picker
                                     selectedValue={form.roles?.[0]}
                                     onValueChange={(val) => setForm(prev => ({ ...prev, roles: [val] }))}
-                                    style={{ color: 'white', height: 60 }}
+                                    style={{ color: 'white', height: 60, backgroundColor: 'transparent' }}
                                     dropdownIconColor="#94A3B8"
                                 >
-                                    {ROLES.map(r => <PickerItem key={r.value} label={r.label} value={r.value} />)}
+                                    {ROLES.map(r => (
+                                        <PickerItem key={r.value} label={r.label} value={r.value} style={{ backgroundColor: '#0f172a', color: 'white' }} />
+                                    ))}
                                 </Picker>
                             </View>
                         </View>
 
                         {form.roles?.[0] === Role.Domiciliario && (
-                            <View>
-                                <Text className="text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Teléfono (Obligatorio para domiciliarios)</Text>
-                                <TextInput
-                                    className="bg-black/20 rounded-2xl border-2 border-white/5 px-5 py-4 text-white text-lg"
-                                    value={form.telefono || ''}
-                                    onChangeText={(val) => setForm(prev => ({ ...prev, telefono: val }))}
-                                    placeholder="Ej: 3001234567"
-                                    placeholderTextColor="#475569"
-                                    keyboardType="phone-pad"
-                                />
-                            </View>
+                            <Input
+                                label="Teléfono (Obligatorio para domiciliarios)"
+                                value={form.telefono || ''}
+                                // Local de 10 dígitos: GET /domicilios/me compara contra este valor.
+                                onChangeText={(val) => setForm(prev => ({ ...prev, telefono: normalizePhone(val) }))}
+                                placeholder="Ej: 3001234567"
+                                keyboardType="phone-pad"
+                                leftIcon={<Icon name="phone" size={16} color="#64748B" />}
+                            />
                         )}
 
                         {apiError && (
-                            <View className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex-row items-center gap-3 mt-2">
+                            <View className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex-row items-center gap-3">
                                 <Icon name="alert-circle-outline" size={24} color="#EF4444" />
                                 <Text className="flex-1 text-red-400 font-bold leading-tight" style={{ fontFamily: 'Outfit' }}>{apiError}</Text>
                             </View>
                         )}
 
-                        <TouchableOpacity
-                            className={`bg-(--color-pos-primary) py-5 rounded-2xl items-center mt-4 ${loading ? 'opacity-60' : ''}`}
+                        <Button
+                            title={loading ? 'Registrando...' : 'Finalizar Registro'}
+                            icon="account-check-outline"
+                            variant="primary"
                             onPress={handleRegister}
-                            disabled={loading}
-                        >
-                            <Text className="text-white font-black text-lg uppercase tracking-widest">
-                                {loading ? 'Registrando...' : 'Finalizar Registro'}
-                            </Text>
-                        </TouchableOpacity>
+                            loading={loading}
+                            className="mt-4 py-4"
+                        />
                     </View>
                 </Card>
-            </ScrollView>
+            </View>
         </PageContainer>
     );
 }

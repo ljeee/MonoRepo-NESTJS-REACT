@@ -1,137 +1,81 @@
-import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
-import { RefreshControl } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { View, Text } from '../../tw';
-import { api } from '../../services/api';
+import React, { memo } from 'react';
+import { View, Text, ScrollView } from '../../tw';
 import { useRouter } from 'expo-router';
-import { Badge, Icon, PageContainer, PageHeader, Card, ListSkeleton, Button } from '../../components/ui';
-import { EmptyState } from '../../components/states/EmptyState';
+import { Avatar, Badge, CardGrid, Icon, PageContainer, PageHeader, Card, ListSkeleton, Button, PosRefreshControl, EntityCard } from '../../components/ui';
+import { ErrorState } from '../../components/states/ErrorState';
 import { useAuth } from '../../contexts/AuthContext';
 import { Role } from '@/src/shared';
-import { useBreakpoint } from '../../styles/responsive';
+import type { AuthUser } from '@/src/shared';
+import { useUsuarios } from '../../hooks/use-usuarios';
 
-// Hoisted: equivalente a toLocaleDateString() sin recrear el formatter por item
-const DATE_FORMATTER = new Intl.DateTimeFormat();
+const DATE_FORMATTER = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
 
-// Extracted list item for better performance
-const UsuarioItem = memo(({ u, isMobile }: { u: any, isMobile: boolean }) => (
-    <View className={`mb-4 flex-1 ${isMobile ? '' : 'px-2'}`}>
-        <Card className="flex-row items-center justify-between p-4 bg-white/5 border-white/5">
-            <View className="flex-row items-center gap-4">
-                <View className="w-12 h-12 rounded-full bg-amber-500/10 items-center justify-center border border-amber-500/20">
-                    <Text className="text-amber-500 font-black text-lg">
-                        {(u.name || u.username)?.charAt(0).toUpperCase()}
-                    </Text>
-                </View>
-                <View>
-                    <Text className="text-white font-black text-sm uppercase" style={{ fontFamily: 'Space Grotesk' }}>
-                        {u.name || u.username}
-                    </Text>
-                    <Text className="text-zinc-500 text-[10px] font-bold">@{u.username}</Text>
-                </View>
-            </View>
-            <View className="items-end gap-2">
-                <View className="flex-row gap-2">
-                    {u.roles?.map((role: string) => (
-                        <Badge 
-                            key={role} 
-                            label={role} 
-                            variant={role === 'Admin' ? 'danger' : 'info'} 
-                            size="sm" 
-                        />
-                    ))}
-                </View>
-                <Text className="text-zinc-600 text-[8px] font-black uppercase">
-                    {DATE_FORMATTER.format(new Date(u.createdAt))}
-                </Text>
-            </View>
-        </Card>
-    </View>
-));
+const UsuarioItem = memo(function UsuarioItem({ u }: { u: AuthUser }) {
+    return (
+        <EntityCard
+            title={u.name || u.username}
+            subtitle={`@${u.username}`}
+            aside={
+                <>
+                    <View className="flex-row gap-1.5 flex-wrap justify-end">
+                        {(u.roles ?? []).map((role) => (
+                            // Los roles llegan en minúscula: la versión nativa comparaba con 'Admin' y nunca pintaba el badge rojo.
+                            <Badge key={role} label={role} variant={role === Role.Admin ? 'danger' : 'info'} size="sm" />
+                        ))}
+                    </View>
+                    {!!u.createdAt && (
+                        <View className="flex-row items-center gap-1 opacity-40">
+                            <Icon name="clock-outline" size={10} color="#64748B" />
+                            <Text className="text-slate-500 font-bold text-[8px] uppercase tracking-tighter">
+                                {DATE_FORMATTER.format(new Date(u.createdAt))}
+                            </Text>
+                        </View>
+                    )}
+                </>
+            }
+        />
+    );
+});
 
+/**
+ * Un solo archivo para web y nativo. La lista es corta y acotada (el equipo de la
+ * pizzería), así que usa el ScrollView de `tw`: recibe altura de la cadena flex en web,
+ * donde FlatList/FlashList colapsaban invisibles.
+ */
 export default function UsuariosScreen() {
     const router = useRouter();
     const { user } = useAuth();
-    const isAdmin = user?.roles?.includes(Role.Admin);
-    const [usuarios, setUsuarios] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const { isMobile } = useBreakpoint();
-
-    const mountedRef = useRef(true);
-    useEffect(() => {
-        mountedRef.current = true;
-        return () => { mountedRef.current = false; };
-    }, []);
-
-    const loadUsuarios = useCallback(async () => {
-        setLoading(true);
-        try {
-            const data = await api.auth.getUsers();
-            if (mountedRef.current) setUsuarios(data);
-        } catch (error) {
-            console.error('Error loading users:', error);
-        } finally {
-            if (mountedRef.current) {
-                setLoading(false);
-                setRefreshing(false);
-            }
-        }
-    }, []);
-
-    useEffect(() => {
-        loadUsuarios();
-    }, [loadUsuarios]);
-
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        loadUsuarios();
-    }, [loadUsuarios]);
-
-    const renderItem = useCallback(({ item }: { item: any }) => (
-        <UsuarioItem u={item} isMobile={isMobile} />
-    ), [isMobile]);
+    const isAdmin = user?.roles?.includes(Role.Admin) === true;
+    const { usuarios, loading, refreshing, error, cargar, refrescar } = useUsuarios();
 
     return (
         <PageContainer scrollable={false}>
-            <View className="flex-1">
-                <PageHeader
-                    title="Usuarios del Sistema"
-                    subtitle="Gestión de acceso y personal"
-                    icon="account-group"
-                    rightContent={isAdmin ? (
-                        <Button
-                            title="Nuevo"
-                            icon="account-plus"
-                            variant="primary"
-                            size="sm"
-                            onPress={() => router.push('/registro-usuarios' as any)}
-                        />
-                    ) : undefined}
-                />
+            <PageHeader
+                title="Usuarios del Sistema"
+                subtitle="Gestión de acceso y personal"
+                icon="account-group"
+                rightContent={isAdmin ? (
+                    <Button title="Nuevo" icon="account-plus" variant="primary" size="sm" onPress={() => router.push('/registro-usuarios' as any)} />
+                ) : undefined}
+            />
 
+            <ScrollView className="flex-1" contentContainerClassName="pb-20" refreshControl={<PosRefreshControl refreshing={refreshing} onRefresh={refrescar} />}>
                 {loading && !refreshing ? (
-                    <View className="px-6">
-                        <ListSkeleton count={5} />
+                    <View className="pt-4">
+                        <ListSkeleton count={6} />
+                    </View>
+                ) : error ? (
+                    <ErrorState message={error} onRetry={cargar} />
+                ) : usuarios.length === 0 ? (
+                    <View className="items-center justify-center py-24 bg-white/5 m-4 rounded-[40px] border border-white/5">
+                        <Icon name="account-group-outline" size={36} color="#475569" />
+                        <Text className="text-slate-400 font-black my-6 uppercase tracking-widest text-[10px] text-center">Sin usuarios</Text>
+                        <Button title="Consultar de nuevo" onPress={cargar} variant="secondary" size="sm" icon="refresh" />
                     </View>
                 ) : (
-                    <FlashList
-                        data={usuarios}
-                        className="flex-1"
-                        contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
-                        refreshControl={
-                            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F5A524" />
-                        }
-                        keyExtractor={(u) => u.id?.toString()}
-                        key={isMobile ? 'v' : 'h'}
-                        numColumns={isMobile ? 1 : 2}
-                        ListEmptyComponent={
-                            <EmptyState icon="account-group" message="Sin usuarios" subMessage="Crea el primer usuario" />
-                        }
-                        renderItem={renderItem}
-                    />
+                    <CardGrid kind="persona" data={usuarios} keyExtractor={(u) => u.id} renderItem={(u) => <UsuarioItem u={u} />} />
                 )}
-            </View>
+            </ScrollView>
         </PageContainer>
     );
 }

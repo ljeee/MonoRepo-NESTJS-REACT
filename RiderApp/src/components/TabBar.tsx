@@ -3,7 +3,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius, shadow } from '../lib/theme';
+import { colors, radius } from '../lib/theme';
 
 export type TabKey = 'entregas' | 'ajustes';
 
@@ -32,7 +32,7 @@ export function TabBar({
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {TABS.map((t) => {
         const on = active === t.key;
         const count = badge?.[t.key] ?? 0;
@@ -43,14 +43,10 @@ export function TabBar({
             style={({ pressed }) => [styles.tab, pressed && { opacity: 0.6 }]}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
-            accessibilityLabel={t.label}
+            accessibilityLabel={count > 0 ? `${t.label}, ${count} pendientes` : t.label}
           >
-            <View style={[styles.iconWrap, on && styles.iconWrapOn]}>
-              <MaterialCommunityIcons
-                name={on ? t.icon : t.iconOff}
-                size={21}
-                color={on ? colors.brand : colors.faint}
-              />
+            <View>
+              <MaterialCommunityIcons name={on ? t.icon : t.iconOff} size={24} color={on ? colors.brand : colors.faint} />
               {count > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
@@ -71,22 +67,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bgElevated,
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    paddingTop: 9,
-    ...shadow.bar,
+    paddingTop: 8,
   },
-  tab: { flex: 1, alignItems: 'center', gap: 3 },
-  iconWrap: {
-    width: 54,
-    height: 30,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconWrapOn: { backgroundColor: 'rgba(245,165,36,0.13)' },
+  tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 48, justifyContent: 'center' },
   badge: {
     position: 'absolute',
-    top: -2,
-    right: 8,
+    top: -4,
+    right: -10,
     minWidth: 17,
     height: 17,
     paddingHorizontal: 4,
@@ -94,10 +81,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.bgElevated,
   },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
-  label: { fontSize: 10.5, fontWeight: '700', color: colors.faint },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  label: { fontSize: 11, fontWeight: '600', color: colors.faint },
   labelOn: { color: colors.brand },
 });

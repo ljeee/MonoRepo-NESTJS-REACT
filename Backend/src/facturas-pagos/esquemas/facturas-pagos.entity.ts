@@ -25,8 +25,22 @@ export class FacturasPagos {
 	@Column({name: 'metodo', type: 'text', nullable: true})
 	metodo: string;
 
+	/** Categoría contable (nomina, servicios, insumos…). 'general' = sin categoría (histórico). */
 	@Column({name: 'categoria', type: 'text', nullable: true, default: 'general'})
 	categoria: string;
+
+	/** 'costo' | 'gasto'. NULL = sin clasificar (todo el histórico anterior a la clasificación). */
+	@Column({name: 'tipo_gasto', type: 'text', nullable: true})
+	tipoGasto: string | null;
+
+	/**
+	 * Cuenta de transferencia de la que SALIÓ el dinero (solo egresos pagados por QR). Es el espejo de
+	 * `facturas_ventas.cuenta_transferencia_id` (por dónde ENTRÓ): con ambos se calcula el saldo por cuenta.
+	 * NULL = sin asignar (egresos QR anteriores a este campo) o método que no es QR.
+	 */
+	@Column({name: 'cuenta_origen_id', type: 'int', nullable: true})
+	@Index()
+	cuentaOrigenId: number | null;
 
 	@Column({name: 'denominaciones', type: 'jsonb', nullable: true})
 	denominaciones: Record<string, number> | null;

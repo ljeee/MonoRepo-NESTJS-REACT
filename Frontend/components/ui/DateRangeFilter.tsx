@@ -4,21 +4,22 @@ import { View, Text } from '../../tw';
 import Input from './Input';
 import Button from './Button';
 import Icon from './Icon';
-import { validateFlexibleDateRange, getRangeDates } from '@/src/shared';
+import { validateFlexibleDateRange, presetRange } from '@/src/shared';
+import type { PresetRango } from '@/src/shared';
 
-interface Preset {
-  label: string;
-  days: number;
-}
+const PRESET_LABEL: Record<PresetRango, string> = {
+  hoy: 'Hoy',
+  ayer: 'Ayer',
+  semana: 'Semana',
+  '7d': '7d',
+  '30d': '30d',
+  mes: 'Mes',
+  mesAnterior: 'Mes ant.',
+  anio: 'Año',
+};
 
-// Mes preset: from 1st of current month to today
-function getMesRange(): { from: string; to: string } {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  return { from: toISO(first), to: toISO(now) };
-}
+/** Los mismos 5 atajos de siempre y en el mismo orden (`activePreset` es un índice). */
+const PRESETS_POR_DEFECTO: PresetRango[] = ['hoy', 'ayer', '7d', '30d', 'mes'];
 
 export interface DateRangeFilterProps {
   from: string;
@@ -30,6 +31,11 @@ export interface DateRangeFilterProps {
   /** Active preset index, controlled externally */
   activePreset?: number;
   onPresetChange?: (idx: number) => void;
+  /** Atajos a mostrar (por defecto hoy, ayer, 7d, 30d, mes). Se calculan en hora de Bogotá. */
+  presets?: PresetRango[];
+  /** Con onCompararChange se muestra el interruptor "Comparar con el período anterior". */
+  comparar?: boolean;
+  onCompararChange?: (comparar: boolean) => void;
 }
 
 export function DateRangeFilter({
@@ -41,12 +47,16 @@ export function DateRangeFilter({
   loading,
   activePreset,
   onPresetChange,
+  presets = PRESETS_POR_DEFECTO,
+  comparar,
+  onCompararChange,
 }: DateRangeFilterProps) {
   const [localActive, setLocalActive] = React.useState<number | null>(null);
   const active = activePreset ?? localActive;
 
-  const handlePreset = (idx: number, preset: Preset) => {
-    const range = idx === 4 ? getMesRange() : getRangeDates(preset.days);
+  const handlePreset = (idx: number, preset: PresetRango) => {
+    // Día contable de Bogotá, no el del dispositivo (antes 'Mes' se detectaba por índice).
+    const range = presetRange(preset);
     onFromChange(range.from);
     onToChange(range.to);
     if (onPresetChange) onPresetChange(idx);
@@ -62,24 +72,20 @@ export function DateRangeFilter({
 
   const { error } = from && to ? validateFlexibleDateRange(from, to) : { error: null };
 
-  const PRESETS: Preset[] = [
-    { label: 'Hoy',  days: 0  },
-    { label: 'Ayer', days: -1 },
-    { label: '7d',   days: 7  },
-    { label: '30d',  days: 30 },
-    { label: 'Mes',  days: 30 },
-  ];
-
   return (
     <View className="bg-white/5 rounded-2xl border border-white/5 p-4 mb-4">
       {/* Preset chips */}
       <View className="flex-row gap-2 mb-3 flex-wrap">
-        {PRESETS.map((p, idx) => {
+        {presets.map((p, idx) => {
           const isActive = active === idx;
           return (
             <TouchableOpacity
-              key={p.label}
+              key={p}
               onPress={() => handlePreset(idx, p)}
+              // Mientras carga una búsqueda no se apilan otras (cada atajo dispara una búsqueda completa).
+              disabled={!!loading}
+              style={loading ? { opacity: 0.5 } : undefined}
+              accessibilityLabel={`Buscar ${PRESET_LABEL[p]}`}
               className={`px-3 py-1.5 rounded-full border ${
                 isActive
                   ? 'bg-(--color-pos-primary) border-(--color-pos-primary)'
@@ -91,7 +97,7 @@ export function DateRangeFilter({
                   isActive ? 'text-black' : 'text-slate-400'
                 }`}
               >
-                {p.label}
+                {PRESET_LABEL[p]}
               </Text>
             </TouchableOpacity>
           );
@@ -128,6 +134,18 @@ export function DateRangeFilter({
           <Icon name="alert-circle-outline" size={12} color="#F43F5E" />
           <Text className="text-red-400 text-[10px] font-bold">{error}</Text>
         </View>
+      )}
+
+      {onCompararChange && (
+        <TouchableOpacity
+          onPress={() => onCompararChange(!comparar)}
+          className="flex-row items-center gap-2 mb-3"
+          accessibilityRole="switch"
+          accessibilityState={{ checked: !!comparar }}
+        >
+          <Icon name={comparar ? 'checkbox-marked' : 'checkbox-blank-outline'} size={18} color={comparar ? '#F5A524' : '#64748B'} />
+          <Text className="text-slate-300 text-xs font-bold">Comparar con el período anterior</Text>
+        </TouchableOpacity>
       )}
 
       {/* Search button */}

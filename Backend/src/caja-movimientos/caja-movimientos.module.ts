@@ -4,9 +4,10 @@ import {CajaMovimiento} from './esquemas/caja-movimiento.entity';
 import {CajaMovimientosService} from './caja-movimientos.service';
 import {CajaMovimientosController} from './caja-movimientos.controller';
 import {EstadisticasModule} from '../estadisticas/estadisticas.module';
+import {EmpresaConfig} from '../empresa/esquemas/empresa.entity';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([CajaMovimiento]), EstadisticasModule],
+	imports: [TypeOrmModule.forFeature([CajaMovimiento, EmpresaConfig]), EstadisticasModule],
 	controllers: [CajaMovimientosController],
 	providers: [CajaMovimientosService],
 	exports: [CajaMovimientosService],

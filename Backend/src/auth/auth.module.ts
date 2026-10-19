@@ -12,6 +12,7 @@ import {JwtStrategy} from './strategies/jwt.strategy';
 import {JwtAuthGuard} from './guards/jwt-auth.guard';
 import {RolesGuard} from './guards/roles.guard';
 import {ContadorGuard} from './guards/contador.guard';
+import {ClienteGuard} from './guards/cliente.guard';
 
 @Module({
 	imports: [
@@ -32,9 +33,11 @@ import {ContadorGuard} from './guards/contador.guard';
 	providers: [
 		AuthService,
 		JwtStrategy,
+		// Corren en este orden: JwtAuthGuard adjunta req.user, los demás lo leen
 		{provide: APP_GUARD, useClass: JwtAuthGuard},
 		{provide: APP_GUARD, useClass: RolesGuard},
 		{provide: APP_GUARD, useClass: ContadorGuard},
+		{provide: APP_GUARD, useClass: ClienteGuard},
 	],
 	exports: [AuthService, JwtModule],
 })

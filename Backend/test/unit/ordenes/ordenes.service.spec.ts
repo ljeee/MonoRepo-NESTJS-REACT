@@ -8,9 +8,8 @@ import {FacturaCreationService} from '../../../src/ordenes/services/factura-crea
 import {DomicilioCreationService} from '../../../src/ordenes/services/domicilio-creation.service';
 import {ProductProcessingService} from '../../../src/ordenes/services/product-processing.service';
 import {CierresService} from '../../../src/cierres/cierres.service';
-import {InventarioCajasService} from '../../../src/inventario-cajas/inventario-cajas.service';
 import {CajaMovimientosService} from '../../../src/caja-movimientos/caja-movimientos.service';
-import {InventarioBebidasService} from '../../../src/inventario-bebidas/inventario-bebidas.service';
+import {ConsumoOrdenService} from '../../../src/inventario/consumo-orden.service';
 import {EstadisticasGateway} from '../../../src/estadisticas/estadisticas.gateway';
 import {CajaMovimiento} from '../../../src/caja-movimientos/esquemas/caja-movimiento.entity';
 
@@ -34,9 +33,8 @@ describe('OrdenesService', () => {
 	let mockDomicilioService: any;
 	let mockProductService: any;
 	let mockCierresService: any;
-	let mockInventarioService: any;
 	let mockCajaMovimientosService: any;
-	let mockInventarioBebidasService: any;
+	let mockConsumoOrden: any;
 	let mockEstadisticasGateway: any;
 
 	beforeEach(async () => {
@@ -82,18 +80,13 @@ describe('OrdenesService', () => {
 			updateCierreIfExists: jest.fn().mockResolvedValue(undefined),
 		};
 
-		mockInventarioService = {
-			descontarCajasParaOrden: jest.fn().mockResolvedValue(undefined),
-		};
-
 		mockCajaMovimientosService = {
+			compensarFactura: jest.fn().mockResolvedValue([]),
 			registrarEntrada: jest.fn().mockResolvedValue(undefined),
 		};
 
-		mockInventarioBebidasService = {
-			deductForOrden: jest.fn().mockResolvedValue(undefined),
-			descontarBebidasParaOrden: jest.fn().mockResolvedValue(undefined),
-			restaurarBebidasParaOrden: jest.fn().mockResolvedValue(undefined),
+		mockConsumoOrden = {
+			reconciliar: jest.fn().mockResolvedValue(false),
 		};
 
 		mockEstadisticasGateway = {
@@ -109,9 +102,8 @@ describe('OrdenesService', () => {
 				{provide: DomicilioCreationService, useValue: mockDomicilioService},
 				{provide: ProductProcessingService, useValue: mockProductService},
 				{provide: CierresService, useValue: mockCierresService},
-				{provide: InventarioCajasService, useValue: mockInventarioService},
 				{provide: CajaMovimientosService, useValue: mockCajaMovimientosService},
-				{provide: InventarioBebidasService, useValue: mockInventarioBebidasService},
+				{provide: ConsumoOrdenService, useValue: mockConsumoOrden},
 				{provide: EstadisticasGateway, useValue: mockEstadisticasGateway},
 			],
 		}).compile();
@@ -217,6 +209,12 @@ describe('OrdenesService', () => {
 	// ==================== remove ====================
 
 	describe('remove', () => {
+		let txManager: any;
+		beforeEach(() => {
+			txManager = {getRepository: jest.fn().mockReturnValue(mockRepo)};
+			mockRepo.manager.transaction.mockImplementation(async (cb: Function) => cb(txManager));
+		});
+
 		it('elimina la orden cuando la factura no está pagada', async () => {
 			mockRepo.findOne.mockResolvedValue({ordenId: 1, factura: {estado: 'pendiente'}});
 			mockRepo.delete.mockResolvedValue({affected: 1});
@@ -226,11 +224,24 @@ describe('OrdenesService', () => {
 			expect(mockRepo.delete).toHaveBeenCalledWith(1);
 		});
 
+		it('devuelve el inventario de la orden ANTES de borrarla, en la misma transacción', async () => {
+			mockRepo.findOne.mockResolvedValue({ordenId: 1, factura: {estado: 'pendiente'}});
+			const orden: string[] = [];
+			mockConsumoOrden.reconciliar.mockImplementation(async () => orden.push('reconciliar'));
+			mockRepo.delete.mockImplementation(async () => orden.push('delete'));
+
+			await service.remove(1);
+
+			expect(mockConsumoOrden.reconciliar).toHaveBeenCalledWith(1, txManager, {eliminada: true});
+			expect(orden).toEqual(['reconciliar', 'delete']);
+		});
+
 		it('lanza BadRequestException cuando la factura está pagada', async () => {
 			mockRepo.findOne.mockResolvedValue({ordenId: 1, factura: {estado: 'pagada'}});
 
 			await expect(service.remove(1)).rejects.toThrow(BadRequestException);
 			expect(mockRepo.delete).not.toHaveBeenCalled();
+			expect(mockConsumoOrden.reconciliar).not.toHaveBeenCalled();
 		});
 
 		it('elimina la orden aunque no tenga factura asociada', async () => {
@@ -274,6 +285,7 @@ describe('OrdenesService', () => {
 			const saved = oRepo.save.mock.calls[0][0];
 			expect(saved.estadoOrden).toBe('cancelado');
 			expect(mockFacturaService.cancelarFactura).toHaveBeenCalledWith(5, expect.anything());
+			expect(mockConsumoOrden.reconciliar).toHaveBeenCalledWith(1, expect.anything());
 			expect(mockGateway.emitirOrdenActualizada).toHaveBeenCalled();
 		});
 
@@ -363,8 +375,16 @@ describe('OrdenesService', () => {
 			const cajaRepo = {
 				save: jest.fn().mockResolvedValue(undefined),
 			};
+			/** cuentas_transferencia que existen: 1 = Nequi, 2 = Bancolombia. */
+			const query = jest.fn(async (sql: string, params: unknown[]) => {
+				const cuentas = [{id: 1, nombre: 'Nequi'}, {id: 2, nombre: 'Bancolombia'}];
+				if (/WHERE id = \$1/.test(sql)) return cuentas.filter((c) => c.id === params[0]);
+				if (/lower\(nombre\)/.test(sql)) return cuentas.filter((c) => c.nombre.toLowerCase() === String(params[0]).toLowerCase());
+				return [];
+			});
 			mockRepo.manager.transaction.mockImplementation(async (cb: Function) =>
 				cb({
+					query,
 					getRepository: jest.fn().mockImplementation((entity) => {
 						if (entity === CajaMovimiento) return cajaRepo;
 						return oRepo;
@@ -405,13 +425,79 @@ describe('OrdenesService', () => {
 			};
 			setupCompletar(orden);
 
-			await service.completar(1, 'transferencia', 'user-cajero', '192.168.1.1');
+			await service.completar(1, 'transferencia', 'user-cajero', '192.168.1.1', undefined, undefined, undefined, undefined, undefined, 1);
 
 			expect(mockFacturaService.updateFactura).toHaveBeenCalledWith(
 				5,
 				expect.objectContaining({usuarioCobroId: 'user-cajero', ipDispositivo: '192.168.1.1'}),
 				expect.anything(),
 			);
+		});
+
+		describe('cuenta de transferencia obligatoria', () => {
+			const orden = () => ({ordenId: 1, estadoOrden: 'pendiente', facturaId: 5, updatedAt: new Date(), fechaOrden: new Date(), factura: {total: 40000, estado: 'pendiente'}});
+
+			it('cobrar por transferencia o QR sin cuenta se rechaza y no toca la factura', async () => {
+				setupCompletar(orden());
+
+				await expect(service.completar(1, 'qr', 'u', 'ip')).rejects.toThrow(/cuenta/);
+				expect(mockFacturaService.updateFactura).not.toHaveBeenCalled();
+			});
+
+			it('una cuenta inexistente se rechaza', async () => {
+				setupCompletar(orden());
+
+				await expect(service.completar(1, 'transferencia', 'u', 'ip', undefined, undefined, undefined, undefined, undefined, 99)).rejects.toThrow(/no existe/);
+			});
+
+			it('el nombre de la cuenta sale de la tabla, no de lo que mande el cliente', async () => {
+				setupCompletar(orden());
+
+				await service.completar(1, 'transferencia', 'u', 'ip', undefined, undefined, undefined, undefined, undefined, 2, 'Nombre inventado');
+
+				expect(mockFacturaService.updateFactura).toHaveBeenCalledWith(5, expect.objectContaining({cuentaTransferenciaId: 2, cuentaTransferenciaNombre: 'Bancolombia'}), expect.anything());
+			});
+
+			it('un pago mixto exige la cuenta; el efectivo solo no la pide ni deja una cuenta pegada', async () => {
+				setupCompletar(orden());
+				await expect(service.completar(1, 'efectivo_transferencia', 'u', 'ip', undefined, undefined, 10000, 30000)).rejects.toThrow(/cuenta/);
+
+				setupCompletar(orden());
+				await service.completar(1, 'efectivo', 'u', 'ip', undefined, undefined, undefined, undefined, undefined, 1);
+				expect(mockFacturaService.updateFactura).toHaveBeenCalledWith(5, expect.objectContaining({cuentaTransferenciaId: null, cuentaTransferenciaNombre: null}), expect.anything());
+			});
+		});
+
+		describe('un reintento del mismo cobro no duplica la caja (la llave del cliente puede cambiar)', () => {
+			const pagada = (extra: any = {}) => ({
+				ordenId: 1,
+				estadoOrden: 'pendiente',
+				facturaId: 5,
+				updatedAt: new Date(),
+				fechaOrden: new Date(),
+				factura: {total: 40000, estado: 'pagado', metodo: 'efectivo', pagoEfectivo: 40000, pagoTransferencia: 0},
+				...extra,
+			});
+
+			it('misma forma de pago sobre una factura ya pagada: no actualiza la factura ni registra otra entrada de caja', async () => {
+				const {cajaRepo, oRepo} = setupCompletar(pagada());
+
+				await service.completar(1, 'efectivo', 'u', 'ip', 'llave-nueva-en-el-reintento', undefined, undefined, undefined, {'50000': 1});
+
+				expect(mockFacturaService.updateFactura).not.toHaveBeenCalled();
+				expect(cajaRepo.save).not.toHaveBeenCalled();
+				expect(mockCajaMovimientosService.compensarFactura).not.toHaveBeenCalled();
+				expect(oRepo.save.mock.calls[0][0].estadoOrden).toBe('completada'); // la orden sí queda completada
+			});
+
+			it('otra forma de pago sobre una factura ya pagada es una corrección: primero sale el efectivo anterior', async () => {
+				setupCompletar(pagada());
+
+				await service.completar(1, 'qr', 'u', 'ip', undefined, undefined, undefined, undefined, undefined, 1);
+
+				expect(mockCajaMovimientosService.compensarFactura).toHaveBeenCalledWith(5, 'cobro corregido', expect.anything());
+				expect(mockFacturaService.updateFactura).toHaveBeenCalledWith(5, expect.objectContaining({metodo: 'qr', pagoTransferencia: 40000}), expect.anything());
+			});
 		});
 
 		it('retorna la orden existente si la idempotencyKey ya fue procesada', async () => {
@@ -497,16 +583,18 @@ describe('OrdenesService', () => {
 	// ==================== update ====================
 
 	describe('update', () => {
-		const setupUpdate = (orden: any) => {
+		const setupUpdate = (orden: any, despues?: any) => {
 			const fullOrden = {...orden, fechaOrden: new Date()};
+			// 1ª lectura: antes de actualizar. Si cambia el tipo de pedido, la relectura (2ª) trae el valor nuevo.
 			const oRepo = {
-				findOne: jest.fn().mockResolvedValueOnce(orden).mockResolvedValueOnce(fullOrden),
+				findOne: jest.fn().mockResolvedValueOnce(orden).mockResolvedValue(despues ? {...despues, fechaOrden: new Date()} : fullOrden),
 				update: jest.fn().mockResolvedValue({affected: 1}),
 			};
+			const domiciliosRepo = {delete: jest.fn().mockResolvedValue({affected: 1})};
 			mockRepo.manager.transaction.mockImplementation(async (cb: Function) =>
-				cb({getRepository: jest.fn().mockReturnValue(oRepo)}),
+				cb({getRepository: jest.fn((entidad: any) => (entidad?.name === 'Domicilios' ? domiciliosRepo : oRepo))}),
 			);
-			return {oRepo, fullOrden};
+			return {oRepo, fullOrden, domiciliosRepo};
 		};
 
 		it('lanza BadRequestException si la factura ya está pagada', async () => {
@@ -525,6 +613,42 @@ describe('OrdenesService', () => {
 			expect(oRepo.update).toHaveBeenCalledWith(1, expect.objectContaining({observaciones: 'sin cebolla'}));
 		});
 
+		describe('cambio de tipo de pedido (el tipo se relee DESPUÉS de actualizar)', () => {
+			beforeEach(() => {
+				mockDomicilioService.esDomicilio.mockImplementation((t?: string) => t === 'domicilio');
+			});
+
+			it('mesa → domicilio: se actualiza el domicilio y el envío entra al total', async () => {
+				const antes = {ordenId: 1, facturaId: 9, tipoPedido: 'mesa', factura: {estado: 'pendiente'}, productos: [{precioUnitario: 20000, cantidad: 1}], domicilios: [{costoDomicilio: 5000}]};
+				setupUpdate(antes, {...antes, tipoPedido: 'domicilio'});
+
+				await service.update(1, {tipoPedido: 'domicilio', costoDomicilio: 5000} as any);
+
+				expect(mockDomicilioService.updateDomicilioPorOrden).toHaveBeenCalled();
+				expect(mockFacturaService.updateFactura).toHaveBeenCalledWith(9, expect.objectContaining({total: 25000}), expect.anything());
+			});
+
+			it('domicilio → mesa: se borra el domicilio y el envío sale del total', async () => {
+				const antes = {ordenId: 1, facturaId: 9, tipoPedido: 'domicilio', factura: {estado: 'pendiente'}, productos: [{precioUnitario: 20000, cantidad: 1}], domicilios: [{costoDomicilio: 5000}]};
+				const {domiciliosRepo} = setupUpdate(antes, {...antes, tipoPedido: 'mesa'});
+
+				await service.update(1, {tipoPedido: 'mesa'} as any);
+
+				expect(domiciliosRepo.delete).toHaveBeenCalledWith({ordenId: 1});
+				expect(mockDomicilioService.updateDomicilioPorOrden).not.toHaveBeenCalled();
+				expect(mockFacturaService.updateFactura).toHaveBeenCalledWith(9, expect.objectContaining({total: 20000}), expect.anything());
+			});
+
+			it('sin cambio de tipo no se toca el total si tampoco cambian los productos', async () => {
+				const orden = {ordenId: 1, facturaId: 9, tipoPedido: 'mesa', factura: {estado: 'pendiente'}, productos: [], domicilios: []};
+				setupUpdate(orden);
+
+				await service.update(1, {observaciones: 'nota'});
+
+				expect(mockFacturaService.updateFactura).not.toHaveBeenCalled();
+			});
+		});
+
 		it('emite evento WebSocket después de actualizar', async () => {
 			const orden = {ordenId: 1, tipoPedido: 'mesa', factura: {estado: 'pendiente'}, fechaOrden: new Date()};
 			setupUpdate(orden);
@@ -532,34 +656,6 @@ describe('OrdenesService', () => {
 			await service.update(1, {observaciones: 'nota'});
 
 			expect(mockGateway.emitirOrdenActualizada).toHaveBeenCalled();
-		});
-	});
-
-	// ==================== necesitaCaja (gate de descuento de cajas) ====================
-	// Regresión: el gate comparaba contra variantes inventadas ('para llevar',
-	// 'para_llevar', 'paraLlevar') que nunca coincidían con el valor real ('llevar')
-	// que usa el DTO/frontend/seeders, así que el descuento nunca se activaba para
-	// pedidos "para llevar".
-
-	describe('necesitaCaja', () => {
-		it('activa el descuento para domicilio', () => {
-			expect((service as any).necesitaCaja('domicilio')).toBe(true);
-		});
-
-		it('activa el descuento para llevar', () => {
-			expect((service as any).necesitaCaja('llevar')).toBe(true);
-		});
-
-		it('es tolerante a mayúsculas', () => {
-			expect((service as any).necesitaCaja('LLEVAR')).toBe(true);
-		});
-
-		it('NO activa el descuento para mesa', () => {
-			expect((service as any).necesitaCaja('mesa')).toBe(false);
-		});
-
-		it('NO activa el descuento cuando no hay tipoPedido', () => {
-			expect((service as any).necesitaCaja(undefined)).toBe(false);
 		});
 	});
 });

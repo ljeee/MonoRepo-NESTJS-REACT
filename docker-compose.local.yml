@@ -1,0 +1,50 @@
+# ENTORNO LOCAL DE PRUEBAS EN DOCKER: la misma pila que el servidor (imágenes de producción) SIN el túnel de Cloudflare.
+#
+# Se usa SIEMPRE encima de docker-compose.yml, con su propio proyecto y sus variables (sin secretos):
+#     powershell -ExecutionPolicy Bypass -File scripts\docker-local.ps1 up      (recomendado: comprueba la configuración antes)
+#     docker compose -p pos-local --env-file docker-local.env -f docker-compose.yml -f docker-compose.local.yml up -d --build db redis backend frontend
+#
+# Aislado del servidor y de la base de desarrollo (npm run local:up): otro proyecto (pos-local), otros contenedores (pos-local-*),
+# otros volúmenes (pos-local-*) y la base publicada en el puerto 5434. El backend (3000) y el POS web (8081) usan los mismos
+# puertos que el servidor: así el POS encuentra el API solo, también desde un celular de la misma red (http://IP-DEL-PC:8081).
+#
+# No lo renombres a docker-compose.override.yml: Compose lo cargaría solo, también en el servidor, y apagaría el túnel.
+# Requiere Docker Compose 2.24.4 o más nuevo (etiqueta !override).
+name: pos-local
+
+services:
+  db:
+    container_name: pos-local-db
+    ports: !override
+      - "5434:5432"
+
+  redis:
+    container_name: pos-local-redis
+
+  backend:
+    container_name: pos-local-backend
+    environment:
+      # Forzados aquí aunque por error se use el .env real: en pruebas no sale ningún correo
+      # (el backend genera y envía el cierre de caja de ayer al arrancar).
+      MAIL_HOST: ""
+      MAIL_USER: ""
+      MAIL_PASS: ""
+      REPORT_EMAIL: ""
+
+  frontend:
+    container_name: pos-local-frontend
+
+  cloudflared:
+    # Sin túnel: solo existiría con --profile tunel, y aun así sin token (no puede conectarse a d-firu.com).
+    profiles: ["tunel"]
+    container_name: pos-local-cloudflared
+    environment: !override
+      - TUNNEL_TOKEN=
+
+volumes:
+  pgdata:
+    name: pos-local-pgdata
+  redis_data:
+    name: pos-local-redis-data
+  n8n_data:
+    name: pos-local-n8n-data

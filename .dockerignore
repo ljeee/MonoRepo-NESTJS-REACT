@@ -37,3 +37,7 @@ npm-debug.log*
 # Documentación para desarrolladores (no necesaria en runtime)
 Docs/
 README.md
+
+# Respaldos de la base (datos reales de clientes): nunca al contexto de build
+backups/
+*.dump

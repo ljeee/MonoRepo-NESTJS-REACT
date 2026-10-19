@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from '../../tw';
+import React from 'react';
+import { View, Text, TouchableOpacity } from '../../tw';
 import Icon from '../ui/Icon';
 import type { Orden } from '@/src/shared';
+import { nombreVisibleOrden, tipoPedidoMeta, urgenciaOrden } from '@/src/shared';
+import { ElapsedTimer, useMinutosDesde } from './ElapsedTimer';
+import type { IconName } from '../ui/Icon';
 
 const timeFormatter = new Intl.DateTimeFormat('es-CO', { hour: '2-digit', minute: '2-digit' });
 
@@ -17,96 +20,19 @@ type Props = {
 
 const getProductoName = (p: any) => p.productoNombre || p.producto || 'Producto';
 
-const getTipoPedidoInfo = (tipo?: string) => {
-    const t = (tipo || '').toLowerCase();
-    if (t.includes('domicilio')) return {
-        label: 'DOMICILIO', icon: 'motorbike' as const,
-        color: '#F5A524', bg: 'bg-amber-500/15', border: 'border-amber-500/30',
-    };
-    if (t.includes('llevar')) return {
-        label: 'PARA LLEVAR', icon: 'bag-personal-outline' as const,
-        color: '#60A5FA', bg: 'bg-blue-500/15', border: 'border-blue-500/30',
-    };
-    return {
-        label: tipo ? tipo.toUpperCase() : 'MESA', icon: 'silverware-fork-knife' as const,
-        color: '#94A3B8', bg: 'bg-slate-700/30', border: 'border-slate-600/30',
-    };
-};
-
-/**
- * Returns urgency level + colors based on elapsed minutes.
- *   0–4 min   → blue    (nueva — recién llegó)
- *   5–19 min  → green   (a tiempo)
- *   20–29 min → yellow  (atención)
- *   30+ min   → red     (urgente)
- */
-const getUrgencyInfo = (mins: number, estado?: string) => {
-    if (estado !== 'pendiente') {
-        return { level: 'done' as const, stripe: '#10B981', ring: '#10B981', text: '#10B981', label: 'LISTO' };
-    }
-    if (mins >= 30) return { level: 'urgente' as const, stripe: '#EF4444', ring: '#EF4444', text: '#F87171', label: 'URGENTE' };
-    if (mins >= 20) return { level: 'atencion' as const, stripe: '#EAB308', ring: '#EAB308', text: '#FDE047', label: 'ATENCIÓN' };
-    if (mins >= 5)  return { level: 'ok' as const, stripe: '#22C55E', ring: '#22C55E', text: '#86EFAC', label: 'A TIEMPO' };
-    return           { level: 'nueva' as const, stripe: '#3B82F6', ring: '#60A5FA', text: '#93C5FD', label: 'NUEVA' };
-};
-
 /** Formatea la hora de la orden: "10:34 a. m." */
 function formatHora(fechaStr: string | Date): string {
     const d = new Date(fechaStr);
     return timeFormatter.format(d);
 }
 
-// ── Circular Timer ────────────────────────────────────────────────────────────
-function CircularTimer({ mins, urgency }: { mins: number; urgency: ReturnType<typeof getUrgencyInfo> }) {
-    const SIZE = 56;
-    const STROKE = 4;
-    return (
-        <View style={{
-            width: SIZE, height: SIZE, borderRadius: SIZE / 2,
-            borderWidth: STROKE, borderColor: urgency.ring,
-            backgroundColor: `${urgency.ring}1A`,
-            alignItems: 'center', justifyContent: 'center',
-        }}>
-            <Text style={{ color: urgency.text, fontSize: 16, fontFamily: 'SpaceGrotesk-Bold', lineHeight: 18 }}>
-                {mins > 0 ? mins : '<1'}
-            </Text>
-            <Text style={{ color: urgency.text, fontSize: 7, fontFamily: 'Outfit', opacity: 0.8, letterSpacing: 0.5 }}>
-                MIN
-            </Text>
-        </View>
-    );
-}
-
 // ── Main card ─────────────────────────────────────────────────────────────────
 function OrderCardKDS({ orden, onPress, onListo, readOnly = false }: Props) {
-    const [diffMins, setDiffMins] = useState(() =>
-        Math.max(0, Math.floor((Date.now() - new Date(orden.fechaOrden).getTime()) / 60000))
-    );
+    const diffMins = useMinutosDesde(orden.fechaOrden);
+    const tipoInfo = tipoPedidoMeta(orden.tipoPedido);
+    const urgency = urgenciaOrden(diffMins, orden.estadoOrden);
 
-    useEffect(() => {
-        const iv = setInterval(() => {
-            setDiffMins(Math.max(0, Math.floor((Date.now() - new Date(orden.fechaOrden).getTime()) / 60000)));
-        }, 30000);
-        return () => clearInterval(iv);
-    }, [orden.fechaOrden]);
-
-    const tipoInfo = getTipoPedidoInfo(orden.tipoPedido);
-    const urgency = getUrgencyInfo(diffMins, orden.estadoOrden);
-
-    // Mirror the getClientName logic from OrdersOfDayPending
-    const rawName = (orden as any).factura?.clienteNombre || orden.nombreCliente;
-    let displayName: string;
-    if (!rawName) {
-        displayName = orden.tipoPedido?.toLowerCase() === 'mesa'
-            ? `Mesa ${(orden as any).mesa || ''}`
-            : 'Sin nombre';
-    } else if (orden.tipoPedido?.toLowerCase() === 'mesa') {
-        displayName = /^\d+$/.test(rawName)
-            ? `Mesa ${rawName}`
-            : rawName.startsWith('Mesa') ? rawName : `Mesa ${rawName}`;
-    } else {
-        displayName = rawName;
-    }
+    const displayName = nombreVisibleOrden(orden);
 
     const hasNotas = !!(orden.observaciones?.trim());
     const hasWarnings = orden.observaciones?.toLowerCase().includes('alergia') ||
@@ -124,8 +50,8 @@ function OrderCardKDS({ orden, onPress, onListo, readOnly = false }: Props) {
             {/* ── Color stripe (left edge) ───────────────────────────────────── */}
             <View style={{
                 position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
-                backgroundColor: urgency.stripe,
-                ...(urgency.level === 'urgente' ? { shadowColor: urgency.stripe, shadowOpacity: 0.9, shadowRadius: 8 } : {}),
+                backgroundColor: urgency.color,
+                ...(urgency.nivel === 'urgente' ? { shadowColor: urgency.color, shadowOpacity: 0.9, shadowRadius: 8 } : {}),
             }} />
 
             {/* ── Header ────────────────────────────────────────────────────── */}
@@ -142,9 +68,9 @@ function OrderCardKDS({ orden, onPress, onListo, readOnly = false }: Props) {
                                 backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
                                 alignSelf: 'flex-start',
                             }}>
-                                <Icon name={tipoInfo.icon} size={11} color={tipoInfo.color} />
-                                <Text style={{ color: tipoInfo.color, fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', letterSpacing: 1 }}>
-                                    {tipoInfo.label}
+                                <Icon name={tipoInfo.icon as IconName} size={11} color={tipoInfo.color} />
+                                <Text style={{ color: tipoInfo.color, fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', letterSpacing: 1 }}>
+                                    {tipoInfo.label.toUpperCase()}
                                 </Text>
                             </View>
                             <Text style={{ color: '#F5A524', fontSize: 10, fontFamily: 'SpaceGrotesk-Bold' }}>
@@ -183,7 +109,7 @@ function OrderCardKDS({ orden, onPress, onListo, readOnly = false }: Props) {
                     </View>
 
                     {/* Right: Circular timer */}
-                    <CircularTimer mins={diffMins} urgency={urgency} />
+                    <ElapsedTimer mins={diffMins} estado={orden.estadoOrden} size={56} />
                 </View>
             </View>
 
@@ -216,7 +142,7 @@ function OrderCardKDS({ orden, onPress, onListo, readOnly = false }: Props) {
 
             {/* ── Products ──────────────────────────────────────────────────── */}
             <View style={{ paddingHorizontal: 14, paddingTop: 12, paddingBottom: readOnly ? 14 : 6, gap: 7 }}>
-                <Text style={{ fontSize: 9, fontFamily: 'SpaceGrotesk-Bold', color: '#334155', letterSpacing: 1.5, marginBottom: 2, textTransform: 'uppercase' }}>
+                <Text style={{ fontSize: 10, fontFamily: 'SpaceGrotesk-Bold', color: '#7C8BA1', letterSpacing: 1.5, marginBottom: 2, textTransform: 'uppercase' }}>
                     Productos
                 </Text>
                 {orden.productos?.map((p: any, idx: number) => (
@@ -236,7 +162,7 @@ function OrderCardKDS({ orden, onPress, onListo, readOnly = false }: Props) {
                     </View>
                 ))}
                 {!orden.productos?.length && (
-                    <Text style={{ color: '#475569', fontStyle: 'italic', fontSize: 11, fontFamily: 'Outfit' }}>
+                    <Text style={{ color: '#7C8BA1', fontStyle: 'italic', fontSize: 11, fontFamily: 'Outfit' }}>
                         Sin productos cargados
                     </Text>
                 )}

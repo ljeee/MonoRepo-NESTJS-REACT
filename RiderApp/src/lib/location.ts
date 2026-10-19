@@ -25,6 +25,8 @@ export type PermState = {
   foreground: Location.PermissionStatus | null;
   background: Location.PermissionStatus | null;
   running: boolean;
+  /** El GPS / los servicios de ubicación del teléfono están encendidos. Apagados, no llega ninguna posición. */
+  servicesEnabled: boolean;
 };
 
 /**
@@ -55,15 +57,17 @@ export async function isTrackingRunning(): Promise<boolean> {
 
 /** Lee los permisos actuales SIN pedirlos (para pintar la pantalla de ajustes). */
 export async function readPermissions(): Promise<PermState> {
-  const [fg, bg, running] = await Promise.all([
+  const [fg, bg, running, servicesEnabled] = await Promise.all([
     Location.getForegroundPermissionsAsync().catch(() => null),
     Location.getBackgroundPermissionsAsync().catch(() => null),
     isTrackingRunning(),
+    Location.hasServicesEnabledAsync().catch(() => true),
   ]);
   return {
     foreground: fg?.status ?? null,
     background: bg?.status ?? null,
     running,
+    servicesEnabled,
   };
 }
 
@@ -71,8 +75,12 @@ export type EnsureResult =
   | 'running' // ya estaba activo o quedó activo
   | 'sin-permiso-primer-plano'
   | 'sin-permiso-segundo-plano'
+  | 'gps-apagado' // el usuario apagó la ubicación del teléfono
   | 'app-en-segundo-plano' // no se puede arrancar el servicio ahora
   | 'error';
+
+/** Verificación en curso: quien llame mientras tanto espera ese MISMO resultado (antes recibía un 'running' falso). */
+let ensuring: Promise<EnsureResult> | null = null;
 
 /**
  * Deja el tracking corriendo si se puede. Idempotente y seguro de llamar
@@ -82,7 +90,15 @@ export type EnsureResult =
  *             re-verificaciones automáticas va en `false` para no acosar
  *             al domiciliario con pop-ups cada vez que abre la app.
  */
-export async function ensureTracking(ask: boolean): Promise<EnsureResult> {
+export function ensureTracking(ask: boolean): Promise<EnsureResult> {
+  if (ensuring) return ensuring;
+  ensuring = ensureTrackingNow(ask).finally(() => {
+    ensuring = null;
+  });
+  return ensuring;
+}
+
+async function ensureTrackingNow(ask: boolean): Promise<EnsureResult> {
   try {
     // ── 1. Primer plano ──────────────────────────────────────────────────
     let fg = await Location.getForegroundPermissionsAsync();
@@ -101,7 +117,10 @@ export async function ensureTracking(ask: boolean): Promise<EnsureResult> {
     }
     if (bg.status !== 'granted') return 'sin-permiso-segundo-plano';
 
-    // ── 4. Arrancar solo si no está ya corriendo ─────────────────────────
+    // ── 4. GPS del teléfono encendido: apagado, el servicio arranca pero nunca llega una posición ──
+    if (!(await Location.hasServicesEnabledAsync().catch(() => true))) return 'gps-apagado';
+
+    // ── 5. Arrancar solo si no está ya corriendo ─────────────────────────
     if (await isTrackingRunning()) return 'running';
 
     // Android 14+ (y más estricto en 15/16, que es nuestro targetSdk=36)
@@ -116,8 +135,11 @@ export async function ensureTracking(ask: boolean): Promise<EnsureResult> {
     await Location.startLocationUpdatesAsync(LOCATION_TASK_NAME, {
       accuracy: Location.Accuracy.High,
       timeInterval: LOCATION_UPDATE_INTERVAL_MS,
-      // Si recorre 50 m antes de que venzan los 20 s, reporta de inmediato.
-      distanceInterval: 50,
+      // Android: `distanceInterval` es un FILTRO (solo entrega si se movió al menos esa distancia), no un
+      // disparador extra. Con 50 m, un domiciliario parado esperando en una puerta dejaba de reportar y el
+      // despacho lo veía "hace 12 min". En 0 manda una posición cada `timeInterval` aunque esté quieto.
+      // iOS no tiene intervalo de tiempo: ahí el filtro de distancia es lo que dispara las actualizaciones.
+      distanceInterval: Platform.OS === 'android' ? 0 : 50,
       showsBackgroundLocationIndicator: true,
       // ── iOS ──
       pausesUpdatesAutomatically: false,

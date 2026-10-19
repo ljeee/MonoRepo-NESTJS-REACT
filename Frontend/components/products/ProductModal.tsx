@@ -4,7 +4,11 @@ import { View, Text, ScrollView, TouchableOpacity } from '../../tw';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Icon from '../ui/Icon';
-import { PERSONALIZACION_OPCIONES } from '@/src/shared';
+import { InlineError } from '../ui/InlineError';
+import { CATEGORIAS_PRODUCTO, CATEGORIA_PRODUCTO_LABEL } from '@/src/shared';
+import type { CategoriaProducto, SaborGrupo } from '@/src/shared';
+import { PersonalizacionSelector } from './PersonalizacionSelector';
+import type { PersonalizacionProducto } from './PersonalizacionSelector';
 
 // ─── Emoji catalogue ──────────────────────────────────────────────────────────
 
@@ -53,14 +57,20 @@ interface ProductModalProps {
     emoji: string;
     error: string;
     loading: boolean;
-    personalizacion: string;
+    /** Qué ofrece al pedirlo: sabores de un grupo, base de jugo o nada. */
+    personalizacion: PersonalizacionProducto;
+    grupos: SaborGrupo[];
+    /** Categoría de catálogo (analítica). null = sin elegir. */
+    categoria?: CategoriaProducto | null;
     onClose: () => void;
     onSave: () => void;
     onDelete?: () => void;
     onNameChange: (value: string) => void;
     onDescriptionChange: (value: string) => void;
     onEmojiChange: (value: string) => void;
-    onPersonalizacionChange: (value: string) => void;
+    onPersonalizacionChange: (value: PersonalizacionProducto) => void;
+    /** Sin este callback el selector de categoría no se muestra. */
+    onCategoriaChange?: (value: CategoriaProducto | null) => void;
 }
 
 export function ProductModal({
@@ -72,6 +82,8 @@ export function ProductModal({
     error,
     loading,
     personalizacion,
+    grupos,
+    categoria = null,
     onClose,
     onSave,
     onDelete,
@@ -79,9 +91,10 @@ export function ProductModal({
     onDescriptionChange,
     onEmojiChange,
     onPersonalizacionChange,
+    onCategoriaChange,
 }: ProductModalProps) {
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    const displayEmoji = emoji || (name.toLowerCase().includes('pizza') ? '🍕' : '🍔');
+    const displayEmoji = emoji || (personalizacion.saborGrupoId != null ? '🍕' : '🍔');
 
     return (
         <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
@@ -285,59 +298,54 @@ export function ProductModal({
                                 numberOfLines={3}
                             />
 
-                            {/* ── Personalización (modal de sabores al agregar a una orden) ── */}
+                            {/* ── Categoría (analítica); tocar la elegida la quita ── */}
+                            {onCategoriaChange && (
+                                <View>
+                                    <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 2 }}>
+                                        Categoría
+                                    </Text>
+                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                        {CATEGORIAS_PRODUCTO.map((cat) => {
+                                            const isSelected = categoria === cat;
+                                            return (
+                                                <TouchableOpacity
+                                                    key={cat}
+                                                    onPress={() => onCategoriaChange(isSelected ? null : cat)}
+                                                    style={{
+                                                        paddingHorizontal: 14,
+                                                        paddingVertical: 9,
+                                                        borderRadius: 14,
+                                                        borderWidth: 1,
+                                                        backgroundColor: isSelected ? 'rgba(245,165,36,0.18)' : 'rgba(255,255,255,0.04)',
+                                                        borderColor: isSelected ? 'rgba(245,165,36,0.45)' : 'rgba(255,255,255,0.08)',
+                                                    }}
+                                                >
+                                                    <Text style={{ fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', color: isSelected ? '#F5A524' : '#64748B' }}>
+                                                        {CATEGORIA_PRODUCTO_LABEL[cat]}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
+                                    </View>
+                                    <Text style={{ color: '#475569', fontSize: 10, marginTop: 6, marginLeft: 2 }}>
+                                        Agrupa el producto en la analítica e inventario. Sin elegir, se deduce del nombre.
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* ── Qué ofrece al pedirlo (sabores de un grupo, base de jugo o nada) ── */}
                             <View>
                                 <Text style={{ color: '#94A3B8', fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginLeft: 2 }}>
-                                    Personalización al pedir
+                                    Al pedirlo
                                 </Text>
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                                    {PERSONALIZACION_OPCIONES.map((opt) => {
-                                        const isSelected = (personalizacion || 'ninguna') === opt.value;
-                                        return (
-                                            <TouchableOpacity
-                                                key={opt.value}
-                                                onPress={() => onPersonalizacionChange(opt.value)}
-                                                style={{
-                                                    paddingHorizontal: 14,
-                                                    paddingVertical: 9,
-                                                    borderRadius: 14,
-                                                    borderWidth: 1,
-                                                    backgroundColor: isSelected ? 'rgba(245,165,36,0.18)' : 'rgba(255,255,255,0.04)',
-                                                    borderColor: isSelected ? 'rgba(245,165,36,0.45)' : 'rgba(255,255,255,0.08)',
-                                                }}
-                                            >
-                                                <Text style={{ fontSize: 11, fontFamily: 'SpaceGrotesk-Bold', textTransform: 'uppercase', color: isSelected ? '#F5A524' : '#64748B' }}>
-                                                    {opt.label}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
+                                <PersonalizacionSelector grupos={grupos} value={personalizacion} onChange={onPersonalizacionChange} />
                                 <Text style={{ color: '#475569', fontSize: 10, marginTop: 6, marginLeft: 2 }}>
-                                    Define qué modal se abre al agregarlo a una orden (sabores, calzone, base de jugo o ninguno).
+                                    Elige un grupo de sabores para que pida sabores (con sus recargos), la base de jugo, o ninguno para agregarlo directo.
                                 </Text>
                             </View>
 
                             {/* Error */}
-                            {error ? (
-                                <View
-                                    style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        backgroundColor: 'rgba(239,68,68,0.08)',
-                                        padding: 12,
-                                        borderRadius: 14,
-                                        borderWidth: 1,
-                                        borderColor: 'rgba(239,68,68,0.2)',
-                                    }}
-                                >
-                                    <Icon name="alert-circle" size={14} color="#EF4444" />
-                                    <Text style={{ color: '#F87171', fontSize: 12, fontFamily: 'SpaceGrotesk-Bold', flex: 1 }}>
-                                        {error}
-                                    </Text>
-                                </View>
-                            ) : null}
+                            <InlineError message={error} size="sm" />
                         </ScrollView>
 
                         {/* Footer */}

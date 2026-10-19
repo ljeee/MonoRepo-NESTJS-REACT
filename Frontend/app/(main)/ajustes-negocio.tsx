@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { invalidarCuentasTransferencia } from '../../hooks/use-cuentas-transferencia';
 import { TouchableOpacity, TextInput } from 'react-native';
 import { View, Text } from '../../tw';
 import { EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia, useToast } from '@/src/shared';
@@ -12,7 +13,8 @@ import {
     Input,
     Button,
     Icon,
-    ListSkeleton
+    ListSkeleton,
+    ArqueoSwitch
 } from '../../components/ui';
 
 export default function AjustesNegocioScreen() {
@@ -52,7 +54,10 @@ export default function AjustesNegocioScreen() {
     const handleSave = async () => {
         try {
             setSaving(true);
-            await api.empresa.update(form);
+            // El arqueo se cambia con su propio interruptor (al instante); no pisarlo con el valor viejo del formulario.
+            const payload = { ...form };
+            delete payload.arqueoCaja;
+            await api.empresa.update(payload);
             showToast('Configuración actualizada correctamente', 'success');
             loadConfig();
         } catch (error) {
@@ -67,6 +72,7 @@ export default function AjustesNegocioScreen() {
         try {
             setSavingCuenta(true);
             await api.empresa.cuentasTransferencia.create(nuevaCuenta.trim());
+            invalidarCuentasTransferencia();
             setNuevaCuenta('');
             showToast('Cuenta de transferencia agregada', 'success');
             const updated = await api.empresa.cuentasTransferencia.getAll();
@@ -81,6 +87,7 @@ export default function AjustesNegocioScreen() {
     const handleToggleCuenta = async (c: CuentaTransferencia) => {
         try {
             await api.empresa.cuentasTransferencia.update(c.id, { activa: !c.activa });
+            invalidarCuentasTransferencia();
             const updated = await api.empresa.cuentasTransferencia.getAll();
             setCuentas(updated || []);
         } catch {
@@ -91,6 +98,7 @@ export default function AjustesNegocioScreen() {
     const handleDeleteCuenta = async (id: number) => {
         try {
             await api.empresa.cuentasTransferencia.delete(id);
+            invalidarCuentasTransferencia();
             showToast('Cuenta eliminada', 'success');
             const updated = await api.empresa.cuentasTransferencia.getAll();
             setCuentas(updated || []);
@@ -119,6 +127,9 @@ export default function AjustesNegocioScreen() {
                 subtitle="Configuración legal y de facturación"
                 icon="business"
             />
+
+            {/* Solo admin: encender/apagar el control de caja por arqueo */}
+            <ArqueoSwitch />
 
             <Animated.View entering={FadeInUp.duration(600)} className="max-w-4xl mx-auto w-full">
                 <Card className="mb-8 overflow-hidden relative border-white/5 bg-transparent p-0">

@@ -18,6 +18,8 @@ export class Ordenes {
 	@PrimaryGeneratedColumn({name: 'orden_id'})
 	ordenId: number;
 
+	// Índice: lo usan los EXISTS de la analítica (factura → orden) y el borrado en cascada.
+	@Index()
 	@Column({name: 'factura_id', type: 'integer', nullable: true})
 	facturaId: number;
 
@@ -39,6 +41,14 @@ export class Ordenes {
 
 	@Column({name: 'fecha_cancelacion', type: 'timestamptz', nullable: true})
 	fechaCancelacion: Date;
+
+	/** Por dónde entró la orden: 'pos' (staff) | 'web' (ClientWeb, rol cliente). null = histórico. */
+	@Column({name: 'canal', type: 'varchar', length: 20, nullable: true})
+	canal: string | null;
+
+	/** `sub` del token que creó la orden (uuid de staff o teléfono del cliente). null = histórico. */
+	@Column({name: 'usuario_creacion_id', type: 'text', nullable: true})
+	usuarioCreacionId: string | null;
 
 	@ManyToOne(() => FacturasVentas, (factura) => factura.ordenes, {nullable: true, onDelete: 'CASCADE'})
 	@JoinColumn({name: 'factura_id'})

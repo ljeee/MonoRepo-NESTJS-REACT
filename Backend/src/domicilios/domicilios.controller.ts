@@ -1,4 +1,6 @@
-import {Controller, Get, Post, Put, Delete, Param, Body, Patch, Query} from '@nestjs/common';
+import {Controller, Get, Post, Delete, Param, Body, Patch, Query, ForbiddenException} from '@nestjs/common';
+import {Roles} from '../auth/decorators/roles.decorator';
+import {Role} from '../auth/roles.enum';
 import {ApiTags, ApiOperation, ApiResponse} from '@nestjs/swagger';
 import {DomiciliosService} from './domicilios.service';
 import {CreateDomiciliosDto} from './esquemas/domicilios.dto';
@@ -16,12 +18,14 @@ export class DomiciliosController {
 		return this.service.findByUser(user.username, all === 'true');
 	}
 
+	@Roles(Role.Admin, Role.Cajero, Role.Mesero)
 	@Get()
 	@ApiOperation({summary: 'Obtener todos los domicilios'})
 	@ApiResponse({status: 200, description: 'Lista de domicilios.'})
 	findAll() {
 		return this.service.findAll();
 	}
+	@Roles(Role.Admin, Role.Cajero, Role.Mesero)
 	@Get('dia')
 	@ApiOperation({summary: 'Obtener domicilios del día actual'})
 	@ApiResponse({status: 200, description: 'Lista de domicilios del día.'})
@@ -29,6 +33,7 @@ export class DomiciliosController {
 		return this.service.findByDay();
 	}
 
+	@Roles(Role.Admin, Role.Cajero, Role.Mesero)
 	@Get('dia/pendientes')
 	@ApiOperation({summary: 'Obtener domicilios pendientes del día actual'})
 	@ApiResponse({status: 200, description: 'Lista de domicilios pendientes del día.'})
@@ -36,6 +41,7 @@ export class DomiciliosController {
 		return this.service.findPendingByDay();
 	}
 
+	@Roles(Role.Admin, Role.Cajero, Role.Mesero)
 	@Get('sin-asignar')
 	@ApiOperation({summary: 'Obtener domicilios del día actual sin domiciliario asignado'})
 	@ApiResponse({status: 200, description: 'Lista de domicilios sin domiciliario.'})
@@ -43,6 +49,7 @@ export class DomiciliosController {
 		return this.service.findSinAsignarHoy();
 	}
 
+	@Roles(Role.Admin, Role.Cajero, Role.Mesero)
 	@Get(':id')
 	@ApiOperation({summary: 'Obtener un domicilio por ID'})
 	@ApiResponse({status: 200, description: 'Domicilio encontrado.'})
@@ -50,6 +57,7 @@ export class DomiciliosController {
 		return this.service.findOne(id);
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Post()
 	@ApiOperation({summary: 'Crear un domicilio'})
 	@ApiResponse({status: 201, description: 'Domicilio creado.'})
@@ -57,13 +65,27 @@ export class DomiciliosController {
 		return this.service.create(dto);
 	}
 
+	@Roles(Role.Admin, Role.Cajero, Role.Domiciliario)
 	@Patch(':id')
 	@ApiOperation({summary: 'Actualizar un domicilio'})
 	@ApiResponse({status: 200, description: 'Domicilio actualizado.'})
-	update(@Param('id') id: number, @Body() dto: Partial<CreateDomiciliosDto>) {
-		return this.service.update(id, dto);
+	async update(@Param('id') id: number, @Body() dto: Partial<CreateDomiciliosDto>, @GetUser() user: User) {
+		const esDespacho = (user.roles ?? []).some((r) => r === Role.Admin || r === Role.Cajero);
+		if (esDespacho) return this.service.update(id, dto);
+
+		// Un domiciliario solo marca el estado de SUS entregas: no reasigna, no cambia dirección ni costo,
+		// y no toca los domicilios de otro repartidor (user.username = teléfono, igual que /domicilios/me).
+		const domicilio = await this.service.findOne(id);
+		if (domicilio.telefonoDomiciliarioAsignado !== user.username) {
+			throw new ForbiddenException('Este domicilio no está asignado a ti');
+		}
+		if (dto.estadoDomicilio === undefined) {
+			throw new ForbiddenException('Solo puedes actualizar el estado de tus entregas');
+		}
+		return this.service.update(id, {estadoDomicilio: dto.estadoDomicilio});
 	}
 
+	@Roles(Role.Admin, Role.Cajero)
 	@Delete(':id')
 	@ApiOperation({summary: 'Eliminar un domicilio'})
 	@ApiResponse({status: 200, description: 'Domicilio eliminado.'})

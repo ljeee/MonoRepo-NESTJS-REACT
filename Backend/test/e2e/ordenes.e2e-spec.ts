@@ -166,6 +166,8 @@ describe('OrdenesController (e2e)', () => {
 
 			expect(mockOrdenesService.create).toHaveBeenCalledWith(
 				expect.objectContaining({tipoPedido: 'domicilio', nombreCliente: 'Juan Pérez'}),
+				// Origen de la orden (para la analítica): staff → canal 'pos' y su id.
+				{canal: 'pos', usuarioCreacionId: 'test-user-id'},
 			);
 		});
 	});
@@ -231,6 +233,9 @@ describe('OrdenesController (e2e)', () => {
 				undefined,
 				undefined,
 				undefined,
+				undefined, // denominaciones
+				undefined, // cuentaTransferenciaId
+				undefined, // cuentaTransferenciaNombre
 			);
 		});
 
@@ -251,6 +256,9 @@ describe('OrdenesController (e2e)', () => {
 				undefined,
 				30000,
 				20000,
+				undefined, // denominaciones
+				undefined, // cuentaTransferenciaId
+				undefined, // cuentaTransferenciaNombre
 			);
 		});
 	});

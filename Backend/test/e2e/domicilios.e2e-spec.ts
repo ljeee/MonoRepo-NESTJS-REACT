@@ -156,6 +156,7 @@ describe('DomiciliosController (e2e)', () => {
 	describe('PATCH /domicilios/:id', () => {
 		it('actualiza el domicilio', async () => {
 			const updated = {...mockDomicilio, estadoDomicilio: 'entregado'};
+			mockService.findOne.mockResolvedValue({...mockDomicilio, telefonoDomiciliarioAsignado: TEST_USER.username});
 			mockService.update.mockResolvedValue(updated);
 
 			const res = await request(app.getHttpServer())
@@ -165,6 +166,14 @@ describe('DomiciliosController (e2e)', () => {
 
 			expect(res.body.estadoDomicilio).toBe('entregado');
 			expect(mockService.update).toHaveBeenCalledWith(1, expect.objectContaining({estadoDomicilio: 'entregado'}));
+		});
+
+		it('un domiciliario no puede marcar el domicilio de otro repartidor', async () => {
+			mockService.findOne.mockResolvedValue({...mockDomicilio, telefonoDomiciliarioAsignado: '3109999999'});
+
+			await request(app.getHttpServer()).patch('/domicilios/1').send({estadoDomicilio: 'entregado'}).expect(403);
+
+			expect(mockService.update).not.toHaveBeenCalled();
 		});
 	});
 
