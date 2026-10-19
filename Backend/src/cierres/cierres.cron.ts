@@ -3,6 +3,15 @@ import {Cron} from '@nestjs/schedule';
 import {CierresService} from './cierres.service';
 import {getBogotaDateString} from '../common/utils/date.utils';
 
+/** Hora (Bogotá) del cierre automático del día anterior. El día sigue siendo de medianoche a medianoche. */
+export const HORA_CIERRE = 4;
+
+/** true si en Bogotá aún no son las HORA_CIERRE (Colombia no tiene horario de verano: UTC−5 fijo). */
+export function antesDeHoraCierre(ahora: Date = new Date()): boolean {
+	const horaBogota = (ahora.getUTCHours() + 24 - 5) % 24;
+	return horaBogota < HORA_CIERRE;
+}
+
 @Injectable()
 export class CierresCronService implements OnApplicationBootstrap {
 	private readonly logger = new Logger(CierresCronService.name);
@@ -10,13 +19,21 @@ export class CierresCronService implements OnApplicationBootstrap {
 	constructor(private readonly cierresService: CierresService) {}
 
 	async onApplicationBootstrap() {
-		// Verify automatic closure on server startup (e.g. docker restarts)
+		// Al arrancar (reinicio del contenedor) recupera el cierre de ayer si falta. Pero antes de las 4:00 el local
+		// puede seguir atendiendo (a veces hasta las 2 a. m.): ahí no se cierra, lo hace el cron de las 4:00.
+		if (antesDeHoraCierre()) {
+			this.logger.log(
+				`Startup: son antes de las ${HORA_CIERRE}:00 en Bogotá; el cierre de ayer lo hará el cron.`,
+			);
+			return;
+		}
 		this.logger.log('Startup: Revisando si hay un cierre de caja pendiente de ayer...');
 		await this.checkAndGenerateClosure();
 	}
 
-	// Ejecuta todos los días a las 00:05 (Justo pasada la medianoche)
-	@Cron('5 0 * * *', {timeZone: 'America/Bogota'})
+	// Todos los días a las 4:00 a. m. (Bogotá): el local a veces cierra pasada la medianoche, y así lo cobrado o
+	// editado después de las 12 sobre las ventas de ayer ya entra al cierre y a los dos PDF del correo.
+	@Cron(`0 ${HORA_CIERRE} * * *`, {timeZone: 'America/Bogota'})
 	async handleDailyClose() {
 		this.logger.log('Cron: Ejecutando verificación de cierre de turno...');
 		await this.checkAndGenerateClosure();

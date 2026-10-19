@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { View, Text, TextInput } from '../../tw';
-import { PageContainer, PageHeader, Button, Icon, Card, Badge, ConfirmModal, ListSkeleton, PosRefreshControl } from '../../components/ui';
+import { PageContainer, PageHeader, Button, Icon, IconButton, Card, Badge, ConfirmModal, ListSkeleton, PosRefreshControl } from '../../components/ui';
 import { api } from '../../services/api';
 import { useToast, formatCurrency, formatDate, Role, bogotaToday } from '@/src/shared';
 import type { ResumenGeneral } from '@/src/shared';
@@ -9,6 +10,7 @@ import { useBreakpoint } from '../../styles/responsive';
 import { ResumenDiaCompleto } from '../../components/contabilidad/ResumenDiaCompleto';
 import { PaginadorLocal } from '../../components/contabilidad/PaginadorLocal';
 import { usePaginaLocal } from '../../hooks/use-pagina-local';
+import { abrirPdfDelServidor } from '../../utils/exportData';
 
 export default function CierreCajaScreen() {
     const { showToast } = useToast();
@@ -27,6 +29,23 @@ export default function CierreCajaScreen() {
 
     // Día contable de Bogotá (el del dispositivo puede estar desfasado).
     const today = bogotaToday();
+
+    // Los mismos dos PDF que llegan por correo con el cierre (el servidor los arma). Solo en la web.
+    const puedeAbrirPdf = Platform.OS === 'web';
+    const abrirLibro = useCallback(
+        async (fecha: string, filtro: 'completo' | 'solo_transferencias') => {
+            try {
+                await abrirPdfDelServidor(
+                    () => api.contabilidad.libroDiarioPdf({ from: fecha, to: fecha, filtro }),
+                    `libro-diario${filtro === 'solo_transferencias' ? '-transferencias' : ''}-${fecha}.pdf`,
+                    'Generando el libro diario…',
+                );
+            } catch (error: any) {
+                showToast(error?.response?.status === 403 ? 'No tienes permiso para ver el libro diario' : 'No se pudo generar el PDF', 'error');
+            }
+        },
+        [showToast],
+    );
 
     const fetchData = useCallback(async () => {
         try {
@@ -53,7 +72,7 @@ export default function CierreCajaScreen() {
         try {
             setLoading(true);
             await api.cierres.ejecutar(today, observations, true);
-            showToast('Cierre de caja realizado y enviado por correo 📧', 'success');
+            showToast('Cierre realizado: se enviaron los dos libros diarios por correo 📧', 'success');
             setObservations('');
             fetchData();
         } catch (error: any) {
@@ -114,6 +133,12 @@ export default function CierreCajaScreen() {
                             variant="primary" 
                             onPress={() => setIsConfirmOpen(true)}
                         />
+                        {puedeAbrirPdf && (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
+                                <Button title="Libro diario de hoy (PDF)" icon="book-open-page-variant-outline" variant="secondary" size="sm" onPress={() => void abrirLibro(today, 'completo')} />
+                                <Button title="Transferencias y mixto (PDF)" icon="qrcode-scan" variant="secondary" size="sm" onPress={() => void abrirLibro(today, 'solo_transferencias')} />
+                            </View>
+                        )}
                     </Card>
                 </View>
 
@@ -138,6 +163,12 @@ export default function CierreCajaScreen() {
                                         </View>
                                     </View>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                                        {puedeAbrirPdf && (
+                                            <View style={{ flexDirection: 'row', gap: 4 }}>
+                                                <IconButton icon="book-open-page-variant-outline" size="sm" accessibilityLabel={`Libro diario del ${displayDate}`} onPress={() => void abrirLibro(h.fecha.slice(0, 10), 'completo')} />
+                                                <IconButton icon="qrcode-scan" size="sm" accessibilityLabel={`Transferencias y mixto del ${displayDate}`} onPress={() => void abrirLibro(h.fecha.slice(0, 10), 'solo_transferencias')} />
+                                            </View>
+                                        )}
                                         <View style={{ alignItems: 'flex-end' }}>
                                             <Badge label="Finalizado" variant="success" />
                                             <Text style={{ fontFamily: 'Outfit', color: '#475569', fontSize: 10, marginTop: 4 }}>ID: {h.id.slice(0, 8)}</Text>
@@ -171,7 +202,7 @@ export default function CierreCajaScreen() {
             <ConfirmModal 
                 visible={isConfirmOpen}
                 title="¿Realizar Cierre?"
-                message="Esta acción consolidará las ventas de hoy y enviará un reporte al administrador. No se podrán realizar más cambios en las órdenes de esta fecha."
+                message="Esta acción consolidará las ventas de hoy y enviará los dos libros diarios en PDF (completo y transferencias y mixto) a tu correo y al de la contadora. No se podrán realizar más cambios en las órdenes de esta fecha."
                 confirmText="SÍ, CERRAR DÍA"
                 onConfirm={handleCierre}
                 onCancel={() => setIsConfirmOpen(false)}

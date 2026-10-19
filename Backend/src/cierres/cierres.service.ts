@@ -2,11 +2,9 @@ import {Injectable, BadRequestException, Logger} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {Repository} from 'typeorm';
 import {CierreCaja} from './esquemas/cierre.entity';
-import {EstadisticasService} from '../estadisticas/estadisticas.service';
 import {AnaliticaService} from '../estadisticas/analitica/analitica.service';
 import {MailService} from '../common/services/mail.service';
-import {ConfigService} from '@nestjs/config';
-import {EmpresaService} from '../empresa/empresa.service';
+import {LibroDiarioService} from '../contabilidad/libro-diario/libro-diario.service';
 
 @Injectable()
 export class CierresService {
@@ -15,11 +13,9 @@ export class CierresService {
 	constructor(
 		@InjectRepository(CierreCaja)
 		private readonly cierreRepo: Repository<CierreCaja>,
-		private readonly statsService: EstadisticasService,
 		private readonly analiticaService: AnaliticaService,
 		private readonly mailService: MailService,
-		private readonly config: ConfigService,
-		private readonly empresaService: EmpresaService,
+		private readonly libroDiario: LibroDiarioService,
 	) {}
 
 	/**
@@ -27,7 +23,6 @@ export class CierresService {
 	 * @param enviarEmail Por defecto false para evitar spam en actualizaciones automáticas.
 	 */
 	async generalCierre(fecha: string, userId: string, observations?: string, force = false, enviarEmail = false) {
-		const empresa = await this.empresaService.getConfig();
 		// Verificar si ya existe un cierre
 		const existing = await this.cierreRepo.findOne({where: {fecha}});
 		if (existing && !force) {
@@ -40,7 +35,6 @@ export class CierresService {
 		const metodosPago = this.metodosDelCierre(resumen);
 		// Agrupado por producto + variante (antes por el texto completo, que fragmentaba por sabor).
 		const productosTop = await this.analiticaService.topProductosCierre(fecha, 5);
-		const facturas = await this.statsService.facturasDetalle(fecha, fecha);
 
 		const cierre = this.cierreRepo.create({
 			...(existing || {}),
@@ -62,24 +56,35 @@ export class CierresService {
 		const saved = await this.cierreRepo.save(cierre);
 		this.logger.log(`Cierre ${existing ? 'actualizado' : 'creado'} para la fecha: ${fecha}`);
 
-		// Enviar por correo solo si se solicita explícitamente y está configurado
-		const reportEmail = this.config.get('REPORT_EMAIL');
-		if (enviarEmail && reportEmail) {
-			try {
-				await this.mailService.sendCierreReport(reportEmail, {
-					...saved,
-					empresa,
-					facturas,
-				});
-				this.logger.log(`Reporte de cierre enviado a: ${reportEmail}`);
-			} catch (error) {
-				this.logger.error('Error enviando reporte por correo:', error);
-			}
-		} else if (enviarEmail && !reportEmail) {
-			this.logger.warn('Se solicitó envío de correo, pero REPORT_EMAIL no está configurado.');
-		}
-
+		if (enviarEmail) await this.enviarCorreoCierre(fecha, saved.observaciones ?? null);
 		return saved;
+	}
+
+	/**
+	 * Correo del cierre: el resumen del día en el cuerpo y los DOS libros diarios en PDF (completo y transferencias y
+	 * mixto), al dueño (REPORT_EMAIL) y a la contadora. Cierre y libro llevan así la misma información. Nunca hace
+	 * fallar el cierre: sin destinatarios o sin servidor de correo no hace nada y un error solo queda en el log.
+	 */
+	private async enviarCorreoCierre(fecha: string, observaciones: string | null) {
+		try {
+			const destinos = await this.libroDiario.destinatarios();
+			if (!destinos.length) {
+				this.logger.warn(
+					'Se pidió enviar el cierre, pero no hay REPORT_EMAIL ni correo de la contadora configurados.',
+				);
+				return;
+			}
+			if (!this.mailService.configurado()) {
+				this.logger.warn(
+					'Se pidió enviar el cierre, pero el servidor de correo no está configurado (MAIL_HOST).',
+				);
+				return;
+			}
+			await this.libroDiario.enviar(fecha, fecha, {observaciones, motivo: 'cierre'});
+			this.logger.log(`Cierre del ${fecha} enviado (2 PDF) a: ${destinos.join(', ')}`);
+		} catch (error) {
+			this.logger.error('Error enviando el correo del cierre:', error);
+		}
 	}
 
 	/**
@@ -95,12 +100,21 @@ export class CierresService {
 			.filter((e) => e.clave === 'pendiente' || e.clave === 'parcial')
 			.reduce((t, e) => t + e.facturas, 0);
 		const filas = [
-			{metodo: 'efectivo', cantidad: facturasDe('efectivo') + facturasDe('mixto'), total: ventas.cobradoPorMetodo.efectivo, porCuenta: []},
+			{
+				metodo: 'efectivo',
+				cantidad: facturasDe('efectivo') + facturasDe('mixto'),
+				total: ventas.cobradoPorMetodo.efectivo,
+				porCuenta: [],
+			},
 			{
 				metodo: 'transferencia',
 				cantidad: facturasDe('transferencia') + facturasDe('mixto'),
 				total: ventas.cobradoPorMetodo.transferencia,
-				porCuenta: ventas.porCuenta.map((c) => ({cuentaNombre: c.cuenta, cantidad: c.facturas, total: c.monto})),
+				porCuenta: ventas.porCuenta.map((c) => ({
+					cuentaNombre: c.cuenta,
+					cantidad: c.facturas,
+					total: c.monto,
+				})),
 			},
 			{metodo: 'por_cobrar', cantidad: pendientes, total: ventas.porCobrar, porCuenta: []},
 		].filter((f) => f.total > 0);

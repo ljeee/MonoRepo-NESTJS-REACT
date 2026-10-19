@@ -5,6 +5,15 @@ import {EmpresaConfig} from './esquemas/empresa.entity';
 import {CuentaTransferencia} from './esquemas/cuenta-transferencia.entity';
 import {UpdateEmpresaDto} from './esquemas/empresa.dto';
 
+/** " a@x.com ,b@y.com " → "a@x.com, b@y.com"; vacío → null. */
+export function normalizarCorreos(valor?: string | null): string | null {
+	const lista = (valor ?? '')
+		.split(',')
+		.map((c) => c.trim())
+		.filter(Boolean);
+	return lista.length ? lista.join(', ') : null;
+}
+
 @Injectable()
 export class EmpresaService implements OnModuleInit {
 	constructor(
@@ -52,7 +61,22 @@ export class EmpresaService implements OnModuleInit {
 			Object.assign(config, dto);
 			if (reactivando) config.arqueoDesde = new Date();
 		}
-		return this.repo.save(config);
+		if (dto.correoContador !== undefined) config.correoContador = normalizarCorreos(dto.correoContador);
+		const guardada = await this.repo.save(config);
+		// La respuesta del PATCH tampoco lo repite: se consulta con getCorreoContador().
+		delete (guardada as Partial<EmpresaConfig>).correoContador;
+		return guardada;
+	}
+
+	/** Correo(s) del contador (columna con select: false, fuera de la respuesta pública). null = sin configurar. */
+	async getCorreoContador(): Promise<string | null> {
+		const fila = await this.repo
+			.createQueryBuilder('e')
+			.select('e.id')
+			.addSelect('e.correoContador')
+			.orderBy('e.id', 'ASC')
+			.getOne();
+		return normalizarCorreos(fila?.correoContador);
 	}
 
 	// ─── Cuentas Transferencia ──────────────────────────────────────────────────

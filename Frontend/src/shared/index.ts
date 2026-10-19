@@ -6,9 +6,9 @@ export type {
   CajaResumen, FacturaPago, OrderCartItem, CartItem, CreateOrdenProductoDto,
   CreateOrdenDto, CreateFacturaPagoDto, CreateClienteDto, CreateDomiciliarioDto,
   FindOrdenesParams, RegisterDto, AuthTokens, AuthUser, AuthResponse, PizzaSabor, SaborGrupo, GuardarSaborGrupoDto,
-  ClienteHistorial, ClienteHistorialProducto, ClienteHistorialOrden, ClienteProductoFavorito, ClienteSaborFavorito, EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia,
+  ClienteHistorial, ClienteHistorialProducto, ClienteHistorialOrden, ClienteProductoFavorito, ClienteSaborFavorito, EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia, ParamsLibroDiario,
   DesgloseTransferencia, TipoGasto, FindFacturasPagosParams, CobradoPorCuenta, GastosPorTipo, GastosPorCategoria,
-  ResultadoPeriodo, ProductoVendidoResumen, AjustesPrecioResumen,
+  ResultadoPeriodo, ProductoVendidoResumen, AjustesPrecioResumen, ProductoPorPrecio,
 } from './types/models';
 export type {
   TipoItemInventario, CategoriaCaja, CategoriaBebida, EstadoStock, TipoMovimientoManual, TipoMovimientoInventario,

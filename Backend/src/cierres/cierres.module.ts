@@ -7,9 +7,10 @@ import {CierresCronService} from './cierres.cron';
 import {EstadisticasModule} from '../estadisticas/estadisticas.module';
 import {MailService} from '../common/services/mail.service';
 import {EmpresaModule} from '../empresa/empresa.module';
+import {ContabilidadModule} from '../contabilidad/contabilidad.module';
 
 @Module({
-	imports: [TypeOrmModule.forFeature([CierreCaja]), EstadisticasModule, EmpresaModule],
+	imports: [TypeOrmModule.forFeature([CierreCaja]), EstadisticasModule, EmpresaModule, ContabilidadModule],
 	controllers: [CierresController],
 	providers: [CierresService, MailService, CierresCronService],
 	exports: [CierresService],

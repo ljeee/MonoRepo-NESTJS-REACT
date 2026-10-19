@@ -222,8 +222,8 @@ docker network rm ensayo-net
 
 ## 5. Fase C — Ventana de despliegue (producción)
 
-**Cuándo:** después de la última venta del día y terminando **antes de las 00:05**. Así el primer cierre automático ya sale con el formato nuevo. Si el arranque
-cae después de medianoche, el cierre de "ayer" se genera (y se manda por correo) al arrancar el backend, mientras las migraciones aún corren: evítalo.
+**Cuándo:** después de la última venta del día y terminando **antes de las 04:00** (el cierre automático corre a las 4 a. m.). Así el primer cierre automático ya sale con el formato nuevo. Si el arranque
+cae después de las 4:00, el cierre de "ayer" se genera (y se manda por correo) al arrancar el backend, mientras las migraciones aún corren: evítalo. Antes de las 4:00 el arranque no cierra nada.
 La auditoría avisa si el cierre de ayer no existe (`cierre-de-ayer`). Avisa a los clientes del sitio web y a los domiciliarios de que habrá una pausa corta.
 
 > ⚠️ **C0 — antes que nada.** Si producción corre con el `docker-compose.yml` anterior, el backend usa `target: development`, monta `./Backend:/app` y ejecuta
@@ -474,7 +474,7 @@ Si algo no funciona aquí, se corrige aquí: el día D no se improvisa. Al termi
 
 ### 12.4 Día D — respaldo final (en el servidor)
 
-1. **Cierre del último día de operación.** El cierre automático corre a las 00:05; si el servidor va a estar apagado a esa hora, hazlo antes desde la pantalla de Cierre de caja (admin).
+1. **Cierre del último día de operación.** El cierre automático corre a las 04:00; si el servidor va a estar apagado a esa hora, hazlo antes desde la pantalla de Cierre de caja (admin).
    El servidor nuevo solo recupera el cierre de AYER al arrancar, no el de días anteriores.
 2. Sin ventas en curso:
 

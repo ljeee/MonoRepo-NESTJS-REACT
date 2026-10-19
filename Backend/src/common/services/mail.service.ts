@@ -1,7 +1,12 @@
 import {Injectable} from '@nestjs/common';
 import {ConfigService} from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
-import {construirHtmlCierre} from './cierre-email';
+
+export interface AdjuntoCorreo {
+	filename: string;
+	content: Buffer | string;
+	contentType: string;
+}
 
 @Injectable()
 export class MailService {
@@ -23,40 +28,26 @@ export class MailService {
 		});
 	}
 
-	async sendCierreReport(to: string, data: any) {
-		const companyName =
-			data.empresa?.nombreComercial ||
-			data.empresa?.razonSocial ||
-			this.config.get('COMPANY_NAME', 'Antigravity POS');
-		const nit = data.empresa?.nit || this.config.get('COMPANY_NIT', 'N/A');
+	/** Sin MAIL_HOST no hay a dónde enviar (p. ej. el entorno local de pruebas). */
+	configurado(): boolean {
+		return !!this.config.get<string>('MAIL_HOST');
+	}
 
-		if (!data.resumen) {
-			throw new Error(`El cierre ${data.fecha} no guardó su resumen: no se puede armar el correo`);
-		}
-		const html = construirHtmlCierre({
-			fecha: data.fecha,
-			empresa: data.empresa,
-			resumen: data.resumen,
-			observaciones: data.observaciones,
-			facturas: data.facturas,
-			companyName,
-			nit,
-		});
-
-		// Support multiple recipients if 'to' is a comma-separated string
-		const recipients =
-			typeof to === 'string'
-				? to
-						.split(',')
-						.map((email) => email.trim())
-						.filter((email) => !!email)
-				: to;
-
+	/**
+	 * Un correo con adjuntos a varios destinatarios. Lo usa el cierre (resumen en el cuerpo + los dos libros diarios
+	 * en PDF, al dueño y a la contadora) y el envío manual desde Contabilidad.
+	 */
+	async enviarConAdjuntos(
+		destinos: string[],
+		d: {asunto: string; html: string; adjuntos: AdjuntoCorreo[]; remitente?: string},
+	) {
+		const nombre = d.remitente ?? this.config.get<string>('COMPANY_NAME', 'Dfiru Pizzería');
 		await this.transporter.sendMail({
-			from: `"${companyName}" <${this.config.get('MAIL_USER')}>`,
-			to: recipients,
-			subject: `Cierre de Caja - ${data.fecha} - ${companyName}`,
-			html,
+			from: `"${nombre}" <${this.config.get('MAIL_USER')}>`,
+			to: destinos,
+			subject: d.asunto,
+			html: d.html,
+			attachments: d.adjuntos,
 		});
 	}
 }

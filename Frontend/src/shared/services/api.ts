@@ -12,7 +12,7 @@ import type {
   SaborGrupo, GuardarSaborGrupoDto,
   ClienteHistorial,
   RegisterDto,
-  EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia,
+  EmpresaConfig, UpdateEmpresaDto, CuentaTransferencia, ParamsLibroDiario,
   InventarioItem, MovimientosInventarioPagina, InventarioRegla, SugerenciaReglaCaja, EstadoInventario,
   CrearItemInventarioDto, ActualizarItemInventarioDto, GuardarReglaInventarioDto, TipoItemInventario, TipoMovimientoManual,
   DenominacionesMap, CajaMovimiento, CajaResumen,
@@ -365,6 +365,21 @@ export function createApi(http: AxiosInstance) {
       delete: (id: number) =>
         http.delete(`/empresa/cuentas-transferencia/${id}`).then((r) => r.data),
     },
+
+    /** Solo admin: no viaja en GET /empresa (que es público). */
+    correoContador: () =>
+      http.get<{ correoContador: string | null }>('/empresa/correo-contador').then((r) => r.data.correoContador),
+  };
+
+  const contabilidad = {
+    /** Libro diario en PDF: el mismo que se envía en cada cierre. */
+    libroDiarioPdf: (params: ParamsLibroDiario) =>
+      http.get<Blob>('/contabilidad/libro-diario', { params: { ...params, formato: 'pdf' }, responseType: 'blob' }).then((r) => r.data),
+    libroDiarioCsv: (params: ParamsLibroDiario) =>
+      http.get<Blob>('/contabilidad/libro-diario', { params: { ...params, formato: 'csv' }, responseType: 'blob' }).then((r) => r.data),
+    /** Envía los dos libros del rango en PDF (completo y transferencias y mixto) al dueño y a la contadora. */
+    enviarLibros: (from: string, to: string) =>
+      http.post<{ enviadoA: string[]; adjuntos: string[] }>('/contabilidad/libro-diario/enviar', { from, to }).then((r) => r.data),
   };
 
   // ─── Estadísticas ───────────────────────────────────────────────────
@@ -517,6 +532,7 @@ export function createApi(http: AxiosInstance) {
     estadisticas,
     analitica,
     empresa,
+    contabilidad,
     inventario,
     cajaDenominaciones,
     http,

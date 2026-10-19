@@ -7,16 +7,35 @@
  */
 
 export type ResumenCierre = Awaited<ReturnType<import('../../estadisticas/analitica/analitica.service').AnaliticaService['resumenGeneral']>>;
+export type DomiciliariosCierre = Awaited<ReturnType<import('../../estadisticas/analitica/analitica.service').AnaliticaService['domiciliarios']>>;
 
 export interface DatosCierreEmail {
 	fecha: string;
 	empresa?: {nombreComercial?: string; razonSocial?: string; nit?: string} | null;
 	resumen: ResumenCierre;
+	/** Sección 8 (domiciliarios del día); sin ella el correo trae las 7 de siempre. */
+	domiciliarios?: DomiciliariosCierre | null;
 	observaciones?: string | null;
 	facturas?: {facturaId: number; metodo?: string | null; total: number}[];
 	companyName: string;
 	nit: string;
+	/** Encabezado del correo (por defecto «Cierre de Jornada»). */
+	titulo?: string;
+	/** Título de la sección 1 (por defecto «Ventas del día»). */
+	tituloVentas?: string;
+	/** Texto al final (p. ej. qué PDF van adjuntos). */
+	nota?: string;
 }
+
+const NOMBRE_CATEGORIA_PRODUCTO: Record<string, string> = {
+	pizza: 'Pizzas',
+	calzone: 'Calzones',
+	bebida: 'Bebidas',
+	jugo: 'Jugos',
+	adicion: 'Adiciones',
+	comida: 'Comidas',
+	otro: 'Otros',
+};
 
 export function esc(valor: unknown): string {
 	return String(valor ?? '')
@@ -62,16 +81,32 @@ const seccion = (numero: number, titulo: string, cuerpo: string, columnas = ['Co
 		<tbody>${cuerpo}</tbody>
 	</table>`;
 
-/** Secciones 1–7, en el orden de la pantalla de cierre de caja. */
-export function construirSeccionesCierre(r: ResumenCierre): string[] {
+/**
+ * Secciones 1–7, en el orden de la pantalla de cierre de caja. El libro diario las usa como "consolidado"
+ * del período (`tituloVentas: 'Ventas del período'`).
+ */
+export function construirSeccionesCierre(r: ResumenCierre, opciones: {tituloVentas?: string} = {}): string[] {
 	const {ventas, gastos, resultado} = r;
 	const efectivo = ventas.cobradoPorMetodo.efectivo;
 	const transferencia = ventas.cobradoPorMetodo.transferencia;
 	const facturasDe = (clave: string) => ventas.porMetodo.find((m) => m.clave === clave)?.facturas ?? 0;
 
+	// Unidades y valor por categoría (cuántas pizzas salieron): sale de productos.categoria.
+	const porCategoria = new Map<string, {unidades: number; valor: number}>();
+	for (const p of r.productos) {
+		const c = p.categoria || 'otro';
+		const acc = porCategoria.get(c) ?? {unidades: 0, valor: 0};
+		acc.unidades += p.unidades;
+		acc.valor += p.valor;
+		porCategoria.set(c, acc);
+	}
+	const filasCategoria = [...porCategoria.entries()]
+		.sort((a, b) => b[1].unidades - a[1].unidades)
+		.map(([c, v]) => fila(`${esc(NOMBRE_CATEGORIA_PRODUCTO[c] ?? c)}: ${v.unidades} unidades`, cop(v.valor), {sub: true}));
+
 	const s1 = seccion(
 		1,
-		'Ventas del día',
+		opciones.tituloVentas ?? 'Ventas del día',
 		[
 			fila('Facturado', cop(ventas.facturado), {negrita: true}),
 			fila('Cobrado', cop(ventas.cobrado), {color: '#10B981'}),
@@ -105,11 +140,14 @@ export function construirSeccionesCierre(r: ResumenCierre): string[] {
 				? [
 						fila('Pagado por QR (egresos)', cop(r.cuentas.reduce((t, c) => t + c.salidas, 0)), {negrita: true, color: '#EF4444'}),
 						...r.cuentas.map((c) =>
-							fila(
-								`↳ ${esc(c.cuenta)}${c.sinAsignar ? ' (sin cuenta asignada)' : ''}: entró ${cop(c.entradas)} · salió ${cop(c.salidas)}`,
-								`Saldo ${cop(c.saldo)}`,
-								{sub: true},
-							),
+							c.sinAsignar
+								? // No es una cuenta en negativo: cobros y egresos por QR a los que no se les dijo la cuenta.
+									fila(
+										`↳ Sin cuenta asignada: entró ${cop(c.entradas)} (cobros QR) · salió ${cop(c.salidas)} (egresos QR)`,
+										'Por asignar',
+										{sub: true},
+									)
+								: fila(`↳ ${esc(c.cuenta)}: entró ${cop(c.entradas)} · salió ${cop(c.salidas)}`, `Saldo ${cop(c.saldo)}`, {sub: true}),
 						),
 					]
 				: []),
@@ -121,11 +159,25 @@ export function construirSeccionesCierre(r: ResumenCierre): string[] {
 		'Productos vendidos',
 		ventas && r.productos.length
 			? r.productos.map((p) => fila(`${esc(p.nombre)} <span style="color:#94A3B8">× ${Number(p.unidades)}</span>`, cop(p.valor))).join('') +
+					filasCategoria.join('') +
 					fila(
 						`TOTAL (${r.productos.reduce((t, p) => t + p.unidades, 0)} unidades)`,
 						cop(r.productos.reduce((t, p) => t + p.valor, 0)),
 						{negrita: true},
-					)
+					) +
+					// Por precio: cuántas salieron a cada precio, con los cambiados a mano aparte.
+					((r.productosPorPrecio ?? []).length
+						? fila('Por precio', '', {negrita: true}) +
+							(r.productosPorPrecio ?? [])
+								.map((p) =>
+									fila(
+										`${esc(p.nombre)} · ${cop(p.precio)}${p.manual ? ` <span style="color:#F5A524">(precio manual${p.precioLista != null ? `, menú ${cop(p.precioLista)}` : ''})</span>` : ''} × ${Number(p.unidades)}`,
+										cop(p.valor),
+										{sub: true},
+									),
+								)
+								.join('')
+						: '')
 			: '<tr><td colspan="2" style="text-align:center; opacity:0.5;">Sin productos vendidos</td></tr>',
 		['Producto y cantidad', 'Valor'],
 	);
@@ -178,6 +230,21 @@ export function construirSeccionesCierre(r: ResumenCierre): string[] {
 	return [s1, s2, s3, s4, s5, s6, s7];
 }
 
+/** Sección de domiciliarios: cuántos domicilios salieron, cuántos entregó cada repartidor y cuánto se les paga. */
+export function construirSeccionDomiciliarios(numero: number, d: DomiciliariosCierre): string {
+	const t = d.totales;
+	const aPagar = d.filas.reduce((s, f) => s + f.ganancia, 0);
+	const cuerpo = [
+		fila('Domicilios', String(t?.domicilios ?? d.filas.reduce((s, f) => s + f.asignados, 0)), {negrita: true}),
+		...(t?.sinRepartidor ? [fila('Sin repartidor asignado', String(t.sinRepartidor), {sub: true, color: '#F5A524'})] : []),
+		...d.filas.map((f) =>
+			fila(`↳ ${esc(f.nombre)} — ${f.entregas} entregado${f.entregas === 1 ? '' : 's'} de ${f.asignados}`, cop(f.ganancia), {sub: true}),
+		),
+		fila('A pagar a domiciliarios (costo de domicilio de lo entregado)', cop(aPagar), {negrita: true, color: '#F5A524'}),
+	].join('');
+	return seccion(numero, 'Domiciliarios', d.filas.length || t?.domicilios ? cuerpo : '<tr><td colspan="2" style="text-align:center; opacity:0.5;">Sin domicilios</td></tr>');
+}
+
 export function construirHtmlCierre(d: DatosCierreEmail): string {
 	const detalle = (d.facturas ?? [])
 		.map(
@@ -209,11 +276,12 @@ export function construirHtmlCierre(d: DatosCierreEmail): string {
 <body>
 	<div class="container">
 		<div class="header">
-			<h1>Cierre de Jornada</h1>
+			<h1>${esc(d.titulo ?? 'Cierre de Jornada')}</h1>
 			<p>${esc(d.companyName)} | NIT: ${esc(d.nit)} | FECHA: ${esc(d.fecha)}</p>
 		</div>
 		<div class="content">
-			${construirSeccionesCierre(d.resumen).join('\n')}
+			${construirSeccionesCierre(d.resumen, {tituloVentas: d.tituloVentas}).join('\n')}
+			${d.domiciliarios ? construirSeccionDomiciliarios(8, d.domiciliarios) : ''}
 			${d.observaciones ? `<h3 class="section-title">Observaciones</h3><p style="font-size:12px;">${esc(d.observaciones)}</p>` : ''}
 			${
 				detalle
@@ -221,6 +289,7 @@ export function construirHtmlCierre(d: DatosCierreEmail): string {
 			<table class="table"><thead><tr><th style="width:25%;">ID</th><th style="width:45%;">Medio de pago</th><th style="text-align:right;">Valor</th></tr></thead><tbody>${detalle}</tbody></table>`
 					: ''
 			}
+			${d.nota ? `<p style="font-size:12px; color:#CBD5E1; margin-top:24px;">${esc(d.nota)}</p>` : ''}
 		</div>
 		<div class="footer"><p>Dfiruexpo POS — Sistema de Gestión Inteligente</p></div>
 	</div>

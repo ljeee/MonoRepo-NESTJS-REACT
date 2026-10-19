@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState, memo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
+import { useLocalSearchParams } from 'expo-router';
 import { useResumenGeneral } from '../../hooks/use-resumen-general';
 import { useCuentasTransferencia } from '../../hooks/use-cuentas-transferencia';
 import { ActivityIndicator, Platform, TouchableOpacity } from 'react-native';
@@ -18,7 +19,7 @@ import {
     isGastoPagado,
     Role,
 } from '@/src/shared';
-import type { FacturaVenta, FacturaPago, TipoGastoFiltro } from '@/src/shared';
+import type { FacturaVenta, FacturaPago, ParamsLibroDiario, TipoGastoFiltro } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePaginaLocal } from '../../hooks/use-pagina-local';
 import { PaginadorLocal } from '../../components/contabilidad/PaginadorLocal';
@@ -27,11 +28,13 @@ import {
     buildEgresosCsv,
     buildFacturasBackupCsv,
     buildTransferenciasCsv,
+    descargarBlob,
     downloadCsv,
 } from '../../utils/csvExport';
+import { isAxiosError } from 'axios';
 import {
     exportFacturasPdf,
-    exportLibroDiario,
+    abrirPdfDelServidor,
     exportBalanceDePrueba,
     exportBalancePorTercero,
     exportInformeImpuesto,
@@ -202,6 +205,25 @@ const VentaRow = memo(function VentaRow({ f, isMobile }: { f: FacturaVenta; isMo
     );
 });
 
+/** Mensaje legible de un error del API (también cuando la respuesta pedida era texto o blob). */
+async function mensajeDeError(err: unknown): Promise<string> {
+    if (isAxiosError(err)) {
+        let data: unknown = err.response?.data;
+        if (typeof Blob !== 'undefined' && data instanceof Blob) data = await data.text();
+        if (typeof data === 'string') {
+            try { data = JSON.parse(data); } catch { /* texto plano */ }
+        }
+        const msg = (data as { message?: unknown } | undefined)?.message;
+        if (typeof msg === 'string') return msg;
+        if (Array.isArray(msg) && msg.length) return String(msg[0]);
+        return err.message;
+    }
+    return err instanceof Error ? err.message : 'No se pudo completar la acción';
+}
+
+/** Egreso pagado por QR sin cuenta de origen (anterior al campo): en el saldo por cuenta aparece "Sin asignar". */
+const esQrSinCuenta = (g: FacturaPago) => g.metodo === 'qr' && g.cuentaOrigenId == null;
+
 const GastoRow = memo(function GastoRow({ g, isMobile, onClasificar, nombreCuenta, onAsignarCuenta }: { g: FacturaPago; isMobile: boolean; onClasificar?: (g: FacturaPago) => void; nombreCuenta?: string; onAsignarCuenta?: (g: FacturaPago) => void }) {
     const tipo = tipoDeGasto(g);
     const esQr = g.metodo === 'qr';
@@ -285,15 +307,17 @@ export default function ContabilidadScreen() {
     const [filtroTipo, setFiltroTipo] = useState<TipoGastoFiltro | 'todos'>('todos');
     const [filtroCategoria, setFiltroCategoria] = useState<string | 'todas'>('todas');
     const [filtroCuenta, setFiltroCuenta] = useState<number | 'todas' | 'sin'>('todas');
+    // Egresos pagados por QR sin cuenta de origen (los anteriores al campo): se asignan aquí, uno a uno o todos juntos.
+    const [soloQrSinCuenta, setSoloQrSinCuenta] = useState(false);
+    const [asignandoTodos, setAsignandoTodos] = useState(false);
+    const params = useLocalSearchParams<{ tab?: string; qr?: string; from?: string; to?: string }>();
     const [exportOptions, setExportOptions] = useState<{
         incluirDomicilio: boolean;
-        incluirProductos: boolean;
         filtroDiario: 'completo' | 'solo_transferencias' | 'cuenta_especifica';
         cuentaId?: number;
         cuentaNombre?: string;
     }>({
         incluirDomicilio: true,
-        incluirProductos: false,
         filtroDiario: 'completo',
     });
 
@@ -345,9 +369,61 @@ export default function ContabilidadScreen() {
 
     }, [from, to, setFromF, setToF, setFromG, setToG, searchF, fetchGastos]);
 
-    // Para el libro diario: el resumen debe ser del MISMO rango que se exporta (mientras recarga sigue el anterior).
-    const resumenDelRango =
-        resumen && !loadingStats && resumen.periodo.from === validRange.from && resumen.periodo.to === validRange.to ? resumen : null;
+    // Enlace directo (p. ej. desde QR / Transferencias: «asignar los egresos QR sin cuenta»): abre la pestaña,
+    // el filtro y busca el rango recibido. Solo una vez, al montar.
+    const enlaceAplicado = useRef(false);
+    useEffect(() => {
+        if (enlaceAplicado.current) return;
+        enlaceAplicado.current = true;
+        if (params.tab === 'egresos' || params.tab === 'ventas' || params.tab === 'reportes') setActiveTab(params.tab);
+        if (params.qr === 'sin-cuenta') setSoloQrSinCuenta(true);
+        if (params.from && params.to) {
+            setFrom(params.from);
+            setTo(params.to);
+            handleSearch(params.from, params.to);
+        }
+    }, [params, handleSearch]);
+
+    // ── Libro diario: lo arma el servidor (el mismo que recibe el contador en cada cierre) ──
+    const [errorExport, setErrorExport] = useState('');
+    const [avisoExport, setAvisoExport] = useState('');
+    const paramsLibro = useCallback(
+        (): ParamsLibroDiario => ({
+            from: validRange.from,
+            to: validRange.to,
+            filtro: exportOptions.filtroDiario,
+            cuentaId: exportOptions.filtroDiario === 'cuenta_especifica' ? exportOptions.cuentaId : undefined,
+        }),
+        [validRange, exportOptions],
+    );
+    const accionLibro = useCallback(async (clave: string, fn: () => Promise<void>) => {
+        setExportLoading(clave);
+        setErrorExport('');
+        setAvisoExport('');
+        try {
+            await fn();
+        } catch (err) {
+            setErrorExport(await mensajeDeError(err));
+        } finally {
+            setExportLoading('');
+        }
+    }, []);
+    const libroDiarioPdf = () =>
+        accionLibro('diario', () =>
+            abrirPdfDelServidor(
+                () => api.contabilidad.libroDiarioPdf(paramsLibro()),
+                `libro-diario_${validRange.from}_${validRange.to}.pdf`,
+                'Generando el libro diario…',
+            ),
+        );
+    const libroDiarioCsv = () =>
+        accionLibro('diario-csv', async () => descargarBlob(await api.contabilidad.libroDiarioCsv(paramsLibro()), `libro-diario_${validRange.from}_${validRange.to}.csv`));
+    const enviarLibros = () =>
+        accionLibro('enviar-libros', async () => {
+            const r = await api.contabilidad.enviarLibros(validRange.from, validRange.to);
+            setAvisoExport(`Libros enviados (completo y transferencias y mixto, en PDF) a ${r.enviadoA.join(', ')}.`);
+        });
+
     const totalIngresos = resumen?.ventas.cobrado ?? 0;
     const totalGastos = resumen?.gastos.pagados ?? 0; // egresos PAGADOS (balance de caja)
     const pendientesF = resumen?.ventas.porCobrar ?? 0;
@@ -389,10 +465,12 @@ export default function ContabilidadScreen() {
             gastos.filter(
                 (g) =>
                     (filtroTipo === 'todos' || tipoDeGasto(g) === filtroTipo) &&
-                    (filtroCategoria === 'todas' || (g.categoria || 'general') === filtroCategoria),
+                    (filtroCategoria === 'todas' || (g.categoria || 'general') === filtroCategoria) &&
+                    (!soloQrSinCuenta || esQrSinCuenta(g)),
             ),
-        [gastos, filtroTipo, filtroCategoria],
+        [gastos, filtroTipo, filtroCategoria, soloQrSinCuenta],
     );
+    const qrSinCuenta = useMemo(() => gastos.filter(esQrSinCuenta), [gastos]);
     const paginaGastos = usePaginaLocal(gastosFiltrados, 100);
     const totalFiltradoGastos = gastosFiltrados.reduce((t, g) => t + (Number(g.total) || 0), 0);
     const pagadoFiltradoGastos = gastosFiltrados.filter(isGastoPagado).reduce((t, g) => t + (Number(g.total) || 0), 0);
@@ -428,6 +506,30 @@ export default function ContabilidadScreen() {
             }
         },
         [api, asignandoCuenta, fetchGastos, validRange],
+    );
+
+    // Todos los egresos QR sin cuenta que se ven ahora (con los filtros aplicados) a la misma cuenta.
+    const [errorAsignarTodos, setErrorAsignarTodos] = useState('');
+    const asignarCuentaATodos = useCallback(
+        async (cuentaId: number) => {
+            const pendientes = gastosFiltrados.filter(esQrSinCuenta);
+            setAsignandoTodos(false);
+            setErrorAsignarTodos('');
+            let fallidos = 0;
+            for (const g of pendientes) {
+                if (!g.pagosId) continue;
+                try {
+                    await api.pagos.update(g.pagosId, { cuentaOrigenId: cuentaId });
+                } catch (err) {
+                    fallidos += 1;
+                    console.error('Error asignando cuenta al egreso:', err);
+                }
+            }
+            if (fallidos) setErrorAsignarTodos(`${fallidos} de ${pendientes.length} egresos no se pudieron asignar; vuelve a intentarlo.`);
+            await fetchGastos(validRange.from, validRange.to, 1);
+            setVersionResumen((v) => v + 1);
+        },
+        [api, gastosFiltrados, fetchGastos, validRange],
     );
 
     const DateBar = (
@@ -654,6 +756,33 @@ export default function ContabilidadScreen() {
                             onChange={(v) => v != null && setFiltroCategoria(v as string)}
                             color="#F5A524"
                         />
+                        {qrSinCuenta.length > 0 && (
+                            <View style={{ backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 1, borderColor: 'rgba(167,139,250,0.25)', borderRadius: 12, padding: 12, gap: 8 }}>
+                                <Text style={{ color: '#C4B5FD', fontSize: 12, fontWeight: '700' }}>
+                                    {qrSinCuenta.length} {qrSinCuenta.length === 1 ? 'egreso pagado' : 'egresos pagados'} por QR sin cuenta de origen · ${formatCurrency(qrSinCuenta.reduce((t, g) => t + (Number(g.total) || 0), 0))}
+                                </Text>
+                                <Text style={{ color: '#94A3B8', fontSize: 11 }}>
+                                    Son los «Sin asignar» del saldo por cuenta: no se sabe de qué cuenta salieron. Asigna cada uno tocándolo, o todos los de la lista a la misma cuenta.
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                                    <TouchableOpacity
+                                        onPress={() => setSoloQrSinCuenta((v) => !v)}
+                                        style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#A78BFA', backgroundColor: soloQrSinCuenta ? 'rgba(167,139,250,0.25)' : 'transparent' }}
+                                    >
+                                        <Text style={{ color: '#E9D5FF', fontSize: 11, fontWeight: '800' }}>{soloQrSinCuenta ? 'Ver todos los egresos' : 'Ver solo estos'}</Text>
+                                    </TouchableOpacity>
+                                    {puedeClasificar && soloQrSinCuenta && (
+                                        <TouchableOpacity
+                                            onPress={() => setAsignandoTodos(true)}
+                                            style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: '#A78BFA' }}
+                                        >
+                                            <Text style={{ color: '#1E1B4B', fontSize: 11, fontWeight: '800' }}>Asignar los {gastosFiltrados.filter(esQrSinCuenta).length} a una cuenta</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                                <InlineError message={errorAsignarTodos} size="sm" onClose={() => setErrorAsignarTodos('')} />
+                            </View>
+                        )}
                     </View>
                     {loadingG ? <ListSkeleton count={6} /> : (
                         <Card className="p-0 overflow-hidden mb-4">
@@ -714,32 +843,16 @@ export default function ContabilidadScreen() {
                         <View style={{ height: 1, backgroundColor: 'rgba(255,255,255,0.05)' }} />
 
                         <View style={{ gap: 10 }}>
-                            <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>Configuración Libro Diario PDF</Text>
-                            
-                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <Text style={{ color: '#CBD5E1', fontSize: 12 }}>Detallar productos en cada asiento</Text>
-                                <TouchableOpacity
-                                    onPress={() => setExportOptions(prev => ({ ...prev, incluirProductos: !prev.incluirProductos }))}
-                                    style={{
-                                        paddingHorizontal: 12,
-                                        paddingVertical: 6,
-                                        borderRadius: 10,
-                                        backgroundColor: exportOptions.incluirProductos ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)',
-                                        borderWidth: 1,
-                                        borderColor: exportOptions.incluirProductos ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.1)',
-                                    }}
-                                >
-                                    <Text style={{ color: exportOptions.incluirProductos ? '#C084FC' : '#94A3B8', fontSize: 11, fontWeight: '800' }}>
-                                        {exportOptions.incluirProductos ? 'Activado' : 'Desactivado'}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
+                            <Text style={{ color: '#94A3B8', fontSize: 11, fontWeight: '800', textTransform: 'uppercase' }}>Libro Diario (PDF / CSV)</Text>
+                            <Text style={{ color: '#94A3B8', fontSize: 11 }}>
+                                Trae cada venta con su forma de pago y sus productos, los gastos con su método, los productos por precio (con los cambiados a mano) y las cuentas QR.
+                            </Text>
 
-                            <Text style={{ color: '#64748B', fontSize: 10, fontWeight: '700', marginTop: 4 }}>Filtro de Contenido:</Text>
+                            <Text style={{ color: '#94A3B8', fontSize: 10, fontWeight: '700', marginTop: 4 }}>Contenido:</Text>
                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                                 {[
                                     { key: 'completo', label: 'Completo (Todo)' },
-                                    { key: 'solo_transferencias', label: 'Solo Transferencias / QR' },
+                                    { key: 'solo_transferencias', label: 'Transferencias y mixto' },
                                     { key: 'cuenta_especifica', label: 'Cuenta Específica' },
                                 ].map(f => {
                                     const active = exportOptions.filtroDiario === f.key;
@@ -817,18 +930,38 @@ export default function ContabilidadScreen() {
                         icon="book-open-page-variant-outline"
                         title="Libro Diario"
                         tag="PDF"
-                        description="Todos los asientos del período por fecha y, en el libro completo, los productos vendidos (unidades y valor de cada uno, cuántas pizzas) y los precios cambiados a mano"
-                        onPress={() => runExport('diario', (allF, allG) => exportLibroDiario(allF, allG, validRange.from, validRange.to, {
-                            filtro: exportOptions.filtroDiario,
-                            cuentaId: exportOptions.cuentaId,
-                            cuentaNombre: exportOptions.cuentaNombre,
-                            incluirProductos: exportOptions.incluirProductos,
-                            incluirDomicilio: exportOptions.incluirDomicilio,
-                            resumen: resumenDelRango,
-                        }))}
+                        description="Cada venta con su forma de pago (efectivo, QR por cuenta, mixto) y sus productos; productos vendidos y por precio (con los cambiados a mano); gastos; cuentas QR y domiciliarios. Es el mismo PDF del cierre."
+                        onPress={libroDiarioPdf}
                         loading={exportLoading === 'diario'}
-                        disabled={!isWeb || !hasData}
+                        disabled={!isWeb || !searched}
                     />
+                    <ReportCard
+                        icon="file-table-outline"
+                        title="Libro Diario"
+                        tag="CSV"
+                        description="El mismo libro diario en CSV para Excel (ventas, gastos, totales y productos por precio)"
+                        onPress={libroDiarioCsv}
+                        loading={exportLoading === 'diario-csv'}
+                        disabled={!isWeb || !searched}
+                    />
+                    {puedeClasificar && (
+                        <ReportCard
+                            icon="email-send-outline"
+                            title="Enviar libros por correo"
+                            tag="CORREO"
+                            description="Los dos libros del período en PDF (completo y transferencias y mixto) a tu correo (REPORT_EMAIL) y al de la contadora. En cada cierre se envían solos."
+                            onPress={enviarLibros}
+                            loading={exportLoading === 'enviar-libros'}
+                            disabled={!searched}
+                        />
+                    )}
+                    <InlineError message={errorExport} onClose={() => setErrorExport('')} />
+                    {!!avisoExport && (
+                        <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', backgroundColor: 'rgba(16,185,129,0.1)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.3)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
+                            <Icon name="check-circle-outline" size={16} color="#34D399" />
+                            <Text style={{ color: '#6EE7B7', fontSize: 12, flex: 1 }}>{avisoExport}</Text>
+                        </View>
+                    )}
                     <ReportCard
                         icon="receipt"
                         title="Libro de Ventas"
@@ -940,6 +1073,16 @@ export default function ContabilidadScreen() {
                 options={cuentasTransfer.filter((c) => c.activa).map((c) => ({ value: c.id, label: c.nombre, icon: 'bank-outline' as any }))}
                 onSelect={(o) => void asignarCuenta(o.value)}
                 onCancel={() => setAsignandoCuenta(null)}
+            />
+            <OptionPickerModal
+                visible={asignandoTodos}
+                title="¿De qué cuenta salieron?"
+                subtitle={`Se asigna la misma cuenta a ${gastosFiltrados.filter(esQrSinCuenta).length} egresos pagados por QR ($${formatCurrency(gastosFiltrados.filter(esQrSinCuenta).reduce((t, g) => t + (Number(g.total) || 0), 0))}). Para repartirlos entre cuentas, asígnalos uno a uno.`}
+                icon="bank-outline"
+                color="#A78BFA"
+                options={cuentasTransfer.filter((c) => c.activa).map((c) => ({ value: c.id, label: c.nombre, icon: 'bank-outline' as any }))}
+                onSelect={(o) => void asignarCuentaATodos(o.value)}
+                onCancel={() => setAsignandoTodos(false)}
             />
         </PageContainer>
     );

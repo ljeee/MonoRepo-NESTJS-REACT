@@ -1,4 +1,7 @@
-import {IsString, IsOptional, IsNumber, IsBoolean, Min} from 'class-validator';
+import {IsString, IsOptional, IsNumber, IsBoolean, Min, Matches} from 'class-validator';
+
+/** Vacío, o uno o varios correos separados por coma. */
+export const PATRON_CORREOS = /^\s*$|^\s*[^\s@,]+@[^\s@,]+\.[^\s@,]+(\s*,\s*[^\s@,]+@[^\s@,]+\.[^\s@,]+)*\s*$/;
 
 export class UpdateEmpresaDto {
 	@IsOptional()
@@ -47,4 +50,10 @@ export class UpdateEmpresaDto {
 	@IsOptional()
 	@IsBoolean()
 	arqueoCaja?: boolean;
+
+	/** Correo(s) del contador separados por coma; vacío = no se le envía el libro diario. */
+	@IsOptional()
+	@IsString()
+	@Matches(PATRON_CORREOS, {message: 'Escribe correos válidos separados por coma (o déjalo vacío)'})
+	correoContador?: string;
 }

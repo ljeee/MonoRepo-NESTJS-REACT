@@ -29,6 +29,14 @@ export class EmpresaController {
 		return this.service.updateConfig(dto);
 	}
 
+	@Get('correo-contador')
+	@ApiBearerAuth()
+	@Roles(Role.Admin)
+	@ApiOperation({summary: 'Correo(s) del contador que recibe el libro diario (Solo Admin; no va en GET /empresa, que es público)'})
+	async correoContador() {
+		return {correoContador: await this.service.getCorreoContador()};
+	}
+
 	// ─── Cuentas Transferencia / QR ──────────────────────────────────────────────
 	/** Solo staff autenticado (antes público): el contador la lee en Contabilidad (ver ContadorGuard). */
 	@Get('cuentas-transferencia')

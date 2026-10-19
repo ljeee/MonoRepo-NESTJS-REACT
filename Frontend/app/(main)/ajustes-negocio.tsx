@@ -33,12 +33,14 @@ export default function AjustesNegocioScreen() {
     const loadConfig = async () => {
         try {
             setLoading(true);
-            const [data, cData] = await Promise.all([
+            const [data, cData, correoContador] = await Promise.all([
                 api.empresa.get(),
                 api.empresa.cuentasTransferencia.getAll(),
+                // Solo admin (no viaja en GET /empresa, que es público).
+                api.empresa.correoContador().catch(() => null),
             ]);
             setConfig(data);
-            setForm(data as any);
+            setForm({ ...(data as any), correoContador: correoContador ?? '' });
             setCuentas(cData || []);
         } catch (error) {
             showToast('No se pudo cargar la configuración del negocio', 'error');
@@ -219,6 +221,12 @@ export default function AjustesNegocioScreen() {
                                 <View style={{ flex: 1, minWidth: 150 }}>
                                     {renderInput('Recargo Leche ($)', 'cup-water', 'recargoLeche', '1000', 'numeric')}
                                 </View>
+                            </View>
+                            <View>
+                                {renderInput('Correo del contador', 'email-outline', 'correoContador', 'contador@correo.com (varios: separados por coma)', 'email-address')}
+                                <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, marginTop: 6 }}>
+                                    Recibe el libro diario de cada cierre de caja (HTML para imprimir como PDF + CSV para Excel). Vacío = no se le envía.
+                                </Text>
                             </View>
                         </View>
                     </View>

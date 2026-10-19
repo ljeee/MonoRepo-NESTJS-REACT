@@ -50,15 +50,26 @@ export function ResumenDiaCompleto({ resumen }: { resumen: ResumenGeneral }) {
         {(resumen.cuentas ?? []).some((c) => c.salidas > 0) && (
           <>
             <Fila label="Pagado por QR (egresos)" valor={formatCOP((resumen.cuentas ?? []).reduce((t, c) => t + c.salidas, 0))} negrita color="#F87171" />
-            {(resumen.cuentas ?? []).map((c) => (
-              <Fila
-                key={`saldo-${c.cuentaId ?? c.cuenta}`}
-                sub
-                label={`↳ ${c.cuenta}${c.sinAsignar ? ' (sin cuenta asignada)' : ''}: entró ${formatCOP(c.entradas)} · salió ${formatCOP(c.salidas)}`}
-                valor={`Saldo ${formatCOP(c.saldo)}`}
-                color={c.saldo < 0 ? '#F87171' : '#34D399'}
-              />
-            ))}
+            {(resumen.cuentas ?? []).map((c) =>
+              c.sinAsignar ? (
+                // No es una cuenta en negativo: cobros y egresos por QR a los que no se les dijo la cuenta (por asignar).
+                <Fila
+                  key="saldo-sin-cuenta"
+                  sub
+                  label={`↳ Sin cuenta asignada: entró ${formatCOP(c.entradas)} (cobros QR) · salió ${formatCOP(c.salidas)} (egresos QR, se asignan en Contabilidad › Egresos)`}
+                  valor="Por asignar"
+                  color="#C4B5FD"
+                />
+              ) : (
+                <Fila
+                  key={`saldo-${c.cuentaId ?? c.cuenta}`}
+                  sub
+                  label={`↳ ${c.cuenta}: entró ${formatCOP(c.entradas)} · salió ${formatCOP(c.salidas)}`}
+                  valor={`Saldo ${formatCOP(c.saldo)}`}
+                  color={c.saldo < 0 ? '#F87171' : '#34D399'}
+                />
+              ),
+            )}
           </>
         )}
       </Seccion>
@@ -75,6 +86,21 @@ export function ResumenDiaCompleto({ resumen }: { resumen: ResumenGeneral }) {
           productos.map((p) => (
             <Fila key={p.clave} sub label={`${p.nombre} × ${p.unidades}`} valor={formatCOP(p.valor)} />
           ))}
+        {/* Por precio (mismo detalle del libro diario y del correo): cuántas salieron a cada precio, los manuales aparte. */}
+        {verProductos && (resumen.productosPorPrecio?.length ?? 0) > 0 && (
+          <>
+            <Fila label="Por precio" negrita />
+            {(resumen.productosPorPrecio ?? []).map((p) => (
+              <Fila
+                key={`${p.clave}-${p.precio}-${p.manual ? 'm' : 'l'}`}
+                sub
+                label={`${p.nombre} · ${formatCOP(p.precio)}${p.manual ? ` (precio manual${p.precioLista != null ? `, menú ${formatCOP(p.precioLista)}` : ''})` : ''} × ${p.unidades}`}
+                valor={formatCOP(p.valor)}
+                color={p.manual ? '#F5A524' : undefined}
+              />
+            ))}
+          </>
+        )}
       </Seccion>
 
       <Seccion n={5} titulo="Ajustes manuales de precio" icon="tag-edit-outline">

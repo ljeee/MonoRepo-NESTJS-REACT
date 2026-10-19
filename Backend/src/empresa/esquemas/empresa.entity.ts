@@ -52,6 +52,14 @@ export class EmpresaConfig {
 	@Column({name: 'arqueo_desde', type: 'timestamptz', nullable: true})
 	arqueoDesde: Date | null;
 
+	/**
+	 * Correo(s) del contador, separados por coma: recibe el libro diario de cada cierre (y los que se envíen a mano
+	 * desde Contabilidad). `select: false`: GET /empresa es PÚBLICO (ClientWeb) y no debe exponerlo; se lee con
+	 * EmpresaService.getCorreoContador().
+	 */
+	@Column({name: 'correo_contador', type: 'text', nullable: true, select: false})
+	correoContador: string | null;
+
 	@UpdateDateColumn({name: 'updated_at'})
 	updatedAt: Date;
 }

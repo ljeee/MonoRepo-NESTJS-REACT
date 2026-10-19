@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { View, Text } from '../../tw';
 import { formatCOP } from '@/src/shared';
 import type { CobradoPorCuenta } from '@/src/shared';
@@ -36,6 +37,9 @@ export default function QrTransferenciasScreen() {
     const porCuenta = useMemo(() => s.resumen?.ventas.porCuenta ?? [], [s.resumen]);
     const sinAsignar = porCuenta.find((c) => c.sinAsignar);
     const totalTransferencias = s.resumen?.ventas.cobradoPorMetodo.transferencia ?? 0;
+    // Egresos pagados por QR sin cuenta de origen (la fila "Sin asignar" del saldo por cuenta).
+    const egresosSinCuenta = (s.resumen?.cuentas ?? []).filter((c) => c.sinAsignar).reduce((t, c) => t + c.salidas, 0);
+    const router = useRouter();
 
     // Todas las cuentas (aunque no hayan recibido nada) + las que aparecen en el período y ya no están en la lista.
     const filasCuenta = useMemo(() => {
@@ -164,14 +168,35 @@ export default function QrTransferenciasScreen() {
                                     {(s.resumen?.cuentas ?? []).some((c) => c.salidas > 0) && (
                                         <View style={{ gap: 8 }}>
                                             <Text style={{ fontFamily: 'Outfit', color: 'rgba(255,255,255,0.6)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1 }}>Saldo por cuenta (entró − salió por QR)</Text>
-                                            {(s.resumen?.cuentas ?? []).map((c) => (
+                                            {(s.resumen?.cuentas ?? []).filter((c) => !c.sinAsignar).map((c) => (
                                                 <View key={`saldo-${c.cuentaId ?? c.cuenta}`} className="flex-row justify-between items-center">
                                                     <Text style={{ color: '#CBD5E1', fontSize: 12 }}>
-                                                        {c.cuenta}{c.sinAsignar ? ' (sin asignar)' : ''}: entró {formatCOP(c.entradas)} · salió {formatCOP(c.salidas)}
+                                                        {c.cuenta}: entró {formatCOP(c.entradas)} · salió {formatCOP(c.salidas)}
                                                     </Text>
                                                     <Text style={{ fontFamily: 'SpaceGrotesk-Bold', fontSize: 14, color: c.saldo < 0 ? '#F87171' : '#34D399' }}>{formatCOP(c.saldo)}</Text>
                                                 </View>
                                             ))}
+                                            {egresosSinCuenta > 0 && (
+                                                // No es una cuenta en negativo: son egresos pagados por QR sin la cuenta de la que salieron
+                                                // (los anteriores a ese campo). Hasta asignarlos, los saldos de arriba se ven más altos.
+                                                <TouchableOpacity
+                                                    onPress={() =>
+                                                        router.push(`/contabilidad?tab=egresos&qr=sin-cuenta&from=${s.searchedFrom}&to=${s.searchedTo}` as never)
+                                                    }
+                                                    style={{ backgroundColor: 'rgba(167,139,250,0.08)', borderWidth: 1, borderColor: 'rgba(167,139,250,0.25)', borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+                                                >
+                                                    <Icon name="bank-off-outline" size={18} color="#A78BFA" />
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={{ fontFamily: 'SpaceGrotesk-Bold', color: '#C4B5FD', fontSize: 12 }}>
+                                                            {formatCOP(egresosSinCuenta)} en egresos por QR sin cuenta de origen
+                                                        </Text>
+                                                        <Text style={{ fontFamily: 'Outfit', color: '#94A3B8', fontSize: 11, marginTop: 2 }}>
+                                                            Pagos por QR registrados sin decir de qué cuenta salieron (sobre todo los de antes de esta versión). No restan a ninguna cuenta hasta asignarlos: toca aquí para asignarlos en Contabilidad › Egresos.
+                                                        </Text>
+                                                    </View>
+                                                    <Icon name="chevron-right" size={18} color="#A78BFA" />
+                                                </TouchableOpacity>
+                                            )}
                                         </View>
                                     )}
 

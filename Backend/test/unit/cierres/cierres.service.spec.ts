@@ -8,6 +8,7 @@ import {AnaliticaService} from '../../../src/estadisticas/analitica/analitica.se
 import {MailService} from '../../../src/common/services/mail.service';
 import {ConfigService} from '@nestjs/config';
 import {EmpresaService} from '../../../src/empresa/empresa.service';
+import {LibroDiarioService} from '../../../src/contabilidad/libro-diario/libro-diario.service';
 
 describe('CierresService', () => {
 	let service: CierresService;
@@ -17,6 +18,7 @@ describe('CierresService', () => {
 	let mockMailService: any;
 	let mockConfig: any;
 	let mockEmpresaService: any;
+	let mockLibroDiario: any;
 
 	beforeEach(async () => {
 		mockRepo = {
@@ -60,7 +62,12 @@ describe('CierresService', () => {
 				balance: {devengado: 85000, cobrado: 70000},
 			}),
 		};
-		mockMailService = {sendCierreReport: jest.fn().mockResolvedValue(undefined)};
+		mockAnaliticaService.domiciliarios = jest.fn().mockResolvedValue({filas: [], totales: {domicilios: 0, sinRepartidor: 0, entregados: 0, costoDomicilios: 0}, porDia: []});
+		mockMailService = {configurado: jest.fn().mockReturnValue(true)};
+		mockLibroDiario = {
+			destinatarios: jest.fn().mockResolvedValue(['dueno@x.com', 'conta@x.com']),
+			enviar: jest.fn().mockResolvedValue({enviadoA: ['dueno@x.com', 'conta@x.com'], adjuntos: []}),
+		};
 		mockConfig = {get: jest.fn().mockReturnValue('test@example.com')};
 		mockEmpresaService = {getConfig: jest.fn().mockResolvedValue({razonSocial: 'Test'})};
 
@@ -73,6 +80,7 @@ describe('CierresService', () => {
 				{provide: MailService, useValue: mockMailService},
 				{provide: ConfigService, useValue: mockConfig},
 				{provide: EmpresaService, useValue: mockEmpresaService},
+				{provide: LibroDiarioService, useValue: mockLibroDiario},
 			],
 		}).compile();
 
@@ -170,41 +178,49 @@ describe('CierresService', () => {
 			await expect(service.generalCierre('2025-01-01', 'user-id')).rejects.toThrow(BadRequestException);
 		});
 
-		it('envía correo cuando enviarEmail=true y hay REPORT_EMAIL configurado', async () => {
+		it('con enviarEmail=true envía UN correo con los dos libros en PDF (lo arma LibroDiarioService) a dueño y contadora', async () => {
 			mockRepo.findOne.mockResolvedValue(null);
-			const cierre = {cierreId: 1, fecha: '2025-01-01'};
-			mockRepo.create.mockReturnValue(cierre);
-			mockRepo.save.mockResolvedValue(cierre);
+			mockRepo.create.mockReturnValue({cierreId: 1, fecha: '2025-01-01', observaciones: 'Sin novedad'});
+			mockRepo.save.mockResolvedValue({cierreId: 1, fecha: '2025-01-01', observaciones: 'Sin novedad'});
 
-			await service.generalCierre('2025-01-01', 'user-id', undefined, false, true);
+			await service.generalCierre('2025-01-01', 'user-id', 'Sin novedad', false, true);
 
-			expect(mockMailService.sendCierreReport).toHaveBeenCalledWith(
-				'test@example.com',
-				expect.objectContaining({cierreId: 1}),
-			);
+			expect(mockLibroDiario.enviar).toHaveBeenCalledTimes(1);
+			expect(mockLibroDiario.enviar).toHaveBeenCalledWith('2025-01-01', '2025-01-01', {observaciones: 'Sin novedad', motivo: 'cierre'});
 		});
 
-		it('no envía correo cuando enviarEmail=false', async () => {
+		it('un error al enviar el correo no hace fallar el cierre', async () => {
+			mockLibroDiario.enviar.mockRejectedValue(new Error('SMTP caído'));
 			mockRepo.findOne.mockResolvedValue(null);
-			const cierre = {cierreId: 1};
-			mockRepo.create.mockReturnValue(cierre);
-			mockRepo.save.mockResolvedValue(cierre);
+			mockRepo.create.mockReturnValue({cierreId: 1});
+			mockRepo.save.mockResolvedValue({cierreId: 1});
+
+			await expect(service.generalCierre('2025-01-01', 'user-id', undefined, false, true)).resolves.toEqual({cierreId: 1});
+		});
+
+		it('sin servidor de correo (MAIL_HOST) o sin destinatarios no intenta enviar', async () => {
+			mockRepo.findOne.mockResolvedValue(null);
+			mockRepo.create.mockReturnValue({cierreId: 1});
+			mockRepo.save.mockResolvedValue({cierreId: 1});
+
+			mockMailService.configurado.mockReturnValue(false);
+			await service.generalCierre('2025-01-01', 'user-id', undefined, true, true);
+			mockMailService.configurado.mockReturnValue(true);
+			mockLibroDiario.destinatarios.mockResolvedValue([]);
+			await service.generalCierre('2025-01-01', 'user-id', undefined, true, true);
+
+			expect(mockLibroDiario.enviar).not.toHaveBeenCalled();
+		});
+
+		it('no envía correo cuando enviarEmail=false (ediciones que actualizan el cierre)', async () => {
+			mockRepo.findOne.mockResolvedValue(null);
+			mockRepo.create.mockReturnValue({cierreId: 1});
+			mockRepo.save.mockResolvedValue({cierreId: 1});
 
 			await service.generalCierre('2025-01-01', 'user-id', undefined, false, false);
 
-			expect(mockMailService.sendCierreReport).not.toHaveBeenCalled();
-		});
-
-		it('no envía correo cuando REPORT_EMAIL no está configurado', async () => {
-			mockConfig.get.mockReturnValue(null);
-			mockRepo.findOne.mockResolvedValue(null);
-			const cierre = {cierreId: 1};
-			mockRepo.create.mockReturnValue(cierre);
-			mockRepo.save.mockResolvedValue(cierre);
-
-			await service.generalCierre('2025-01-01', 'user-id', undefined, false, true);
-
-			expect(mockMailService.sendCierreReport).not.toHaveBeenCalled();
+			expect(mockLibroDiario.destinatarios).not.toHaveBeenCalled();
+			expect(mockLibroDiario.enviar).not.toHaveBeenCalled();
 		});
 	});
 

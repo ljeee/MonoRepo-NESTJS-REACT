@@ -1,14 +1,11 @@
 import type { FacturaItem } from '../components/facturas/FacturaShared';
-import type { FacturaPago, ResumenGeneral } from '@/src/shared';
-import { textoLinea } from './lineas-venta';
+import type { FacturaPago } from '@/src/shared';
 import {
-  CATEGORIA_PRODUCTO_LABEL,
   cobrado,
   formatCurrency,
   isAnulada,
   isCobrada,
   isGastoPagado,
-  isParcial,
   montoEfectivo,
   montoTransferencia,
   nombreCategoria,
@@ -45,14 +42,6 @@ export function escaparHtml(valor: unknown): string {
 
 function badge(texto: string, variante: 'success' | 'warning' | 'danger' | 'neutral'): HtmlSeguro {
   return { __htmlSeguro: true, html: `<span class="badge badge-${variante}">${escaparHtml(texto)}</span>` };
-}
-
-/** Descripción + línea de detalle pequeña, ambos escapados. */
-function conDetalle(descripcion: string, detalle: string): HtmlSeguro {
-  return {
-    __htmlSeguro: true,
-    html: `${escaparHtml(descripcion)}<br/><small style="color: #64748B; font-size: 10px;">${escaparHtml(detalle)}</small>`,
-  };
 }
 
 const celdaHtml = (c: CeldaPdf) => (typeof c === 'object' && c !== null && c.__htmlSeguro ? c.html : escaparHtml(c));
@@ -182,8 +171,6 @@ const cuentasTexto = (f: FacturaItem): string =>
 const estadoBadge = (f: FacturaItem): HtmlSeguro =>
   badge(f.estado ?? '—', isCobrada(f) ? 'success' : isAnulada(f) ? 'danger' : 'warning');
 
-const claseGasto = (g: FacturaPago): string => `${TIPO_GASTO_META[tipoDeGasto(g)].label} · ${nombreCategoria(g.categoria)}`;
-
 // ─── Libro de ventas ───────────────────────────────────────────────────────────
 
 export function exportFacturasPdf(facturas: FacturaItem[], periodLabel: string) {
@@ -298,263 +285,37 @@ function porCuentaDeFilas(filas: FilaTransferencia[]): { cuenta: string; factura
 }
 
 // ─── Libro diario ──────────────────────────────────────────────────────────────
-
-export interface LibroDiarioOptions {
-  filtro?: 'completo' | 'solo_transferencias' | 'cuenta_especifica';
-  cuentaId?: number;
-  cuentaNombre?: string;
-  incluirProductos?: boolean;
-  incluirDomicilio?: boolean;
-  /**
-   * Resumen del servidor para el MISMO rango (`GET /estadisticas/resumen`): con él, el libro completo cierra con
-   * los productos vendidos (unidades y valor de cada uno, cuántas pizzas salieron) y los ajustes manuales de
-   * precio, con las mismas cifras del cierre de caja.
-   */
-  resumen?: ResumenGeneral | null;
-}
-
-const copSigno = (n: number) => (n > 0 ? `+${cop(n)}` : n < 0 ? `−${cop(-n)}` : cop(0));
-const unidadesTexto = (n: number) => formatCurrency(n);
-const etiquetaCategoriaPdf = (c?: string | null) =>
-  (c && (CATEGORIA_PRODUCTO_LABEL as Record<string, string>)[c]) || (c ? c : 'Sin categoría');
-
-/** Ajuste de una fila de productos: "+$10.000 · −$5.000 (3 manuales, 1 sin precio de lista)". */
-function ajusteTexto(p: ResumenGeneral['productos'][number]): string {
-  if (!p.lineasManuales) return '—';
-  const partes = [p.aumentos > 0 ? `+${cop(p.aumentos)}` : '', p.bajas < 0 ? `−${cop(-p.bajas)}` : ''].filter(Boolean);
-  const detalle = [`${p.lineasManuales} manual${p.lineasManuales === 1 ? '' : 'es'}`, p.sinPrecioLista ? `${p.sinPrecioLista} sin precio de menú` : '']
-    .filter(Boolean)
-    .join(', ');
-  return `${partes.join(' · ') || 'sin diferencia calculable'} (${detalle})`;
-}
+// Lo arma el SERVIDOR (GET /contabilidad/libro-diario): es el mismo libro que recibe el contador en cada cierre.
 
 /**
- * Secciones del libro diario con lo que se VENDIÓ (no solo el dinero): productos por producto + variante con
- * unidades y valor cobrado, subtotal por categoría (cuántas pizzas salieron) y los precios cambiados a mano
- * (precio del menú desactualizado, adición que no estaba en el menú…), para que lo cobrado cuadre con el
- * precio de lista. Cifras del servidor: las mismas del cierre de caja y del correo.
+ * Abre en una pestaña un PDF que genera el servidor (libro diario). La pestaña se abre YA (en el clic): si se abriera
+ * al llegar la respuesta, el navegador la bloquearía como ventana emergente. Si aun así la bloquea, el PDF se
+ * descarga. Si falla la carga, la cierra y relanza el error.
  */
-function seccionesProductosVendidos(resumen: ResumenGeneral): { secciones: SeccionPdf[]; pizzas: number } {
-  const productos = resumen.productos ?? [];
-  const aj = resumen.ajustesPrecio;
-  const valorTotal = productos.reduce((t, p) => t + p.valor, 0);
-  const unidadesTotal = productos.reduce((t, p) => t + p.unidades, 0);
-
-  const porCategoria = new Map<string, { unidades: number; valor: number }>();
-  for (const p of productos) {
-    const c = p.categoria || 'otro';
-    const acc = porCategoria.get(c) ?? { unidades: 0, valor: 0 };
-    acc.unidades += p.unidades;
-    acc.valor += p.valor;
-    porCategoria.set(c, acc);
-  }
-  const pizzas = porCategoria.get('pizza')?.unidades ?? 0;
-
-  const vendidos: SeccionPdf = {
-    titulo: 'Productos vendidos',
-    nota:
-      'Cada producto (producto + variante) de las ventas válidas del período, también las aún por cobrar (los asientos de arriba solo ' +
-      'registran lo cobrado): unidades y valor vendido al precio que se cobró, con los precios cambiados a mano. Sin el costo de domicilio. ' +
-      'Mismas cifras del cierre de caja.',
-    headers: ['Producto', 'Categoría', 'Ajuste manual', 'Unidades', 'Valor vendido'],
-    rows: productos.length
-      ? productos.map((p) => [p.nombre, etiquetaCategoriaPdf(p.categoria), ajusteTexto(p), unidadesTexto(p.unidades), cop(p.valor)])
-      : [['Sin productos vendidos en el período', '', '', '', '']],
-    summaryRows: [
-      ...[...porCategoria.entries()]
-        .sort((a, b) => b[1].unidades - a[1].unidades)
-        .map(([c, v]) => ({ label: `${etiquetaCategoriaPdf(c)}: ${unidadesTexto(v.unidades)} unidades`, value: cop(v.valor) })),
-      { label: `Total productos: ${unidadesTexto(unidadesTotal)} unidades`, value: cop(valorTotal), bold: true },
-    ],
-  };
-
-  const ajustes: SeccionPdf = {
-    titulo: 'Ajustes manuales de precio',
-    nota: 'Líneas en las que el cajero cambió el precio del menú (precio desactualizado, adición que no estaba contemplada, descuento). Las antiguas sin precio de menú guardado se cuentan aparte: su ajuste no se puede calcular.',
-    headers: ['Concepto', 'Monto'],
-    numericas: 1,
-    rows: aj && aj.lineasManuales
-      ? [
-          ['Aumentos (se cobró más que el menú: adiciones no contempladas, precio desactualizado)', copSigno(aj.aumentos)],
-          ['Bajas (se cobró menos que el menú: descuentos, cortesías)', copSigno(aj.bajas)],
-          ['Ajuste neto sobre el precio del menú', copSigno(aj.neto)],
-          ['Líneas con precio manual', unidadesTexto(aj.lineasManuales)],
-          ...(aj.sinPrecioLista ? [['Manuales sin precio de menú guardado (ventas antiguas: su ajuste no se puede calcular)', unidadesTexto(aj.sinPrecioLista)]] : []),
-        ]
-      : [['Sin precios cambiados a mano en el período', '—']],
-    summaryRows: aj && aj.lineasManuales
-      ? [
-          {
-            label:
-              aj.sinPrecioLista === 1
-                ? 'Productos a precio del menú (la línea sin precio de menú va al precio cobrado)'
-                : aj.sinPrecioLista
-                ? `Productos a precio del menú (las ${unidadesTexto(aj.sinPrecioLista)} líneas sin precio de menú van al precio cobrado)`
-                : 'Productos a precio del menú',
-            value: cop(valorTotal - aj.neto),
-          },
-          { label: 'Ajuste manual neto', value: copSigno(aj.neto) },
-          { label: 'Valor vendido en productos', value: cop(valorTotal), bold: true },
-        ]
-      : undefined,
-  };
-
-  return { secciones: [vendidos, ajustes], pizzas };
-}
-
-export function exportLibroDiario(
-  facturas: FacturaItem[],
-  gastos: FacturaPago[],
-  from: string,
-  to: string,
-  options: LibroDiarioOptions = {},
-) {
+export async function abrirPdfDelServidor(cargar: () => Promise<Blob>, nombreArchivo: string, espera = 'Generando el PDF…') {
   if (typeof window === 'undefined') return;
-
-  const {
-    filtro = 'completo',
-    cuentaId,
-    cuentaNombre,
-    incluirProductos = false,
-    incluirDomicilio = true,
-    resumen,
-  } = options;
-
-  type Entry = { fecha: string; tipo: 'ingreso' | 'egreso'; ref: string; descripcion: string; detalle?: string; debito: number; credito: number };
-
-  const entries: Entry[] = [];
-  let porCobrarTotal = 0;
-
-  for (const f of facturas) {
-    // Anuladas: no son venta. Pendientes: no entran al libro (no hay dinero), solo se informan abajo.
-    if (isAnulada(f)) continue;
-    const costoDom = f.domicilios?.[0]?.costoDomicilio ? Number(f.domicilios[0].costoDomicilio) : 0;
-    // Sin domicilio: el costo del domicilio se descarta de lo cobrado en efectivo primero.
-    let descuentoDom = incluirDomicilio ? 0 : Math.min(costoDom, cobrado(f));
-
-    // Detalle de productos como TEXTO (se escapa y se pinta en una línea aparte)
-    let prodDetail = '';
-    if (incluirProductos && f.ordenes && f.ordenes.length > 0) {
-      const prods = f.ordenes.flatMap((o) => o.productos ?? []);
-      if (prods.length > 0) {
-        // Las líneas con precio cambiado a mano dicen cuánto se cobró y cuánto valía en el menú.
-        prodDetail = prods
-          .map((p) => {
-            const manual = p.precioManual
-              ? ` (precio manual ${cop(Number(p.precioUnitario) || 0)}${p.precioLista != null ? `, menú ${cop(p.precioLista)}` : ''})`
-              : '';
-            return `${p.cantidad ?? 1}x ${textoLinea(p)}${manual}`;
-          })
-          .join(', ');
-      }
+  const popup = window.open('', '_blank');
+  popup?.document.write(`<p style="font-family:system-ui,sans-serif;padding:24px;color:#475569">${escaparHtml(espera)}</p>`);
+  try {
+    const blob = await cargar();
+    const pdf = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
+    const url = URL.createObjectURL(pdf);
+    if (popup) {
+      popup.location.href = url;
+    } else {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nombreArchivo;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
-    const cliente = f.clienteNombre || 'Sin nombre';
-    const base = { fecha: f.fechaFactura ?? '', tipo: 'ingreso' as const, ref: `F-${f.facturaId}`, detalle: prodDetail || undefined, credito: 0 };
-
-    // Efectivo cobrado (no aplica a los filtros de transferencia)
-    const ef = montoEfectivo(f);
-    if (filtro === 'completo' && ef > 0) {
-      const desc = Math.min(descuentoDom, ef);
-      descuentoDom -= desc;
-      entries.push({ ...base, descripcion: `Venta (Efectivo) — ${cliente}${isParcial(f) ? ' · abonos' : ''}`, debito: ef - desc });
-    }
-
-    // Transferencias cobradas: una línea por cuenta
-    for (const t of transferenciasPorCuenta(f)) {
-      if (filtro === 'cuenta_especifica') {
-        const coincide = cuentaId != null ? t.cuentaId === cuentaId : !!cuentaNombre && t.cuenta === cuentaNombre;
-        if (!coincide) continue;
-      }
-      const desc = Math.min(descuentoDom, t.monto);
-      descuentoDom -= desc;
-      entries.push({
-        ...base,
-        descripcion: `Venta (Transferencia${t.cuenta ? ` — ${t.cuenta}` : ' — sin cuenta asignada'}) — ${cliente}${isParcial(f) ? ' · abonos' : ''}`,
-        debito: t.monto - desc,
-      });
-    }
-
-    if (filtro === 'completo') porCobrarTotal += porCobrar(f);
+    // La pestaña ya cargó el PDF; se libera la URL después.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  } catch (error) {
+    popup?.close();
+    throw error;
   }
-
-  // Egresos PAGADOS = dinero que salió (crédito). Los pendientes aún no salieron: igual que las ventas por cobrar,
-  // no son asiento y se informan en una nota. Así el saldo es el balance de caja de todas las pantallas (cobrado −
-  // egresos pagados); antes restaba también los pendientes y no cuadraba. Filtro de transferencias: los pagados por
-  // QR; de una cuenta: los que salieron de ESA cuenta (`cuentaOrigenId`; los QR viejos sin cuenta quedan fuera).
-  const esQr = (g: FacturaPago) => g.metodo === 'transferencia' || g.metodo === 'qr';
-  const egresoDelFiltro = (g: FacturaPago) =>
-    filtro === 'completo' ||
-    (filtro === 'solo_transferencias' && esQr(g)) ||
-    (filtro === 'cuenta_especifica' && esQr(g) && cuentaId != null && g.cuentaOrigenId === cuentaId);
-  let pendientesPorPagar = 0;
-  for (const g of gastos) {
-    if (!egresoDelFiltro(g)) continue;
-    if (!isGastoPagado(g)) {
-      pendientesPorPagar += Number(g.total) || 0;
-      continue;
-    }
-    entries.push({
-      fecha: g.fechaFactura ?? '',
-      tipo: 'egreso',
-      ref: `G-${g.pagosId}`,
-      descripcion: `Egreso — ${g.nombreGasto || 'Sin descripción'} (${g.metodo || 'efectivo'})`,
-      detalle: claseGasto(g),
-      debito: 0,
-      credito: Number(g.total) || 0,
-    });
-  }
-
-  entries.sort((a, b) => (a.fecha ?? '').localeCompare(b.fecha ?? ''));
-
-  const totalDebitos = entries.reduce((s, e) => s + e.debito, 0);
-  const totalCreditos = entries.reduce((s, e) => s + e.credito, 0);
-  const saldoLabel =
-    filtro === 'solo_transferencias'
-      ? 'Saldo neto por QR / transferencias (entró − salió)'
-      : filtro === 'cuenta_especifica'
-      ? `Saldo de la cuenta${cuentaNombre ? ` ${cuentaNombre}` : ''} (entró − salió)`
-      : incluirDomicilio
-      ? 'Saldo neto = balance de caja (cobrado − egresos pagados)'
-      : 'Saldo neto sin domicilios (cobrado sin domicilio − egresos pagados)';
-
-  const filtroSub =
-    filtro === 'solo_transferencias'
-      ? ' (Solo Transferencias / QR)'
-      : filtro === 'cuenta_especifica'
-      ? ` (Cuenta: ${cuentaNombre || 'Específica'})`
-      : '';
-
-  // Lo vendido (productos, pizzas, ajustes manuales) solo en el libro completo: con un filtro de transferencias
-  // o de una cuenta, los productos de TODAS las ventas no corresponderían a los asientos de arriba.
-  const vendido = filtro === 'completo' && resumen ? seccionesProductosVendidos(resumen) : null;
-  const sinResumen: SeccionPdf[] =
-    filtro === 'completo' && !resumen
-      ? [{ titulo: 'Productos vendidos', nota: 'El resumen de productos del período aún no había cargado: vuelve a exportar en unos segundos.' }]
-      : [];
-
-  exportPdf({
-    title: `Libro Diario — ${from} al ${to}${filtroSub}`,
-    subtitle:
-      `${entries.length} asientos contables${vendido ? ` · ${unidadesTexto(vendido.pizzas)} pizzas vendidas` : ''}${!incluirDomicilio ? ' (sin domicilio)' : ''}` +
-      ' · Débito = dinero que entró (ventas cobradas) · Crédito = dinero que salió (egresos pagados)',
-    secciones: vendido ? vendido.secciones : sinResumen,
-    headers: ['Fecha', 'Referencia', 'Descripción', 'Débito (entra)', 'Crédito (sale)'],
-    rows: entries.map((e) => [
-      safeDateLabel(e.fecha),
-      badge(e.ref, e.tipo === 'ingreso' ? 'success' : 'danger'),
-      e.detalle ? conDetalle(e.descripcion, e.detalle) : e.descripcion,
-      e.debito > 0 ? cop(e.debito) : '—',
-      e.credito > 0 ? cop(e.credito) : '—',
-    ]),
-    summaryRows: [
-      { label: 'Total débitos: lo que ENTRÓ (ventas cobradas)', value: cop(totalDebitos) },
-      { label: 'Total créditos: lo que SALIÓ (egresos pagados)', value: cop(totalCreditos) },
-      { label: saldoLabel, value: cop(totalDebitos - totalCreditos), bold: true },
-      // Lo que aún no movió dinero: se informa, no suma ni resta.
-      ...(filtro === 'completo' ? [{ label: 'Nota: ventas por cobrar (aún no entran, no suman)', value: cop(porCobrarTotal) }] : []),
-      { label: 'Nota: egresos pendientes de pago (aún no salen, no restan)', value: cop(pendientesPorPagar) },
-    ],
-  });
 }
 
 // ─── Balance de Prueba ────────────────────────────────────────────────────────

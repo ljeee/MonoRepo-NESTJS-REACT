@@ -12,6 +12,9 @@ import type { PropsTabAnalitica } from './tipos';
 import { TextoError } from './TabResumen';
 
 type FilaDomiciliario = DomiciliariosAnalitica['filas'][number];
+type FilaDia = { dia: string; domicilios: number; entregas: number; ganancia: number; detalle: string };
+
+const FORMATO_DIA = new Intl.DateTimeFormat('es-CO', { weekday: 'short', day: 'numeric', month: 'short' });
 
 export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnalitica) {
   const api = useApi();
@@ -28,6 +31,35 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
         { asignados: 0, entregas: 0, ganancia: 0 },
       ),
     [filas],
+  );
+
+  // Día a día: domicilios del día, entregados, lo que se paga y cuántos llevó cada repartidor.
+  const porDia = useMemo<FilaDia[]>(() => {
+    const dias = new Map<string, FilaDia>();
+    for (const d of datos.data?.porDia ?? []) {
+      const fila = dias.get(d.dia) ?? { dia: d.dia, domicilios: 0, entregas: 0, ganancia: 0, detalle: '' };
+      fila.domicilios += d.domicilios;
+      fila.entregas += d.entregas;
+      fila.ganancia += d.ganancia;
+      fila.detalle = [fila.detalle, `${d.nombre} ${d.telefono == null ? d.domicilios : d.entregas}`].filter(Boolean).join(' · ');
+      dias.set(d.dia, fila);
+    }
+    return [...dias.values()].sort((a, b) => b.dia.localeCompare(a.dia));
+  }, [datos.data]);
+
+  const columnasDia = useMemo<DataTableColumn<FilaDia>[]>(
+    () => [
+      { key: 'dia', label: 'Día', width: 110, render: (d) => <Num v={FORMATO_DIA.format(new Date(`${d.dia}T12:00:00`))} /> },
+      { key: 'domicilios', label: 'Domicilios', width: 90, align: 'right', render: (d) => <Num v={formatearValor(d.domicilios)} /> },
+      { key: 'entregas', label: 'Entregados', width: 90, align: 'right', render: (d) => <Num v={formatearValor(d.entregas)} /> },
+      { key: 'ganancia', label: 'A pagar', width: 100, align: 'right', render: (d) => <Num v={formatearValor(d.ganancia, 'monedaCompacta')} /> },
+      {
+        key: 'detalle',
+        label: 'Por domiciliario (entregas)',
+        render: (d) => <Text className="text-slate-300 text-[11px]">{d.detalle}</Text>,
+      },
+    ],
+    [],
   );
 
   const columnas = useMemo<DataTableColumn<FilaDomiciliario>[]>(
@@ -63,7 +95,13 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
     <View style={styles.columna}>
       {datos.error && <TextoError mensaje={datos.error} />}
       <View style={styles.grilla}>
-        <StatCard label="Domicilios asignados" icon="moped" color="#3B82F6" value={formatearValor(totales.asignados)} />
+        <StatCard
+          label="Domicilios"
+          icon="moped"
+          color="#3B82F6"
+          value={formatearValor(datos.data?.totales?.domicilios ?? totales.asignados)}
+          sub={datos.data?.totales?.sinRepartidor ? `${datos.data.totales.sinRepartidor} sin repartidor` : `${formatearValor(totales.asignados)} asignados`}
+        />
         <StatCard
           label="Entregados"
           icon="check-decagram-outline"
@@ -99,8 +137,13 @@ export function TabDomiciliarios({ consulta, version, onFiltrar }: PropsTabAnali
           />
         </ChartCard>
       </View>
-      <Text className="text-slate-600 text-[10px] font-bold">
-        La operación del día (asignar, ver ubicación, cobrar) sigue en «Asignar domiciliarios».
+      {porDia.length > 1 && (
+        <ChartCard title="Día a día" icon="calendar-month-outline" color="#F5A524" loading={datos.loading}>
+          <DataTable columns={columnasDia} rows={porDia} rowKey={(d) => d.dia} minWidth={620} />
+        </ChartCard>
+      )}
+      <Text className="text-slate-400 text-[11px] font-bold">
+        Con el atajo «Hoy» ves los domicilios del día; con «Mes», el mes con el detalle día a día. La operación del día (asignar, ver ubicación, cobrar) sigue en «Asignar domiciliarios».
       </Text>
     </View>
   );

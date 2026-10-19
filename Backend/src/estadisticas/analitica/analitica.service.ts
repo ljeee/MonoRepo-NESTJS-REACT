@@ -909,6 +909,34 @@ export class AnaliticaService {
 			ganancia: number;
 			ticket_promedio: number;
 		}>(sql, p);
+
+		// Todos los domicilios del período (también los que aún no tienen repartidor) y el detalle por día y
+		// repartidor: lo que mostraba la vista "Resumen domiciliarios" (cuántos salieron hoy, cuánto se les paga).
+		const pT = new ParametrosSql();
+		const entregadosT = pT.agregar([...ESTADOS_DOMICILIO_ENTREGADO]);
+		const [totales] = await this.consultar<{total: number; sin_repartidor: number; entregados: number; costo: number}>(
+			`SELECT COUNT(*)::int AS total,
+				COUNT(*) FILTER (WHERE d.telefono_domiciliario_asignado IS NULL)::int AS sin_repartidor,
+				COUNT(*) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregadosT}))::int AS entregados,
+				COALESCE(SUM(d.costo_domicilio), 0)::float8 AS costo
+			 FROM domicilios d JOIN facturas_ventas f ON f.factura_id = d.factura_id
+			 WHERE ${condicionesFactura(dto, periodo.actual, pT).join(' AND ')}`,
+			pT,
+		);
+		const pD = new ParametrosSql();
+		const entregadosD = pD.agregar([...ESTADOS_DOMICILIO_ENTREGADO]);
+		const porDia = await this.consultar<{dia: string; telefono: string | null; nombre: string | null; domicilios: number; entregas: number; ganancia: number}>(
+			`SELECT to_char(${sqlFechaBogota('f')}, 'YYYY-MM-DD') AS dia, d.telefono_domiciliario_asignado AS telefono,
+				MAX(dm.domiciliario_nombre) AS nombre, COUNT(*)::int AS domicilios,
+				COUNT(*) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregadosD}))::int AS entregas,
+				COALESCE(SUM(d.costo_domicilio) FILTER (WHERE lower(d.estado_domicilio) = ANY(${entregadosD})), 0)::float8 AS ganancia
+			 FROM domicilios d JOIN facturas_ventas f ON f.factura_id = d.factura_id
+			 LEFT JOIN domiciliarios dm ON dm.telefono = d.telefono_domiciliario_asignado
+			 WHERE ${condicionesFactura(dto, periodo.actual, pD).join(' AND ')}
+			 GROUP BY 1, 2 ORDER BY 1, entregas DESC`,
+			pD,
+		);
+
 		return {
 			periodo: this.describirPeriodo(dto, periodo),
 			filas: filas.map((f) => ({
@@ -918,6 +946,22 @@ export class AnaliticaService {
 				entregas: num(f.entregas),
 				ganancia: num(f.ganancia),
 				ticketPromedio: Math.round(num(f.ticket_promedio)),
+			})),
+			/** Domicilios del período: todos, sin repartidor, entregados y costo de domicilio cobrado (todos). */
+			totales: {
+				domicilios: num(totales?.total),
+				sinRepartidor: num(totales?.sin_repartidor),
+				entregados: num(totales?.entregados),
+				costoDomicilios: num(totales?.costo),
+			},
+			/** Una fila por día y repartidor (telefono null = sin repartidor), para el resumen diario/mensual. */
+			porDia: porDia.map((d) => ({
+				dia: d.dia,
+				telefono: d.telefono,
+				nombre: d.telefono == null ? 'Sin repartidor' : (d.nombre ?? d.telefono),
+				domicilios: num(d.domicilios),
+				entregas: num(d.entregas),
+				ganancia: num(d.ganancia),
 			})),
 		};
 	}
@@ -984,7 +1028,7 @@ export class AnaliticaService {
 
 		const pD = new ParametrosSql();
 		const pG = new ParametrosSql();
-		const [[domicilios], [gastos], gastosPorMetodo, gastosPorClase, gastosQrPorCuenta, productos] = await Promise.all([
+		const [[domicilios], [gastos], gastosPorMetodo, gastosPorClase, gastosQrPorCuenta, productos, productosPorPrecio] = await Promise.all([
 			this.consultar<{costo: number}>(
 				`SELECT COALESCE(SUM(d.costo_domicilio), 0)::float8 AS costo
 				 FROM domicilios d JOIN facturas_ventas f ON f.factura_id = d.factura_id
@@ -1041,6 +1085,7 @@ export class AnaliticaService {
 				);
 			})(),
 			this.productosVendidos(vacio, periodo.actual),
+			this.productosPorPrecio(vacio, periodo.actual),
 		]);
 
 		const porCuentaGastos = gastosQrPorCuenta.map((g) => ({
@@ -1126,6 +1171,8 @@ export class AnaliticaService {
 			productos: productos.filas,
 			/** Ajuste manual de precio del rango: aumentos, bajas (negativo) y líneas afectadas. */
 			ajustesPrecio: productos.ajustes,
+			/** Unidades por producto + variante y PRECIO (los manuales aparte): "Pizza - Grande · $48.000 × 50". */
+			productosPorPrecio,
 			/**
 			 * Estado de resultados con lo realmente cobrado y pagado: ingresos − costos = utilidad
 			 * bruta; − gastos operativos (y los sin clasificar) = utilidad operativa (= balance.cobrado).
@@ -1215,6 +1262,58 @@ export class AnaliticaService {
 				sinPrecioLista: suma('sinPrecioLista'),
 			},
 		};
+	}
+
+	/**
+	 * Lo vendido por producto + variante y PRECIO unitario, con los precios cambiados a mano en filas aparte: cuántas
+	 * salieron a cada precio ("Pizza - Grande · $48.000 × 50" y "Pizza - Grande · $57.000 (precio manual) × 1").
+	 * Mismo universo que productosVendidos (ventas válidas del rango).
+	 */
+	async productosPorPrecio(filtros: FiltrosAnaliticaDto, rango: Rango) {
+		const p = new ParametrosSql();
+		const from = fromLineas(
+			filtros,
+			rango,
+			p,
+			`LEFT JOIN productos p ON p.producto_id = op."productoObjProductoId"
+			LEFT JOIN producto_variantes pv ON pv.variante_id = op.variante_id`,
+		);
+		const nombreProducto = 'COALESCE(p.producto_nombre, op.producto_base)';
+		const filas = await this.consultar<{
+			clave: string;
+			nombre: string;
+			categoria: string | null;
+			precio: number;
+			manual: boolean;
+			precio_lista: number | null;
+			unidades: number;
+			valor: number;
+		}>(
+			`SELECT COALESCE(op.variante_id::text, 'n:' || lower(COALESCE(op.producto, ''))) AS clave,
+				MAX(CASE WHEN ${nombreProducto} IS NOT NULL AND COALESCE(pv.nombre, op.variante_nombre) IS NOT NULL
+					THEN ${nombreProducto} || ' - ' || COALESCE(pv.nombre, op.variante_nombre) ELSE op.producto END) AS nombre,
+				MAX(COALESCE(p.categoria, op.categoria)) AS categoria,
+				COALESCE(op.precio_unitario, 0)::float8 AS precio,
+				(op.precio_manual IS TRUE) AS manual,
+				MAX(op.precio_lista)::float8 AS precio_lista,
+				SUM(op.cantidad)::float8 AS unidades,
+				COALESCE(SUM(op.cantidad * op.precio_unitario), 0)::float8 AS valor
+			${from}
+			GROUP BY 1, 4, 5
+			ORDER BY nombre ASC, manual ASC, unidades DESC, precio DESC`,
+			p,
+		);
+		return filas.map((f) => ({
+			clave: f.clave,
+			nombre: f.nombre,
+			categoria: f.categoria ?? null,
+			precio: num(f.precio),
+			manual: f.manual === true,
+			/** Precio del menú de las líneas manuales (null si no se guardó o si no es manual). */
+			precioLista: f.manual === true && f.precio_lista != null ? num(f.precio_lista) : null,
+			unidades: num(f.unidades),
+			valor: num(f.valor),
+		}));
 	}
 
 	/** Top de productos con la forma que guarda el cierre ({producto, totalVendido, ingresos}). */

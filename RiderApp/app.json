@@ -2,7 +2,7 @@
   "expo": {
     "name": "RiderApp",
     "slug": "RiderApp",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -17,6 +17,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.ljee.RiderApp",
+      "versionCode": 2,
       "permissions": ["android.permission.POST_NOTIFICATIONS"]
     },
     "web": {

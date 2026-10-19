@@ -608,6 +608,17 @@ export interface UpdateEmpresaDto {
   tarifaIva?: number;
   recargoLeche?: number;
   arqueoCaja?: boolean;
+  /** Correo(s) del contador separados por coma ('' = no enviarle el libro diario). */
+  correoContador?: string;
+}
+
+/** GET /contabilidad/libro-diario: el libro lo arma el servidor (el mismo que recibe el contador en cada cierre). */
+export interface ParamsLibroDiario {
+  from: string;
+  to: string;
+  /** solo_transferencias = «Transferencias y mixto» (facturas con alguna parte por QR, completas). */
+  filtro?: 'completo' | 'solo_transferencias' | 'cuenta_especifica';
+  cuentaId?: number;
 }
 
 // ─── Inventario unificado (/inventario/*) ────────────────────────────────────
@@ -918,6 +929,10 @@ export interface ClientesAnalitica {
 export interface DomiciliariosAnalitica {
   periodo: PeriodoAnalitica;
   filas: { telefono: string; nombre: string; asignados: number; entregas: number; ganancia: number; ticketPromedio: number }[];
+  /** Domicilios del período, también los que no tienen repartidor. Ausente en servidores viejos. */
+  totales?: { domicilios: number; sinRepartidor: number; entregados: number; costoDomicilios: number };
+  /** Una fila por día (hora de Bogotá) y repartidor; telefono null = sin repartidor. */
+  porDia?: { dia: string; telefono: string | null; nombre: string; domicilios: number; entregas: number; ganancia: number }[];
 }
 
 export interface OpcionesAnalitica {
@@ -978,8 +993,22 @@ export interface ResumenGeneral {
   productos: ProductoVendidoResumen[];
   /** Ajuste manual de precio: aumentos (+), bajas (−) y líneas afectadas. */
   ajustesPrecio: AjustesPrecioResumen;
+  /** Unidades por producto + variante y PRECIO, los manuales aparte ("Pizza - Grande · $48.000 × 50"). Ausente en servidores viejos. */
+  productosPorPrecio?: ProductoPorPrecio[];
   /** Estado de resultados con lo cobrado y pagado: ingresos − costos − gastos. */
   resultado: ResultadoPeriodo;
+}
+
+export interface ProductoPorPrecio {
+  clave: string;
+  nombre: string;
+  categoria: string | null;
+  precio: number;
+  manual: boolean;
+  /** Precio del menú en las líneas manuales (null si no se guardó). */
+  precioLista: number | null;
+  unidades: number;
+  valor: number;
 }
 
 export interface ProductoVendidoResumen {

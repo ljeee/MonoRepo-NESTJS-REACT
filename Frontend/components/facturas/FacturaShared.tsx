@@ -175,23 +175,8 @@ export const FacturaCard = React.memo(function FacturaCard({
     ? Number(item.domicilios[0].costoDomicilio)
     : 0;
 
-  const handlePrint = () => {
-    const productos = (item.ordenes ?? []).flatMap(o =>
-      (o.productos ?? []).map(p => ({
-        nombre: p.productoNombre || 'Producto',
-        cantidad: p.cantidad ?? 1,
-        precioUnitario: p.precioUnitario ?? 0,
-      })),
-    );
-    printReceipt({
-      ordenId: item.facturaId,
-      clienteNombre: item.clienteNombre || 'N/A',
-      metodo: item.metodo || 'N/A',
-      productos,
-      total: item.total ?? 0,
-      fecha: item.fechaFactura,
-    });
-  };
+  // El recibo arma productos, domicilio, forma de pago (con cuentas) y estado desde la factura completa.
+  const handlePrint = () => printReceipt(item);
 
   const bgTint = isCancelado
     ? 'rgba(244,63,94,0.04)'
