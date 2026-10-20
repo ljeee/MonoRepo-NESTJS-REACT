@@ -69,3 +69,6 @@ CLAUDE.md
 # Respaldos y salidas de la migracion de produccion (contienen datos reales de clientes)
 /backups/
 *.dump
+
+# Capturas y snapshots del navegador de pruebas (Playwright MCP, .mcp.json)
+/.playwright-mcp/

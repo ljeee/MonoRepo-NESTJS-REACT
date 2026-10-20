@@ -284,40 +284,6 @@ function porCuentaDeFilas(filas: FilaTransferencia[]): { cuenta: string; factura
   return [...mapa.values()].map((f) => ({ cuenta: f.cuenta, facturas: f.facturas.size, monto: f.monto })).sort((a, b) => b.monto - a.monto);
 }
 
-// ─── Libro diario ──────────────────────────────────────────────────────────────
-// Lo arma el SERVIDOR (GET /contabilidad/libro-diario): es el mismo libro que recibe el contador en cada cierre.
-
-/**
- * Abre en una pestaña un PDF que genera el servidor (libro diario). La pestaña se abre YA (en el clic): si se abriera
- * al llegar la respuesta, el navegador la bloquearía como ventana emergente. Si aun así la bloquea, el PDF se
- * descarga. Si falla la carga, la cierra y relanza el error.
- */
-export async function abrirPdfDelServidor(cargar: () => Promise<Blob>, nombreArchivo: string, espera = 'Generando el PDF…') {
-  if (typeof window === 'undefined') return;
-  const popup = window.open('', '_blank');
-  popup?.document.write(`<p style="font-family:system-ui,sans-serif;padding:24px;color:#475569">${escaparHtml(espera)}</p>`);
-  try {
-    const blob = await cargar();
-    const pdf = blob.type === 'application/pdf' ? blob : new Blob([blob], { type: 'application/pdf' });
-    const url = URL.createObjectURL(pdf);
-    if (popup) {
-      popup.location.href = url;
-    } else {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nombreArchivo;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
-    // La pestaña ya cargó el PDF; se libera la URL después.
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-  } catch (error) {
-    popup?.close();
-    throw error;
-  }
-}
-
 // ─── Balance de Prueba ────────────────────────────────────────────────────────
 
 export function exportBalanceDePrueba(

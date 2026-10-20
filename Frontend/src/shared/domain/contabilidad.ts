@@ -143,3 +143,29 @@ export function resumirGastos(lista: GastoContable[]): ResumenGastos {
 export function tieneCobroTransferencia(f: FacturaContable): boolean {
   return !isAnulada(f) && montoTransferencia(f) > 0;
 }
+
+/**
+ * Nombre del archivo del libro diario: `libro-diario[-transferencias|-cuenta-<nombre>]-<día | desde_a_hasta>.<pdf|csv>`,
+ * p. ej. `libro-diario-2026-10-18.pdf`. Espejo de `nombreArchivoLibro` del servidor (libro-diario.formato.ts), que
+ * nombra los adjuntos del correo del cierre: así el PDF que se descarga en el POS se llama igual que el que llega
+ * por correo. `nombre-libro-paridad.spec.ts` (backend) los compara.
+ */
+export function nombreArchivoLibroDiario(
+  l: { from: string; to: string; filtro?: string | null; cuentaNombre?: string | null },
+  extension: 'pdf' | 'csv',
+): string {
+  const cuenta = (l.cuentaNombre ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  const tipo =
+    l.filtro === 'solo_transferencias'
+      ? '-transferencias'
+      : l.filtro === 'cuenta_especifica'
+        ? `-cuenta${cuenta ? `-${cuenta}` : ''}`
+        : '';
+  const fechas = l.from === l.to ? l.from : `${l.from}_a_${l.to}`;
+  return `libro-diario${tipo}-${fechas}.${extension}`;
+}

@@ -21,7 +21,7 @@ import {construirHtmlCierre} from '../../common/services/cierre-email';
 import type {DomiciliariosCierre, ResumenCierre} from '../../common/services/cierre-email';
 import {renderizarPdf} from '../../common/pdf/pdf.util';
 import type {FiltroLibro} from './libro-diario.dto';
-import {construirCsvLibroDiario, pesos, rangoTexto} from './libro-diario.formato';
+import {construirCsvLibroDiario, nombreArchivoLibro, pesos, rangoTexto} from './libro-diario.formato';
 import {docLibroDiario} from './libro-diario.pdf';
 
 export const MAX_DIAS_LIBRO = 366;
@@ -426,6 +426,17 @@ export class LibroDiarioService {
 		return construirCsvLibroDiario(await this.generar(o));
 	}
 
+	/** El PDF o el CSV con su nombre de archivo (`nombreArchivoLibro`: el mismo de los adjuntos del correo y del POS). */
+	async archivo(
+		o: OpcionesLibroDiario,
+		formato: 'pdf' | 'csv',
+	): Promise<{nombre: string; contenido: Buffer | string}> {
+		const libro = await this.generar(o);
+		const nombre = nombreArchivoLibro(libro, formato);
+		if (formato === 'csv') return {nombre, contenido: construirCsvLibroDiario(libro)};
+		return {nombre, contenido: await renderizarPdf(docLibroDiario(libro, await this.datosEmpresa()))};
+	}
+
 	/**
 	 * A quién va el correo del cierre: el dueño (REPORT_EMAIL) y la contadora (Configuración POS, o CONTADOR_EMAIL),
 	 * sin repetidos. Vacío = no se envía.
@@ -469,11 +480,10 @@ export class LibroDiarioService {
 			renderizarPdf(docLibroDiario(completo, empresa)),
 			renderizarPdf(docLibroDiario(transferencias, empresa)),
 		]);
-		const sufijo = from === to ? from : `${from}_${to}`;
 		const adjuntos = [
-			{filename: `libro-diario-${sufijo}.pdf`, content: pdfCompleto, contentType: 'application/pdf'},
+			{filename: nombreArchivoLibro(completo, 'pdf'), content: pdfCompleto, contentType: 'application/pdf'},
 			{
-				filename: `libro-diario-transferencias-${sufijo}.pdf`,
+				filename: nombreArchivoLibro(transferencias, 'pdf'),
 				content: pdfTransferencias,
 				contentType: 'application/pdf',
 			},

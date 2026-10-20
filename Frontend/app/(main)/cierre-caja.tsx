@@ -3,14 +3,14 @@ import { Platform } from 'react-native';
 import { View, Text, TextInput } from '../../tw';
 import { PageContainer, PageHeader, Button, Icon, IconButton, Card, Badge, ConfirmModal, ListSkeleton, PosRefreshControl } from '../../components/ui';
 import { api } from '../../services/api';
-import { useToast, formatCurrency, formatDate, Role, bogotaToday } from '@/src/shared';
+import { useToast, formatCurrency, formatDate, Role, bogotaToday, nombreArchivoLibroDiario } from '@/src/shared';
 import type { ResumenGeneral } from '@/src/shared';
 import { useAuth } from '../../contexts/AuthContext';
 import { useBreakpoint } from '../../styles/responsive';
 import { ResumenDiaCompleto } from '../../components/contabilidad/ResumenDiaCompleto';
 import { PaginadorLocal } from '../../components/contabilidad/PaginadorLocal';
 import { usePaginaLocal } from '../../hooks/use-pagina-local';
-import { abrirPdfDelServidor } from '../../utils/exportData';
+import { abrirPdfDelServidor } from '../../utils/visor-pdf';
 
 export default function CierreCajaScreen() {
     const { showToast } = useToast();
@@ -37,7 +37,7 @@ export default function CierreCajaScreen() {
             try {
                 await abrirPdfDelServidor(
                     () => api.contabilidad.libroDiarioPdf({ from: fecha, to: fecha, filtro }),
-                    `libro-diario${filtro === 'solo_transferencias' ? '-transferencias' : ''}-${fecha}.pdf`,
+                    nombreArchivoLibroDiario({ from: fecha, to: fecha, filtro }, 'pdf'),
                     'Generando el libro diario…',
                 );
             } catch (error: any) {

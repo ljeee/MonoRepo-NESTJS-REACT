@@ -22,6 +22,31 @@ export function tituloLibro(l: Pick<LibroDiario, 'from' | 'to' | 'filtro' | 'cue
 	return `Libro diario — ${rangoTexto(l.from, l.to)}${filtro}`;
 }
 
+/**
+ * Nombre del archivo: `libro-diario[-transferencias|-cuenta-<nombre>]-<día | desde_a_hasta>.<pdf|csv>`, p. ej.
+ * `libro-diario-2026-10-18.pdf`. Lo usan la descarga y los adjuntos del correo; espejo en el POS
+ * (`nombreArchivoLibroDiario`, Frontend/src/shared/domain/contabilidad.ts; `nombre-libro-paridad.spec.ts` los compara).
+ */
+export function nombreArchivoLibro(
+	l: Pick<LibroDiario, 'from' | 'to' | 'filtro' | 'cuentaNombre'>,
+	extension: 'pdf' | 'csv',
+): string {
+	const cuenta = (l.cuentaNombre ?? '')
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '');
+	const tipo =
+		l.filtro === 'solo_transferencias'
+			? '-transferencias'
+			: l.filtro === 'cuenta_especifica'
+				? `-cuenta${cuenta ? `-${cuenta}` : ''}`
+				: '';
+	const fechas = l.from === l.to ? l.from : `${l.from}_a_${l.to}`;
+	return `libro-diario${tipo}-${fechas}.${extension}`;
+}
+
 export function pizzasVendidas(l: Pick<LibroDiario, 'resumen'>): number {
 	return (l.resumen?.productos ?? []).filter((p) => p.categoria === 'pizza').reduce((s, p) => s + p.unidades, 0);
 }

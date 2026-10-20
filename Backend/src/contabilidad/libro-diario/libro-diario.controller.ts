@@ -16,18 +16,11 @@ export class LibroDiarioController {
 	@Roles(Role.Admin, Role.Cajero, Role.Contador)
 	@ApiOperation({summary: 'Libro diario del rango en PDF (formato=pdf, por defecto) o CSV (formato=csv)'})
 	async obtener(@Query() q: LibroDiarioQueryDto, @Res() res: Response) {
-		const sufijo = `${q.filtro === 'solo_transferencias' ? 'transferencias_' : q.filtro === 'cuenta_especifica' ? 'cuenta_' : ''}${q.from}_${q.to}`;
-		if (q.formato === 'csv') {
-			const csv = await this.libro.csv(q);
-			res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-			res.setHeader('Content-Disposition', `attachment; filename="libro-diario_${sufijo}.csv"`);
-			res.send(csv);
-			return;
-		}
-		const pdf = await this.libro.pdf(q);
-		res.setHeader('Content-Type', 'application/pdf');
-		res.setHeader('Content-Disposition', `inline; filename="libro-diario_${sufijo}.pdf"`);
-		res.send(pdf);
+		const csv = q.formato === 'csv';
+		const {nombre, contenido} = await this.libro.archivo(q, csv ? 'csv' : 'pdf');
+		res.setHeader('Content-Type', csv ? 'text/csv; charset=utf-8' : 'application/pdf');
+		res.setHeader('Content-Disposition', `${csv ? 'attachment' : 'inline'}; filename="${nombre}"`);
+		res.send(contenido);
 	}
 
 	@Post('enviar')

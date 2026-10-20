@@ -234,6 +234,17 @@ describe('Libro diario (PGlite)', () => {
 		expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
 	});
 
+	it('archivo: el PDF o el CSV con el nombre de la fecha (el mismo de los adjuntos del correo)', async () => {
+		const dia = await libro.archivo({from: '2026-10-02', to: '2026-10-02', filtro: 'completo'}, 'pdf');
+		expect(dia.nombre).toBe('libro-diario-2026-10-02.pdf');
+		expect((dia.contenido as Buffer).subarray(0, 5).toString()).toBe('%PDF-');
+		const csv = await libro.archivo({...R, filtro: 'solo_transferencias'}, 'csv');
+		expect(csv.nombre).toBe('libro-diario-transferencias-2026-10-01_a_2026-10-31.csv');
+		expect(String(csv.contenido)).toContain('"VENTAS"');
+		const cuenta = await libro.archivo({...R, filtro: 'cuenta_especifica', cuentaId: 2}, 'pdf');
+		expect(cuenta.nombre).toBe('libro-diario-cuenta-bancolombia-2026-10-01_a_2026-10-31.pdf');
+	});
+
 	it('textoPdf deja solo lo que la fuente estándar puede dibujar', () => {
 		expect(textoPdf('−5 ↳ a → b ñÑáé¿¡ — · 😀')).toBe('-5 > a -> b ñÑáé¿¡ — · ');
 	});
@@ -252,8 +263,8 @@ describe('Libro diario (PGlite)', () => {
 		expect(res).toEqual({
 			enviadoA: ['dueno@ejemplo.com', 'conta@ejemplo.com'],
 			adjuntos: [
-				'libro-diario-2026-10-02_2026-10-05.pdf',
-				'libro-diario-transferencias-2026-10-02_2026-10-05.pdf',
+				'libro-diario-2026-10-02_a_2026-10-05.pdf',
+				'libro-diario-transferencias-2026-10-02_a_2026-10-05.pdf',
 			],
 		});
 		const [destinos, datos] = mail.enviarConAdjuntos.mock.calls[0] as unknown as [

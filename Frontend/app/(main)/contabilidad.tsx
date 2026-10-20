@@ -17,6 +17,7 @@ import {
     CATEGORIAS_GASTO,
     TIPO_GASTO_META,
     isGastoPagado,
+    nombreArchivoLibroDiario,
     Role,
 } from '@/src/shared';
 import type { FacturaVenta, FacturaPago, ParamsLibroDiario, TipoGastoFiltro } from '@/src/shared';
@@ -32,9 +33,9 @@ import {
     downloadCsv,
 } from '../../utils/csvExport';
 import { isAxiosError } from 'axios';
+import { abrirPdfDelServidor } from '../../utils/visor-pdf';
 import {
     exportFacturasPdf,
-    abrirPdfDelServidor,
     exportBalanceDePrueba,
     exportBalancePorTercero,
     exportInformeImpuesto,
@@ -396,6 +397,15 @@ export default function ContabilidadScreen() {
         }),
         [validRange, exportOptions],
     );
+    // El mismo nombre que el servidor da a los adjuntos del correo: libro-diario[-transferencias|-cuenta-x]-<fecha>.
+    const nombreLibro = (extension: 'pdf' | 'csv') =>
+        nombreArchivoLibroDiario(
+            {
+                ...paramsLibro(),
+                cuentaNombre: exportOptions.filtroDiario === 'cuenta_especifica' ? exportOptions.cuentaNombre : undefined,
+            },
+            extension,
+        );
     const accionLibro = useCallback(async (clave: string, fn: () => Promise<void>) => {
         setExportLoading(clave);
         setErrorExport('');
@@ -412,12 +422,12 @@ export default function ContabilidadScreen() {
         accionLibro('diario', () =>
             abrirPdfDelServidor(
                 () => api.contabilidad.libroDiarioPdf(paramsLibro()),
-                `libro-diario_${validRange.from}_${validRange.to}.pdf`,
+                nombreLibro('pdf'),
                 'Generando el libro diario…',
             ),
         );
     const libroDiarioCsv = () =>
-        accionLibro('diario-csv', async () => descargarBlob(await api.contabilidad.libroDiarioCsv(paramsLibro()), `libro-diario_${validRange.from}_${validRange.to}.csv`));
+        accionLibro('diario-csv', async () => descargarBlob(await api.contabilidad.libroDiarioCsv(paramsLibro()), nombreLibro('csv')));
     const enviarLibros = () =>
         accionLibro('enviar-libros', async () => {
             const r = await api.contabilidad.enviarLibros(validRange.from, validRange.to);

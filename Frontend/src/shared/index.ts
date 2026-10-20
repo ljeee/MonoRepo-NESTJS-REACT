@@ -47,6 +47,7 @@ export {
   resumirGastos,
   isGastoPagado,
   tieneCobroTransferencia,
+  nombreArchivoLibroDiario,
 } from './domain/contabilidad';
 export type { FacturaContable, GastoContable, ResumenFacturas, ResumenGastos } from './domain/contabilidad';
 export {
